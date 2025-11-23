@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/tab_manager.dart';
 import '../../services/tab_webview_manager.dart';
-import 'modern_address_bar.dart';
-import 'modern_tab_bar.dart';
-import 'modern_sidebar.dart';
+import 'gx_address_bar.dart';
+import 'gx_tab_bar.dart';
+import 'gx_sidebar.dart';
 import 'web_content_view.dart';
 import 'modern_home_page.dart';
 import 'modern_history_panel.dart';
@@ -70,14 +70,14 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
               return Container(
                 width: _sidebarAnimation.value * 48,
                 child: _sidebarAnimation.value > 0
-                    ? ModernSidebar(
-                        onClose: _toggleSidebar,
-                        onSectionSelected: (section) {
-                          setState(() {
-                            _currentSection = section;
-                          });
-                        },
-                      )
+                      ? GXSidebar(
+                          onClose: _toggleSidebar,
+                          onSectionSelected: (section) {
+                            setState(() {
+                              _currentSection = section;
+                            });
+                          },
+                        )
                     : null,
               );
             },
@@ -85,43 +85,12 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
 
           // Zone principale
           Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                border: Border(
-                  top: BorderSide(
-                    color: const Color(0xFFFF2D55).withOpacity(0.3),
-                    width: 2,
-                  ),
-                  left: BorderSide(
-                    color: const Color(0xFFFF2D55).withOpacity(0.2),
-                    width: 1,
-                  ),
-                ),
-              ),
-              child: Column(
+            child: Column(
                 children: [
-                  // Barre d'outils moderne
-                  Container(
-                    padding: const EdgeInsets.symmetric(vertical: 2),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF131317),
-                      border: Border(
-                        bottom: BorderSide(
-                          color: const Color(0xFFFF2D55).withOpacity(0.2),
-                          width: 1,
-                        ),
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        ModernTabBar(
-                          onMenuTap: _toggleSidebar,
-                          isSidebarVisible: _isSidebarVisible,
-                        ),
-                        ModernAddressBar(),
-                      ],
-                    ),
-                  ),
+                  // Tab bar GX
+                  const GXTabBar(),
+                  // Address bar GX
+                  const GXAddressBar(),
 
                   // Zone de contenu web
                   Expanded(
@@ -153,7 +122,6 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                     ),
                   ),
                 ],
-              ),
             ),
           ),
         ],

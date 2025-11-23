@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../widgets/browser/modern_browser_window.dart';
-import '../widgets/browser/custom_title_bar.dart';
+import '../widgets/browser/gx_title_bar.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -10,7 +10,7 @@ class HomeScreen extends StatelessWidget {
     return const Scaffold(
       body: Column(
         children: [
-          CustomTitleBar(),
+          GXTitleBar(),
           Expanded(child: ModernBrowserWindow()),
         ],
       ),
