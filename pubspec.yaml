@@ -1,0 +1,42 @@
+name: notilus
+description: Navigateur futuriste pour développeurs - Notilus Browser
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # State Management
+  provider: ^6.1.1
+  
+  # Storage
+  shared_preferences: ^2.2.2
+  
+  # UI & Animations
+  flutter_animate: ^4.3.0
+  
+  # CEF Integration (note: cef_flutter may need platform-specific setup)
+  # webview_flutter: ^4.4.2  # Alternative if CEF not available
+  
+  # Utilities
+  uuid: ^4.2.1
+  url_launcher: ^6.2.2
+  http: ^1.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  
+  # Assets (to be added later)
+  # assets:
+  #   - assets/images/
+  #   - assets/icons/
+
