@@ -314,15 +314,37 @@ class _GXTabItemState extends State<_GXTabItem> {
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     child: Row(
                       children: [
-                        // Favicon
+                        // Favicon dynamique
                         SizedBox(
                           width: 24,
                           child: Center(
-                            child: widget.tab.favicon != null
+                            child: widget.tab.favicon != null && 
+                                   widget.tab.favicon!.isNotEmpty &&
+                                   !widget.tab.url!.startsWith('about:')
                                 ? Image.network(
                                     widget.tab.favicon!,
                                     width: 16,
                                     height: 16,
+                                    fit: BoxFit.contain,
+                                    loadingBuilder: (context, child, loadingProgress) {
+                                      if (loadingProgress == null) return child;
+                                      return SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: Center(
+                                          child: SizedBox(
+                                            width: 12,
+                                            height: 12,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 1.5,
+                                              valueColor: AlwaysStoppedAnimation<Color>(
+                                                _gxRed.withOpacity(0.6),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
                                     errorBuilder: (_, __, ___) => _defaultFavicon(),
                                   )
                                 : _defaultFavicon(),

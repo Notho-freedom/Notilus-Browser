@@ -6,6 +6,7 @@ import '../../models/tab_model.dart';
 import '../../core/theme/app_theme.dart';
 import '../../services/tab_webview_manager.dart';
 import '../../services/tab_manager.dart';
+import '../../services/favicon_service.dart';
 import 'home_page.dart';
 
 /// Widget pour afficher le contenu web avec WebView2
@@ -64,6 +65,8 @@ class _WebContentViewState extends State<WebContentView> {
           _currentUrl = url;
         });
         tabManager.updateTab(widget.tab!.id, url: url);
+        // Charger le favicon automatiquement quand l'URL change
+        _loadFavicon(url, widget.tab!.id, tabManager);
       }
     };
     
@@ -97,10 +100,14 @@ class _WebContentViewState extends State<WebContentView> {
       // Naviguer vers l'URL si elle existe
       if (widget.tab?.url != null && widget.tab!.url!.isNotEmpty) {
         await engine.navigate(widget.tab!.url!);
+        // Charger le favicon pour l'URL initiale
+        _loadFavicon(widget.tab!.url!, widget.tab!.id, tabManager);
       }
     } else if (widget.tab?.url != null && widget.tab!.url!.isNotEmpty) {
       // Si le WebView n'est pas encore créé, naviguer via l'engine
       await engine.navigate(widget.tab!.url!);
+      // Charger le favicon pour l'URL initiale
+      _loadFavicon(widget.tab!.url!, widget.tab!.id, tabManager);
       // Récupérer le controller après navigation
       final newController = await engine.getController();
       if (newController != null && newController is WebviewController) {
@@ -108,6 +115,23 @@ class _WebContentViewState extends State<WebContentView> {
           _webView = newController;
         });
       }
+    }
+  }
+
+  /// Charge le favicon pour une URL et met à jour l'onglet
+  Future<void> _loadFavicon(String url, String tabId, TabManager tabManager) async {
+    // Ne pas charger de favicon pour les pages spéciales
+    if (url.startsWith('about:') || url.isEmpty) {
+      return;
+    }
+
+    try {
+      final faviconUrl = await FaviconService.getFaviconWithCache(url);
+      if (faviconUrl != null && mounted) {
+        tabManager.updateTab(tabId, favicon: faviconUrl);
+      }
+    } catch (e) {
+      debugPrint('Error loading favicon for $url: $e');
     }
   }
 
