@@ -135,7 +135,7 @@ class _WindowControls extends StatefulWidget {
   State<_WindowControls> createState() => _WindowControlsState();
 }
 
-class _WindowControlsState extends State<_WindowControls> {
+class _WindowControlsState extends State<_WindowControls> with WindowListener {
   bool _isMaximized = false;
 
   @override
@@ -143,17 +143,13 @@ class _WindowControlsState extends State<_WindowControls> {
     super.initState();
     _checkMaximized();
     // Écouter les changements d'état de la fenêtre
-    windowManager.addListener(_onWindowEvent);
+    windowManager.addListener(this);
   }
 
   @override
   void dispose() {
-    windowManager.removeListener(_onWindowEvent);
+    windowManager.removeListener(this);
     super.dispose();
-  }
-
-  void _onWindowEvent() {
-    _checkMaximized();
   }
 
   Future<void> _checkMaximized() async {
@@ -163,6 +159,11 @@ class _WindowControlsState extends State<_WindowControls> {
         _isMaximized = isMax;
       });
     }
+  }
+
+  @override
+  void onWindowEvent(String eventName) {
+    _checkMaximized();
   }
 
   @override

@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'dart:math';
 import '../../services/history_service.dart';
 import '../../services/tab_manager.dart';
-import '../../core/constants/wallpapers.dart';
+import '../../core/services/wallpaper_manager.dart';
 
 class ModernHistoryPanel extends StatefulWidget {
   const ModernHistoryPanel({super.key});
@@ -16,15 +15,11 @@ class ModernHistoryPanel extends StatefulWidget {
 class _ModernHistoryPanelState extends State<ModernHistoryPanel> {
   final HistoryService _historyService = HistoryService();
   late Future _historyFuture;
-  late final String _backgroundUrl;
 
   @override
   void initState() {
     super.initState();
     _historyFuture = _historyService.getHistory();
-    final wallpapers = NotilusWallpapers.all;
-    final random = Random();
-    _backgroundUrl = wallpapers[random.nextInt(wallpapers.length)];
   }
 
   Future<void> _refresh() async {
@@ -40,7 +35,7 @@ class _ModernHistoryPanelState extends State<ModernHistoryPanel> {
     return Container(
       decoration: BoxDecoration(
         image: DecorationImage(
-          image: NetworkImage(_backgroundUrl),
+          image: NetworkImage(context.watch<WallpaperManager>().current),
           fit: BoxFit.cover,
           colorFilter: ColorFilter.mode(
             Colors.black.withOpacity(0.8),

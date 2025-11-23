@@ -1,14 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:window_manager/window_manager.dart';
 import 'core/theme/modern_theme.dart';
 import 'core/services/theme_mode_notifier.dart';
+import 'core/services/wallpaper_manager.dart';
 import 'screens/home_screen.dart';
 import 'services/tab_manager.dart';
 import 'services/tab_webview_manager.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialisation de window_manager AVANT runApp
+  await windowManager.ensureInitialized();
+  
+  const WindowOptions windowOptions = WindowOptions(
+    size: Size(1200, 800),
+    center: true,
+    titleBarStyle: TitleBarStyle.hidden,
+  );
+  
+  windowManager.waitUntilReadyToShow(windowOptions, () async {
+    await windowManager.show();
+    await windowManager.focus();
+  });
   
   // Configuration de la barre de statut transparente
   SystemChrome.setSystemUIOverlayStyle(
@@ -37,6 +53,7 @@ class NotilusApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeModeNotifier()),
+        ChangeNotifierProvider(create: (_) => WallpaperManager()),
         ChangeNotifierProvider(create: (_) => TabManager()),
         ChangeNotifierProvider(create: (_) => TabWebViewManager()),
       ],

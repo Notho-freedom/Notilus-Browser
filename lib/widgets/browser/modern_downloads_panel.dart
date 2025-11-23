@@ -1,7 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../core/constants/wallpapers.dart';
+import '../../core/services/wallpaper_manager.dart';
 import '../../services/tab_manager.dart';
 
 class ModernDownloadsPanel extends StatefulWidget {
@@ -12,16 +12,12 @@ class ModernDownloadsPanel extends StatefulWidget {
 }
 
 class _ModernDownloadsPanelState extends State<ModernDownloadsPanel> {
-  late final String _backgroundUrl;
   final List<_LocalDownload> _downloads = [];
   int _counter = 1;
 
   @override
   void initState() {
     super.initState();
-    final wallpapers = NotilusWallpapers.all;
-    final random = Random();
-    _backgroundUrl = wallpapers[random.nextInt(wallpapers.length)];
   }
 
   void _addMockDownload() {
@@ -52,7 +48,7 @@ class _ModernDownloadsPanelState extends State<ModernDownloadsPanel> {
     return Container(
       decoration: BoxDecoration(
         image: DecorationImage(
-          image: NetworkImage(_backgroundUrl),
+          image: NetworkImage(context.watch<WallpaperManager>().current),
           fit: BoxFit.cover,
           colorFilter: ColorFilter.mode(
             Colors.black.withOpacity(0.8),

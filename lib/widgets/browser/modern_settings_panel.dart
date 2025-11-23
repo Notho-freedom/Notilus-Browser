@@ -1,7 +1,6 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../core/constants/wallpapers.dart';
+import '../../core/services/wallpaper_manager.dart';
 import '../../core/services/theme_mode_notifier.dart';
 
 class ModernSettingsPanel extends StatefulWidget {
@@ -12,14 +11,9 @@ class ModernSettingsPanel extends StatefulWidget {
 }
 
 class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
-  late final String _backgroundUrl;
-
   @override
   void initState() {
     super.initState();
-    final wallpapers = NotilusWallpapers.all;
-    final random = Random();
-    _backgroundUrl = wallpapers[random.nextInt(wallpapers.length)];
   }
 
   @override
@@ -29,7 +23,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
     return Container(
       decoration: BoxDecoration(
         image: DecorationImage(
-          image: NetworkImage(_backgroundUrl),
+          image: NetworkImage(context.watch<WallpaperManager>().current),
           fit: BoxFit.cover,
           colorFilter: ColorFilter.mode(
             Colors.black.withOpacity(0.8),

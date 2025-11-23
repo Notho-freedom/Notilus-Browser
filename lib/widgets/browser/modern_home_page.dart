@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
-import 'dart:math';
 import '../../services/tab_manager.dart';
-import '../../core/constants/wallpapers.dart';
+import '../../core/services/wallpaper_manager.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 class ModernHomePage extends StatefulWidget {
@@ -16,14 +15,10 @@ class ModernHomePage extends StatefulWidget {
 class _ModernHomePageState extends State<ModernHomePage> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
-  late final String _backgroundUrl;
 
   @override
   void initState() {
     super.initState();
-    final wallpapers = NotilusWallpapers.all;
-    final random = Random();
-    _backgroundUrl = wallpapers[random.nextInt(wallpapers.length)];
   }
 
   final List<QuickAccessItem> _quickAccessItems = [
@@ -114,7 +109,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
     return Container(
       decoration: BoxDecoration(
         image: DecorationImage(
-          image: NetworkImage(_backgroundUrl),
+          image: NetworkImage(context.watch<WallpaperManager>().current),
           fit: BoxFit.cover,
           colorFilter: ColorFilter.mode(
             Colors.black.withOpacity(isDark ? 0.65 : 0.75),

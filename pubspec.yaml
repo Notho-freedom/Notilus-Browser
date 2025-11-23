@@ -28,6 +28,9 @@ dependencies:
   uuid: ^4.2.1
   url_launcher: ^6.2.2
   http: ^1.1.0
+  
+  # Window Management
+  window_manager: ^0.3.7
 
 dev_dependencies:
   flutter_test:

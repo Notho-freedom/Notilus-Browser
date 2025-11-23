@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'dart:math';
 import '../../services/bookmark_service.dart';
 import '../../models/bookmark.dart';
 import '../../services/tab_manager.dart';
-import '../../core/constants/wallpapers.dart';
+import '../../core/services/wallpaper_manager.dart';
 
 class ModernBookmarksPanel extends StatefulWidget {
   const ModernBookmarksPanel({super.key});
@@ -16,15 +15,11 @@ class ModernBookmarksPanel extends StatefulWidget {
 class _ModernBookmarksPanelState extends State<ModernBookmarksPanel> {
   final BookmarkService _bookmarkService = BookmarkService();
   late Future<List<Bookmark>> _bookmarksFuture;
-  late final String _backgroundUrl;
 
   @override
   void initState() {
     super.initState();
     _bookmarksFuture = _bookmarkService.getBookmarks();
-    final wallpapers = NotilusWallpapers.all;
-    final random = Random();
-    _backgroundUrl = wallpapers[random.nextInt(wallpapers.length)];
   }
 
   Future<void> _refresh() async {
@@ -40,7 +35,7 @@ class _ModernBookmarksPanelState extends State<ModernBookmarksPanel> {
     return Container(
       decoration: BoxDecoration(
         image: DecorationImage(
-          image: NetworkImage(_backgroundUrl),
+          image: NetworkImage(context.watch<WallpaperManager>().current),
           fit: BoxFit.cover,
           colorFilter: ColorFilter.mode(
             Colors.black.withOpacity(0.8),
