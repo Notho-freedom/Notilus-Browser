@@ -3,12 +3,23 @@ import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import '../../services/tab_manager.dart';
 
+/// Sections disponibles dans la barre latérale
+enum SidebarSection {
+  home,
+  favorites,
+  history,
+  downloads,
+  settings,
+}
+
 class ModernSidebar extends StatefulWidget {
   final VoidCallback? onClose;
+  final ValueChanged<SidebarSection>? onSectionSelected;
   
   const ModernSidebar({
     super.key,
     this.onClose,
+    this.onSectionSelected,
   });
 
   @override
@@ -159,9 +170,16 @@ class _ModernSidebarState extends State<ModernSidebar> {
                         setState(() {
                           _selectedIndex = index;
                         });
-                        
+
+                        // Notifier le parent de la section sélectionnée
+                        if (widget.onSectionSelected != null &&
+                            index >= 0 &&
+                            index < SidebarSection.values.length) {
+                          widget.onSectionSelected!(SidebarSection.values[index]);
+                        }
+
                         if (index == 0) {
-                          // Retour à l'accueil
+                          // Retour à l'accueil (nouvel onglet)
                           final tabManager = Provider.of<TabManager>(context, listen: false);
                           tabManager.addTab(url: 'about:newtab');
                         }

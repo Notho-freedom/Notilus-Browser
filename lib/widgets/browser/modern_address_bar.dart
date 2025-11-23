@@ -4,6 +4,10 @@ import 'package:provider/provider.dart';
 import '../../services/tab_manager.dart';
 import '../../services/tab_webview_manager.dart';
 import '../../core/utils/url_validator.dart';
+import '../../services/history_service.dart';
+import '../../services/bookmark_service.dart';
+import '../../services/favicon_service.dart';
+import '../../models/bookmark.dart';
 import '../../models/tab_model.dart';
 
 class ModernAddressBar extends StatefulWidget {
@@ -17,6 +21,8 @@ class _ModernAddressBarState extends State<ModernAddressBar> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   bool _isFocused = false;
+  final HistoryService _historyService = HistoryService();
+  final BookmarkService _bookmarkService = BookmarkService();
 
   @override
   void initState() {
@@ -35,7 +41,7 @@ class _ModernAddressBarState extends State<ModernAddressBar> {
     super.dispose();
   }
 
-  void _navigateToUrl(String url) {
+  Future<void> _navigateToUrl(String url) async {
     final tabManager = Provider.of<TabManager>(context, listen: false);
     final activeTab = tabManager.activeTab;
     
@@ -46,16 +52,36 @@ class _ModernAddressBarState extends State<ModernAddressBar> {
         formattedUrl = UrlValidator.createSearchUrl(url);
       }
       
+      final domain = UrlValidator.extractDomain(formattedUrl) ?? formattedUrl;
+
       tabManager.updateTab(
         activeTab.id,
         url: formattedUrl,
-        title: UrlValidator.extractDomain(formattedUrl) ?? formattedUrl,
+        title: domain,
         state: TabState.loading,
       );
-      
+
+      // Historique
+      await _historyService.addHistoryItem(formattedUrl, domain);
+
+      // Favicon
+      _loadFavicon(formattedUrl, activeTab.id, tabManager);
+
       final webViewManager = Provider.of<TabWebViewManager>(context, listen: false);
       final engine = webViewManager.getEngineForTab(activeTab.id);
       engine.navigate(formattedUrl);
+    }
+  }
+
+  Future<void> _loadFavicon(
+      String url, String tabId, TabManager tabManager) async {
+    try {
+      final faviconUrl = await FaviconService.getFaviconWithCache(url);
+      if (faviconUrl != null && mounted) {
+        tabManager.updateTab(tabId, favicon: faviconUrl);
+      }
+    } catch (_) {
+      // Ignorer les erreurs de favicon
     }
   }
 
@@ -231,9 +257,23 @@ class _ModernAddressBarState extends State<ModernAddressBar> {
                                 size: 16,
                                 color: theme.textTheme.bodySmall?.color?.withOpacity(0.5),
                               ),
-                              onPressed: () {
-                                // Ajouter aux favoris
-                              },
+                              onPressed: activeTab?.url != null
+                                  ? () async {
+                                      final bookmark = Bookmark(
+                                        url: activeTab!.url!,
+                                        title: activeTab.title ?? activeTab.url!,
+                                        favicon: activeTab.favicon,
+                                      );
+                                      await _bookmarkService.addBookmark(bookmark);
+                                      if (!mounted) return;
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Ajouté aux favoris'),
+                                          duration: Duration(seconds: 2),
+                                        ),
+                                      );
+                                    }
+                                  : null,
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(
                                 minWidth: 32,

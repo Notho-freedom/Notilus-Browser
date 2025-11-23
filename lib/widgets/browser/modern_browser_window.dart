@@ -8,6 +8,8 @@ import 'modern_tab_bar.dart';
 import 'modern_sidebar.dart';
 import 'web_content_view.dart';
 import 'modern_home_page.dart';
+import 'modern_history_panel.dart';
+import 'modern_bookmarks_panel.dart';
 
 class ModernBrowserWindow extends StatefulWidget {
   const ModernBrowserWindow({super.key});
@@ -19,6 +21,7 @@ class ModernBrowserWindow extends StatefulWidget {
 class _ModernBrowserWindowState extends State<ModernBrowserWindow>
     with SingleTickerProviderStateMixin {
   bool _isSidebarVisible = true;
+  SidebarSection _currentSection = SidebarSection.home;
   late AnimationController _sidebarAnimationController;
   late Animation<double> _sidebarAnimation;
 
@@ -70,6 +73,11 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                 child: _sidebarAnimation.value > 0
                     ? ModernSidebar(
                         onClose: _toggleSidebar,
+                        onSectionSelected: (section) {
+                          setState(() {
+                            _currentSection = section;
+                          });
+                        },
                       )
                     : null,
               );
@@ -129,17 +137,36 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                       child: Consumer<TabManager>(
                         builder: (context, tabManager, _) {
                           final activeTab = tabManager.activeTab;
-                          
-                          // Afficher la page d'accueil si pas d'onglet ou URL vide
-                          if (activeTab == null ||
-                              activeTab.url == null ||
-                              activeTab.url!.isEmpty ||
-                              activeTab.url == 'about:blank' ||
-                              activeTab.url == 'about:newtab') {
-                            return ModernHomePage();
+
+                          // Afficher la section selon la sélection de la sidebar
+                          switch (_currentSection) {
+                            case SidebarSection.favorites:
+                              return const ModernBookmarksPanel();
+                            case SidebarSection.history:
+                              return const ModernHistoryPanel();
+                            case SidebarSection.downloads:
+                              // TODO: panneau téléchargements
+                              return const Center(
+                                child: Text('Téléchargements (à venir)'),
+                              );
+                            case SidebarSection.settings:
+                              // TODO: panneau paramètres
+                              return const Center(
+                                child: Text('Paramètres (à venir)'),
+                              );
+                            case SidebarSection.home:
+                            default:
+                              // Afficher la page d'accueil si pas d'onglet ou URL vide
+                              if (activeTab == null ||
+                                  activeTab.url == null ||
+                                  activeTab.url!.isEmpty ||
+                                  activeTab.url == 'about:blank' ||
+                                  activeTab.url == 'about:newtab') {
+                                return const ModernHomePage();
+                              }
+                              
+                              return WebContentView(tab: activeTab);
                           }
-                          
-                          return WebContentView(tab: activeTab);
                         },
                       ),
                     ),
