@@ -29,13 +29,12 @@ class CustomTitleBar extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
     
     return Container(
-      height: 40,
+      height: 32,
       decoration: BoxDecoration(
-        color: backgroundColor ?? 
-            (isDark ? const Color(0xFF1A1A1A) : const Color(0xFF2A2A2A)),
+        color: const Color(0xFF0B0B0E),
         border: Border(
           bottom: BorderSide(
-            color: const Color(0xFFFF0040).withOpacity(0.2),
+            color: const Color(0xFFFF2D55).withOpacity(0.3),
             width: 1,
           ),
         ),
@@ -57,22 +56,21 @@ class CustomTitleBar extends StatelessWidget {
                   children: [
                     const SizedBox(width: 12),
                     
-                    // Logo avec effet néon
+                    // Logo avec bordure néon rouge
                     Container(
-                      width: 24,
-                      height: 24,
+                      width: 20,
+                      height: 20,
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [
-                            Color(0xFFFF0040),
-                            Color(0xFFFF3366),
-                          ],
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: const Color(0xFFFF2D55),
+                          width: 1.5,
                         ),
-                        borderRadius: BorderRadius.circular(6),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFFFF0040).withOpacity(0.5),
-                            blurRadius: 8,
+                            color: const Color(0xFFFF2D55).withOpacity(0.4),
+                            blurRadius: 4,
                             spreadRadius: 0,
                           ),
                         ],
@@ -81,10 +79,9 @@ class CustomTitleBar extends StatelessWidget {
                         child: Text(
                           'N',
                           style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'Roboto Mono',
+                            color: Color(0xFFFF2D55),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
                           ),
                         ),
                       ),
@@ -95,19 +92,12 @@ class CustomTitleBar extends StatelessWidget {
                     // Titre de l'application
                     if (showTitle)
                       Text(
-                        'NOTILUS',
+                        'Notilus Browser',
                         style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          fontFamily: 'Roboto Mono',
-                          letterSpacing: 2,
-                          shadows: [
-                            Shadow(
-                              color: Color(0xFFFF0040).withOpacity(0.5),
-                              blurRadius: 4,
-                            ),
-                          ],
+                          color: Colors.white.withOpacity(0.9),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 0.5,
                         ),
                       ),
                     
@@ -251,6 +241,7 @@ class _WindowControlButtonState extends State<_WindowControlButton> {
             color: _isHovered
                 ? widget.hoverColor
                 : Colors.transparent,
+            borderRadius: BorderRadius.circular(4),
           ),
           child: Icon(
             widget.icon,

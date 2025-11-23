@@ -63,54 +63,47 @@ class _ModernSidebarState extends State<ModernSidebar> {
     final isDark = theme.brightness == Brightness.dark;
     
     return Container(
-      width: 72,
+      width: 48,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: isDark
-              ? [const Color(0xFF050509), const Color(0xFF15151F)]
-              : [const Color(0xFFEDEBFF), const Color(0xFFFFFFFF)],
-        ),
+        color: const Color(0xFF0B0B0E),
         border: Border(
           right: BorderSide(
-            color: isDark
-                ? Colors.white.withOpacity(0.08)
-                : Colors.black.withOpacity(0.06),
+            color: const Color(0xFFFF2D55).withOpacity(0.3),
             width: 1,
           ),
         ),
       ),
       child: Column(
         children: [
-          const SizedBox(height: 10),
-          // Logo Notilus façon GX Corner
+          const SizedBox(height: 8),
+          // Logo GX Corner avec bordure néon
           Container(
-            width: 36,
-            height: 36,
+            width: 32,
+            height: 32,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 colors: [
+                  Color(0xFFFF2D55),
                   Color(0xFF5856D6),
-                  Color(0xFF007AFF),
                 ],
               ),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(8),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF5856D6).withOpacity(0.5),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
+                  color: const Color(0xFFFF2D55).withOpacity(0.6),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),
             child: const Center(
               child: Text(
-                'N',
+                'GX',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.5,
                 ),
               ),
             ),
@@ -125,9 +118,7 @@ class _ModernSidebarState extends State<ModernSidebar> {
                 final item = _items[index];
                 final isSelected = _selectedIndex == index;
                 
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: _SidebarIconButton(
+                return _SidebarIconButton(
                     icon: item.icon,
                     label: item.label,
                     color: item.color,
@@ -149,8 +140,7 @@ class _ModernSidebarState extends State<ModernSidebar> {
                         tabManager.addTab(url: 'about:newtab');
                       }
                     },
-                  ),
-                );
+                  );
               },
             ),
           ),
@@ -204,26 +194,53 @@ class _SidebarIconButtonState extends State<_SidebarIconButton> {
         onTap: widget.onTap,
         child: Tooltip(
           message: widget.label,
-          child: Container(
-            width: 48,
-            height: 40,
-            decoration: BoxDecoration(
-              color: bgColor,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: borderColor,
-                width: 1.4,
+          child: Stack(
+            children: [
+              // Barre de sélection verticale à gauche
+              if (widget.selected)
+                Positioned(
+                  left: 0,
+                  top: 8,
+                  bottom: 8,
+                  child: Container(
+                    width: 3,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF2D55),
+                      borderRadius: const BorderRadius.only(
+                        topRight: Radius.circular(2),
+                        bottomRight: Radius.circular(2),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFFF2D55).withOpacity(0.6),
+                          blurRadius: 6,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: widget.selected
+                      ? Colors.white.withOpacity(0.05)
+                      : (_hovered ? Colors.white.withOpacity(0.03) : Colors.transparent),
+                ),
+                child: Center(
+                  child: Icon(
+                    widget.icon,
+                    size: 18,
+                    color: widget.selected
+                        ? const Color(0xFFFF2D55)
+                        : (_hovered
+                            ? Colors.white.withOpacity(0.9)
+                            : Colors.white.withOpacity(0.5)),
+                  ),
+                ),
               ),
-            ),
-            child: Icon(
-              widget.icon,
-              size: 20,
-              color: widget.selected || _hovered
-                  ? widget.color
-                  : (isDark
-                      ? Colors.white.withOpacity(0.8)
-                      : Colors.black.withOpacity(0.7)),
-            ),
+            ],
           ),
         ),
       ),
