@@ -60,16 +60,36 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: const Color(0xFF0B0B0E),
-      child: Row(
-        children: [
-          // Sidebar moderne
-          AnimatedBuilder(
-            animation: _sidebarAnimation,
-            builder: (context, child) {
-              return Container(
-                width: _sidebarAnimation.value * 48,
-                child: _sidebarAnimation.value > 0
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFFFF2D55),
+            Color(0x00FF2D55),
+          ],
+        ),
+      ),
+      child: Container(
+        margin: const EdgeInsets.all(1.8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          color: const Color(0xFF0B0B0E),
+          border: Border.all(
+            color: Colors.white.withOpacity(0.02),
+            width: 0.6,
+          ),
+        ),
+        child: Row(
+          children: [
+            // Sidebar moderne
+            AnimatedBuilder(
+              animation: _sidebarAnimation,
+              builder: (context, child) {
+                return Container(
+                  width: _sidebarAnimation.value * 48,
+                  child: _sidebarAnimation.value > 0
                       ? GXSidebar(
                           onClose: _toggleSidebar,
                           onSectionSelected: (section) {
@@ -78,17 +98,20 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                             });
                           },
                         )
-                    : null,
-              );
-            },
-          ),
+                      : null,
+                );
+              },
+            ),
 
-          // Zone principale
-          Expanded(
-            child: Column(
+            // Zone principale
+            Expanded(
+              child: Column(
                 children: [
                   // Tab bar GX
-                  const GXTabBar(),
+                  GXTabBar(
+                    onMenuTap: _toggleSidebar,
+                    isSidebarVisible: _isSidebarVisible,
+                  ),
                   // Address bar GX
                   const GXAddressBar(),
 
@@ -122,9 +145,10 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                     ),
                   ),
                 ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -150,89 +150,98 @@ class _GXAddressBarState extends State<GXAddressBar> {
               
               const SizedBox(width: 8),
               
-              // Address field - Style GX
+              // Address field - Style GX avec bordure dégradée
               Expanded(
                 child: Container(
-                  height: 26,
+                  height: 28,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1A1A1E),
-                    borderRadius: BorderRadius.circular(13),
-                    border: Border.all(
-                      color: _isFocused 
-                          ? const Color(0xFFFA2F55).withOpacity(0.5)
-                          : Colors.white.withOpacity(0.1),
-                      width: 1,
+                    borderRadius: BorderRadius.circular(14),
+                    gradient: LinearGradient(
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                      colors: [
+                        const Color(0xFFFF2D55).withOpacity(0.9),
+                        const Color(0x00FF2D55),
+                      ],
                     ),
                   ),
-                  child: Row(
-                    children: [
-                      // Security/Search icon
-                      Container(
-                        width: 32,
-                        child: Center(
-                          child: Icon(
-                            _controller.text.isEmpty || _isFocused
-                                ? Icons.search
-                                : (_isSecure ? Icons.lock : Icons.info_outline),
-                            size: 14,
-                            color: _isSecure 
-                                ? const Color(0xFF4CAF50)
-                                : Colors.white.withOpacity(0.4),
-                          ),
-                        ),
-                      ),
-                      
-                      // URL field
-                      Expanded(
-                        child: TextField(
-                          controller: _controller,
-                          focusNode: _focusNode,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w400,
-                          ),
-                          decoration: InputDecoration(
-                            hintText: 'Enter search or web address',
-                            hintStyle: TextStyle(
-                              color: Colors.white.withOpacity(0.3),
-                              fontSize: 12,
+                  child: Container(
+                    margin: const EdgeInsets.all(1),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(13),
+                      color: const Color(0xCC16161C),
+                    ),
+                    child: Row(
+                      children: [
+                        // Security/Search icon
+                        SizedBox(
+                          width: 32,
+                          child: Center(
+                            child: Icon(
+                              _controller.text.isEmpty || _isFocused
+                                  ? Icons.search
+                                  : (_isSecure ? Icons.lock : Icons.info_outline),
+                              size: 14,
+                              color: _isSecure
+                                  ? const Color(0xFF4CAF50)
+                                  : Colors.white.withOpacity(0.45),
                             ),
-                            border: InputBorder.none,
-                            isDense: true,
-                            contentPadding: const EdgeInsets.symmetric(vertical: 5),
                           ),
-                          onSubmitted: _navigateToUrl,
                         ),
-                      ),
-                      
-                      // Bookmark button
-                      _GXActionButton(
-                        icon: Icons.bookmark_outline,
-                        onPressed: activeTab?.url != null && 
-                                   activeTab!.url!.isNotEmpty &&
-                                   !activeTab.url!.startsWith('about:')
-                            ? () async {
-                                final bookmark = Bookmark(
-                                  id: DateTime.now().millisecondsSinceEpoch.toString(),
-                                  title: activeTab.title ?? 'Sans titre',
-                                  url: activeTab.url!,
-                                  favicon: activeTab.favicon,
-                                  createdAt: DateTime.now(),
-                                );
-                                await _bookmarkService.addBookmark(bookmark);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Ajouté aux favoris'),
-                                    duration: Duration(seconds: 2),
-                                  ),
-                                );
-                              }
-                            : null,
-                      ),
-                      
-                      const SizedBox(width: 8),
-                    ],
+
+                        // URL field
+                        Expanded(
+                          child: TextField(
+                            controller: _controller,
+                            focusNode: _focusNode,
+                            cursorColor: const Color(0xFFFF2D55),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w400,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: 'Enter search or web address',
+                              hintStyle: TextStyle(
+                                color: Colors.white.withOpacity(0.35),
+                                fontSize: 12,
+                              ),
+                              border: InputBorder.none,
+                              isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(vertical: 6),
+                            ),
+                            onSubmitted: _navigateToUrl,
+                          ),
+                        ),
+
+                        // Bookmark button
+                        _GXActionButton(
+                          icon: Icons.bookmark_outline,
+                          onPressed: activeTab?.url != null &&
+                                  activeTab!.url!.isNotEmpty &&
+                                  !activeTab.url!.startsWith('about:')
+                              ? () async {
+                                  final bookmark = Bookmark(
+                                    id: DateTime.now().millisecondsSinceEpoch.toString(),
+                                    title: activeTab.title ?? 'Sans titre',
+                                    url: activeTab.url!,
+                                    favicon: activeTab.favicon,
+                                    createdAt: DateTime.now(),
+                                  );
+                                  await _bookmarkService.addBookmark(bookmark);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Ajouté aux favoris'),
+                                      duration: Duration(seconds: 2),
+                                    ),
+                                  );
+                                }
+                              : null,
+                        ),
+
+                        const SizedBox(width: 8),
+                      ],
+                    ),
                   ),
                 ),
               ),

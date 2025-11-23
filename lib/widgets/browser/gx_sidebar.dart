@@ -46,52 +46,7 @@ class _GXSidebarState extends State<GXSidebar> {
       ),
       child: Column(
         children: [
-          const SizedBox(height: 4),
-          
-          // Logo GX Corner - Exactement comme Opera GX
-          Container(
-            width: 48,
-            height: 40,
-            child: Center(
-              child: Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  // Gradient rouge-violet caractéristique
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Color(0xFFFA2F55),
-                      Color(0xFF8B3FFF),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(8),
-                  // Ombre douce
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFFFA2F55).withOpacity(0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: const Center(
-                  child: Text(
-                    'GX',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           
           // Icône Home/Speed Dial
           _GXSidebarIcon(

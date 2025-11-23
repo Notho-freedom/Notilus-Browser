@@ -11,6 +11,9 @@ import 'services/tab_webview_manager.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Supprime le halo bleu Windows autour des champs focus
+  FocusManager.instance.highlightStrategy = FocusHighlightStrategy.alwaysTouch;
   
   // Initialisation de window_manager AVANT runApp
   await windowManager.ensureInitialized();

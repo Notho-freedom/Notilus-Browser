@@ -130,13 +130,14 @@ class _ModernHomePageState extends State<ModernHomePage> {
           children: [
             // Contenu central
             Center(
-              child: Container(
-                constraints: const BoxConstraints(maxWidth: 900),
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const SizedBox(height: 16),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 900),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const SizedBox(height: 16),
 
                     // Logo + titre
                     Column(
@@ -209,28 +210,25 @@ class _ModernHomePageState extends State<ModernHomePage> {
                       constraints: const BoxConstraints(maxWidth: 720),
                       height: 56,
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(22),
                         gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                           colors: [
-                            const Color(0xFFFF2D55).withOpacity(0.85),
-                            const Color(0xFF5856D6).withOpacity(0.9),
+                            const Color(0xFFFF2D55).withOpacity(0.8),
+                            const Color(0x00FF2D55),
                           ],
                         ),
                       ),
                       child: Container(
-                        margin: const EdgeInsets.all(2.0),
+                        margin: const EdgeInsets.all(1.2),
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(18),
-                          color: isDark
-                              ? const Color(0xFF090909).withOpacity(0.96)
-                              : Colors.white,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.45),
-                              blurRadius: 18,
-                              offset: const Offset(0, 10),
-                            ),
-                          ],
+                          borderRadius: BorderRadius.circular(20),
+                          color: Colors.black.withOpacity(0.25),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.04),
+                            width: 1,
+                          ),
                         ),
                         child: Row(
                           children: [
@@ -238,19 +236,21 @@ class _ModernHomePageState extends State<ModernHomePage> {
                             Icon(
                               CupertinoIcons.search,
                               size: 20,
-                              color: theme.textTheme.bodyMedium?.color?.withOpacity(0.55),
+                              color: Colors.white.withOpacity(0.6),
                             ),
                             const SizedBox(width: 10),
                             Expanded(
                               child: TextField(
                                 controller: _searchController,
                                 focusNode: _searchFocusNode,
-                                style: theme.textTheme.bodyMedium,
+                                cursorColor: const Color(0xFFFF2D55),
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: Colors.white,
+                                ),
                                 decoration: InputDecoration(
                                   hintText: 'Rechercher sur le web ou saisir une adresse',
                                   hintStyle: theme.textTheme.bodyMedium?.copyWith(
-                                    color: theme.textTheme.bodyMedium?.color
-                                        ?.withOpacity(0.45),
+                                    color: Colors.white.withOpacity(0.45),
                                   ),
                                   border: InputBorder.none,
                                 ),
@@ -258,20 +258,15 @@ class _ModernHomePageState extends State<ModernHomePage> {
                               ),
                             ),
                             Container(
-                              margin: const EdgeInsets.only(right: 6),
+                              margin: const EdgeInsets.only(right: 12),
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(14),
-                                gradient: LinearGradient(
-                                  colors: [
-                                    theme.colorScheme.primary,
-                                    const Color(0xFFFF2D55),
-                                  ],
-                                ),
+                                borderRadius: BorderRadius.circular(16),
+                                color: Colors.white.withOpacity(0.08),
                               ),
                               child: IconButton(
-                                icon: const Icon(
-                                  CupertinoIcons.arrow_right_circle_fill,
-                                  color: Colors.white,
+                                icon: Icon(
+                                  CupertinoIcons.arrow_right,
+                                  color: Colors.white.withOpacity(0.85),
                                 ),
                                 onPressed: () =>
                                     _handleSearch(_searchController.text),
@@ -288,100 +283,101 @@ class _ModernHomePageState extends State<ModernHomePage> {
                           end: const Offset(1, 1),
                         ),
 
-                    const SizedBox(height: 18),
+                      const SizedBox(height: 18),
 
                     // Mini widgets CPU / RAM / Réseau façon GX
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        _StatChip(
-                          icon: CupertinoIcons.gauge,
-                          label: 'CPU',
-                          value: '32%',
-                        ),
-                        SizedBox(width: 10),
-                        _StatChip(
-                          icon: Icons.memory,
-                          label: 'RAM',
-                          value: '45%',
-                        ),
-                        SizedBox(width: 10),
-                        _StatChip(
-                          icon: CupertinoIcons.waveform_path,
-                          label: 'Réseau',
-                          value: 'Stable',
-                        ),
-                      ],
-                    )
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          _StatChip(
+                            icon: CupertinoIcons.gauge,
+                            label: 'CPU',
+                            value: '32%',
+                          ),
+                          SizedBox(width: 10),
+                          _StatChip(
+                            icon: Icons.memory,
+                            label: 'RAM',
+                            value: '45%',
+                          ),
+                          SizedBox(width: 10),
+                          _StatChip(
+                            icon: CupertinoIcons.waveform_path,
+                            label: 'Réseau',
+                            value: 'Stable',
+                          ),
+                        ],
+                      )
                         .animate()
                         .fadeIn(duration: 450.ms, delay: 380.ms)
                         .slideY(begin: 0.08, end: 0),
 
-                    const SizedBox(height: 32),
+                      const SizedBox(height: 32),
 
                     // Titre de section Speed Dial
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 32,
-                            height: 2,
-                            decoration: const BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  Color(0xFFFF2D55),
-                                  Color(0xFF5856D6),
-                                ],
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 32,
+                              height: 2,
+                              decoration: const BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Color(0xFFFF2D55),
+                                    Color(0xFF5856D6),
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Sites rapides',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.3,
+                            const SizedBox(width: 8),
+                            Text(
+                              'Sites rapides',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.3,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
 
                     const SizedBox(height: 18),
 
                     // Grille Speed Dial
-                    Wrap(
-                      spacing: 18,
-                      runSpacing: 18,
-                      children:
-                          _quickAccessItems.asMap().entries.map((entry) {
-                        final index = entry.key;
-                        final item = entry.value;
+                      Wrap(
+                        spacing: 18,
+                        runSpacing: 18,
+                        children:
+                            _quickAccessItems.asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final item = entry.value;
 
-                        return _QuickAccessTile(
-                          item: item,
-                          onTap: () => _openQuickAccess(item.url),
-                          delay: (index * 60).ms,
-                        );
-                      }).toList(),
-                    ),
+                          return _QuickAccessTile(
+                            item: item,
+                            onTap: () => _openQuickAccess(item.url),
+                            delay: (index * 60).ms,
+                          );
+                        }).toList(),
+                      ),
 
-                    const SizedBox(height: 32),
+                      const SizedBox(height: 32),
 
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'Suggestions (bientôt personnalisées pour vos workflows)',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.textTheme.bodySmall?.color
-                              ?.withOpacity(0.55),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Suggestions (bientôt personnalisées pour vos workflows)',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.textTheme.bodySmall?.color
+                                ?.withOpacity(0.55),
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
+                      const SizedBox(height: 16),
+                    ],
+                  ),
                 ),
               ),
             ),
