@@ -20,20 +20,15 @@ class ModernTabBar extends StatelessWidget {
     final theme = Theme.of(context);
     
     return Container(
-      height: 48,
+      height: 40,
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Row(
         children: [
           // Bouton menu
-          IconButton(
-            icon: Icon(
-              isSidebarVisible
-                  ? CupertinoIcons.sidebar_left
-                  : CupertinoIcons.sidebar_left,
-              size: 20,
-            ),
-            onPressed: onMenuTap,
+          _HoverIconButton(
+            icon: CupertinoIcons.sidebar_left,
             tooltip: 'Menu',
+            onPressed: onMenuTap,
           ),
           
           // Onglets
@@ -92,15 +87,16 @@ class ModernTabBar extends StatelessWidget {
           // Actions
           Row(
             children: [
-              IconButton(
-                icon: Icon(CupertinoIcons.square_split_2x1, size: 18),
+              _HoverIconButton(
+                icon: CupertinoIcons.square_split_2x1,
+                tooltip: 'Split view (à venir)',
                 onPressed: () {},
-                tooltip: 'Split View',
               ),
-              IconButton(
-                icon: Icon(CupertinoIcons.square_grid_2x2, size: 18),
+              const SizedBox(width: 4),
+              _HoverIconButton(
+                icon: CupertinoIcons.square_grid_2x2,
+                tooltip: 'Groupes (à venir)',
                 onPressed: () {},
-                tooltip: 'Groupes',
               ),
             ],
           ),
@@ -244,6 +240,71 @@ class _ModernTabItemState extends State<_ModernTabItem> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Bouton d'icône avec effet hover discret, utilisé pour les actions de la barre d'onglets.
+class _HoverIconButton extends StatefulWidget {
+  final IconData icon;
+  final VoidCallback? onPressed;
+  final String? tooltip;
+
+  const _HoverIconButton({
+    required this.icon,
+    this.onPressed,
+    this.tooltip,
+  });
+
+  @override
+  State<_HoverIconButton> createState() => _HoverIconButtonState();
+}
+
+class _HoverIconButtonState extends State<_HoverIconButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final bgColor = _hovered
+        ? (isDark
+            ? Colors.white.withOpacity(0.06)
+            : Colors.black.withOpacity(0.04))
+        : Colors.transparent;
+
+    final iconColor = theme.iconTheme.color?.withOpacity(
+      widget.onPressed == null ? 0.3 : 0.8,
+    );
+
+    final child = Container(
+      width: 30,
+      height: 30,
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Icon(
+        widget.icon,
+        size: 18,
+        color: iconColor,
+      ),
+    );
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onPressed,
+        child: widget.tooltip != null
+            ? Tooltip(
+                message: widget.tooltip!,
+                child: child,
+              )
+            : child,
       ),
     );
   }

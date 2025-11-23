@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
+import 'dart:math';
 import '../../services/tab_manager.dart';
+import '../../core/constants/wallpapers.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 class ModernHomePage extends StatefulWidget {
@@ -14,6 +16,15 @@ class ModernHomePage extends StatefulWidget {
 class _ModernHomePageState extends State<ModernHomePage> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
+  late final String _backgroundUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    final wallpapers = NotilusWallpapers.all;
+    final random = Random();
+    _backgroundUrl = wallpapers[random.nextInt(wallpapers.length)];
+  }
 
   final List<QuickAccessItem> _quickAccessItems = [
     QuickAccessItem(
@@ -102,25 +113,28 @@ class _ModernHomePageState extends State<ModernHomePage> {
     
     return Container(
       decoration: BoxDecoration(
+        image: DecorationImage(
+          image: NetworkImage(_backgroundUrl),
+          fit: BoxFit.cover,
+          colorFilter: ColorFilter.mode(
+            Colors.black.withOpacity(isDark ? 0.65 : 0.75),
+            BlendMode.srcOver,
+          ),
+        ),
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: isDark
-              ? [
-                  const Color(0xFF000000),
-                  const Color(0xFF0A0A0A),
-                ]
-              : [
-                  const Color(0xFFF8F9FA),
-                  const Color(0xFFFFFFFF),
-                ],
+          colors: [
+            Colors.black.withOpacity(0.85),
+            Colors.black.withOpacity(0.90),
+          ],
         ),
       ),
       child: SafeArea(
         child: Center(
           child: Container(
-            constraints: const BoxConstraints(maxWidth: 800),
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            constraints: const BoxConstraints(maxWidth: 840),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -130,8 +144,8 @@ class _ModernHomePageState extends State<ModernHomePage> {
                 Column(
                   children: [
                     Container(
-                      width: 80,
-                      height: 80,
+                      width: 72,
+                      height: 72,
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
                           colors: [
@@ -189,12 +203,12 @@ class _ModernHomePageState extends State<ModernHomePage> {
                   ],
                 ),
                 
-                const SizedBox(height: 48),
+                const SizedBox(height: 40),
                 
                 // Barre de recherche
                 Container(
-                  constraints: const BoxConstraints(maxWidth: 600),
-                  height: 56,
+                  constraints: const BoxConstraints(maxWidth: 620),
+                  height: 52,
                   decoration: BoxDecoration(
                     color: isDark
                         ? Colors.white.withOpacity(0.05)

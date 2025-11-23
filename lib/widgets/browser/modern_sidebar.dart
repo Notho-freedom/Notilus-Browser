@@ -63,18 +63,18 @@ class _ModernSidebarState extends State<ModernSidebar> {
     final isDark = theme.brightness == Brightness.dark;
     
     return Container(
-      width: 280,
+      width: 240,
       color: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFF2F2F7),
       child: Column(
         children: [
           // En-tête avec profil
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             child: Row(
               children: [
                 Container(
-                  width: 40,
-                  height: 40,
+                  width: 32,
+                  height: 32,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [

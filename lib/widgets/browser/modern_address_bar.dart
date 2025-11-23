@@ -93,12 +93,16 @@ class _ModernAddressBarState extends State<ModernAddressBar> {
     return Consumer<TabManager>(
       builder: (context, tabManager, _) {
         final activeTab = tabManager.activeTab;
-        if (activeTab != null && 
-            activeTab.url != null && 
-            activeTab.url != 'about:newtab' &&
-            activeTab.url != 'about:blank' &&
-            !_isFocused) {
-          _controller.text = activeTab.url!;
+        if (!_isFocused) {
+          if (activeTab != null &&
+              activeTab.url != null &&
+              activeTab.url!.isNotEmpty &&
+              activeTab.url != 'about:newtab' &&
+              activeTab.url != 'about:blank') {
+            _controller.text = activeTab.url!;
+          } else {
+            _controller.text = '';
+          }
         }
         
         return Container(
@@ -326,27 +330,65 @@ class _NavigationButton extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     
-    return Container(
-      width: 32,
-      height: 32,
-      decoration: BoxDecoration(
-        color: onPressed != null
-            ? (isDark
-                ? Colors.white.withOpacity(0.05)
-                : Colors.black.withOpacity(0.03))
-            : Colors.transparent,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: IconButton(
-        icon: Icon(
-          icon,
-          size: 16,
+    return _HoverNavButton(
+      icon: icon,
+      onPressed: onPressed,
+    );
+  }
+}
+
+class _HoverNavButton extends StatefulWidget {
+  final IconData icon;
+  final VoidCallback? onPressed;
+
+  const _HoverNavButton({
+    required this.icon,
+    this.onPressed,
+  });
+
+  @override
+  State<_HoverNavButton> createState() => _HoverNavButtonState();
+}
+
+class _HoverNavButtonState extends State<_HoverNavButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final bgColor = _hovered && widget.onPressed != null
+        ? (isDark
+            ? Colors.white.withOpacity(0.08)
+            : Colors.black.withOpacity(0.05))
+        : Colors.transparent;
+
+    final iconColor = widget.onPressed != null
+        ? theme.iconTheme.color
+        : theme.iconTheme.color?.withOpacity(0.3);
+
+    return MouseRegion(
+      cursor: widget.onPressed != null
+          ? SystemMouseCursors.click
+          : SystemMouseCursors.basic,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onPressed,
+        child: Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Icon(
+            widget.icon,
+            size: 16,
+            color: iconColor,
+          ),
         ),
-        onPressed: onPressed,
-        padding: EdgeInsets.zero,
-        color: onPressed != null
-            ? theme.iconTheme.color
-            : theme.iconTheme.color?.withOpacity(0.3),
       ),
     );
   }
