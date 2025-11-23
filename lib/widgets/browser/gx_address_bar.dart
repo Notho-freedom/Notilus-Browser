@@ -10,6 +10,8 @@ import '../../services/favicon_service.dart';
 import '../../models/bookmark.dart';
 import '../../models/tab_model.dart';
 
+const Color _gxRed = Color(0xFFFF2D55);
+
 class GXAddressBar extends StatefulWidget {
   const GXAddressBar({super.key});
 
@@ -111,8 +113,8 @@ class _GXAddressBarState extends State<GXAddressBar> {
               Row(
                 children: [
                   _GXNavButton(
-                    icon: Icons.arrow_back_ios_new,
-                    size: 14,
+                    icon: CupertinoIcons.left_chevron,
+                    size: 16,
                     onPressed: activeTab != null ? () {
                       final engine = Provider.of<TabWebViewManager>(context, listen: false)
                           .getEngineForTab(activeTab.id);
@@ -121,8 +123,8 @@ class _GXAddressBarState extends State<GXAddressBar> {
                   ),
                   const SizedBox(width: 2),
                   _GXNavButton(
-                    icon: Icons.arrow_forward_ios,
-                    size: 14,
+                    icon: CupertinoIcons.right_chevron,
+                    size: 16,
                     onPressed: activeTab != null ? () {
                       final engine = Provider.of<TabWebViewManager>(context, listen: false)
                           .getEngineForTab(activeTab.id);
@@ -132,8 +134,8 @@ class _GXAddressBarState extends State<GXAddressBar> {
                   const SizedBox(width: 2),
                   _GXNavButton(
                     icon: activeTab?.state == TabState.loading 
-                        ? Icons.close 
-                        : Icons.refresh,
+                        ? CupertinoIcons.xmark
+                        : CupertinoIcons.arrow_clockwise,
                     size: 16,
                     onPressed: activeTab != null ? () {
                       final engine = Provider.of<TabWebViewManager>(context, listen: false)
@@ -144,6 +146,14 @@ class _GXAddressBarState extends State<GXAddressBar> {
                         engine.reload();
                       }
                     } : null,
+                  ),
+                  const SizedBox(width: 2),
+                  _GXNavButton(
+                    icon: CupertinoIcons.house,
+                    size: 16,
+                    onPressed: () {
+                      tabManager.addTab(url: 'about:newtab');
+                    },
                   ),
                 ],
               ),
@@ -179,12 +189,10 @@ class _GXAddressBarState extends State<GXAddressBar> {
                           child: Center(
                             child: Icon(
                               _controller.text.isEmpty || _isFocused
-                                  ? Icons.search
-                                  : (_isSecure ? Icons.lock : Icons.info_outline),
-                              size: 14,
-                              color: _isSecure
-                                  ? const Color(0xFF4CAF50)
-                                  : Colors.white.withOpacity(0.45),
+                                  ? CupertinoIcons.search
+                                  : (_isSecure ? CupertinoIcons.lock : CupertinoIcons.info),
+                              size: 16,
+                              color: _gxRed,
                             ),
                           ),
                         ),
@@ -194,7 +202,7 @@ class _GXAddressBarState extends State<GXAddressBar> {
                           child: TextField(
                             controller: _controller,
                             focusNode: _focusNode,
-                            cursorColor: const Color(0xFFFF2D55),
+                            cursorColor: _gxRed,
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 12,
@@ -207,6 +215,8 @@ class _GXAddressBarState extends State<GXAddressBar> {
                                 fontSize: 12,
                               ),
                               border: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                              enabledBorder: InputBorder.none,
                               isDense: true,
                               contentPadding: const EdgeInsets.symmetric(vertical: 6),
                             ),
@@ -216,7 +226,7 @@ class _GXAddressBarState extends State<GXAddressBar> {
 
                         // Bookmark button
                         _GXActionButton(
-                          icon: Icons.bookmark_outline,
+                          icon: CupertinoIcons.bookmark,
                           onPressed: activeTab?.url != null &&
                                   activeTab!.url!.isNotEmpty &&
                                   !activeTab.url!.startsWith('about:')
@@ -239,7 +249,26 @@ class _GXAddressBarState extends State<GXAddressBar> {
                               : null,
                         ),
 
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 4),
+                        Container(
+                          margin: const EdgeInsets.only(right: 4),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            color: _gxRed.withOpacity(0.15),
+                          ),
+                          child: IconButton(
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(minHeight: 26, minWidth: 26),
+                            icon: Icon(
+                              CupertinoIcons.arrow_right,
+                              size: 16,
+                              color: _gxRed,
+                            ),
+                            onPressed: () => _navigateToUrl(_controller.text),
+                          ),
+                        ),
+
+                        const SizedBox(width: 4),
                       ],
                     ),
                   ),
@@ -252,22 +281,22 @@ class _GXAddressBarState extends State<GXAddressBar> {
               Row(
                 children: [
                   _GXActionButton(
-                    icon: Icons.account_circle_outlined,
+                    icon: CupertinoIcons.person_crop_circle,
                     onPressed: () {},
                   ),
                   const SizedBox(width: 4),
                   _GXActionButton(
-                    icon: Icons.extension_outlined,
+                    icon: CupertinoIcons.layers_alt,
                     onPressed: () {},
                   ),
                   const SizedBox(width: 4),
                   _GXActionButton(
-                    icon: Icons.download_outlined,
+                    icon: CupertinoIcons.tray_arrow_down,
                     onPressed: () {},
                   ),
                   const SizedBox(width: 4),
                   _GXActionButton(
-                    icon: Icons.more_vert,
+                    icon: CupertinoIcons.ellipsis_vertical,
                     onPressed: () {},
                   ),
                 ],
@@ -313,7 +342,7 @@ class _GXNavButtonState extends State<_GXNavButton> {
           height: 26,
           decoration: BoxDecoration(
             color: _isHovered && isEnabled
-                ? Colors.white.withOpacity(0.08)
+                ? _gxRed.withOpacity(0.14)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(4),
           ),
@@ -321,10 +350,8 @@ class _GXNavButtonState extends State<_GXNavButton> {
             widget.icon,
             size: widget.size,
             color: isEnabled
-                ? (_isHovered 
-                    ? Colors.white.withOpacity(0.9)
-                    : Colors.white.withOpacity(0.6))
-                : Colors.white.withOpacity(0.2),
+                ? (_isHovered ? _gxRed : _gxRed.withOpacity(0.8))
+                : _gxRed.withOpacity(0.3),
           ),
         ),
       ),
@@ -363,7 +390,7 @@ class _GXActionButtonState extends State<_GXActionButton> {
           height: 26,
           decoration: BoxDecoration(
             color: _isHovered && isEnabled
-                ? Colors.white.withOpacity(0.08)
+                ? _gxRed.withOpacity(0.14)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(4),
           ),
@@ -371,10 +398,8 @@ class _GXActionButtonState extends State<_GXActionButton> {
             widget.icon,
             size: 18,
             color: isEnabled
-                ? (_isHovered 
-                    ? Colors.white.withOpacity(0.9)
-                    : Colors.white.withOpacity(0.5))
-                : Colors.white.withOpacity(0.2),
+                ? (_isHovered ? _gxRed : _gxRed.withOpacity(0.8))
+                : _gxRed.withOpacity(0.3),
           ),
         ),
       ),

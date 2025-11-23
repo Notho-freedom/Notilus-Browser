@@ -233,10 +233,10 @@ class _ModernHomePageState extends State<ModernHomePage> {
                         child: Row(
                           children: [
                             const SizedBox(width: 18),
-                            Icon(
+                            const Icon(
                               CupertinoIcons.search,
                               size: 20,
-                              color: Colors.white.withOpacity(0.6),
+                              color: Color(0xFFFF2D55),
                             ),
                             const SizedBox(width: 10),
                             Expanded(
@@ -253,6 +253,8 @@ class _ModernHomePageState extends State<ModernHomePage> {
                                     color: Colors.white.withOpacity(0.45),
                                   ),
                                   border: InputBorder.none,
+                                  focusedBorder: InputBorder.none,
+                                  enabledBorder: InputBorder.none,
                                 ),
                                 onSubmitted: _handleSearch,
                               ),
@@ -261,12 +263,12 @@ class _ModernHomePageState extends State<ModernHomePage> {
                               margin: const EdgeInsets.only(right: 12),
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(16),
-                                color: Colors.white.withOpacity(0.08),
+                                color: const Color(0xFFFF2D55).withOpacity(0.12),
                               ),
                               child: IconButton(
-                                icon: Icon(
+                                icon: const Icon(
                                   CupertinoIcons.arrow_right,
-                                  color: Colors.white.withOpacity(0.85),
+                                  color: Color(0xFFFF2D55),
                                 ),
                                 onPressed: () =>
                                     _handleSearch(_searchController.text),
