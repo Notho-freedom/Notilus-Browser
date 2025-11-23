@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/utils/theme_extensions.dart';
+import 'package:provider/provider.dart';
 import '../../widgets/common/glassmorphic_container.dart';
 import '../../widgets/common/neon_button.dart';
 
@@ -37,6 +38,7 @@ class _DevToolsPanelState extends State<DevToolsPanel> {
     }
 
     final theme = Theme.of(context);
+    final customTheme = context.customTheme;
     
     return Container(
       height: 300,
@@ -44,7 +46,7 @@ class _DevToolsPanelState extends State<DevToolsPanel> {
         color: theme.colorScheme.surface,
         border: Border(
           top: BorderSide(
-            color: theme.colorScheme.border ?? Colors.grey.shade800,
+                color: customTheme.border,
             width: 2,
           ),
         ),
@@ -96,7 +98,7 @@ class _DevToolsPanelState extends State<DevToolsPanel> {
                             style: TextStyle(
                               color: isActive
                                   ? theme.colorScheme.primary
-                                  : theme.colorScheme.textSecondary,
+                                  : customTheme.textSecondary,
                               fontSize: 12,
                               fontWeight: isActive
                                   ? FontWeight.w600

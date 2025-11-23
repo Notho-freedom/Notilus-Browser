@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../services/tab_manager.dart';
 import '../../models/tab_model.dart';
 import '../../core/utils/theme_extensions.dart';
+import '../../core/theme/app_theme.dart';
 import '../../widgets/common/neon_button.dart';
 import 'split_pane.dart';
 
@@ -24,6 +25,7 @@ class _SplitViewState extends State<SplitView> {
 
   @override
   Widget build(BuildContext context) {
+    final customTheme = context.customTheme;
     return Consumer<TabManager>(
       builder: (context, tabManager, _) {
         return Column(
@@ -42,6 +44,7 @@ class _SplitViewState extends State<SplitView> {
   }
 
   Widget _buildControlBar(BuildContext context, TabManager tabManager) {
+    final customTheme = context.customTheme;
     final theme = Theme.of(context);
     
     return Container(
@@ -120,7 +123,7 @@ class _SplitViewState extends State<SplitView> {
                     border: Border.all(
                       color: tab != null
                           ? theme.colorScheme.primary
-                          : theme.colorScheme.border ?? Colors.grey.shade800,
+                          : customTheme.border,
                       width: 1,
                     ),
                   ),
@@ -146,7 +149,7 @@ class _SplitViewState extends State<SplitView> {
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: tab != null
                               ? theme.colorScheme.primary
-                              : theme.colorScheme.textSecondary,
+                              : customTheme.textSecondary,
                         ),
                         overflow: TextOverflow.ellipsis,
                         maxLines: 1,
@@ -196,6 +199,7 @@ class _SplitViewState extends State<SplitView> {
   List<Widget> _buildHorizontalPanes(
       BuildContext context, TabManager tabManager) {
     final screenWidth = MediaQuery.of(context).size.width;
+    final customTheme = context.customTheme;
     final panes = <Widget>[];
     
     for (int i = 0; i < _paneTabIds.length; i++) {
@@ -269,7 +273,7 @@ class _SplitViewState extends State<SplitView> {
               width: 4,
               color: _isResizing && _resizingIndex == i
                   ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).colorScheme.border,
+                  : context.borderColor,
             ),
           ),
         );
@@ -282,6 +286,7 @@ class _SplitViewState extends State<SplitView> {
   List<Widget> _buildVerticalPanes(
       BuildContext context, TabManager tabManager) {
     final screenHeight = MediaQuery.of(context).size.height;
+    final customTheme = context.customTheme;
     final panes = <Widget>[];
     
     for (int i = 0; i < _paneTabIds.length; i++) {
@@ -355,7 +360,7 @@ class _SplitViewState extends State<SplitView> {
               height: 4,
               color: _isResizing && _resizingIndex == i
                   ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).colorScheme.border,
+                  : context.borderColor,
             ),
           ),
         );

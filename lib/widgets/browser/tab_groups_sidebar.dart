@@ -28,6 +28,7 @@ class _TabGroupsSidebarState extends State<TabGroupsSidebar> {
     }
 
     final theme = Theme.of(context);
+    final customTheme = context.customTheme;
 
     return Container(
       width: 300,
