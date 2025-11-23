@@ -41,8 +41,12 @@ class TabManager extends ChangeNotifier {
         selectTab(_tabs.first.id);
       }
     } else {
-      // Create initial blank tab if no saved data
-      _createNewTab();
+      // Create initial tab with home page if no saved data
+      _createNewTab(url: 'about:newtab');
+      if (_tabs.isNotEmpty) {
+        _activeTabId = _tabs.first.id;
+        selectTab(_tabs.first.id);
+      }
     }
 
     if (savedGroups.isNotEmpty) {
@@ -62,10 +66,14 @@ class TabManager extends ChangeNotifier {
   }
 
   TabModel _createNewTab({String? url, String? groupId}) {
+    // Si pas d'URL, utiliser la page d'accueil
+    final tabUrl = url ?? 'about:newtab';
     final tab = TabModel(
-      url: url,
+      url: tabUrl,
       groupId: groupId,
-      state: url != null ? TabState.loading : TabState.blank,
+      state: (url != null && url != 'about:newtab' && url != 'about:blank') 
+          ? TabState.loading 
+          : TabState.blank,
     );
     _tabs.add(tab);
     notifyListeners();
@@ -85,6 +93,11 @@ class TabManager extends ChangeNotifier {
     notifyListeners();
     _save();
     return _tabs[index];
+  }
+
+  /// Ajoute un nouvel onglet avec une URL (alias pour createNewTab)
+  TabModel addTab({String? url, String? groupId}) {
+    return createNewTab(url: url, groupId: groupId);
   }
 
   void selectTab(String tabId) {

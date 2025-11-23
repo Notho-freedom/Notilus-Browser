@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'dart:io' show Platform;
+import 'package:webview_windows/webview_windows.dart';
 import '../../models/tab_model.dart';
 import '../../core/theme/app_theme.dart';
+import '../../services/tab_webview_manager.dart';
+import '../../services/tab_manager.dart';
+import 'home_page.dart';
 
-/// Widget placeholder pour le contenu web
-/// Cette classe sera remplacée par l'intégration CEF réelle
-class WebContentView extends StatelessWidget {
+/// Widget pour afficher le contenu web avec WebView2
+class WebContentView extends StatefulWidget {
   final TabModel? tab;
 
   const WebContentView({
@@ -13,56 +18,162 @@ class WebContentView extends StatelessWidget {
   });
 
   @override
+  State<WebContentView> createState() => _WebContentViewState();
+}
+
+class _WebContentViewState extends State<WebContentView> {
+  bool _isLoading = false;
+  String? _currentUrl;
+  String? _currentTitle;
+  WebviewController? _webView;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeEngine();
+  }
+
+  @override
+  void didUpdateWidget(WebContentView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.tab?.id != widget.tab?.id) {
+      _initializeEngine();
+    }
+  }
+
+  Future<void> _initializeEngine() async {
+    if (widget.tab == null) {
+      setState(() {
+        _webView = null;
+      });
+      return;
+    }
+
+    if (!Platform.isWindows) {
+      return;
+    }
+
+    final tabManager = Provider.of<TabManager>(context, listen: false);
+    final webViewManager = Provider.of<TabWebViewManager>(context, listen: false);
+    final engine = webViewManager.getEngineForTab(widget.tab!.id);
+    
+    // Configurer les callbacks
+    engine.onUrlChanged = (url) {
+      if (mounted) {
+        setState(() {
+          _currentUrl = url;
+        });
+        tabManager.updateTab(widget.tab!.id, url: url);
+      }
+    };
+    
+    engine.onTitleChanged = (title) {
+      if (mounted) {
+        setState(() {
+          _currentTitle = title;
+        });
+        tabManager.updateTab(widget.tab!.id, title: title);
+      }
+    };
+    
+    engine.onStateChanged = (state) {
+      if (mounted) {
+        setState(() {
+          _isLoading = state == TabState.loading;
+        });
+        if (state is TabState) {
+          tabManager.updateTab(widget.tab!.id, state: state);
+        }
+      }
+    };
+
+    // Récupérer le WebView2
+    final controller = await engine.getController();
+    if (controller != null && controller is WebviewController) {
+      setState(() {
+        _webView = controller as WebviewController;
+      });
+
+      // Naviguer vers l'URL si elle existe
+      if (widget.tab?.url != null && widget.tab!.url!.isNotEmpty) {
+        await engine.navigate(widget.tab!.url!);
+      }
+    } else if (widget.tab?.url != null && widget.tab!.url!.isNotEmpty) {
+      // Si le WebView n'est pas encore créé, naviguer via l'engine
+      await engine.navigate(widget.tab!.url!);
+      // Récupérer le controller après navigation
+      final newController = await engine.getController();
+      if (newController != null && newController is WebviewController) {
+        setState(() {
+          _webView = newController;
+        });
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = _getThemeFromContext();
 
-    if (tab == null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.language,
-              size: 64,
+    // Afficher la page d'accueil si pas d'onglet ou URL vide
+    if (widget.tab == null || 
+        widget.tab!.url == null || 
+        widget.tab!.url!.isEmpty ||
+        widget.tab!.url == 'about:blank' ||
+        widget.tab!.url == 'about:newtab') {
+      return HomePage();
+    }
+
+    if (!Platform.isWindows) {
+      return Container(
+        color: theme.background,
+        child: Center(
+          child: Text(
+            'WebView2 non supporté sur cette plateforme',
+            style: TextStyle(
               color: theme.textSecondary,
+              fontSize: 14,
+              fontFamily: 'Roboto Mono',
             ),
-            const SizedBox(height: 16),
-            Text(
-              'Nouvel onglet',
-              style: TextStyle(
-                color: theme.textSecondary,
-                fontSize: 18,
-                fontFamily: 'Roboto Mono',
-              ),
-            ),
-          ],
+          ),
         ),
       );
     }
 
-    if (tab!.state == TabState.loading) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(theme.primary),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Chargement...',
-              style: TextStyle(
-                color: theme.textSecondary,
-                fontSize: 14,
-                fontFamily: 'Roboto Mono',
+    if (_isLoading || widget.tab!.state == TabState.loading) {
+      return Stack(
+        children: [
+          // Afficher le WebView même pendant le chargement
+          if (_webView != null)
+            Webview(_webView!),
+          // Overlay de chargement
+          Container(
+            color: theme.background.withOpacity(0.8),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(theme.primary),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Chargement...',
+                    style: TextStyle(
+                      color: theme.textSecondary,
+                      fontSize: 14,
+                      fontFamily: 'Roboto Mono',
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       );
     }
 
-    if (tab!.state == TabState.error) {
+    if (widget.tab!.state == TabState.error) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -81,58 +192,41 @@ class WebContentView extends StatelessWidget {
                 fontFamily: 'Roboto Mono',
               ),
             ),
+            const SizedBox(height: 8),
+            Text(
+              widget.tab?.url ?? '',
+              style: TextStyle(
+                color: theme.textSecondary,
+                fontSize: 12,
+                fontFamily: 'Roboto Mono',
+              ),
+            ),
           ],
         ),
       );
     }
 
-    // Placeholder pour le contenu web réel
-    // TODO: Remplacer par l'intégration CEF
+    // Afficher le WebView2
+    if (_webView != null) {
+      return Webview(_webView!);
+    }
+
+    // Fallback si le WebView n'est pas encore initialisé
     return Container(
       color: theme.background,
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.language,
-              size: 48,
-              color: theme.primary,
+            CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(theme.primary),
             ),
             const SizedBox(height: 16),
             Text(
-              tab!.title ?? tab!.url ?? 'Page',
-              style: TextStyle(
-                color: theme.text,
-                fontSize: 16,
-                fontFamily: 'Roboto Mono',
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              tab!.url ?? '',
-              style: TextStyle(
-                color: theme.textSecondary,
-                fontSize: 12,
-                fontFamily: 'Roboto Mono',
-              ),
-            ),
-            const SizedBox(height: 32),
-            Text(
-              'Intégration CEF à venir',
+              'Initialisation de WebView2...',
               style: TextStyle(
                 color: theme.textSecondary,
                 fontSize: 14,
-                fontFamily: 'Roboto Mono',
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Le moteur de rendu web sera intégré ici',
-              style: TextStyle(
-                color: theme.textSecondary,
-                fontSize: 12,
                 fontFamily: 'Roboto Mono',
               ),
             ),
@@ -161,4 +255,3 @@ class WebContentView extends StatelessWidget {
     );
   }
 }
-

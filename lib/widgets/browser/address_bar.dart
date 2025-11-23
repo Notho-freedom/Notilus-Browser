@@ -4,6 +4,7 @@ import '../../services/tab_manager.dart';
 import '../../services/history_service.dart';
 import '../../services/bookmark_service.dart';
 import '../../services/favicon_service.dart';
+import '../../services/tab_webview_manager.dart';
 import '../../models/tab_model.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/utils/url_validator.dart';
@@ -101,16 +102,8 @@ class AddressBarState extends State<AddressBar> {
       // Récupérer le favicon
       _loadFavicon(formattedUrl, activeTab.id, tabManager);
       
-      // Simuler le chargement (sera remplacé par CEF)
-      Future.delayed(const Duration(seconds: 1), () {
-        if (mounted && activeTab.id == tabManager.activeTab?.id) {
-          tabManager.updateTab(
-            activeTab.id,
-            state: TabState.loaded,
-            title: domain,
-          );
-        }
-      });
+      // Naviguer avec WebView
+      _navigateWithWebView(formattedUrl, activeTab.id, tabManager);
     }
   }
 
@@ -166,6 +159,12 @@ class AddressBarState extends State<AddressBar> {
     }
   }
 
+  void _navigateWithWebView(String url, String tabId, TabManager tabManager) async {
+    final webViewManager = Provider.of<TabWebViewManager>(context, listen: false);
+    final engine = webViewManager.getEngineForTab(tabId);
+    await engine.navigate(url);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -192,30 +191,66 @@ class AddressBarState extends State<AddressBar> {
           child: Row(
             children: [
               // Navigation buttons
-              IconButton(
-                icon: const Icon(Icons.arrow_back, size: 20),
-                onPressed: () {},
-                tooltip: 'Retour',
-                color: theme.colorScheme.primary,
-              ),
-              IconButton(
-                icon: const Icon(Icons.arrow_forward, size: 20),
-                onPressed: () {},
-                tooltip: 'Avant',
-                color: theme.colorScheme.primary,
-              ),
-              IconButton(
-                icon: Icon(
-                  activeTab?.state == TabState.loading
-                      ? Icons.stop
-                      : Icons.refresh,
-                  size: 20,
-                ),
-                onPressed: () {},
-                tooltip: activeTab?.state == TabState.loading
-                    ? 'Arrêter'
-                    : 'Recharger',
-                color: theme.colorScheme.primary,
+              Consumer<TabWebViewManager>(
+                builder: (context, webViewManager, _) {
+                  final engine = activeTab != null
+                      ? webViewManager.getEngine(activeTab!.id)
+                      : null;
+                  
+                  return Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back, size: 20),
+                        onPressed: engine != null
+                            ? () async {
+                                await engine.goBack();
+                                final url = await engine.getCurrentUrl();
+                                if (url != null && activeTab != null) {
+                                  tabManager.updateTab(activeTab!.id, url: url);
+                                }
+                              }
+                            : null,
+                        tooltip: 'Retour',
+                        color: theme.colorScheme.primary,
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.arrow_forward, size: 20),
+                        onPressed: engine != null
+                            ? () async {
+                                await engine.goForward();
+                                final url = await engine.getCurrentUrl();
+                                if (url != null && activeTab != null) {
+                                  tabManager.updateTab(activeTab!.id, url: url);
+                                }
+                              }
+                            : null,
+                        tooltip: 'Avant',
+                        color: theme.colorScheme.primary,
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          activeTab?.state == TabState.loading
+                              ? Icons.stop
+                              : Icons.refresh,
+                          size: 20,
+                        ),
+                        onPressed: engine != null
+                            ? () async {
+                                if (activeTab?.state == TabState.loading) {
+                                  await engine.stop();
+                                } else {
+                                  await engine.reload();
+                                }
+                              }
+                            : null,
+                        tooltip: activeTab?.state == TabState.loading
+                            ? 'Arrêter'
+                            : 'Recharger',
+                        color: theme.colorScheme.primary,
+                      ),
+                    ],
+                  );
+                },
               ),
               
               const SizedBox(width: 8),
@@ -224,30 +259,56 @@ class AddressBarState extends State<AddressBar> {
               Expanded(
                 child: Stack(
                   children: [
-                    GlassmorphicContainer(
-                      showNeonBorder: _isFocused,
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Color(0xFF1A1A1A).withOpacity(0.8),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: _isFocused 
+                              ? Color(0xFFFF0040) 
+                              : Color(0xFF333333).withOpacity(0.5),
+                          width: _isFocused ? 2 : 1,
+                        ),
+                        boxShadow: _isFocused
+                            ? [
+                                BoxShadow(
+                                  color: Color(0xFFFF0040).withOpacity(0.3),
+                                  blurRadius: 8,
+                                  spreadRadius: 0,
+                                ),
+                              ]
+                            : null,
+                      ),
                       padding: const EdgeInsets.symmetric(horizontal: 12),
-                      borderRadius: BorderRadius.circular(24),
                       child: TextField(
                         controller: _urlController,
                         focusNode: _focusNode,
+                        enabled: true,
+                        readOnly: false,
                         style: theme.textTheme.bodyMedium?.copyWith(
                           fontFamily: 'Roboto Mono',
+                          color: Colors.white,
                         ),
                         decoration: InputDecoration(
                           hintText: 'Rechercher ou entrer une URL',
-                          hintStyle: theme.textTheme.bodySmall,
+                          hintStyle: theme.textTheme.bodySmall?.copyWith(
+                            color: Color(0xFF666666),
+                          ),
                           border: InputBorder.none,
                           isDense: true,
-                          contentPadding: EdgeInsets.zero,
+                          contentPadding: EdgeInsets.symmetric(vertical: 12),
                           prefixIcon: activeTab?.favicon != null
-                              ? Image.network(
-                                  activeTab!.favicon!,
-                                  width: 16,
-                                  height: 16,
-                                  errorBuilder: (_, __, ___) => const Icon(
-                                    Icons.language,
-                                    size: 16,
+                              ? Padding(
+                                  padding: EdgeInsets.all(8),
+                                  child: Image.network(
+                                    activeTab!.favicon!,
+                                    width: 16,
+                                    height: 16,
+                                    errorBuilder: (_, __, ___) => Icon(
+                                      Icons.language,
+                                      size: 16,
+                                      color: theme.colorScheme.primary,
+                                    ),
                                   ),
                                 )
                               : Icon(

@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 // Service wrapper pour CEF (Chromium Embedded Framework)
 // Note: L'intégration CEF complète nécessitera une configuration spécifique par plateforme
 
@@ -39,6 +40,16 @@ abstract class BrowserEngine {
   
   /// Évalue du JavaScript
   Future<dynamic> evaluateJavaScript(String script);
+  
+  /// Récupère le contrôleur pour l'affichage (peut être null selon la plateforme)
+  Future<dynamic> getController() async => null;
+  
+  // Callbacks pour les événements
+  Function(String)? onUrlChanged;
+  Function(String)? onTitleChanged;
+  Function(bool)? onCanGoBackChanged;
+  Function(bool)? onCanGoForwardChanged;
+  Function(dynamic)? onStateChanged; // TabState importé dynamiquement
 }
 
 /// Implémentation placeholder
@@ -107,16 +118,28 @@ class PlaceholderBrowserEngine extends BrowserEngine {
     // TODO: Implémenter avec CEF
     return null;
   }
+
+  @override
+  Future<dynamic> getController() async => null;
 }
 
 /// Factory pour créer l'instance du moteur de rendu
 class BrowserEngineFactory {
   static BrowserEngine create() {
-    // TODO: Détecter la plateforme et retourner l'implémentation appropriée
-    // Pour Windows: CEF
-    // Pour macOS: CEF ou WKWebView
-    // Pour Linux: CEF
-    return PlaceholderBrowserEngine();
+    // Détecter la plateforme et retourner l'implémentation appropriée
+    if (Platform.isWindows) {
+      // Pour Windows: utiliser WinFloatingBrowserEngine (webview_win_floating)
+      // Importé dynamiquement pour éviter les erreurs de compilation
+      return PlaceholderBrowserEngine(); // Sera remplacé par TabWebViewManager
+    } else if (Platform.isMacOS || Platform.isLinux) {
+      // Pour macOS/Linux: utiliser WebView si disponible
+      // TODO: Intégrer CEF ou WebView natif
+      return PlaceholderBrowserEngine();
+    } else {
+      // Android/iOS: utiliser WebView
+      // Note: Nécessite l'import conditionnel
+      return PlaceholderBrowserEngine(); // Temporaire, WebViewBrowserEngine nécessite webview_flutter
+    }
   }
 }
 

@@ -19,8 +19,8 @@ dependencies:
   # UI & Animations
   flutter_animate: ^4.3.0
   
-  # CEF Integration (note: cef_flutter may need platform-specific setup)
-  # webview_flutter: ^4.4.2  # Alternative if CEF not available
+  # WebView Engine - WebView2 pour Windows (Option #1 - Production-ready)
+  webview_windows: ^0.2.0
   
   # Utilities
   uuid: ^4.2.1

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../services/tab_manager.dart';
+import '../../services/tab_webview_manager.dart';
 import 'address_bar.dart';
 import 'tab_bar.dart' show BrowserTabBar;
 import 'tab_groups_sidebar.dart';
@@ -55,8 +56,11 @@ class _BrowserWindowState extends State<BrowserWindow> {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => TabManager(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => TabManager()),
+        ChangeNotifierProvider(create: (_) => TabWebViewManager()),
+      ],
       child: Consumer<TabManager>(
         builder: (context, tabManager, _) {
           return Row(
