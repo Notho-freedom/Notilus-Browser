@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import '../../services/tab_manager.dart';
+import '../../services/tab_webview_manager.dart';
 import '../../models/tab_model.dart';
 
 class ModernTabBar extends StatelessWidget {
@@ -73,7 +74,14 @@ class ModernTabBar extends StatelessWidget {
                       tab: tab,
                       isActive: isActive,
                       onTap: () => tabManager.selectTab(tab.id),
-                      onClose: () => tabManager.closeTab(tab.id),
+                      onClose: () {
+                        final webViewManager = Provider.of<TabWebViewManager>(
+                          context,
+                          listen: false,
+                        );
+                        webViewManager.removeEngineForTab(tab.id);
+                        tabManager.closeTab(tab.id);
+                      },
                     );
                   },
                 );

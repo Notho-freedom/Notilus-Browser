@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/tab_manager.dart';
+import '../../services/tab_webview_manager.dart';
 import '../../models/tab_group_model.dart';
 import '../../models/tab_model.dart';
 import '../../core/theme/app_theme.dart';
@@ -224,7 +225,12 @@ class _TabGroupViewState extends State<TabGroupView> {
           IconButton(
             icon: const Icon(Icons.close, size: 14),
             onPressed: () {
+              final webViewManager = Provider.of<TabWebViewManager>(
+                context,
+                listen: false,
+              );
               tabManager.removeTabFromGroup(tab.id);
+              webViewManager.removeEngineForTab(tab.id);
               tabManager.closeTab(tab.id);
             },
             color: theme.textSecondary,

@@ -103,6 +103,11 @@ class _BrowserWindowState extends State<BrowserWindow> {
                         onInvoke: (_) {
                           final activeTab = tabManager.activeTab;
                           if (activeTab != null) {
+                            final webViewManager = Provider.of<TabWebViewManager>(
+                              context,
+                              listen: false,
+                            );
+                            webViewManager.removeEngineForTab(activeTab.id);
                             tabManager.closeTab(activeTab.id);
                           }
                           return null;

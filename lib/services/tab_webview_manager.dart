@@ -51,7 +51,8 @@ class TabWebViewManager extends ChangeNotifier {
   
   /// Supprime le moteur d'un onglet
   void removeEngineForTab(String tabId) {
-    _engines.remove(tabId);
+    final engine = _engines.remove(tabId);
+    // Si à l'avenir WebView2BrowserEngine expose dispose(), on pourra nettoyer ici.
     notifyListeners();
   }
   
@@ -62,7 +63,7 @@ class TabWebViewManager extends ChangeNotifier {
   
   /// Nettoie tous les moteurs
   void clearAll() {
-    _engines.clear();
+    _engines.clear(); // Ajouter dispose() ici si nécessaire
     notifyListeners();
   }
 }

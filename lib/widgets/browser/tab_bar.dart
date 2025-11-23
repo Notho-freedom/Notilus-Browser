@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/tab_manager.dart';
+import '../../services/tab_webview_manager.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/utils/theme_extensions.dart';
 import 'tab_item.dart';
@@ -53,7 +54,14 @@ class BrowserTabBar extends StatelessWidget {
                     return TabDraggable(
                       tab: tab,
                       onTap: () => tabManager.selectTab(tab.id),
-                      onClose: () => tabManager.closeTab(tab.id),
+                      onClose: () {
+                        final webViewManager = Provider.of<TabWebViewManager>(
+                          context,
+                          listen: false,
+                        );
+                        webViewManager.removeEngineForTab(tab.id);
+                        tabManager.closeTab(tab.id);
+                      },
                       onDuplicate: () => tabManager.duplicateTab(tab.id),
                       onPin: () => tabManager.pinTab(tab.id),
                       onCloseOthers: () {
@@ -61,18 +69,29 @@ class BrowserTabBar extends StatelessWidget {
                             .where((t) => t.id != tab.id)
                             .map((t) => t.id)
                             .toList();
+                        final webViewManager = Provider.of<TabWebViewManager>(
+                          context,
+                          listen: false,
+                        );
                         for (final tabId in tabsToClose) {
+                          webViewManager.removeEngineForTab(tabId);
                           tabManager.closeTab(tabId);
                         }
                       },
                       onCloseToRight: () {
-                        final currentIndex = tabManager.tabs.indexWhere((t) => t.id == tab.id);
+                        final currentIndex =
+                            tabManager.tabs.indexWhere((t) => t.id == tab.id);
                         if (currentIndex != -1) {
                           final tabsToClose = tabManager.tabs
                               .skip(currentIndex + 1)
                               .map((t) => t.id)
                               .toList();
+                          final webViewManager = Provider.of<TabWebViewManager>(
+                            context,
+                            listen: false,
+                          );
                           for (final tabId in tabsToClose) {
+                            webViewManager.removeEngineForTab(tabId);
                             tabManager.closeTab(tabId);
                           }
                         }
@@ -80,7 +99,14 @@ class BrowserTabBar extends StatelessWidget {
                       child: TabItem(
                         tab: tab,
                         onTap: () => tabManager.selectTab(tab.id),
-                        onClose: () => tabManager.closeTab(tab.id),
+                        onClose: () {
+                          final webViewManager = Provider.of<TabWebViewManager>(
+                            context,
+                            listen: false,
+                          );
+                          webViewManager.removeEngineForTab(tab.id);
+                          tabManager.closeTab(tab.id);
+                        },
                         onDuplicate: () => tabManager.duplicateTab(tab.id),
                         onPin: () => tabManager.pinTab(tab.id),
                         onCloseOthers: () {
@@ -88,18 +114,29 @@ class BrowserTabBar extends StatelessWidget {
                               .where((t) => t.id != tab.id)
                               .map((t) => t.id)
                               .toList();
+                          final webViewManager = Provider.of<TabWebViewManager>(
+                            context,
+                            listen: false,
+                          );
                           for (final tabId in tabsToClose) {
+                            webViewManager.removeEngineForTab(tabId);
                             tabManager.closeTab(tabId);
                           }
                         },
                         onCloseToRight: () {
-                          final currentIndex = tabManager.tabs.indexWhere((t) => t.id == tab.id);
+                          final currentIndex =
+                              tabManager.tabs.indexWhere((t) => t.id == tab.id);
                           if (currentIndex != -1) {
                             final tabsToClose = tabManager.tabs
                                 .skip(currentIndex + 1)
                                 .map((t) => t.id)
                                 .toList();
+                            final webViewManager = Provider.of<TabWebViewManager>(
+                              context,
+                              listen: false,
+                            );
                             for (final tabId in tabsToClose) {
+                              webViewManager.removeEngineForTab(tabId);
                               tabManager.closeTab(tabId);
                             }
                           }

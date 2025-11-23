@@ -15,10 +15,17 @@ class TabManager extends ChangeNotifier {
   List<TabModel> get tabs => List.unmodifiable(_tabs);
   List<TabGroupModel> get groups => List.unmodifiable(_groups);
   String? get activeTabId => _activeTabId;
-  TabModel? get activeTab => _tabs.firstWhere(
-        (tab) => tab.id == _activeTabId,
-        orElse: () => TabModel(),
-      );
+  TabModel? get activeTab {
+    if (_tabs.isEmpty) return null;
+    if (_activeTabId == null) {
+      return _tabs.first;
+    }
+    try {
+      return _tabs.firstWhere((tab) => tab.id == _activeTabId);
+    } catch (_) {
+      return _tabs.first;
+    }
+  }
 
   TabManager() {
     _initialize();
@@ -138,7 +145,10 @@ class TabManager extends ChangeNotifier {
         final newIndex = index < _tabs.length ? index : _tabs.length - 1;
         selectTab(_tabs[newIndex].id);
       } else if (_tabs.isEmpty) {
-        _createNewTab();
+        // Recréer un onglet d'accueil et le sélectionner
+        final newTab = _createNewTab(url: 'about:newtab');
+        _activeTabId = newTab.id;
+        selectTab(newTab.id);
       }
       
       notifyListeners();
