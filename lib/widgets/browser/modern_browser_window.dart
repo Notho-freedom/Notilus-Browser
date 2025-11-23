@@ -10,6 +10,8 @@ import 'web_content_view.dart';
 import 'modern_home_page.dart';
 import 'modern_history_panel.dart';
 import 'modern_bookmarks_panel.dart';
+import 'modern_downloads_panel.dart';
+import 'modern_settings_panel.dart';
 
 class ModernBrowserWindow extends StatefulWidget {
   const ModernBrowserWindow({super.key});
@@ -61,51 +63,64 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
     final theme = Theme.of(context);
     
     return Container(
-      color: theme.colorScheme.background,
-      child: Row(
-        children: [
-          // Sidebar moderne
-          AnimatedBuilder(
-            animation: _sidebarAnimation,
-            builder: (context, child) {
-              return Container(
-                width: _sidebarAnimation.value * 280,
-                child: _sidebarAnimation.value > 0
-                    ? ModernSidebar(
-                        onClose: _toggleSidebar,
-                        onSectionSelected: (section) {
-                          setState(() {
-                            _currentSection = section;
-                          });
-                        },
-                      )
-                    : null,
-              );
-            },
-          ),
-          
-          // Zone principale
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(_isSidebarVisible ? 16 : 0),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(-2, 0),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            theme.colorScheme.primary.withOpacity(0.6),
+            theme.colorScheme.secondary.withOpacity(0.3),
+            Colors.transparent,
+          ],
+        ),
+      ),
+      child: Container(
+        margin: const EdgeInsets.all(1.5),
+        color: theme.colorScheme.background,
+        child: Row(
+          children: [
+            // Sidebar moderne
+            AnimatedBuilder(
+              animation: _sidebarAnimation,
+              builder: (context, child) {
+                return Container(
+                  width: _sidebarAnimation.value * 72,
+                  child: _sidebarAnimation.value > 0
+                      ? ModernSidebar(
+                          onClose: _toggleSidebar,
+                          onSectionSelected: (section) {
+                            setState(() {
+                              _currentSection = section;
+                            });
+                          },
+                        )
+                      : null,
+                );
+              },
+            ),
+            
+            // Zone principale
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surface,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(_isSidebarVisible ? 16 : 0),
                   ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(_isSidebarVisible ? 16 : 0),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(-2, 0),
+                    ),
+                  ],
                 ),
-                child: Column(
-                  children: [
+                child: ClipRRect(
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(_isSidebarVisible ? 16 : 0),
+                  ),
+                  child: Column(
+                    children: [
                     // Barre d'outils moderne
                     Container(
                       // Laisser la hauteur s'adapter au contenu pour éviter les overflows
@@ -145,15 +160,9 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                             case SidebarSection.history:
                               return const ModernHistoryPanel();
                             case SidebarSection.downloads:
-                              // TODO: panneau téléchargements
-                              return const Center(
-                                child: Text('Téléchargements (à venir)'),
-                              );
+                              return const ModernDownloadsPanel();
                             case SidebarSection.settings:
-                              // TODO: panneau paramètres
-                              return const Center(
-                                child: Text('Paramètres (à venir)'),
-                              );
+                              return const ModernSettingsPanel();
                             case SidebarSection.home:
                             default:
                               // Afficher la page d'accueil si pas d'onglet ou URL vide
@@ -171,11 +180,12 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                       ),
                     ),
                   ],
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

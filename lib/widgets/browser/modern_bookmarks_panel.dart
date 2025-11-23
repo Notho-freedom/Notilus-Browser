@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:math';
 import '../../services/bookmark_service.dart';
 import '../../models/bookmark.dart';
 import '../../services/tab_manager.dart';
+import '../../core/constants/wallpapers.dart';
 
 class ModernBookmarksPanel extends StatefulWidget {
   const ModernBookmarksPanel({super.key});
@@ -14,11 +16,15 @@ class ModernBookmarksPanel extends StatefulWidget {
 class _ModernBookmarksPanelState extends State<ModernBookmarksPanel> {
   final BookmarkService _bookmarkService = BookmarkService();
   late Future<List<Bookmark>> _bookmarksFuture;
+  late final String _backgroundUrl;
 
   @override
   void initState() {
     super.initState();
     _bookmarksFuture = _bookmarkService.getBookmarks();
+    final wallpapers = NotilusWallpapers.all;
+    final random = Random();
+    _backgroundUrl = wallpapers[random.nextInt(wallpapers.length)];
   }
 
   Future<void> _refresh() async {
@@ -32,10 +38,21 @@ class _ModernBookmarksPanelState extends State<ModernBookmarksPanel> {
     final theme = Theme.of(context);
 
     return Container(
-      color: theme.colorScheme.background,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      decoration: BoxDecoration(
+        image: DecorationImage(
+          image: NetworkImage(_backgroundUrl),
+          fit: BoxFit.cover,
+          colorFilter: ColorFilter.mode(
+            Colors.black.withOpacity(0.8),
+            BlendMode.srcOver,
+          ),
+        ),
+      ),
+      child: Container(
+        color: Colors.black.withOpacity(0.6),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
             child: Row(
@@ -66,7 +83,7 @@ class _ModernBookmarksPanelState extends State<ModernBookmarksPanel> {
                       child: Text(
                         'Aucun favori pour le moment',
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
+                          color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
                         ),
                       ),
                     );
@@ -128,7 +145,8 @@ class _ModernBookmarksPanelState extends State<ModernBookmarksPanel> {
               ),
             ),
           ),
-        ],
+          ],
+        ),
       ),
     );
   }

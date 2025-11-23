@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'dart:math';
 import '../../services/history_service.dart';
 import '../../services/tab_manager.dart';
+import '../../core/constants/wallpapers.dart';
 
 class ModernHistoryPanel extends StatefulWidget {
   const ModernHistoryPanel({super.key});
@@ -14,11 +16,15 @@ class ModernHistoryPanel extends StatefulWidget {
 class _ModernHistoryPanelState extends State<ModernHistoryPanel> {
   final HistoryService _historyService = HistoryService();
   late Future _historyFuture;
+  late final String _backgroundUrl;
 
   @override
   void initState() {
     super.initState();
     _historyFuture = _historyService.getHistory();
+    final wallpapers = NotilusWallpapers.all;
+    final random = Random();
+    _backgroundUrl = wallpapers[random.nextInt(wallpapers.length)];
   }
 
   Future<void> _refresh() async {
@@ -32,10 +38,21 @@ class _ModernHistoryPanelState extends State<ModernHistoryPanel> {
     final theme = Theme.of(context);
 
     return Container(
-      color: theme.colorScheme.background,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      decoration: BoxDecoration(
+        image: DecorationImage(
+          image: NetworkImage(_backgroundUrl),
+          fit: BoxFit.cover,
+          colorFilter: ColorFilter.mode(
+            Colors.black.withOpacity(0.8),
+            BlendMode.srcOver,
+          ),
+        ),
+      ),
+      child: Container(
+        color: Colors.black.withOpacity(0.6),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
             child: Row(
@@ -74,7 +91,7 @@ class _ModernHistoryPanelState extends State<ModernHistoryPanel> {
                       child: Text(
                         'Aucun historique pour le moment',
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
+                          color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
                         ),
                       ),
                     );
@@ -123,7 +140,8 @@ class _ModernHistoryPanelState extends State<ModernHistoryPanel> {
               ),
             ),
           ),
-        ],
+          ],
+        ),
       ),
     );
   }
