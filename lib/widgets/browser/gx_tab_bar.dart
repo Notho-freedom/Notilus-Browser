@@ -8,6 +8,7 @@ import '../../services/tab_manager.dart';
 import '../../services/tab_webview_manager.dart';
 import '../../services/split_screen_service.dart';
 import '../../services/quick_access_service.dart';
+import 'package:flutter/services.dart';
 import '../../services/bookmark_service.dart';
 import '../../models/tab_model.dart';
 import '../../models/bookmark.dart';
@@ -94,14 +95,22 @@ class GXTabBar extends StatelessWidget {
                         final isActive = tab.isSelected;
 
                         return DragTarget<TabModel>(
+                          onWillAccept: (data) => data != null && data.id != tab.id,
                           onAccept: (draggedTab) {
                             if (draggedTab.id != tab.id) {
                               final oldIndex = tabManager.tabs.indexWhere((t) => t.id == draggedTab.id);
                               final newIndex = index;
                               if (oldIndex != -1) {
                                 tabManager.reorderTab(oldIndex, newIndex);
+                                HapticFeedback.mediumImpact();
                               }
                             }
+                          },
+                          onMove: (details) {
+                            // Feedback visuel pendant le drag
+                          },
+                          onLeave: (data) {
+                            // Feedback visuel quand on quitte la zone
                           },
                           builder: (context, candidateData, rejectedData) {
                             return LongPressDraggable<TabModel>(
@@ -213,14 +222,21 @@ class GXTabBar extends StatelessWidget {
                 tooltip: 'Rechercher un onglet',
                 onPressed: () => _openTabSearch(context),
               ),
-              Consumer<SplitScreenService>(
-                builder: (context, splitService, _) => _GXTabBarIconButton(
-                  icon: CupertinoIcons.square_split_2x1,
-                  tooltip: splitService.isActive
-                      ? 'Désactiver le split-screen'
-                      : 'Activer le split-screen',
-                  onPressed: () => splitService.toggle(),
-                ),
+              Builder(
+                builder: (context) {
+                  final splitService = context.watch<SplitScreenService>();
+                  final tabManager = context.watch<TabManager>();
+                  return _GXTabBarIconButton(
+                    icon: CupertinoIcons.square_split_2x1,
+                    tooltip: splitService.isActive
+                        ? 'Désactiver le split-screen'
+                        : 'Activer le split-screen',
+                    onPressed: () {
+                      final activeTabId = tabManager.activeTab?.id;
+                      splitService.toggle(activeTabId: activeTabId);
+                    },
+                  );
+                },
               ),
               _GXTabBarIconButton(
                 icon: CupertinoIcons.square_grid_2x2,

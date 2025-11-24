@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../services/tab_manager.dart';
 import '../../services/split_screen_service.dart';
 import '../../services/tab_webview_manager.dart';
@@ -66,6 +68,17 @@ class _AdvancedSplitViewState extends State<AdvancedSplitView> {
       ),
       child: Row(
         children: [
+          // Menu des layouts prédéfinis
+          _LayoutPresetMenu(
+            currentLayout: splitService.layout,
+            onPresetSelected: (presetId) {
+              splitService.applyLayoutPreset(presetId);
+              HapticFeedback.selectionClick();
+            },
+          ),
+          
+          const SizedBox(width: 8),
+          
           // Toggle layout
           _ControlButton(
             icon: splitService.layout == SplitLayout.horizontal
@@ -78,6 +91,7 @@ class _AdvancedSplitViewState extends State<AdvancedSplitView> {
                     ? SplitLayout.vertical
                     : SplitLayout.horizontal,
               );
+              HapticFeedback.selectionClick();
             },
           ),
           
@@ -87,7 +101,10 @@ class _AdvancedSplitViewState extends State<AdvancedSplitView> {
           _ControlButton(
             icon: CupertinoIcons.add,
             tooltip: 'Ajouter un panneau',
-            onPressed: () => splitService.addPane(),
+            onPressed: () {
+              splitService.addPane();
+              HapticFeedback.mediumImpact();
+            },
           ),
           
           const SizedBox(width: 8),
@@ -182,6 +199,7 @@ class _AdvancedSplitViewState extends State<AdvancedSplitView> {
             tab: tab,
             onTabDropped: (droppedTab) {
               splitService.setPaneTab(i, droppedTab.id);
+              HapticFeedback.mediumImpact();
             },
             onClose: splitService.panes.length > 1
                 ? () => splitService.removePane(i)
@@ -266,6 +284,7 @@ class _AdvancedSplitViewState extends State<AdvancedSplitView> {
             tab: tab,
             onTabDropped: (droppedTab) {
               splitService.setPaneTab(i, droppedTab.id);
+              HapticFeedback.mediumImpact();
             },
             onClose: splitService.panes.length > 1
                 ? () => splitService.removePane(i)
@@ -343,6 +362,7 @@ class _ControlButton extends StatefulWidget {
 
 class _ControlButtonState extends State<_ControlButton> {
   bool _isHovered = false;
+  bool _isPressed = false;
 
   @override
   Widget build(BuildContext context) {
@@ -351,22 +371,41 @@ class _ControlButtonState extends State<_ControlButton> {
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
       child: GestureDetector(
-        onTap: widget.onPressed,
-        child: Container(
+        onTapDown: (_) => setState(() => _isPressed = true),
+        onTapUp: (_) {
+          setState(() => _isPressed = false);
+          widget.onPressed();
+        },
+        onTapCancel: () => setState(() => _isPressed = false),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          curve: Curves.easeOutCubic,
           width: 32,
           height: 32,
           decoration: BoxDecoration(
-            color: _isHovered
-                ? NotilusColors.neonRed.withOpacity(0.12)
-                : Colors.transparent,
+            color: _isPressed
+                ? NotilusColors.neonRed.withOpacity(0.2)
+                : (_isHovered
+                    ? NotilusColors.neonRed.withOpacity(0.12)
+                    : Colors.transparent),
             borderRadius: BorderRadius.circular(4),
+            border: _isHovered
+                ? Border.all(
+                    color: NotilusColors.neonRed.withOpacity(0.3),
+                    width: 1,
+                  )
+                : null,
           ),
           child: Icon(
             widget.icon,
             size: 16,
-            color: NotilusColors.neonRed.withOpacity(_isHovered ? 0.9 : 0.7),
+            color: NotilusColors.neonRed.withOpacity(
+              _isPressed ? 1.0 : (_isHovered ? 0.9 : 0.7),
+            ),
           ),
-        ),
+        )
+            .animate(target: _isHovered ? 1 : 0)
+            .scale(begin: const Offset(1.0, 1.0), end: const Offset(1.1, 1.1), duration: 150.ms, curve: Curves.easeOutCubic),
       ),
     );
   }
@@ -532,6 +571,151 @@ class _PaneTabSelector extends StatelessWidget {
               );
             },
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LayoutPresetMenu extends StatefulWidget {
+  final SplitLayout currentLayout;
+  final Function(String) onPresetSelected;
+
+  const _LayoutPresetMenu({
+    required this.currentLayout,
+    required this.onPresetSelected,
+  });
+
+  @override
+  State<_LayoutPresetMenu> createState() => _LayoutPresetMenuState();
+}
+
+class _LayoutPresetMenuState extends State<_LayoutPresetMenu> {
+  bool _isHovered = false;
+  bool _isMenuOpen = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: () => setState(() => _isMenuOpen = !_isMenuOpen),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: _isHovered || _isMenuOpen
+                    ? NotilusColors.neonRed.withOpacity(0.15)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: NotilusColors.neonRed.withOpacity(
+                    _isHovered || _isMenuOpen ? 0.5 : 0.2,
+                  ),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    CupertinoIcons.square_grid_2x2,
+                    size: 16,
+                    color: NotilusColors.neonRed.withOpacity(0.8),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Layouts',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.9),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(
+                    _isMenuOpen
+                        ? CupertinoIcons.chevron_up
+                        : CupertinoIcons.chevron_down,
+                    size: 12,
+                    color: NotilusColors.neonRed.withOpacity(0.7),
+                  ),
+                ],
+              ),
+            ),
+            // Menu déroulant
+            if (_isMenuOpen)
+              Positioned(
+                top: 40,
+                left: 0,
+                child: Container(
+                  width: 200,
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1A1A1A),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: NotilusColors.neonRed.withOpacity(0.5),
+                      width: 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.5),
+                        blurRadius: 20,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: SplitScreenService.availablePresets.map((preset) {
+                      return InkWell(
+                        onTap: () {
+                          widget.onPresetSelected(preset['id']!);
+                          setState(() => _isMenuOpen = false);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(6),
+                            color: Colors.transparent,
+                          ),
+                          child: Row(
+                            children: [
+                              Text(
+                                preset['icon']!,
+                                style: const TextStyle(fontSize: 16),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  preset['name']!,
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.9),
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                )
+                    .animate()
+                    .fadeIn(duration: 200.ms)
+                    .slideY(begin: -0.1, end: 0, duration: 200.ms, curve: Curves.easeOutCubic),
+              ),
+          ],
         ),
       ),
     );

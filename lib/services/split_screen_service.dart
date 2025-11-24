@@ -75,9 +75,17 @@ class SplitScreenService extends ChangeNotifier {
     }
   }
 
-  void toggle() {
+  void toggle({String? activeTabId}) {
     _isActive = !_isActive;
-    if (!_isActive) {
+    if (_isActive) {
+      // Si on active et qu'on a une tab active, l'assigner au premier panneau
+      if (activeTabId != null && _panes.isNotEmpty) {
+        _panes[0] = SplitPaneConfig(
+          tabId: activeTabId,
+          size: _panes[0].size,
+        );
+      }
+    } else {
       // Reset to default when deactivating
       _panes = [
         SplitPaneConfig(size: 0.5),
@@ -171,5 +179,80 @@ class SplitScreenService extends ChangeNotifier {
     notifyListeners();
     _saveConfig();
   }
+
+  /// Applique une configuration de layout prédéfinie
+  void applyLayoutPreset(String presetName) {
+    switch (presetName) {
+      case '2_horizontal':
+        _layout = SplitLayout.horizontal;
+        _panes = [
+          SplitPaneConfig(size: 0.5),
+          SplitPaneConfig(size: 0.5),
+        ];
+        break;
+      case '2_vertical':
+        _layout = SplitLayout.vertical;
+        _panes = [
+          SplitPaneConfig(size: 0.5),
+          SplitPaneConfig(size: 0.5),
+        ];
+        break;
+      case '3_horizontal':
+        _layout = SplitLayout.horizontal;
+        _panes = [
+          SplitPaneConfig(size: 0.33),
+          SplitPaneConfig(size: 0.33),
+          SplitPaneConfig(size: 0.34),
+        ];
+        break;
+      case '3_vertical':
+        _layout = SplitLayout.vertical;
+        _panes = [
+          SplitPaneConfig(size: 0.33),
+          SplitPaneConfig(size: 0.33),
+          SplitPaneConfig(size: 0.34),
+        ];
+        break;
+      case '4_grid':
+        // Layout en grille 2x2 (sera géré différemment)
+        _layout = SplitLayout.grid;
+        _panes = [
+          SplitPaneConfig(size: 0.5),
+          SplitPaneConfig(size: 0.5),
+          SplitPaneConfig(size: 0.5),
+          SplitPaneConfig(size: 0.5),
+        ];
+        break;
+      case 'left_sidebar':
+        _layout = SplitLayout.horizontal;
+        _panes = [
+          SplitPaneConfig(size: 0.25),
+          SplitPaneConfig(size: 0.75),
+        ];
+        break;
+      case 'right_sidebar':
+        _layout = SplitLayout.horizontal;
+        _panes = [
+          SplitPaneConfig(size: 0.75),
+          SplitPaneConfig(size: 0.25),
+        ];
+        break;
+      default:
+        return;
+    }
+    notifyListeners();
+    _saveConfig();
+  }
+
+  /// Liste des presets disponibles
+  static List<Map<String, String>> get availablePresets => [
+    {'id': '2_horizontal', 'name': '2 Colonnes', 'icon': '⥀'},
+    {'id': '2_vertical', 'name': '2 Lignes', 'icon': '⥁'},
+    {'id': '3_horizontal', 'name': '3 Colonnes', 'icon': '⥀⥀'},
+    {'id': '3_vertical', 'name': '3 Lignes', 'icon': '⥁⥁'},
+    {'id': '4_grid', 'name': 'Grille 2x2', 'icon': '⊞'},
+    {'id': 'left_sidebar', 'name': 'Sidebar Gauche', 'icon': '◧'},
+    {'id': 'right_sidebar', 'name': 'Sidebar Droite', 'icon': '◨'},
+  ];
 }
 

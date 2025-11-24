@@ -49,9 +49,11 @@ class _WebViewServicePanelState extends State<WebViewServicePanel> {
 
     try {
       final sideWebViewManager = Provider.of<SideWebViewManager>(context, listen: false);
-      final engine = sideWebViewManager.getEngineForPanel(_panelId!);
       
-      // Initialiser le moteur
+      // Utiliser le nouveau système de cache par URL
+      final engine = sideWebViewManager.getEngineForPanel(_panelId!, widget.url);
+      
+      // Initialiser le moteur (la méthode initialize() vérifie déjà si déjà initialisé)
       await engine.initialize();
       
       // Récupérer le WebView2 controller
@@ -59,13 +61,16 @@ class _WebViewServicePanelState extends State<WebViewServicePanel> {
       if (controller != null && controller is WebviewController) {
         setState(() {
           _webView = controller as WebviewController;
-        });
-        
-        // Naviguer vers l'URL
-        await engine.navigate(widget.url);
-        setState(() {
           _isLoading = false;
         });
+        
+        // Naviguer seulement si l'URL n'est pas déjà chargée
+        final currentUrl = await engine.getCurrentUrl();
+        if (currentUrl != widget.url) {
+          await engine.navigate(widget.url);
+        } else {
+          debugPrint('✅ URL déjà chargée, pas de rechargement nécessaire: ${widget.url}');
+        }
       }
     } catch (e) {
       debugPrint('Error initializing side webview: $e');
@@ -79,7 +84,8 @@ class _WebViewServicePanelState extends State<WebViewServicePanel> {
   void dispose() {
     if (_panelId != null) {
       final sideWebViewManager = Provider.of<SideWebViewManager>(context, listen: false);
-      sideWebViewManager.removeEngineForPanel(_panelId!);
+      // Conserver l'engine en cache pour réutilisation future
+      sideWebViewManager.removeEngineForPanel(_panelId!, keepEngine: true);
     }
     super.dispose();
   }

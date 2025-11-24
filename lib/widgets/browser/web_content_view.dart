@@ -56,7 +56,8 @@ class _WebContentViewState extends State<WebContentView> {
 
     final tabManager = Provider.of<TabManager>(context, listen: false);
     final webViewManager = Provider.of<TabWebViewManager>(context, listen: false);
-    final engine = webViewManager.getEngineForTab(widget.tab!.id);
+    // Utiliser le nouveau système avec URL pour le cache
+    final engine = webViewManager.getEngineForTab(widget.tab!.id, url: widget.tab!.url);
     
     // Configurer les callbacks
     engine.onUrlChanged = (url) {

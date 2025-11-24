@@ -87,6 +87,12 @@ class WebView2BrowserEngine extends BrowserEngine {
       await initialize();
     }
     
+    // Optimisation : ne pas recharger si l'URL est déjà chargée
+    if (_currentUrl == url && _webView != null) {
+      debugPrint('✅ URL déjà chargée, pas de rechargement: $url');
+      return;
+    }
+    
     if (_webView != null) {
       onStateChanged?.call(TabState.loading);
       onUrlChanged?.call(url);

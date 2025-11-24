@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../models/tab_model.dart';
 import '../../core/constants/notilus_colors.dart';
 import '../../widgets/browser/web_content_view.dart';
+import '../../services/tab_webview_manager.dart';
 
 /// Panneau split-screen avancé avec support drag-and-drop
 class AdvancedSplitPane extends StatefulWidget {
@@ -65,12 +68,12 @@ class _AdvancedSplitPaneState extends State<AdvancedSplitPane> {
           ),
           child: Stack(
             children: [
-              // Contenu
+              // Contenu - Utilise le même engine que la tab pour éviter les duplications
               widget.tab != null
-                  ? WebContentView(tab: widget.tab)
+                  ? _buildTabContent()
                   : _buildEmptyState(),
 
-              // Overlay de drop
+              // Overlay de drop avec animation
               if (_isDraggingOver)
                 Container(
                   color: NotilusColors.neonRed.withOpacity(0.15),
@@ -84,6 +87,13 @@ class _AdvancedSplitPaneState extends State<AdvancedSplitPane> {
                           color: NotilusColors.neonRed,
                           width: 2,
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: NotilusColors.neonRed.withOpacity(0.5),
+                            blurRadius: 20,
+                            spreadRadius: 2,
+                          ),
+                        ],
                       ),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
@@ -92,7 +102,12 @@ class _AdvancedSplitPaneState extends State<AdvancedSplitPane> {
                             CupertinoIcons.arrow_down_circle_fill,
                             size: 48,
                             color: NotilusColors.neonRed,
-                          ),
+                          )
+                              .animate(onPlay: (controller) => controller.repeat())
+                              .shimmer(duration: 1000.ms, color: NotilusColors.neonRed.withOpacity(0.5))
+                              .scale(begin: const Offset(0.9, 0.9), end: const Offset(1.0, 1.0), duration: 500.ms, curve: Curves.easeInOut)
+                              .then()
+                              .scale(begin: const Offset(1.0, 1.0), end: const Offset(0.9, 0.9), duration: 500.ms, curve: Curves.easeInOut),
                           const SizedBox(height: 12),
                           Text(
                             'Déposer l\'onglet ici',
@@ -101,14 +116,18 @@ class _AdvancedSplitPaneState extends State<AdvancedSplitPane> {
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
                             ),
-                          ),
+                          )
+                              .animate()
+                              .fadeIn(duration: 200.ms),
                         ],
                       ),
-                    ),
+                    )
+                        .animate()
+                        .scale(begin: const Offset(0.8, 0.8), end: const Offset(1.0, 1.0), duration: 200.ms, curve: Curves.easeOutCubic),
                   ),
                 ),
 
-              // Barre de contrôle (apparaît au survol)
+              // Barre de contrôle (apparaît au survol) avec animation
               if (_isHovered && !_isDraggingOver)
                 Positioned(
                   top: 8,
@@ -120,18 +139,35 @@ class _AdvancedSplitPaneState extends State<AdvancedSplitPane> {
                         _ControlButton(
                           icon: CupertinoIcons.arrow_left_right,
                           tooltip: 'Échanger avec le panneau précédent',
-                          onPressed: widget.onSwap!,
-                        ),
+                          onPressed: () {
+                            widget.onSwap!();
+                            // Effet de feedback
+                            HapticFeedback.mediumImpact();
+                          },
+                        )
+                            .animate()
+                            .fadeIn(duration: 200.ms, delay: 50.ms)
+                            .slideX(begin: 0.2, end: 0, duration: 200.ms, curve: Curves.easeOutCubic),
                       const SizedBox(width: 4),
                       if (widget.onClose != null)
                         _ControlButton(
                           icon: CupertinoIcons.xmark_circle_fill,
                           tooltip: 'Fermer ce panneau',
-                          onPressed: widget.onClose!,
+                          onPressed: () {
+                            widget.onClose!();
+                            // Effet de feedback
+                            HapticFeedback.mediumImpact();
+                          },
                           isDanger: true,
-                        ),
+                        )
+                            .animate()
+                            .fadeIn(duration: 200.ms, delay: 100.ms)
+                            .slideX(begin: 0.2, end: 0, duration: 200.ms, curve: Curves.easeOutCubic),
                     ],
-                  ),
+                  )
+                      .animate()
+                      .fadeIn(duration: 200.ms)
+                      .slideY(begin: -0.1, end: 0, duration: 200.ms, curve: Curves.easeOutCubic),
                 ),
 
               // Détecteur de survol
@@ -143,6 +179,29 @@ class _AdvancedSplitPaneState extends State<AdvancedSplitPane> {
             ],
           ),
         );
+      },
+    );
+  }
+
+  Widget _buildTabContent() {
+    if (widget.tab == null) return const SizedBox.shrink();
+    
+    // Utiliser le même engine que la tab pour éviter les duplications
+    return Consumer<TabWebViewManager>(
+      builder: (context, webViewManager, _) {
+        final engine = webViewManager.getEngine(widget.tab!.id);
+        if (engine == null) {
+          return const Center(
+            child: CircularProgressIndicator(
+              color: NotilusColors.neonRed,
+            ),
+          );
+        }
+        
+        // Utiliser WebContentView qui gère déjà le partage d'engine
+        return WebContentView(tab: widget.tab)
+            .animate()
+            .fadeIn(duration: 300.ms, curve: Curves.easeOutCubic);
       },
     );
   }
