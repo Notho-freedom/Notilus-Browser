@@ -38,15 +38,16 @@ class GXTabBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const SizedBox(width: 10),
-          const NotilusTooltip(
-            message: 'Identité Notilus',
-            child: NotilusMonogram(
-              size: 22,
-              showGlow: false,
+          if (!isSidebarVisible) ...[
+            const NotilusTooltip(
+              message: 'Identité Notilus',
+              child: NotilusMonogram(
+                size: 22,
+                showGlow: false,
+              ),
             ),
-          ),
-          const SizedBox(width: 8),
+            const SizedBox(width: 8),
+          ],
           _GXTabBarIconButton(
             icon: isSidebarVisible
                 ? CupertinoIcons.sidebar_left
@@ -86,19 +87,26 @@ class GXTabBar extends StatelessWidget {
                         final tab = tabManager.tabs[index];
                         final isActive = tab.isSelected;
 
-                        return _GXTabItem(
-                          tab: tab,
-                          width: tabWidth,
-                          isActive: isActive,
-                          onTap: () => tabManager.selectTab(tab.id),
-                          onClose: () {
-                            final webViewManager = Provider.of<TabWebViewManager>(
-                              context,
-                              listen: false,
-                            );
-                            webViewManager.removeEngineForTab(tab.id);
-                            tabManager.closeTab(tab.id);
-                          },
+                        final tooltipText = tab.title?.isNotEmpty == true
+                            ? tab.title!
+                            : (tab.url ?? 'Onglet');
+                        return NotilusTooltip(
+                          message: tooltipText,
+                          child: _GXTabItem(
+                            tab: tab,
+                            width: tabWidth,
+                            isActive: isActive,
+                            onTap: () => tabManager.selectTab(tab.id),
+                            onClose: () {
+                              final webViewManager =
+                                  Provider.of<TabWebViewManager>(
+                                context,
+                                listen: false,
+                              );
+                              webViewManager.removeEngineForTab(tab.id);
+                              tabManager.closeTab(tab.id);
+                            },
+                          ),
                         );
                       },
                     );
@@ -554,12 +562,14 @@ class _GXWindowControlsState extends State<GXWindowControls>
           icon: CupertinoIcons.minus,
           iconSize: 13,
           tooltip: 'Minimiser',
+          iconColor: _gxRed,
           onTap: () => windowManager.minimize(),
         ),
         _WindowButton(
           icon: _isMaximized ? CupertinoIcons.rectangle : CupertinoIcons.square,
           iconSize: 13,
           tooltip: _isMaximized ? 'Restaurer' : 'Agrandir',
+          iconColor: _gxRed,
           onTap: () async {
             if (_isMaximized) {
               await windowManager.restore();

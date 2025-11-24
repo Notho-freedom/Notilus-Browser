@@ -1,7 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../core/services/wallpaper_manager.dart';
+import '../common/animated_wallpaper_background.dart';
 import '../../services/tab_manager.dart';
 
 class ModernDownloadsPanel extends StatefulWidget {
@@ -45,17 +45,8 @@ class _ModernDownloadsPanelState extends State<ModernDownloadsPanel> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Container(
-      decoration: BoxDecoration(
-        image: DecorationImage(
-          image: NetworkImage(context.watch<WallpaperManager>().current),
-          fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(
-            Colors.black.withOpacity(0.8),
-            BlendMode.srcOver,
-          ),
-        ),
-      ),
+    return AnimatedWallpaperBackground(
+      darkness: 0.8,
       child: Container(
         color: Colors.black.withOpacity(0.6),
         child: Column(

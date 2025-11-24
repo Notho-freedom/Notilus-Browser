@@ -13,6 +13,7 @@ import 'modern_bookmarks_panel.dart';
 import 'modern_downloads_panel.dart';
 import 'modern_settings_panel.dart';
 import '../../core/constants/notilus_colors.dart';
+import '../common/sidebar_panel_scope.dart';
 import '../common/notilus_tooltip.dart';
 
 class ModernBrowserWindow extends StatefulWidget {
@@ -26,6 +27,9 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
     with SingleTickerProviderStateMixin {
   bool _isSidebarVisible = true;
   SidebarSection _currentSection = SidebarSection.home;
+  static const double _panelMinFactor = 0.25;
+  static const double _panelMaxFactor = 0.5;
+  double _panelWidthFactor = 0.36;
   late AnimationController _sidebarAnimationController;
   late Animation<double> _sidebarAnimation;
 
@@ -70,6 +74,15 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
     }
   }
 
+  void _handlePanelResize(double delta, double totalWidth) {
+    final currentWidth = _panelWidthFactor * totalWidth;
+    final desiredWidth = (currentWidth - delta)
+        .clamp(totalWidth * _panelMinFactor, totalWidth * _panelMaxFactor);
+    setState(() {
+      _panelWidthFactor = desiredWidth / totalWidth;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -94,62 +107,74 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
             width: 0.6,
           ),
         ),
-        child: Row(
-          children: [
-            // Sidebar moderne
-            AnimatedBuilder(
-              animation: _sidebarAnimation,
-              builder: (context, child) {
-                return Container(
-                  width: _sidebarAnimation.value * 48,
-                  child: _sidebarAnimation.value > 0
-                      ? GXSidebar(
-                          onClose: _toggleSidebar,
-                          onSectionSelected: (section) {
-                            setState(() {
-                              _currentSection = section;
-                            });
-                          },
-                        )
-                      : null,
-                );
-              },
-            ),
+        child: SidebarPanelScope(
+          openPanel: (section) {
+            setState(() {
+              if (!_isSidebarVisible) {
+                _isSidebarVisible = true;
+                _sidebarAnimationController.forward();
+              }
+              _currentSection = section;
+            });
+          },
+          closePanel: _closePanel,
+          child: Row(
+            children: [
+              // Sidebar moderne
+              AnimatedBuilder(
+                animation: _sidebarAnimation,
+                builder: (context, child) {
+                  return Container(
+                    width: _sidebarAnimation.value * 48,
+                    child: _sidebarAnimation.value > 0
+                        ? GXSidebar(
+                            onClose: _toggleSidebar,
+                            onSectionSelected: (section) {
+                              setState(() {
+                                _currentSection = section;
+                              });
+                            },
+                          )
+                        : null,
+                  );
+                },
+              ),
 
-          // Zone principale
-          Expanded(
-            child: Column(
-              children: [
-                GXTabBar(
-                  onMenuTap: _toggleSidebar,
-                  isSidebarVisible: _isSidebarVisible,
-                ),
-                const GXAddressBar(),
-                Expanded(
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Consumer<TabManager>(
-                        builder: (context, tabManager, _) {
-                          final activeTab = tabManager.activeTab;
-                          if (activeTab == null ||
-                              activeTab.url == null ||
-                              activeTab.url!.isEmpty ||
-                              activeTab.url == 'about:blank' ||
-                              activeTab.url == 'about:newtab') {
-                            return const ModernHomePage();
-                          }
-                          return WebContentView(tab: activeTab);
-                        },
+              // Zone principale
+              Expanded(
+                child: Column(
+                  children: [
+                    GXTabBar(
+                      onMenuTap: _toggleSidebar,
+                      isSidebarVisible: _isSidebarVisible,
+                    ),
+                    const GXAddressBar(),
+                    Expanded(
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Consumer<TabManager>(
+                            builder: (context, tabManager, _) {
+                              final activeTab = tabManager.activeTab;
+                              if (activeTab == null ||
+                                  activeTab.url == null ||
+                                  activeTab.url!.isEmpty ||
+                                  activeTab.url == 'about:blank' ||
+                                  activeTab.url == 'about:newtab') {
+                                return const ModernHomePage();
+                              }
+                              return WebContentView(tab: activeTab);
+                            },
+                          ),
+                          _buildSidebarPanelOverlay(context),
+                        ],
                       ),
-                      _buildSidebarPanelOverlay(context),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          ],
         ),
       ),
     );
@@ -160,11 +185,13 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
     if (config == null) return const SizedBox.shrink();
 
     final media = MediaQuery.of(context);
+    final double minWidth = media.size.width * _panelMinFactor;
+    final double maxWidth = media.size.width * _panelMaxFactor;
     final double width =
-        (media.size.width * 0.36).clamp(320.0, media.size.width * 0.55);
-    final double height =
-        (media.size.height * 0.72).clamp(360.0, media.size.height - 140);
+        (media.size.width * _panelWidthFactor).clamp(minWidth, maxWidth);
     final bool visible = _isPanelVisible;
+    const double toolbarHeight = 36 + 34;
+    final double topOffset = toolbarHeight + 6;
 
     return IgnorePointer(
       ignoring: !visible,
@@ -181,15 +208,16 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
           AnimatedPositioned(
             duration: const Duration(milliseconds: 420),
             curve: Curves.easeOutCubic,
-            top: -12,
-            right: visible ? 24 : -(width + 80),
+            top: topOffset,
+            bottom: 16,
+            left: visible ? 44 : -(width + 120),
             child: SizedBox(
               width: width,
-              height: height,
               child: _SidebarFloatingPanel(
                 title: config.title,
                 icon: config.icon,
                 onClose: _closePanel,
+                onResize: (delta) => _handlePanelResize(delta, media.size.width),
                 child: config.child,
               ),
             ),
@@ -261,84 +289,124 @@ class _SidebarFloatingPanel extends StatelessWidget {
   final IconData icon;
   final Widget child;
   final VoidCallback onClose;
+  final ValueChanged<double>? onResize;
 
   const _SidebarFloatingPanel({
     required this.title,
     required this.icon,
     required this.child,
     required this.onClose,
+    this.onResize,
   });
 
   @override
   Widget build(BuildContext context) {
     return Material(
       color: Colors.transparent,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(22),
-        child: Container(
-          decoration: BoxDecoration(
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          ClipRRect(
             borderRadius: BorderRadius.circular(22),
-            color: NotilusColors.chromeLight.withOpacity(0.96),
-            border: Border.all(color: Colors.white.withOpacity(0.05)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.35),
-                blurRadius: 24,
-                offset: const Offset(0, 18),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              Container(
-                height: 54,
-                padding: const EdgeInsets.symmetric(horizontal: 18),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      NotilusColors.neonRed.withOpacity(0.85),
-                      NotilusColors.neonRedDark.withOpacity(0.85),
-                    ],
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(12),
+                  bottomLeft: Radius.circular(12),
+                  topRight: Radius.circular(22),
+                  bottomRight: Radius.circular(22),
+                ),
+                color: NotilusColors.chromeLight.withOpacity(0.96),
+                border: Border.all(color: Colors.white.withOpacity(0.05)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.35),
+                    blurRadius: 24,
+                    offset: const Offset(0, 18),
                   ),
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(22)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(icon, color: Colors.white, size: 18),
-                    const SizedBox(width: 10),
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
+                ],
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    height: 54,
+                    padding: const EdgeInsets.symmetric(horizontal: 18),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          NotilusColors.neonRed.withOpacity(0.85),
+                          NotilusColors.neonRedDark.withOpacity(0.85),
+                        ],
+                      ),
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(12),
+                        topRight: Radius.circular(22),
                       ),
                     ),
-                    const Spacer(),
-                    NotilusTooltip(
-                      message: 'Replier le panneau',
-                      child: IconButton(
-                        onPressed: onClose,
-                        icon: const Icon(
-                          CupertinoIcons.xmark_circle,
-                          color: Colors.white,
-                          size: 18,
+                    child: Row(
+                      children: [
+                        Icon(icon, color: Colors.white, size: 18),
+                        const SizedBox(width: 10),
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                      ),
+                        const Spacer(),
+                        NotilusTooltip(
+                          message: 'Replier le panneau',
+                          child: IconButton(
+                            onPressed: onClose,
+                            icon: const Icon(
+                              CupertinoIcons.xmark_circle,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                  Expanded(
+                    child: Container(
+                      color: Colors.black.withOpacity(0.08),
+                      child: child,
+                    ),
+                  ),
+                ],
               ),
-              Expanded(
-                child: Container(
-                  color: Colors.black.withOpacity(0.08),
-                  child: child,
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+          if (onResize != null)
+            Positioned(
+              left: -12,
+              top: 72,
+              bottom: 72,
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onHorizontalDragUpdate: (details) =>
+                    onResize!(details.delta.dx),
+                child: Container(
+                  width: 18,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.18),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white.withOpacity(0.15)),
+                  ),
+                  child: Center(
+                    child: Container(
+                      width: 2,
+                      height: double.infinity,
+                      color: NotilusColors.neonRed.withOpacity(0.6),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
