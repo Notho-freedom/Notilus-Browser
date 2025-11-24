@@ -7,6 +7,7 @@ import '../../services/tab_manager.dart';
 import '../../core/services/wallpaper_manager.dart';
 import '../../services/quick_access_service.dart';
 import '../../services/history_service.dart';
+import '../../services/system_metrics_service.dart';
 import '../../models/history_item.dart';
 import '../../core/utils/url_validator.dart';
 import '../common/notilus_monogram.dart';
@@ -24,6 +25,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
   final FocusNode _searchFocusNode = FocusNode();
   final QuickAccessService _quickAccessService = QuickAccessService();
   final HistoryService _historyService = HistoryService();
+  final SystemMetricsService _metricsService = SystemMetricsService();
   List<QuickAccessItem> _quickAccessItems = [];
   List<HistoryItem> _recentHistory = [];
 
@@ -32,6 +34,26 @@ class _ModernHomePageState extends State<ModernHomePage> {
     super.initState();
     _loadQuickAccessItems();
     _loadRecentHistory();
+    _metricsService.addListener(_onMetricsUpdate);
+    // Mettre à jour le nombre d'onglets
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final tabManager = Provider.of<TabManager>(context, listen: false);
+      _metricsService.updateTabCount(tabManager.tabs.length);
+    });
+  }
+
+  void _onMetricsUpdate() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  @override
+  void dispose() {
+    _metricsService.removeListener(_onMetricsUpdate);
+    _searchController.dispose();
+    _searchFocusNode.dispose();
+    super.dispose();
   }
 
   Future<void> _loadQuickAccessItems() async {
@@ -164,13 +186,6 @@ class _ModernHomePageState extends State<ModernHomePage> {
         ),
       ],
     );
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    _searchFocusNode.dispose();
-    super.dispose();
   }
 
   @override
@@ -336,45 +351,66 @@ class _ModernHomePageState extends State<ModernHomePage> {
                     // Widgets système - Grille de 6 widgets
                       LayoutBuilder(
                         builder: (context, constraints) {
-                          return Wrap(
-                            spacing: 12,
-                            runSpacing: 12,
-                            children: const [
-                              _StatChip(
-                                icon: CupertinoIcons.gauge,
-                                label: 'CPU',
-                                value: '32%',
-                              ),
-                              _StatChip(
-                                icon: Icons.memory,
-                                label: 'RAM',
-                                value: '45%',
-                              ),
-                              _StatChip(
-                                icon: CupertinoIcons.waveform_path,
-                                label: 'Réseau',
-                                value: 'Stable',
-                              ),
-                              _StatChip(
-                                icon: CupertinoIcons.speedometer,
-                                label: 'GPU',
-                                value: '58°C',
-                              ),
-                              _StatChip(
-                                icon: CupertinoIcons.battery_charging,
-                                label: 'Batterie',
-                                value: '85%',
-                              ),
-                              _StatChip(
-                                icon: CupertinoIcons.globe,
-                                label: 'Onglets',
-                                value: '12',
-                              ),
-                            ],
-                          )
-                            .animate()
-                            .fadeIn(duration: 450.ms, delay: 380.ms)
-                            .slideY(begin: 0.08, end: 0);
+                          return Center(
+                            child: Wrap(
+                              alignment: WrapAlignment.center,
+                              spacing: 12,
+                              runSpacing: 12,
+                              children: [
+                                ListenableBuilder(
+                                  listenable: _metricsService,
+                                  builder: (context, _) => _StatChip(
+                                    icon: CupertinoIcons.gauge,
+                                    label: 'CPU',
+                                    value: '${_metricsService.cpuUsage.toStringAsFixed(0)}%',
+                                  ),
+                                ),
+                                ListenableBuilder(
+                                  listenable: _metricsService,
+                                  builder: (context, _) => _StatChip(
+                                    icon: Icons.memory,
+                                    label: 'RAM',
+                                    value: '${_metricsService.ramUsage.toStringAsFixed(0)}%',
+                                  ),
+                                ),
+                                ListenableBuilder(
+                                  listenable: _metricsService,
+                                  builder: (context, _) => _StatChip(
+                                    icon: CupertinoIcons.waveform_path,
+                                    label: 'Réseau',
+                                    value: _metricsService.networkStatus,
+                                  ),
+                                ),
+                                ListenableBuilder(
+                                  listenable: _metricsService,
+                                  builder: (context, _) => _StatChip(
+                                    icon: CupertinoIcons.speedometer,
+                                    label: 'GPU',
+                                    value: '${_metricsService.gpuTemp.toStringAsFixed(0)}°C',
+                                  ),
+                                ),
+                                ListenableBuilder(
+                                  listenable: _metricsService,
+                                  builder: (context, _) => _StatChip(
+                                    icon: CupertinoIcons.battery_charging,
+                                    label: 'Batterie',
+                                    value: '${_metricsService.batteryLevel.toStringAsFixed(0)}%',
+                                  ),
+                                ),
+                                ListenableBuilder(
+                                  listenable: _metricsService,
+                                  builder: (context, _) => _StatChip(
+                                    icon: CupertinoIcons.globe,
+                                    label: 'Onglets',
+                                    value: '${_metricsService.tabCount}',
+                                  ),
+                                ),
+                              ],
+                            )
+                              .animate()
+                              .fadeIn(duration: 450.ms, delay: 380.ms)
+                              .slideY(begin: 0.08, end: 0),
+                          );
                         },
                       ),
 
@@ -486,7 +522,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                                   letterSpacing: 0.3,
                                 ),
                               ),
-                              const Spacer(),
+                              const SizedBox(width: 16),
                               TextButton(
                                 onPressed: () {
                                   // Ouvrir le panel historique
@@ -544,9 +580,10 @@ class _ModernHomePageState extends State<ModernHomePage> {
                       ],
 
                       // Section Widgets système
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
+                      Center(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
                             Container(
                               width: 32,
                               height: 2,
@@ -567,34 +604,49 @@ class _ModernHomePageState extends State<ModernHomePage> {
                                 letterSpacing: 0.3,
                               ),
                             ),
-                        ],
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 18),
                       // Grille de widgets métriques
-                      GridView.count(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        crossAxisCount: 3,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        childAspectRatio: 2.5,
-                        children: const [
-                          _MetricWidget(
-                            title: 'Temps actif',
-                            value: '2h 34m',
-                            icon: CupertinoIcons.time,
+                      Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 600),
+                          child: GridView.count(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            crossAxisCount: 3,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                            childAspectRatio: 2.5,
+                            children: [
+                              ListenableBuilder(
+                                listenable: _metricsService,
+                                builder: (context, _) => _MetricWidget(
+                                  title: 'Temps actif',
+                                  value: _metricsService.formatActiveTime(),
+                                  icon: CupertinoIcons.time,
+                                ),
+                              ),
+                              ListenableBuilder(
+                                listenable: _metricsService,
+                                builder: (context, _) => _MetricWidget(
+                                  title: 'Pages visitées',
+                                  value: '${_metricsService.pagesVisited}',
+                                  icon: CupertinoIcons.doc_text,
+                                ),
+                              ),
+                              ListenableBuilder(
+                                listenable: _metricsService,
+                                builder: (context, _) => _MetricWidget(
+                                  title: 'Données utilisées',
+                                  value: _metricsService.formatDataUsed(),
+                                  icon: CupertinoIcons.cloud_download,
+                                ),
+                              ),
+                            ],
                           ),
-                          _MetricWidget(
-                            title: 'Pages visitées',
-                            value: '127',
-                            icon: CupertinoIcons.doc_text,
-                          ),
-                          _MetricWidget(
-                            title: 'Données utilisées',
-                            value: '1.2 GB',
-                            icon: CupertinoIcons.cloud_download,
-                          ),
-                        ],
+                        ),
                       ),
                       const SizedBox(height: 32),
                     ],
@@ -782,19 +834,22 @@ class _QuickAccessTileState extends State<_QuickAccessTile> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            Uri.parse(widget.item.url).host.replaceFirst(
-                                  'www.',
-                                  '',
-                                ),
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              fontSize: 11,
-                              color: theme.textTheme.bodySmall?.color
-                                  ?.withOpacity(0.6),
+                          Expanded(
+                            child: Text(
+                              Uri.parse(widget.item.url).host.replaceFirst(
+                                    'www.',
+                                    '',
+                                  ),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                fontSize: 11,
+                                color: theme.textTheme.bodySmall?.color
+                                    ?.withOpacity(0.6),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
+                          const SizedBox(width: 4),
                           Icon(
                             CupertinoIcons.chevron_right,
                             size: 14,
@@ -919,17 +974,23 @@ class _StatChip extends StatelessWidget {
             color: const Color(0xFFFF2D55),
           ),
           const SizedBox(width: 6),
-          Text(
-            '$label ',
-            style: theme.textTheme.labelSmall?.copyWith(
-              fontWeight: FontWeight.w600,
+          Flexible(
+            child: Text(
+              '$label ',
+              style: theme.textTheme.labelSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
-          Text(
-            value,
-            style: theme.textTheme.labelSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
+          Flexible(
+            child: Text(
+              value,
+              style: theme.textTheme.labelSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFFFF2D55),
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],

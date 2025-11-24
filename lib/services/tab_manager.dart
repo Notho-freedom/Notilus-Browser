@@ -3,6 +3,7 @@ import '../models/tab_model.dart';
 import '../models/tab_group_model.dart';
 import 'storage_service.dart';
 import 'tab_performance_manager.dart';
+import 'tab_grouping_service.dart';
 
 class TabManager extends ChangeNotifier {
   final List<TabModel> _tabs = [];
@@ -270,7 +271,63 @@ class TabManager extends ChangeNotifier {
       }
       _groups.removeAt(index);
       notifyListeners();
+      _save();
     }
+  }
+
+  // Gestion automatique des groupes
+  void autoGroupTabs() {
+    final suggestions = TabGroupingService.suggestGroups(_tabs);
+    
+    for (final suggestion in suggestions) {
+      // Vérifier si un groupe avec ce nom existe déjà
+      var existingGroup = _groups.firstWhere(
+        (g) => g.name == suggestion.name,
+        orElse: () => TabGroupModel(name: '', color: '#FF2D55'),
+      );
+      
+      if (existingGroup.name.isEmpty) {
+        // Créer un nouveau groupe
+        existingGroup = createGroup(
+          suggestion.name,
+          '#${suggestion.color.value.toRadixString(16).substring(2)}',
+        );
+      }
+      
+      // Ajouter les tabs au groupe
+      for (final tabId in suggestion.tabIds) {
+        if (!existingGroup.tabIds.contains(tabId)) {
+          addTabToGroup(tabId, existingGroup.id);
+        }
+      }
+    }
+    
+    notifyListeners();
+  }
+
+  // Détecter et gérer les doublons
+  void handleDuplicates() {
+    final duplicates = TabGroupingService.findDuplicates(_tabs);
+    
+    for (final dupGroup in duplicates) {
+      if (dupGroup.length > 1) {
+        // Garder le premier, fermer les autres
+        for (int i = 1; i < dupGroup.length; i++) {
+          closeTab(dupGroup[i].id);
+        }
+      }
+    }
+  }
+
+  // Réorganiser les tabs (pour drag-and-drop)
+  void reorderTab(int oldIndex, int newIndex) {
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+    final tab = _tabs.removeAt(oldIndex);
+    _tabs.insert(newIndex, tab);
+    notifyListeners();
+    _save();
   }
 }
 

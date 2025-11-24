@@ -88,18 +88,88 @@ class GXTabBar extends StatelessWidget {
                         final tab = tabManager.tabs[index];
                         final isActive = tab.isSelected;
 
-                        return _GXTabItem(
-                          tab: tab,
-                          width: tabWidth,
-                          isActive: isActive,
-                          onTap: () => tabManager.selectTab(tab.id),
-                          onClose: () {
-                            final webViewManager = Provider.of<TabWebViewManager>(
-                              context,
-                              listen: false,
+                        return DragTarget<TabModel>(
+                          onAccept: (draggedTab) {
+                            if (draggedTab.id != tab.id) {
+                              final oldIndex = tabManager.tabs.indexWhere((t) => t.id == draggedTab.id);
+                              final newIndex = index;
+                              if (oldIndex != -1) {
+                                tabManager.reorderTab(oldIndex, newIndex);
+                              }
+                            }
+                          },
+                          builder: (context, candidateData, rejectedData) {
+                            return LongPressDraggable<TabModel>(
+                              key: ValueKey(tab.id),
+                              data: tab,
+                              feedback: Material(
+                                color: Colors.transparent,
+                                child: Opacity(
+                                  opacity: 0.8,
+                                  child: Container(
+                                    width: tabWidth,
+                                    height: 32,
+                                    decoration: BoxDecoration(
+                                      color: _chromeColor,
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(
+                                        color: _gxRed,
+                                        width: 2,
+                                      ),
+                                    ),
+                                    child: _GXTabItem(
+                                      tab: tab,
+                                      width: tabWidth,
+                                      isActive: true,
+                                      onTap: () {},
+                                      onClose: () {},
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              childWhenDragging: Opacity(
+                                opacity: 0.3,
+                                child: _GXTabItem(
+                                  tab: tab,
+                                  width: tabWidth,
+                                  isActive: isActive,
+                                  onTap: () => tabManager.selectTab(tab.id),
+                                  onClose: () {
+                                    final webViewManager = Provider.of<TabWebViewManager>(
+                                      context,
+                                      listen: false,
+                                    );
+                                    webViewManager.removeEngineForTab(tab.id);
+                                    tabManager.closeTab(tab.id);
+                                  },
+                                ),
+                              ),
+                              child: Container(
+                                decoration: candidateData.isNotEmpty
+                                    ? BoxDecoration(
+                                        border: Border.all(
+                                          color: _gxRed,
+                                          width: 2,
+                                        ),
+                                        borderRadius: BorderRadius.circular(6),
+                                      )
+                                    : null,
+                                child: _GXTabItem(
+                                  tab: tab,
+                                  width: tabWidth,
+                                  isActive: isActive,
+                                  onTap: () => tabManager.selectTab(tab.id),
+                                  onClose: () {
+                                    final webViewManager = Provider.of<TabWebViewManager>(
+                                      context,
+                                      listen: false,
+                                    );
+                                    webViewManager.removeEngineForTab(tab.id);
+                                    tabManager.closeTab(tab.id);
+                                  },
+                                ),
+                              ),
                             );
-                            webViewManager.removeEngineForTab(tab.id);
-                            tabManager.closeTab(tab.id);
                           },
                         );
                       },

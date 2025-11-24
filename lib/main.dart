@@ -8,6 +8,7 @@ import 'core/services/wallpaper_manager.dart';
 import 'screens/home_screen.dart';
 import 'services/tab_manager.dart';
 import 'services/tab_webview_manager.dart';
+import 'services/system_metrics_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -59,6 +60,7 @@ class NotilusApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => WallpaperManager()),
         ChangeNotifierProvider(create: (_) => TabManager()),
         ChangeNotifierProvider(create: (_) => TabWebViewManager()),
+        ChangeNotifierProvider(create: (_) => SystemMetricsService()),
       ],
       child: Consumer<ThemeModeNotifier>(
         builder: (context, themeModeNotifier, _) {
