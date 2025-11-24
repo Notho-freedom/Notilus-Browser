@@ -18,7 +18,7 @@ import '../../core/constants/notilus_colors.dart';
 import '../../core/services/wallpaper_manager.dart';
 import '../../services/split_screen_service.dart';
 import '../../widgets/splitscreen/advanced_split_view.dart';
-import '../../services/browser_engine.dart';
+import '../../widgets/terminal/terminal_panel.dart';
 
 // Intent pour les raccourcis clavier
 class _OpenDevToolsIntent extends Intent {}
@@ -180,7 +180,13 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                               activeTab.url!.isEmpty ||
                               activeTab.url == 'about:blank' ||
                               activeTab.url == 'about:newtab') {
-                            return const ModernHomePage();
+                            return ModernHomePage(
+                              onTerminalSelected: () {
+                                setState(() {
+                                  _currentSection = SidebarSection.terminal;
+                                });
+                              },
+                            );
                           }
                           return WebContentView(tab: activeTab);
                         },
@@ -368,6 +374,12 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
           title: 'Mises à jour',
           icon: CupertinoIcons.arrow_up_circle,
           child: const _NotilusUpdatesPanel(),
+        );
+      case SidebarSection.terminal:
+        return _SidebarPanelConfig(
+          title: 'Terminal',
+          icon: CupertinoIcons.square_list,
+          child: const TerminalPanel(),
         );
       case SidebarSection.youtubeMusic:
         return _SidebarPanelConfig(

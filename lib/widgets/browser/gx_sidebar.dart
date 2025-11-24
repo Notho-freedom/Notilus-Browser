@@ -17,6 +17,7 @@ enum SidebarSection {
   ai,
   settings,
   updates,
+  terminal,
   youtubeMusic,
   youtube,
   chatgpt,
