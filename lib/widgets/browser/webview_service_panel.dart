@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
-import '../../services/tab_manager.dart';
+import 'dart:io' show Platform;
+import 'package:webview_windows/webview_windows.dart';
+import '../../services/side_webview_manager.dart';
 import '../../core/services/wallpaper_manager.dart';
-import 'web_content_view.dart';
 
 class WebViewServicePanel extends StatefulWidget {
   final String url;
@@ -24,22 +26,62 @@ class WebViewServicePanel extends StatefulWidget {
 }
 
 class _WebViewServicePanelState extends State<WebViewServicePanel> {
-  String? _tabId;
+  WebviewController? _webView;
+  bool _isLoading = true;
+  String? _currentUrl;
+  String? _currentTitle;
+  String? _panelId;
 
   @override
   void initState() {
     super.initState();
-    _createServiceTab();
+    _panelId = 'side_panel_${widget.url.hashCode}';
+    _initializeWebView();
   }
 
-  void _createServiceTab() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final tabManager = Provider.of<TabManager>(context, listen: false);
-      final tab = tabManager.addTab(url: widget.url);
+  Future<void> _initializeWebView() async {
+    if (!Platform.isWindows) {
       setState(() {
-        _tabId = tab.id;
+        _isLoading = false;
       });
-    });
+      return;
+    }
+
+    try {
+      final sideWebViewManager = Provider.of<SideWebViewManager>(context, listen: false);
+      final engine = sideWebViewManager.getEngineForPanel(_panelId!);
+      
+      // Initialiser le moteur
+      await engine.initialize();
+      
+      // Récupérer le WebView2 controller
+      final controller = await engine.getController();
+      if (controller != null && controller is WebviewController) {
+        setState(() {
+          _webView = controller as WebviewController;
+        });
+        
+        // Naviguer vers l'URL
+        await engine.navigate(widget.url);
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error initializing side webview: $e');
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    if (_panelId != null) {
+      final sideWebViewManager = Provider.of<SideWebViewManager>(context, listen: false);
+      sideWebViewManager.removeEngineForPanel(_panelId!);
+    }
+    super.dispose();
   }
 
   @override
@@ -103,20 +145,18 @@ class _WebViewServicePanelState extends State<WebViewServicePanel> {
             ),
             // WebView content
             Expanded(
-              child: Consumer<TabManager>(
-                builder: (context, tabManager, _) {
-                  if (_tabId == null) {
-                    return const Center(
+              child: _isLoading
+                  ? const Center(
                       child: CircularProgressIndicator(),
-                    );
-                  }
-                  final tab = tabManager.tabs.firstWhere(
-                    (t) => t.id == _tabId,
-                    orElse: () => tabManager.tabs.first,
-                  );
-                  return WebContentView(tab: tab);
-                },
-              ),
+                    )
+                  : (!Platform.isWindows || _webView == null)
+                      ? Center(
+                          child: Text(
+                            'WebView2 non supporté sur cette plateforme',
+                            style: theme.textTheme.bodySmall,
+                          ),
+                        )
+                      : Webview(_webView!),
             ),
           ],
         ),

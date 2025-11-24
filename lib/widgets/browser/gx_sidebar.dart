@@ -80,43 +80,43 @@ class _GXSidebarState extends State<GXSidebar> {
     ),
   ];
 
-  // Services web avec webview
+  // Services web avec webview - tous en rouge GX
   final List<_WebServiceDestination> _webServices = const [
     _WebServiceDestination(
       url: 'https://music.youtube.com',
       icon: CupertinoIcons.music_note,
       label: 'YouTube Music',
-      color: Color(0xFFFF0000),
+      color: _gxRed,
     ),
     _WebServiceDestination(
       url: 'https://www.youtube.com',
       icon: CupertinoIcons.play_circle,
       label: 'YouTube',
-      color: Color(0xFFFF0000),
+      color: _gxRed,
     ),
     _WebServiceDestination(
       url: 'https://chat.openai.com',
       icon: CupertinoIcons.chat_bubble_2,
       label: 'ChatGPT',
-      color: Color(0xFF10A37F),
+      color: _gxRed,
     ),
     _WebServiceDestination(
       url: 'https://chat.deepseek.com',
       icon: CupertinoIcons.sparkles,
       label: 'DeepSeek',
-      color: Color(0xFF00A8FF),
+      color: _gxRed,
     ),
     _WebServiceDestination(
       url: 'https://web.whatsapp.com',
       icon: CupertinoIcons.chat_bubble_text,
       label: 'WhatsApp',
-      color: Color(0xFF25D366),
+      color: _gxRed,
     ),
     _WebServiceDestination(
       url: 'https://web.telegram.org',
       icon: CupertinoIcons.paperplane,
       label: 'Telegram',
-      color: Color(0xFF0088CC),
+      color: _gxRed,
     ),
   ];
 

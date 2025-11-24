@@ -28,6 +28,8 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
   SidebarSection _currentSection = SidebarSection.home;
   late AnimationController _sidebarAnimationController;
   late Animation<double> _sidebarAnimation;
+  double _sideMenuWidth = 380.0;
+  bool _isResizing = false;
 
   @override
   void initState() {
@@ -151,11 +153,54 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                     left: 0,
                     top: 0,
                     bottom: 0,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeOutCubic,
-                      width: 380,
-                      child: _buildSideMenu(context),
+                    child: Stack(
+                      children: [
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeOutCubic,
+                          width: _sideMenuWidth,
+                          child: _buildSideMenu(context),
+                        ),
+                        // Drag handle pour redimensionner
+                        Positioned(
+                          right: 0,
+                          top: 0,
+                          bottom: 0,
+                          child: GestureDetector(
+                            onPanStart: (_) {
+                              setState(() {
+                                _isResizing = true;
+                              });
+                            },
+                            onPanUpdate: (details) {
+                              setState(() {
+                                _sideMenuWidth = (_sideMenuWidth - details.delta.dx).clamp(200.0, 800.0);
+                              });
+                            },
+                            onPanEnd: (_) {
+                              setState(() {
+                                _isResizing = false;
+                              });
+                            },
+                            child: MouseRegion(
+                              cursor: SystemMouseCursors.resizeColumn,
+                              child: Container(
+                                width: 4,
+                                color: _isResizing
+                                    ? const Color(0xFFFF2D55).withOpacity(0.8)
+                                    : Colors.transparent,
+                                child: Container(
+                                  margin: const EdgeInsets.symmetric(vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFF2D55).withOpacity(0.3),
+                                    borderRadius: BorderRadius.circular(2),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
               ],
