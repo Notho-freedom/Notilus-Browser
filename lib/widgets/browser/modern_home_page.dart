@@ -698,8 +698,10 @@ class _ModernHomePageState extends State<ModernHomePage> {
           ],
             ),
             // Label gauche - toujours visible, collé à la sidebar en collapse
-            Positioned(
-              left: _leftColumnExpanded ? 280 : 56, // 56px = largeur de la sidebar (48px) + marge
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 450),
+              curve: Curves.easeOutCubic,
+              left: _leftColumnExpanded ? 280 : 48, // 48px = largeur exacte de la sidebar
               top: 0,
               bottom: 0,
               child: GestureDetector(
@@ -741,7 +743,9 @@ class _ModernHomePageState extends State<ModernHomePage> {
               ),
             ),
             // Label droit - toujours visible, collé au bord droit de l'écran
-            Positioned(
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 450),
+              curve: Curves.easeOutCubic,
               right: _rightColumnExpanded ? 280 : 0,
               top: 0,
               bottom: 0,
@@ -794,8 +798,8 @@ class _ModernHomePageState extends State<ModernHomePage> {
       clipBehavior: Clip.none,
       children: [
         AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOutCubic,
+          duration: const Duration(milliseconds: 450),
+          curve: Curves.easeOutCubic,
           width: _leftColumnExpanded ? 280 : 0,
           padding: _leftColumnExpanded
               ? const EdgeInsets.symmetric(horizontal: 16, vertical: 24)
@@ -913,8 +917,8 @@ class _ModernHomePageState extends State<ModernHomePage> {
       clipBehavior: Clip.none,
       children: [
         AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOutCubic,
+          duration: const Duration(milliseconds: 450),
+          curve: Curves.easeOutCubic,
           width: _rightColumnExpanded ? 280 : 0,
           padding: _rightColumnExpanded
               ? const EdgeInsets.symmetric(horizontal: 16, vertical: 24)

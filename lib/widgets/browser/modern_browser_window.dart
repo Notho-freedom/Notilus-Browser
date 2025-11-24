@@ -156,7 +156,7 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                     child: Stack(
                       children: [
                         AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
+                          duration: const Duration(milliseconds: 450),
                           curve: Curves.easeOutCubic,
                           width: _sideMenuWidth,
                           child: _buildSideMenu(context),
