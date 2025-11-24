@@ -120,7 +120,7 @@ class GXTabBar extends StatelessWidget {
                                 key: ValueKey(tab.id),
                                 data: tab,
                                 dragAnchorStrategy: pointerDragAnchorStrategy,
-                                delay: const Duration(milliseconds: 100),
+                                delay: const Duration(milliseconds: 300), // Délai raisonnable pour permettre les clics
                                 feedback: Material(
                                   color: Colors.transparent,
                                   child: Transform.scale(
