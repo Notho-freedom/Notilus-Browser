@@ -698,10 +698,12 @@ class _ModernHomePageState extends State<ModernHomePage> {
           ],
             ),
             // Label gauche - toujours visible, collé à la sidebar en collapse
+            // Le label est dans ModernHomePage qui commence après la sidebar (48px)
+            // Donc left: 0 = collé à la sidebar, left: 280 = après la colonne expanded
             AnimatedPositioned(
               duration: const Duration(milliseconds: 450),
               curve: Curves.easeOutCubic,
-              left: _leftColumnExpanded ? 280 : 48, // 48px = largeur exacte de la sidebar
+              left: _leftColumnExpanded ? 280 : 0, // 0 = collé directement à la sidebar (qui est à 48px du bord de la fenêtre)
               top: 0,
               bottom: 0,
               child: GestureDetector(
