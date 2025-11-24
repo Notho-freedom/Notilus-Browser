@@ -114,38 +114,48 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
               },
             ),
 
-            // Menu latéral qui s'étend depuis la sidebar
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOutCubic,
-              width: _isPanelVisible ? 380 : 0,
-              child: _isPanelVisible ? _buildSideMenu(context) : null,
-            ),
-
-          // Zone principale
+          // Zone principale avec sidemenu en position absolue
           Expanded(
-            child: Column(
+            child: Stack(
+              clipBehavior: Clip.none,
               children: [
-                GXTabBar(
-                  onMenuTap: _toggleSidebar,
-                  isSidebarVisible: _isSidebarVisible,
+                Column(
+                  children: [
+                    GXTabBar(
+                      onMenuTap: _toggleSidebar,
+                      isSidebarVisible: _isSidebarVisible,
+                    ),
+                    const GXAddressBar(),
+                    Expanded(
+                      child: Consumer<TabManager>(
+                        builder: (context, tabManager, _) {
+                          final activeTab = tabManager.activeTab;
+                          if (activeTab == null ||
+                              activeTab.url == null ||
+                              activeTab.url!.isEmpty ||
+                              activeTab.url == 'about:blank' ||
+                              activeTab.url == 'about:newtab') {
+                            return const ModernHomePage();
+                          }
+                          return WebContentView(tab: activeTab);
+                        },
+                      ),
+                    ),
+                  ],
                 ),
-                const GXAddressBar(),
-                Expanded(
-                  child: Consumer<TabManager>(
-                    builder: (context, tabManager, _) {
-                      final activeTab = tabManager.activeTab;
-                      if (activeTab == null ||
-                          activeTab.url == null ||
-                          activeTab.url!.isEmpty ||
-                          activeTab.url == 'about:blank' ||
-                          activeTab.url == 'about:newtab') {
-                        return const ModernHomePage();
-                      }
-                      return WebContentView(tab: activeTab);
-                    },
+                // Menu latéral en position absolue à droite de la sidebar
+                if (_isPanelVisible)
+                  Positioned(
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOutCubic,
+                      width: 380,
+                      child: _buildSideMenu(context),
+                    ),
                   ),
-                ),
               ],
             ),
           ),
