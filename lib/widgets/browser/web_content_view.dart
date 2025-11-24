@@ -60,6 +60,11 @@ class _WebContentViewState extends State<WebContentView> {
     final engine = webViewManager.getEngineForTab(widget.tab!.id, url: widget.tab!.url);
     
     // Configurer les callbacks
+    engine.onNewWindowRequest = (url) {
+      // Créer un nouvel onglet pour les liens target="_blank"
+      tabManager.createNewTab(url: url);
+    };
+    
     engine.onUrlChanged = (url) {
       if (mounted) {
         setState(() {

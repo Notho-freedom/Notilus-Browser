@@ -49,7 +49,8 @@ abstract class BrowserEngine {
   Function(String)? onTitleChanged;
   Function(bool)? onCanGoBackChanged;
   Function(bool)? onCanGoForwardChanged;
-  Function(dynamic)? onStateChanged; // TabState importé dynamiquement
+  Function(dynamic)? onStateChanged; // TabState
+  Function(String)? onNewWindowRequest; // Pour les liens target="_blank" importé dynamiquement
 }
 
 /// Implémentation placeholder

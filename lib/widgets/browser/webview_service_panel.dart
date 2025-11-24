@@ -108,64 +108,18 @@ class _WebViewServicePanelState extends State<WebViewServicePanel> {
       ),
       child: Container(
         color: Colors.black.withOpacity(0.5),
-        child: Column(
-          children: [
-            // Header
-            Container(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-              decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(
-                    color: widget.color.withOpacity(0.3),
-                    width: 1,
-                  ),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: widget.color.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      widget.icon,
-                      color: widget.color,
-                      size: 18,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
+        child: _isLoading
+            ? const Center(
+                child: CircularProgressIndicator(),
+              )
+            : (!Platform.isWindows || _webView == null)
+                ? Center(
                     child: Text(
-                      widget.title,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
+                      'WebView2 non supporté sur cette plateforme',
+                      style: theme.textTheme.bodySmall,
                     ),
-                  ),
-                ],
-              ),
-            ),
-            // WebView content
-            Expanded(
-              child: _isLoading
-                  ? const Center(
-                      child: CircularProgressIndicator(),
-                    )
-                  : (!Platform.isWindows || _webView == null)
-                      ? Center(
-                          child: Text(
-                            'WebView2 non supporté sur cette plateforme',
-                            style: theme.textTheme.bodySmall,
-                          ),
-                        )
-                      : Webview(_webView!),
-            ),
-          ],
-        ),
+                  )
+                : Webview(_webView!),
       ),
     );
   }

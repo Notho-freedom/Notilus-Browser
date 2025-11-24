@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:webview_windows/webview_windows.dart';
 import 'browser_engine.dart';
@@ -28,8 +29,12 @@ class WebView2BrowserEngine extends BrowserEngine {
   
   @override
   Function(dynamic)? onStateChanged; // TabState
+  
+  @override
+  Function(String)? onNewWindowRequest;
 
   bool _isInitialized = false;
+  Timer? _newWindowPollingTimer;
 
   @override
   Future<void> initialize() async {
@@ -45,6 +50,45 @@ class WebView2BrowserEngine extends BrowserEngine {
         _currentUrl = url;
         onStateChanged?.call(TabState.loaded);
         onUrlChanged?.call(url);
+        
+        // Injecter le handler pour les nouvelles fenêtres après chaque navigation
+        if (onNewWindowRequest != null && url.isNotEmpty && url != 'about:blank') {
+          Future.delayed(const Duration(milliseconds: 1500), () async {
+            try {
+              await _webView!.executeScript('''
+                (function() {
+                  // Intercepter les clics sur les liens target="_blank"
+                  var handler = function(e) {
+                    var target = e.target;
+                    while (target && target.tagName !== 'A') {
+                      target = target.parentElement;
+                    }
+                    if (target && (target.target === '_blank' || target.getAttribute('target') === '_blank')) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      // Stocker l'URL dans un attribut data pour récupération
+                      if (document.body) {
+                        document.body.setAttribute('data-new-window-url', target.href);
+                      }
+                      return false;
+                    }
+                  };
+                  // Supprimer l'ancien handler s'il existe
+                  if (window._flutterNewWindowHandler) {
+                    document.removeEventListener('click', window._flutterNewWindowHandler, true);
+                  }
+                  window._flutterNewWindowHandler = handler;
+                  document.addEventListener('click', handler, true);
+                })();
+              ''');
+              
+              // Démarrer le polling pour détecter les nouvelles fenêtres
+              _startNewWindowPolling();
+            } catch (e) {
+              debugPrint('Error injecting new window handler: $e');
+            }
+          });
+        }
       });
       
       _webView!.title.listen((title) {
@@ -75,6 +119,10 @@ class WebView2BrowserEngine extends BrowserEngine {
       _webView!.onLoadError.listen((error) {
         onStateChanged?.call(TabState.error);
       });
+      
+      // Gérer les nouvelles fenêtres (liens target="_blank")
+      // webview_windows n'a pas onNewWindowRequest, on utilise une injection JavaScript
+      // L'injection sera faite après chaque navigation dans la méthode navigate()
       
     } catch (e) {
       debugPrint('WebView2 initialization error: $e');
@@ -230,7 +278,50 @@ class WebView2BrowserEngine extends BrowserEngine {
     return _webView;
   }
 
+  /// Démarre le polling pour détecter les nouvelles fenêtres
+  void _startNewWindowPolling() {
+    _newWindowPollingTimer?.cancel();
+    _newWindowPollingTimer = Timer.periodic(const Duration(milliseconds: 500), (_) {
+      _checkForNewWindowRequests();
+    });
+  }
+  
+  /// Arrête le polling
+  void _stopNewWindowPolling() {
+    _newWindowPollingTimer?.cancel();
+    _newWindowPollingTimer = null;
+  }
+  
+  /// Vérifie périodiquement si une nouvelle fenêtre a été demandée
+  /// (utilisé comme fallback si onNewWindowRequest n'est pas disponible)
+  Future<void> _checkForNewWindowRequests() async {
+    if (_webView == null || onNewWindowRequest == null) return;
+    
+    try {
+      // Vérifier si une URL a été stockée dans l'attribut data
+      final result = await _webView!.executeScript('''
+        (function() {
+          if (!document.body) return null;
+          var url = document.body.getAttribute('data-new-window-url');
+          if (url) {
+            document.body.removeAttribute('data-new-window-url');
+            return url;
+          }
+          return null;
+        })();
+      ''');
+      
+      if (result != null && result is String && result.isNotEmpty) {
+        debugPrint('Nouvelle fenêtre détectée via JavaScript: $result');
+        onNewWindowRequest?.call(result);
+      }
+    } catch (e) {
+      // Ignorer les erreurs silencieusement
+    }
+  }
+
   void dispose() {
+    _stopNewWindowPolling();
     _webView?.dispose();
     _webView = null;
   }

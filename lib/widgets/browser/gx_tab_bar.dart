@@ -74,137 +74,142 @@ class GXTabBar extends StatelessWidget {
                         .clamp(110, 210)
                         .toDouble();
 
-                    return ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      itemCount: tabManager.tabs.length + 1,
-                      itemBuilder: (context, index) {
-                        if (index == tabManager.tabs.length) {
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            child: _GXTabBarIconButton(
-                              icon: CupertinoIcons.add,
-                              tooltip: 'Nouvel onglet',
-                              compact: true,
-                              onPressed: () => tabManager.createNewTab(),
-                            ),
-                          );
-                        }
+                    return Scrollbar(
+                      thickness: 2,
+                      radius: const Radius.circular(1),
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        itemCount: tabManager.tabs.length + 1,
+                        itemBuilder: (context, index) {
+                          if (index == tabManager.tabs.length) {
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              child: _GXTabBarIconButton(
+                                icon: CupertinoIcons.add,
+                                tooltip: 'Nouvel onglet',
+                                compact: true,
+                                onPressed: () => tabManager.createNewTab(),
+                              ),
+                            );
+                          }
 
-                        final tab = tabManager.tabs[index];
-                        final isActive = tab.isSelected;
+                          final tab = tabManager.tabs[index];
+                          final isActive = tab.isSelected;
 
-                        return DragTarget<TabModel>(
-                          onWillAccept: (data) => data != null && data.id != tab.id,
-                          onAccept: (draggedTab) {
-                            if (draggedTab.id != tab.id) {
-                              final oldIndex = tabManager.tabs.indexWhere((t) => t.id == draggedTab.id);
-                              final newIndex = index;
-                              if (oldIndex != -1) {
-                                tabManager.reorderTab(oldIndex, newIndex);
-                                HapticFeedback.mediumImpact();
+                          return DragTarget<TabModel>(
+                            onWillAccept: (data) => data != null && data.id != tab.id,
+                            onAccept: (draggedTab) {
+                              if (draggedTab.id != tab.id) {
+                                final oldIndex = tabManager.tabs.indexWhere((t) => t.id == draggedTab.id);
+                                final newIndex = index;
+                                if (oldIndex != -1) {
+                                  tabManager.reorderTab(oldIndex, newIndex);
+                                  HapticFeedback.mediumImpact();
+                                }
                               }
-                            }
-                          },
-                          onMove: (details) {
-                            // Feedback visuel pendant le drag
-                          },
-                          onLeave: (data) {
-                            // Feedback visuel quand on quitte la zone
-                          },
-                          builder: (context, candidateData, rejectedData) {
-                            return LongPressDraggable<TabModel>(
-                              key: ValueKey(tab.id),
-                              data: tab,
-                              dragAnchorStrategy: pointerDragAnchorStrategy,
-                              feedback: Material(
-                                color: Colors.transparent,
-                                child: Transform.scale(
-                                  scale: 1.05,
-                                  child: Container(
-                                    width: tabWidth,
-                                    height: 32,
-                                    decoration: BoxDecoration(
-                                      color: _chromeColor,
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(
-                                        color: _gxRed,
-                                        width: 2.5,
-                                      ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: _gxRed.withOpacity(0.5),
-                                          blurRadius: 12,
-                                          spreadRadius: 2,
-                                        ),
-                                      ],
-                                    ),
-                                    child: _GXTabItem(
-                                      tab: tab,
+                            },
+                            onMove: (details) {
+                              // Feedback visuel pendant le drag
+                            },
+                            onLeave: (data) {
+                              // Feedback visuel quand on quitte la zone
+                            },
+                            builder: (context, candidateData, rejectedData) {
+                              return LongPressDraggable<TabModel>(
+                                key: ValueKey(tab.id),
+                                data: tab,
+                                dragAnchorStrategy: pointerDragAnchorStrategy,
+                                delay: const Duration(milliseconds: 100),
+                                feedback: Material(
+                                  color: Colors.transparent,
+                                  child: Transform.scale(
+                                    scale: 1.05,
+                                    child: Container(
                                       width: tabWidth,
-                                      isActive: true,
-                                      onTap: () {},
-                                      onClose: () {},
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              childWhenDragging: AnimatedOpacity(
-                                opacity: 0.2,
-                                duration: const Duration(milliseconds: 200),
-                                child: _GXTabItem(
-                                  tab: tab,
-                                  width: tabWidth,
-                                  isActive: isActive,
-                                  onTap: () => tabManager.selectTab(tab.id),
-                                  onClose: () {
-                                    final webViewManager = Provider.of<TabWebViewManager>(
-                                      context,
-                                      listen: false,
-                                    );
-                                    webViewManager.removeEngineForTab(tab.id);
-                                    tabManager.closeTab(tab.id);
-                                  },
-                                ),
-                              ),
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                curve: Curves.easeOutCubic,
-                                decoration: candidateData.isNotEmpty
-                                    ? BoxDecoration(
+                                      height: 32,
+                                      decoration: BoxDecoration(
+                                        color: _chromeColor,
+                                        borderRadius: BorderRadius.circular(8),
                                         border: Border.all(
                                           color: _gxRed,
                                           width: 2.5,
                                         ),
-                                        borderRadius: BorderRadius.circular(6),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: _gxRed.withOpacity(0.3),
-                                            blurRadius: 8,
-                                            spreadRadius: 1,
+                                            color: _gxRed.withOpacity(0.5),
+                                            blurRadius: 12,
+                                            spreadRadius: 2,
                                           ),
                                         ],
-                                      )
-                                    : null,
-                                child: _GXTabItem(
-                                  tab: tab,
-                                  width: tabWidth,
-                                  isActive: isActive,
-                                  onTap: () => tabManager.selectTab(tab.id),
-                                  onClose: () {
-                                    final webViewManager = Provider.of<TabWebViewManager>(
-                                      context,
-                                      listen: false,
-                                    );
-                                    webViewManager.removeEngineForTab(tab.id);
-                                    tabManager.closeTab(tab.id);
-                                  },
+                                      ),
+                                      child: _GXTabItem(
+                                        tab: tab,
+                                        width: tabWidth,
+                                        isActive: true,
+                                        onTap: () {},
+                                        onClose: () {},
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            );
-                          },
-                        );
-                      },
+                                childWhenDragging: AnimatedOpacity(
+                                  opacity: 0.2,
+                                  duration: const Duration(milliseconds: 200),
+                                  child: _GXTabItem(
+                                    tab: tab,
+                                    width: tabWidth,
+                                    isActive: isActive,
+                                    onTap: () => tabManager.selectTab(tab.id),
+                                    onClose: () {
+                                      final webViewManager = Provider.of<TabWebViewManager>(
+                                        context,
+                                        listen: false,
+                                      );
+                                      webViewManager.removeEngineForTab(tab.id);
+                                      tabManager.closeTab(tab.id);
+                                    },
+                                  ),
+                                ),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  curve: Curves.easeOutCubic,
+                                  decoration: candidateData.isNotEmpty
+                                      ? BoxDecoration(
+                                          border: Border.all(
+                                            color: _gxRed,
+                                            width: 2.5,
+                                          ),
+                                          borderRadius: BorderRadius.circular(6),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: _gxRed.withOpacity(0.3),
+                                              blurRadius: 8,
+                                              spreadRadius: 1,
+                                            ),
+                                          ],
+                                        )
+                                      : null,
+                                  child: _GXTabItem(
+                                    tab: tab,
+                                    width: tabWidth,
+                                    isActive: isActive,
+                                    onTap: () => tabManager.selectTab(tab.id),
+                                    onClose: () {
+                                      final webViewManager = Provider.of<TabWebViewManager>(
+                                        context,
+                                        listen: false,
+                                      );
+                                      webViewManager.removeEngineForTab(tab.id);
+                                      tabManager.closeTab(tab.id);
+                                    },
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
                     );
                   },
                 );

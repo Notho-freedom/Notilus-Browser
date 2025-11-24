@@ -170,11 +170,63 @@ class _AdvancedSplitPaneState extends State<AdvancedSplitPane> {
                       .slideY(begin: -0.1, end: 0, duration: 200.ms, curve: Curves.easeOutCubic),
                 ),
 
-              // Détecteur de survol
-              MouseRegion(
-                onEnter: (_) => setState(() => _isHovered = true),
-                onExit: (_) => setState(() => _isHovered = false),
-                child: Container(color: Colors.transparent),
+              // Détecteur de survol (uniquement sur les bords, pas sur le contenu)
+              // Utiliser Positioned pour ne couvrir que les bords
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 8,
+                child: MouseRegion(
+                  onEnter: (_) => setState(() => _isHovered = true),
+                  onExit: (_) => setState(() => _isHovered = false),
+                  child: IgnorePointer(
+                    ignoring: true,
+                    child: Container(color: Colors.transparent),
+                  ),
+                ),
+              ),
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: 8,
+                child: MouseRegion(
+                  onEnter: (_) => setState(() => _isHovered = true),
+                  onExit: (_) => setState(() => _isHovered = false),
+                  child: IgnorePointer(
+                    ignoring: true,
+                    child: Container(color: Colors.transparent),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 0,
+                left: 0,
+                bottom: 0,
+                width: 8,
+                child: MouseRegion(
+                  onEnter: (_) => setState(() => _isHovered = true),
+                  onExit: (_) => setState(() => _isHovered = false),
+                  child: IgnorePointer(
+                    ignoring: true,
+                    child: Container(color: Colors.transparent),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 0,
+                right: 0,
+                bottom: 0,
+                width: 8,
+                child: MouseRegion(
+                  onEnter: (_) => setState(() => _isHovered = true),
+                  onExit: (_) => setState(() => _isHovered = false),
+                  child: IgnorePointer(
+                    ignoring: true,
+                    child: Container(color: Colors.transparent),
+                  ),
+                ),
               ),
             ],
           ),

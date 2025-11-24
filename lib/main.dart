@@ -73,16 +73,20 @@ class NotilusApp extends StatelessWidget {
             debugShowCheckedModeBanner: false,
             theme: ModernTheme.lightTheme.copyWith(
               scrollbarTheme: const ScrollbarThemeData(
-                thumbVisibility: MaterialStatePropertyAll<bool>(false),
+                thumbVisibility: MaterialStatePropertyAll<bool>(true),
                 trackVisibility: MaterialStatePropertyAll<bool>(false),
-                thickness: MaterialStatePropertyAll<double>(0),
+                thickness: MaterialStatePropertyAll<double>(2),
+                radius: Radius.circular(1),
+                minThumbLength: 20,
               ),
             ),
             darkTheme: ModernDarkTheme.darkTheme.copyWith(
               scrollbarTheme: const ScrollbarThemeData(
-                thumbVisibility: MaterialStatePropertyAll<bool>(false),
+                thumbVisibility: MaterialStatePropertyAll<bool>(true),
                 trackVisibility: MaterialStatePropertyAll<bool>(false),
-                thickness: MaterialStatePropertyAll<double>(0),
+                thickness: MaterialStatePropertyAll<double>(2),
+                radius: Radius.circular(1),
+                minThumbLength: 20,
               ),
             ),
             themeMode: themeModeNotifier.mode,
