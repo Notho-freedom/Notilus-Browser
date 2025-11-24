@@ -247,21 +247,23 @@ class _ModernHomePageState extends State<ModernHomePage> {
         ),
       ),
       child: SafeArea(
-        child: Row(
+        child: Stack(
           children: [
-            // Colonne gauche - Widgets dev
-            _buildLeftColumn(context, theme),
-            
-            // Contenu central - recentré sans limiter la largeur
-            Expanded(
-              child: Center(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      const SizedBox(height: 40),
+            Row(
+              children: [
+                // Colonne gauche - Widgets dev
+                _buildLeftColumn(context, theme),
+                
+                // Contenu central - recentré sans limiter la largeur
+                Expanded(
+                  child: Center(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          const SizedBox(height: 40),
 
                     // Logo + titre
                     Column(
@@ -694,6 +696,94 @@ class _ModernHomePageState extends State<ModernHomePage> {
             // Colonne droite - Widgets dev
             _buildRightColumn(context, theme),
           ],
+            ),
+            // Label gauche - toujours visible, collé à la sidebar en collapse
+            Positioned(
+              left: _leftColumnExpanded ? 280 : 56, // 56px = largeur de la sidebar (48px) + marge
+              top: 0,
+              bottom: 0,
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _leftColumnExpanded = !_leftColumnExpanded;
+                  });
+                  _saveColumnStates();
+                },
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: Container(
+                    width: 20,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.3),
+                      border: Border(
+                        left: BorderSide(
+                          color: const Color(0xFFFF2D55).withOpacity(0.5),
+                          width: 1,
+                        ),
+                      ),
+                    ),
+                    child: Center(
+                      child: RotatedBox(
+                        quarterTurns: 1,
+                        child: Text(
+                          'DEV TOOLS',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            letterSpacing: 2,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFFFF2D55),
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            // Label droit - toujours visible, collé au bord droit de l'écran
+            Positioned(
+              right: _rightColumnExpanded ? 280 : 0,
+              top: 0,
+              bottom: 0,
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _rightColumnExpanded = !_rightColumnExpanded;
+                  });
+                  _saveColumnStates();
+                },
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: Container(
+                    width: 20,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.3),
+                      border: Border(
+                        right: BorderSide(
+                          color: const Color(0xFFFF2D55).withOpacity(0.5),
+                          width: 1,
+                        ),
+                      ),
+                    ),
+                    child: Center(
+                      child: RotatedBox(
+                        quarterTurns: 1,
+                        child: Text(
+                          'QUICK ACTIONS',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            letterSpacing: 2,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFFFF2D55),
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -814,50 +904,6 @@ class _ModernHomePageState extends State<ModernHomePage> {
                 )
               : const SizedBox.shrink(),
         ),
-        // Label vertical sur la face droite de la colonne gauche, pointant vers le centre
-        // Toujours visible, attaché au bord droit de la colonne
-        Positioned(
-          left: 280,
-          top: 0,
-          bottom: 0,
-          child: GestureDetector(
-            onTap: () {
-              setState(() {
-                _leftColumnExpanded = !_leftColumnExpanded;
-              });
-              _saveColumnStates();
-            },
-            child: MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: Container(
-                width: 20,
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.3),
-                  border: Border(
-                    left: BorderSide(
-                      color: const Color(0xFFFF2D55).withOpacity(0.5),
-                      width: 1,
-                    ),
-                  ),
-                ),
-                child: Center(
-                  child: RotatedBox(
-                    quarterTurns: 1,
-                    child: Text(
-                      'DEV TOOLS',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        letterSpacing: 2,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFFFF2D55),
-                        fontSize: 10,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
       ],
     );
   }
@@ -976,50 +1022,6 @@ class _ModernHomePageState extends State<ModernHomePage> {
                   ],
                 )
               : const SizedBox.shrink(),
-        ),
-        // Label vertical sur la face gauche de la colonne droite, pointant vers le centre
-        // Toujours visible, attaché au bord gauche de la colonne
-        Positioned(
-          right: 280,
-          top: 0,
-          bottom: 0,
-          child: GestureDetector(
-            onTap: () {
-              setState(() {
-                _rightColumnExpanded = !_rightColumnExpanded;
-              });
-              _saveColumnStates();
-            },
-            child: MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: Container(
-                width: 20,
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.3),
-                  border: Border(
-                    right: BorderSide(
-                      color: const Color(0xFFFF2D55).withOpacity(0.5),
-                      width: 1,
-                    ),
-                  ),
-                ),
-                child: Center(
-                  child: RotatedBox(
-                    quarterTurns: 1,
-                    child: Text(
-                      'QUICK ACTIONS',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        letterSpacing: 2,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFFFF2D55),
-                        fontSize: 10,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
         ),
       ],
     );
