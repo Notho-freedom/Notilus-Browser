@@ -51,13 +51,13 @@ class _ModernDownloadsPanelState extends State<ModernDownloadsPanel> {
           image: NetworkImage(context.watch<WallpaperManager>().current),
           fit: BoxFit.cover,
           colorFilter: ColorFilter.mode(
-            Colors.black.withOpacity(0.8),
+            Colors.black.withOpacity(0.85),
             BlendMode.srcOver,
           ),
         ),
       ),
       child: Container(
-        color: Colors.black.withOpacity(0.6),
+        color: Colors.black.withOpacity(0.5),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -68,7 +68,8 @@ class _ModernDownloadsPanelState extends State<ModernDownloadsPanel> {
                   Expanded(
                     child: Text(
                       'Téléchargements',
-                      style: theme.textTheme.headlineSmall?.copyWith(
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontSize: 13,
                         fontWeight: FontWeight.w600,
                       ),
                       overflow: TextOverflow.ellipsis,
@@ -111,16 +112,17 @@ class _ModernDownloadsPanelState extends State<ModernDownloadsPanel> {
                         final item = _downloads[index];
                         return ListTile(
                           dense: true,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                           leading: Container(
-                            width: 28,
-                            height: 28,
+                            width: 24,
+                            height: 24,
                             decoration: BoxDecoration(
                               color: theme.colorScheme.primary.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(6),
                             ),
                             child: Icon(
                               Icons.file_download,
-                              size: 16,
+                              size: 14,
                               color: theme.colorScheme.primary,
                             ),
                           ),
@@ -128,13 +130,17 @@ class _ModernDownloadsPanelState extends State<ModernDownloadsPanel> {
                             item.fileName,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontSize: 12,
+                            ),
                           ),
                           subtitle: Text(
                             '${item.sizeLabel} • ${item.status}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.textTheme.bodySmall?.color?.withOpacity(0.7),
+                              fontSize: 10,
+                              color: theme.textTheme.bodySmall?.color?.withOpacity(0.6),
                             ),
                           ),
                           trailing: IconButton(

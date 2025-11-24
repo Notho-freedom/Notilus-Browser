@@ -12,6 +12,7 @@ import 'modern_bookmarks_panel.dart';
 import 'modern_downloads_panel.dart';
 import 'modern_settings_panel.dart';
 import '../../core/constants/notilus_colors.dart';
+import '../../core/services/wallpaper_manager.dart';
 
 class ModernBrowserWindow extends StatefulWidget {
   const ModernBrowserWindow({super.key});
@@ -203,7 +204,7 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                     config.title,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 14,
+                      fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -272,6 +273,12 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
           icon: CupertinoIcons.gear_alt,
           child: ModernSettingsPanel(),
         );
+      case SidebarSection.updates:
+        return _SidebarPanelConfig(
+          title: 'Mises à jour',
+          icon: CupertinoIcons.arrow_up_circle,
+          child: const _NotilusUpdatesPanel(),
+        );
       case SidebarSection.home:
         return null;
     }
@@ -295,67 +302,113 @@ class _NotilusWidgetsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cards = const [
-      _WidgetCardData('Température GPU', '58°C', CupertinoIcons.speedometer),
-      _WidgetCardData('Réseau', '1.1 Gbps', CupertinoIcons.waveform_path),
-      _WidgetCardData('Veille onglets', 'Auto', CupertinoIcons.moon),
-      _WidgetCardData('Mode Focus', 'Actif', CupertinoIcons.scope),
-    ];
-
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(18),
-      itemCount: cards.length,
-      itemBuilder: (context, index) {
-        final card = cards[index];
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            color: Colors.white.withOpacity(0.05),
-            border: Border.all(color: Colors.white.withOpacity(0.05)),
+    final theme = Theme.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        image: DecorationImage(
+          image: NetworkImage(context.watch<WallpaperManager>().current),
+          fit: BoxFit.cover,
+          colorFilter: ColorFilter.mode(
+            Colors.black.withOpacity(0.85),
+            BlendMode.srcOver,
           ),
-          child: Row(
-            children: [
-              Icon(card.icon, color: NotilusColors.neonRed),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      card.title,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Statut en temps réel',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.55),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Text(
-                card.value,
-                style: const TextStyle(
-                  color: Colors.white,
+        ),
+      ),
+      child: Container(
+        color: Colors.black.withOpacity(0.5),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text(
+                'Widgets système',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
               ),
-            ],
-          ),
-        );
-      },
+            ),
+            Expanded(
+              child: ListView.builder(
+                shrinkWrap: true,
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                itemCount: _widgets.length,
+                itemBuilder: (context, index) {
+                  final widget = _widgets[index];
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.white.withOpacity(0.05),
+                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(widget.icon, color: NotilusColors.neonRed, size: 18),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                widget.title,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                widget.subtitle,
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.5),
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Text(
+                          widget.value,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
+
+  static const _widgets = [
+    _WidgetData('CPU', '32%', 'Utilisation processeur', CupertinoIcons.gauge),
+    _WidgetData('RAM', '45%', 'Mémoire utilisée', Icons.memory),
+    _WidgetData('GPU', '58°C', 'Température graphique', CupertinoIcons.speedometer),
+    _WidgetData('Réseau', '1.1 Gbps', 'Bande passante', CupertinoIcons.waveform_path),
+    _WidgetData('Onglets', '12', 'Onglets actifs', CupertinoIcons.square_grid_2x2),
+    _WidgetData('Veille', 'Auto', 'Mode économie', CupertinoIcons.moon),
+  ];
+}
+
+class _WidgetData {
+  final String title;
+  final String value;
+  final String subtitle;
+  final IconData icon;
+
+  const _WidgetData(this.title, this.value, this.subtitle, this.icon);
 }
 
 class _NotilusAiPanel extends StatelessWidget {
@@ -363,60 +416,100 @@ class _NotilusAiPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      shrinkWrap: true,
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(18),
-      children: [
-        _AiToggleTile(
-          title: 'Assistant contextuel',
-          subtitle: 'Analyse la page et propose des actions rapides',
-          value: true,
-        ),
-        _AiToggleTile(
-          title: 'Résumé instantané',
-          subtitle: 'Synthétise les articles longs en un clic',
-          value: false,
-        ),
-        _AiToggleTile(
-          title: 'Protection intelligente',
-          subtitle: 'Bloque les scripts suspects en arrière plan',
-          value: true,
-        ),
-        const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            gradient: LinearGradient(
-              colors: [
-                NotilusColors.neonRed.withOpacity(0.2),
-                NotilusColors.neonRedDark.withOpacity(0.2),
-              ],
-            ),
+    final theme = Theme.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        image: DecorationImage(
+          image: NetworkImage(context.watch<WallpaperManager>().current),
+          fit: BoxFit.cover,
+          colorFilter: ColorFilter.mode(
+            Colors.black.withOpacity(0.85),
+            BlendMode.srcOver,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              Text(
-                'Hyper prompts',
-                style: TextStyle(
-                  color: Colors.white,
+        ),
+      ),
+      child: Container(
+        color: Colors.black.withOpacity(0.5),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text(
+                'Hyper Assistant',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              SizedBox(height: 6),
-              Text(
-                'Glissez-déposez une URL ou un texte ici pour générer des commandes Notilus.',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                ),
+            ),
+            Expanded(
+              child: ListView(
+                shrinkWrap: true,
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                children: [
+                  _AiToggleTile(
+                    title: 'Assistant contextuel',
+                    subtitle: 'Analyse la page et propose des actions rapides',
+                    value: true,
+                  ),
+                  const SizedBox(height: 8),
+                  _AiToggleTile(
+                    title: 'Résumé instantané',
+                    subtitle: 'Synthétise les articles longs en un clic',
+                    value: false,
+                  ),
+                  const SizedBox(height: 8),
+                  _AiToggleTile(
+                    title: 'Protection intelligente',
+                    subtitle: 'Bloque les scripts suspects en arrière plan',
+                    value: true,
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      gradient: LinearGradient(
+                        colors: [
+                          NotilusColors.neonRed.withOpacity(0.15),
+                          NotilusColors.neonRedDark.withOpacity(0.15),
+                        ],
+                      ),
+                      border: Border.all(
+                        color: NotilusColors.neonRed.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Hyper prompts',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Glissez-déposez une URL ou un texte ici pour générer des commandes Notilus.',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
@@ -435,12 +528,11 @@ class _AiToggleTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-        color: Colors.white.withOpacity(0.04),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        borderRadius: BorderRadius.circular(12),
+        color: Colors.white.withOpacity(0.05),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Row(
         children: [
@@ -450,17 +542,18 @@ class _AiToggleTile extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
+                    fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   subtitle,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white60,
-                    fontSize: 12,
+                    fontSize: 10,
                   ),
                 ),
               ],
@@ -477,10 +570,153 @@ class _AiToggleTile extends StatelessWidget {
   }
 }
 
-class _WidgetCardData {
-  final String title;
-  final String value;
-  final IconData icon;
+class _NotilusUpdatesPanel extends StatelessWidget {
+  const _NotilusUpdatesPanel();
 
-  const _WidgetCardData(this.title, this.value, this.icon);
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        image: DecorationImage(
+          image: NetworkImage(context.watch<WallpaperManager>().current),
+          fit: BoxFit.cover,
+          colorFilter: ColorFilter.mode(
+            Colors.black.withOpacity(0.85),
+            BlendMode.srcOver,
+          ),
+        ),
+      ),
+      child: Container(
+        color: Colors.black.withOpacity(0.5),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text(
+                'Mises à jour',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            Expanded(
+              child: ListView(
+                shrinkWrap: true,
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                children: [
+                  _UpdateCard(
+                    title: 'Nouvelle intégration: Speed Dial',
+                    description: 'Ajout de la section Speed Dial avec grilles personnalisables',
+                    date: 'Aujourd\'hui',
+                    isNew: true,
+                  ),
+                  const SizedBox(height: 8),
+                  _UpdateCard(
+                    title: 'Amélioration: Sidemenus',
+                    description: 'Nouveaux menus latéraux avec animations fluides',
+                    date: 'Hier',
+                    isNew: false,
+                  ),
+                  const SizedBox(height: 8),
+                  _UpdateCard(
+                    title: 'Optimisation: Performance',
+                    description: 'Réduction de la consommation mémoire de 15%',
+                    date: 'Il y a 3 jours',
+                    isNew: false,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _UpdateCard extends StatelessWidget {
+  final String title;
+  final String description;
+  final String date;
+  final bool isNew;
+
+  const _UpdateCard({
+    required this.title,
+    required this.description,
+    required this.date,
+    required this.isNew,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: Colors.white.withOpacity(0.05),
+        border: Border.all(
+          color: isNew
+              ? NotilusColors.neonRed.withOpacity(0.4)
+              : Colors.white.withOpacity(0.1),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              if (isNew)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: NotilusColors.neonRed.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    'NOUVEAU',
+                    style: TextStyle(
+                      color: NotilusColors.neonRed,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              if (isNew) const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            description,
+            style: TextStyle(
+              color: Colors.white60,
+              fontSize: 10,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            date,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.4),
+              fontSize: 9,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

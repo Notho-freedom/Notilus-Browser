@@ -38,13 +38,13 @@ class _ModernHistoryPanelState extends State<ModernHistoryPanel> {
           image: NetworkImage(context.watch<WallpaperManager>().current),
           fit: BoxFit.cover,
           colorFilter: ColorFilter.mode(
-            Colors.black.withOpacity(0.8),
+            Colors.black.withOpacity(0.85),
             BlendMode.srcOver,
           ),
         ),
       ),
       child: Container(
-        color: Colors.black.withOpacity(0.6),
+        color: Colors.black.withOpacity(0.5),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -54,7 +54,8 @@ class _ModernHistoryPanelState extends State<ModernHistoryPanel> {
               children: [
                 Text(
                   'Historique',
-                  style: theme.textTheme.headlineSmall?.copyWith(
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -64,7 +65,10 @@ class _ModernHistoryPanelState extends State<ModernHistoryPanel> {
                     await _historyService.clearHistory();
                     await _refresh();
                   },
-                  child: const Text('Tout effacer'),
+                  child: Text(
+                    'Effacer',
+                    style: TextStyle(fontSize: 11),
+                  ),
                 ),
               ],
             ),
@@ -104,17 +108,22 @@ class _ModernHistoryPanelState extends State<ModernHistoryPanel> {
                       final item = items[index];
                       return ListTile(
                         dense: true,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                         title: Text(
                           item.title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            fontSize: 12,
+                          ),
                         ),
                         subtitle: Text(
                           item.url,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.textTheme.bodySmall?.color?.withOpacity(0.7),
+                            fontSize: 10,
+                            color: theme.textTheme.bodySmall?.color?.withOpacity(0.6),
                           ),
                         ),
                         trailing: IconButton(

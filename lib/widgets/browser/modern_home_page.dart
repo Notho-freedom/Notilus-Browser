@@ -202,15 +202,12 @@ class _ModernHomePageState extends State<ModernHomePage> {
       child: SafeArea(
         child: Stack(
           children: [
-            // Contenu central
-            Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 900),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
+            // Contenu central - occupe tout l'espace
+            SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                       const SizedBox(height: 16),
 
                     // Logo + titre
@@ -334,32 +331,50 @@ class _ModernHomePageState extends State<ModernHomePage> {
 
                       const SizedBox(height: 18),
 
-                    // Mini widgets CPU / RAM / Réseau façon GX
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          _StatChip(
-                            icon: CupertinoIcons.gauge,
-                            label: 'CPU',
-                            value: '32%',
-                          ),
-                          SizedBox(width: 10),
-                          _StatChip(
-                            icon: Icons.memory,
-                            label: 'RAM',
-                            value: '45%',
-                          ),
-                          SizedBox(width: 10),
-                          _StatChip(
-                            icon: CupertinoIcons.waveform_path,
-                            label: 'Réseau',
-                            value: 'Stable',
-                          ),
-                        ],
-                      )
-                        .animate()
-                        .fadeIn(duration: 450.ms, delay: 380.ms)
-                        .slideY(begin: 0.08, end: 0),
+                    // Widgets système - Grille de 6 widgets
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          return Wrap(
+                            spacing: 12,
+                            runSpacing: 12,
+                            children: const [
+                              _StatChip(
+                                icon: CupertinoIcons.gauge,
+                                label: 'CPU',
+                                value: '32%',
+                              ),
+                              _StatChip(
+                                icon: Icons.memory,
+                                label: 'RAM',
+                                value: '45%',
+                              ),
+                              _StatChip(
+                                icon: CupertinoIcons.waveform_path,
+                                label: 'Réseau',
+                                value: 'Stable',
+                              ),
+                              _StatChip(
+                                icon: CupertinoIcons.speedometer,
+                                label: 'GPU',
+                                value: '58°C',
+                              ),
+                              _StatChip(
+                                icon: CupertinoIcons.battery_charging,
+                                label: 'Batterie',
+                                value: '85%',
+                              ),
+                              _StatChip(
+                                icon: CupertinoIcons.globe,
+                                label: 'Onglets',
+                                value: '12',
+                              ),
+                            ],
+                          )
+                            .animate()
+                            .fadeIn(duration: 450.ms, delay: 380.ms)
+                            .slideY(begin: 0.08, end: 0);
+                        },
+                      ),
 
                       const SizedBox(height: 32),
 
@@ -401,22 +416,47 @@ class _ModernHomePageState extends State<ModernHomePage> {
 
                     const SizedBox(height: 18),
 
-                    // Grille Speed Dial
-                      Wrap(
-                        spacing: 18,
-                        runSpacing: 18,
-                        children:
-                            _quickAccessItems.asMap().entries.map((entry) {
-                          final index = entry.key;
-                          final item = entry.value;
-
-                          return _QuickAccessTile(
-                            item: item,
-                            onTap: () => _openQuickAccess(item.url),
-                            onLongPress: () => _showQuickAccessContextMenu(context, item),
-                            delay: (index * 60).ms,
+                    // Grille Speed Dial - 5 éléments max par ligne, 2 colonnes
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final itemWidth = (constraints.maxWidth - (4 * 18)) / 5; // 5 colonnes avec espacement
+                          final rows = (_quickAccessItems.length / 5).ceil();
+                          final maxItems = rows * 5;
+                          
+                          return Column(
+                            children: List.generate(rows, (rowIndex) {
+                              final startIndex = rowIndex * 5;
+                              final endIndex = (startIndex + 5).clamp(0, _quickAccessItems.length);
+                              final rowItems = _quickAccessItems.sublist(startIndex, endIndex);
+                              
+                              return Padding(
+                                padding: EdgeInsets.only(bottom: rowIndex < rows - 1 ? 18 : 0),
+                                child: Row(
+                                  children: List.generate(5, (colIndex) {
+                                    if (colIndex < rowItems.length) {
+                                      final item = rowItems[colIndex];
+                                      final index = startIndex + colIndex;
+                                      return Expanded(
+                                        child: Padding(
+                                          padding: EdgeInsets.only(right: colIndex < 4 ? 18 : 0),
+                                          child: _QuickAccessTile(
+                                            item: item,
+                                            onTap: () => _openQuickAccess(item.url),
+                                            onLongPress: () => _showQuickAccessContextMenu(context, item),
+                                            delay: (index * 60).ms,
+                                            compact: true,
+                                          ),
+                                        ),
+                                      );
+                                    } else {
+                                      return Expanded(child: const SizedBox());
+                                    }
+                                  }),
+                                ),
+                              );
+                            }),
                           );
-                        }).toList(),
+                        },
                       ),
 
                       const SizedBox(height: 32),
@@ -463,39 +503,105 @@ class _ModernHomePageState extends State<ModernHomePage> {
                           ),
                         ),
                         const SizedBox(height: 18),
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: _recentHistory.take(5).map((item) {
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 12),
-                                child: _HistoryQuickAccessTile(
-                                  historyItem: item,
-                                  onTap: () => _openQuickAccess(item.url),
-                                ),
-                              );
-                            }).toList(),
-                          ),
+                        // Grille Accès rapide - 5 éléments max par ligne, 2 colonnes
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final historyItems = _recentHistory.take(5).toList();
+                            final rows = (historyItems.length / 5).ceil();
+                            
+                            return Column(
+                              children: List.generate(rows, (rowIndex) {
+                                final startIndex = rowIndex * 5;
+                                final endIndex = (startIndex + 5).clamp(0, historyItems.length);
+                                final rowItems = historyItems.sublist(startIndex, endIndex);
+                                
+                                return Padding(
+                                  padding: EdgeInsets.only(bottom: rowIndex < rows - 1 ? 12 : 0),
+                                  child: Row(
+                                    children: List.generate(5, (colIndex) {
+                                      if (colIndex < rowItems.length) {
+                                        final item = rowItems[colIndex];
+                                        return Expanded(
+                                          child: Padding(
+                                            padding: EdgeInsets.only(right: colIndex < 4 ? 12 : 0),
+                                            child: _HistoryQuickAccessTile(
+                                              historyItem: item,
+                                              onTap: () => _openQuickAccess(item.url),
+                                            ),
+                                          ),
+                                        );
+                                      } else {
+                                        return Expanded(child: const SizedBox());
+                                      }
+                                    }),
+                                  ),
+                                );
+                              }),
+                            );
+                          },
                         ),
                         const SizedBox(height: 32),
                       ],
 
+                      // Section Widgets système
                       Align(
                         alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Suggestions (bientôt personnalisées pour vos workflows)',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.textTheme.bodySmall?.color
-                                ?.withOpacity(0.55),
-                          ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 32,
+                              height: 2,
+                              decoration: const BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Color(0xFFFF2D55),
+                                    Color(0xFF5856D6),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Widgets système',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 18),
+                      // Grille de widgets métriques
+                      GridView.count(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        crossAxisCount: 3,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        childAspectRatio: 2.5,
+                        children: const [
+                          _MetricWidget(
+                            title: 'Temps actif',
+                            value: '2h 34m',
+                            icon: CupertinoIcons.time,
+                          ),
+                          _MetricWidget(
+                            title: 'Pages visitées',
+                            value: '127',
+                            icon: CupertinoIcons.doc_text,
+                          ),
+                          _MetricWidget(
+                            title: 'Données utilisées',
+                            value: '1.2 GB',
+                            icon: CupertinoIcons.cloud_download,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 32),
                     ],
                   ),
                 ),
-              ),
-            ),
 
             // Label vertical "WIDGETS" à droite façon Opera GX
             Align(
@@ -713,6 +819,64 @@ class _QuickAccessTileState extends State<_QuickAccessTile> {
           end: const Offset(1, 1),
           delay: widget.delay,
         );
+  }
+}
+
+class _MetricWidget extends StatelessWidget {
+  final String title;
+  final String value;
+  final IconData icon;
+
+  const _MetricWidget({
+    required this.title,
+    required this.value,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: Colors.white.withOpacity(0.05),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.1),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: const Color(0xFFFF2D55)),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  title,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontSize: 11,
+                    color: Colors.white.withOpacity(0.6),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

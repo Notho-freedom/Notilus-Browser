@@ -26,13 +26,13 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
           image: NetworkImage(context.watch<WallpaperManager>().current),
           fit: BoxFit.cover,
           colorFilter: ColorFilter.mode(
-            Colors.black.withOpacity(0.8),
+            Colors.black.withOpacity(0.85),
             BlendMode.srcOver,
           ),
         ),
       ),
       child: Container(
-        color: Colors.black.withOpacity(0.6),
+        color: Colors.black.withOpacity(0.5),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
           child: Consumer<ThemeModeNotifier>(
@@ -44,14 +44,16 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                 children: [
                   Text(
                     'Paramètres',
-                    style: theme.textTheme.headlineSmall?.copyWith(
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontSize: 13,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   const SizedBox(height: 24),
                   Text(
                     'Apparence',
-                    style: theme.textTheme.titleMedium?.copyWith(
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -82,16 +84,21 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                   const SizedBox(height: 32),
                   Text(
                     'Onglets',
-                    style: theme.textTheme.titleMedium?.copyWith(
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   const SizedBox(height: 12),
                   SwitchListTile.adaptive(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('Restaurer les onglets au démarrage'),
-                    subtitle: const Text(
+                    title: Text(
+                      'Restaurer les onglets au démarrage',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                    subtitle: Text(
                       'Les onglets ouverts seront rechargés au prochain lancement.',
+                      style: TextStyle(fontSize: 10),
                     ),
                     value: true,
                     onChanged: (_) {
@@ -100,7 +107,10 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                   ),
                   SwitchListTile.adaptive(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('Ouvrir Notilus sur la page d’accueil'),
+                    title: Text(
+                      'Ouvrir Notilus sur la page d\'accueil',
+                      style: TextStyle(fontSize: 12),
+                    ),
                     value: true,
                     onChanged: (_) {
                       // TODO: préférence de démarrage
@@ -109,7 +119,8 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                   const SizedBox(height: 32),
                   Text(
                     'Confidentialité',
-                    style: theme.textTheme.titleMedium?.copyWith(
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -117,9 +128,13 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.shield_moon_outlined),
-                    title: const Text('Effacer les données de navigation'),
-                    subtitle: const Text(
+                    title: Text(
+                      'Effacer les données de navigation',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                    subtitle: Text(
                       'Historique, cookies et cache (à implémenter).',
+                      style: TextStyle(fontSize: 10),
                     ),
                     onTap: () {
                       // TODO: effacement des données

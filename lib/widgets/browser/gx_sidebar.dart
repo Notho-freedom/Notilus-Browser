@@ -16,6 +16,7 @@ enum SidebarSection {
   widgets,
   ai,
   settings,
+  updates,
 }
 
 class GXSidebar extends StatefulWidget {
