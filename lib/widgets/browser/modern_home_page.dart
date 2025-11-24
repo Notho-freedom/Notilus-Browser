@@ -202,12 +202,14 @@ class _ModernHomePageState extends State<ModernHomePage> {
       child: SafeArea(
         child: Stack(
           children: [
-            // Contenu central - occupe tout l'espace
-            SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+            // Contenu central - recentré sans limiter la largeur
+            Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
                       const SizedBox(height: 16),
 
                     // Logo + titre
@@ -379,39 +381,36 @@ class _ModernHomePageState extends State<ModernHomePage> {
                       const SizedBox(height: 32),
 
                     // Titre de section Speed Dial
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 32,
-                              height: 2,
-                              decoration: const BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    Color(0xFFFF2D55),
-                                    Color(0xFF5856D6),
-                                  ],
-                                ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 32,
+                            height: 2,
+                            decoration: const BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Color(0xFFFF2D55),
+                                  Color(0xFF5856D6),
+                                ],
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Sites rapides',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 0.3,
-                              ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Sites rapides',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.3,
                             ),
-                            const Spacer(),
-                            IconButton(
-                              icon: const Icon(CupertinoIcons.add_circled, color: Color(0xFFFF2D55)),
-                              tooltip: 'Ajouter un site rapide',
-                              onPressed: _addQuickAccessSite,
-                            ),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(width: 16),
+                          IconButton(
+                            icon: const Icon(CupertinoIcons.add_circled, color: Color(0xFFFF2D55)),
+                            tooltip: 'Ajouter un site rapide',
+                            onPressed: _addQuickAccessSite,
+                          ),
+                        ],
                       ),
 
                     const SizedBox(height: 18),
@@ -419,11 +418,10 @@ class _ModernHomePageState extends State<ModernHomePage> {
                     // Grille Speed Dial - 5 éléments max par ligne, 2 colonnes
                       LayoutBuilder(
                         builder: (context, constraints) {
-                          final itemWidth = (constraints.maxWidth - (4 * 18)) / 5; // 5 colonnes avec espacement
                           final rows = (_quickAccessItems.length / 5).ceil();
-                          final maxItems = rows * 5;
                           
                           return Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: List.generate(rows, (rowIndex) {
                               final startIndex = rowIndex * 5;
                               final endIndex = (startIndex + 5).clamp(0, _quickAccessItems.length);
@@ -432,13 +430,15 @@ class _ModernHomePageState extends State<ModernHomePage> {
                               return Padding(
                                 padding: EdgeInsets.only(bottom: rowIndex < rows - 1 ? 18 : 0),
                                 child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
                                   children: List.generate(5, (colIndex) {
                                     if (colIndex < rowItems.length) {
                                       final item = rowItems[colIndex];
                                       final index = startIndex + colIndex;
-                                      return Expanded(
-                                        child: Padding(
-                                          padding: EdgeInsets.only(right: colIndex < 4 ? 18 : 0),
+                                      return Padding(
+                                        padding: EdgeInsets.only(right: colIndex < 4 ? 18 : 0),
+                                        child: SizedBox(
+                                          width: 120,
                                           child: _QuickAccessTile(
                                             item: item,
                                             onTap: () => _openQuickAccess(item.url),
@@ -449,7 +449,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                                         ),
                                       );
                                     } else {
-                                      return Expanded(child: const SizedBox());
+                                      return const SizedBox(width: 120);
                                     }
                                   }),
                                 ),
@@ -463,11 +463,9 @@ class _ModernHomePageState extends State<ModernHomePage> {
 
                       // Section Accès rapide (Historique récent)
                       if (_recentHistory.isNotEmpty) ...[
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
                               Container(
                                 width: 32,
                                 height: 2,
@@ -499,8 +497,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                                   style: TextStyle(color: Color(0xFFFF2D55)),
                                 ),
                               ),
-                            ],
-                          ),
+                          ],
                         ),
                         const SizedBox(height: 18),
                         // Grille Accès rapide - 5 éléments max par ligne, 2 colonnes
@@ -510,6 +507,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                             final rows = (historyItems.length / 5).ceil();
                             
                             return Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: List.generate(rows, (rowIndex) {
                                 final startIndex = rowIndex * 5;
                                 final endIndex = (startIndex + 5).clamp(0, historyItems.length);
@@ -518,12 +516,14 @@ class _ModernHomePageState extends State<ModernHomePage> {
                                 return Padding(
                                   padding: EdgeInsets.only(bottom: rowIndex < rows - 1 ? 12 : 0),
                                   child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
                                     children: List.generate(5, (colIndex) {
                                       if (colIndex < rowItems.length) {
                                         final item = rowItems[colIndex];
-                                        return Expanded(
-                                          child: Padding(
-                                            padding: EdgeInsets.only(right: colIndex < 4 ? 12 : 0),
+                                        return Padding(
+                                          padding: EdgeInsets.only(right: colIndex < 4 ? 12 : 0),
+                                          child: SizedBox(
+                                            width: 180,
                                             child: _HistoryQuickAccessTile(
                                               historyItem: item,
                                               onTap: () => _openQuickAccess(item.url),
@@ -531,7 +531,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                                           ),
                                         );
                                       } else {
-                                        return Expanded(child: const SizedBox());
+                                        return const SizedBox(width: 180);
                                       }
                                     }),
                                   ),
@@ -544,10 +544,9 @@ class _ModernHomePageState extends State<ModernHomePage> {
                       ],
 
                       // Section Widgets système
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Row(
-                          children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
                             Container(
                               width: 32,
                               height: 2,
@@ -568,8 +567,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                                 letterSpacing: 0.3,
                               ),
                             ),
-                          ],
-                        ),
+                        ],
                       ),
                       const SizedBox(height: 18),
                       // Grille de widgets métriques
@@ -602,6 +600,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                     ],
                   ),
                 ),
+            ),
 
             // Label vertical "WIDGETS" à droite façon Opera GX
             Align(

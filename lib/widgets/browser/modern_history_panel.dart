@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../services/history_service.dart';
 import '../../services/tab_manager.dart';
 import '../../core/services/wallpaper_manager.dart';
+import '../../services/favicon_service.dart';
+import '../../core/constants/notilus_colors.dart';
 
 class ModernHistoryPanel extends StatefulWidget {
   const ModernHistoryPanel({super.key});
@@ -106,38 +109,59 @@ class _ModernHistoryPanelState extends State<ModernHistoryPanel> {
                     separatorBuilder: (_, __) => const Divider(height: 1),
                     itemBuilder: (context, index) {
                       final item = items[index];
-                      return ListTile(
-                        dense: true,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                        title: Text(
-                          item.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            fontSize: 12,
-                          ),
-                        ),
-                        subtitle: Text(
-                          item.url,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            fontSize: 10,
-                            color: theme.textTheme.bodySmall?.color?.withOpacity(0.6),
-                          ),
-                        ),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.open_in_new, size: 18),
-                          onPressed: () {
-                            final tabManager =
-                                Provider.of<TabManager>(context, listen: false);
-                            tabManager.addTab(url: item.url);
-                          },
-                        ),
-                        onTap: () {
-                          final tabManager =
-                              Provider.of<TabManager>(context, listen: false);
-                          tabManager.addTab(url: item.url);
+                      return FutureBuilder<String?>(
+                        future: FaviconService.getFaviconWithCache(item.url),
+                        builder: (context, faviconSnapshot) {
+                          return ListTile(
+                            dense: true,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                            leading: faviconSnapshot.hasData && faviconSnapshot.data != null
+                                ? Image.network(
+                                    faviconSnapshot.data!,
+                                    width: 18,
+                                    height: 18,
+                                    errorBuilder: (_, __, ___) => Icon(
+                                      CupertinoIcons.globe,
+                                      size: 18,
+                                      color: NotilusColors.neonRed,
+                                    ),
+                                  )
+                                : Icon(
+                                    CupertinoIcons.globe,
+                                    size: 18,
+                                    color: NotilusColors.neonRed,
+                                  ),
+                            title: Text(
+                              item.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                fontSize: 12,
+                              ),
+                            ),
+                            subtitle: Text(
+                              item.url,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                fontSize: 10,
+                                color: theme.textTheme.bodySmall?.color?.withOpacity(0.6),
+                              ),
+                            ),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.open_in_new, size: 18),
+                              onPressed: () {
+                                final tabManager =
+                                    Provider.of<TabManager>(context, listen: false);
+                                tabManager.addTab(url: item.url);
+                              },
+                            ),
+                            onTap: () {
+                              final tabManager =
+                                  Provider.of<TabManager>(context, listen: false);
+                              tabManager.addTab(url: item.url);
+                            },
+                          );
                         },
                       );
                     },
