@@ -2,7 +2,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/tab_manager.dart';
-import '../../services/tab_webview_manager.dart';
 import 'gx_address_bar.dart';
 import 'gx_tab_bar.dart';
 import 'gx_sidebar.dart';
@@ -13,7 +12,6 @@ import 'modern_bookmarks_panel.dart';
 import 'modern_downloads_panel.dart';
 import 'modern_settings_panel.dart';
 import '../../core/constants/notilus_colors.dart';
-import '../common/notilus_tooltip.dart';
 
 class ModernBrowserWindow extends StatefulWidget {
   const ModernBrowserWindow({super.key});
@@ -265,7 +263,6 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
           child: ModernSettingsPanel(),
         );
       case SidebarSection.home:
-      default:
         return null;
     }
   }
@@ -281,94 +278,6 @@ class _SidebarPanelConfig {
     required this.icon,
     required this.child,
   });
-}
-
-class _SidebarFloatingPanel extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final Widget child;
-  final VoidCallback onClose;
-
-  const _SidebarFloatingPanel({
-    required this.title,
-    required this.icon,
-    required this.child,
-    required this.onClose,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(22),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(22),
-            color: NotilusColors.chromeLight.withOpacity(0.96),
-            border: Border.all(color: Colors.white.withOpacity(0.05)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.35),
-                blurRadius: 24,
-                offset: const Offset(0, 18),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              Container(
-                height: 54,
-                padding: const EdgeInsets.symmetric(horizontal: 18),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      NotilusColors.neonRed.withOpacity(0.85),
-                      NotilusColors.neonRedDark.withOpacity(0.85),
-                    ],
-                  ),
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(22)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(icon, color: Colors.white, size: 18),
-                    const SizedBox(width: 10),
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const Spacer(),
-                    NotilusTooltip(
-                      message: 'Replier le panneau',
-                      child: IconButton(
-                        onPressed: onClose,
-                        icon: const Icon(
-                          CupertinoIcons.xmark_circle,
-                          color: Colors.white,
-                          size: 18,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Container(
-                  color: Colors.black.withOpacity(0.08),
-                  child: child,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 class _NotilusWidgetsPanel extends StatelessWidget {
