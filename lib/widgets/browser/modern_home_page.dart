@@ -355,7 +355,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                           end: const Offset(1, 1),
                         ),
 
-                      const SizedBox(height: 48),
+                      const SizedBox(height: 24),
 
                     // Widgets système - Grille de 6 widgets
                       LayoutBuilder(
@@ -787,9 +787,10 @@ class _ModernHomePageState extends State<ModernHomePage> {
                 )
               : const SizedBox.shrink(),
         ),
-        // Label vertical sur le bord extérieur gauche, pointant vers le centre
+        // Label vertical sur la face droite de la colonne gauche, pointant vers le centre
+        // Toujours visible, attaché au bord droit de la colonne
         Positioned(
-          left: -20,
+          left: 280,
           top: 0,
           bottom: 0,
           child: GestureDetector(
@@ -805,7 +806,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                 decoration: BoxDecoration(
                   color: Colors.black.withOpacity(0.3),
                   border: Border(
-                    right: BorderSide(
+                    left: BorderSide(
                       color: const Color(0xFFFF2D55).withOpacity(0.5),
                       width: 1,
                     ),
@@ -948,9 +949,10 @@ class _ModernHomePageState extends State<ModernHomePage> {
                 )
               : const SizedBox.shrink(),
         ),
-        // Label vertical sur le bord extérieur droit, pointant vers le centre
+        // Label vertical sur la face gauche de la colonne droite, pointant vers le centre
+        // Toujours visible, attaché au bord gauche de la colonne
         Positioned(
-          right: -20,
+          right: 280,
           top: 0,
           bottom: 0,
           child: GestureDetector(
@@ -966,7 +968,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                 decoration: BoxDecoration(
                   color: Colors.black.withOpacity(0.3),
                   border: Border(
-                    left: BorderSide(
+                    right: BorderSide(
                       color: const Color(0xFFFF2D55).withOpacity(0.5),
                       width: 1,
                     ),

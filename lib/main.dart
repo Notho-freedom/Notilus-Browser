@@ -69,8 +69,20 @@ class NotilusApp extends StatelessWidget {
           return MaterialApp(
             title: 'Notilus Browser',
             debugShowCheckedModeBanner: false,
-            theme: ModernTheme.lightTheme,
-            darkTheme: ModernDarkTheme.darkTheme,
+            theme: ModernTheme.lightTheme.copyWith(
+              scrollbarTheme: const ScrollbarThemeData(
+                thumbVisibility: MaterialStatePropertyAll<bool>(false),
+                trackVisibility: MaterialStatePropertyAll<bool>(false),
+                thickness: MaterialStatePropertyAll<double>(0),
+              ),
+            ),
+            darkTheme: ModernDarkTheme.darkTheme.copyWith(
+              scrollbarTheme: const ScrollbarThemeData(
+                thumbVisibility: MaterialStatePropertyAll<bool>(false),
+                trackVisibility: MaterialStatePropertyAll<bool>(false),
+                thickness: MaterialStatePropertyAll<double>(0),
+              ),
+            ),
             themeMode: themeModeNotifier.mode,
             home: const HomeScreen(),
           );
