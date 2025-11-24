@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/tab_manager.dart';
 import '../../core/services/wallpaper_manager.dart';
 import '../../services/quick_access_service.dart';
@@ -31,12 +32,16 @@ class _ModernHomePageState extends State<ModernHomePage> {
   final SystemMetricsService _metricsService = SystemMetricsService();
   List<QuickAccessItem> _quickAccessItems = [];
   List<HistoryItem> _recentHistory = [];
-  bool _leftColumnExpanded = true;
-  bool _rightColumnExpanded = true;
+  bool _leftColumnExpanded = false; // Collapsed par défaut
+  bool _rightColumnExpanded = false; // Collapsed par défaut
+  
+  static const String _prefsKeyLeftColumn = 'notilus_left_column_expanded';
+  static const String _prefsKeyRightColumn = 'notilus_right_column_expanded';
 
   @override
   void initState() {
     super.initState();
+    _loadColumnStates();
     _loadQuickAccessItems();
     _loadRecentHistory();
     _metricsService.addListener(_onMetricsUpdate);
@@ -45,6 +50,28 @@ class _ModernHomePageState extends State<ModernHomePage> {
       final tabManager = Provider.of<TabManager>(context, listen: false);
       _metricsService.updateTabCount(tabManager.tabs.length);
     });
+  }
+  
+  Future<void> _loadColumnStates() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      setState(() {
+        _leftColumnExpanded = prefs.getBool(_prefsKeyLeftColumn) ?? false;
+        _rightColumnExpanded = prefs.getBool(_prefsKeyRightColumn) ?? false;
+      });
+    } catch (e) {
+      // Ignorer les erreurs, garder les valeurs par défaut
+    }
+  }
+  
+  Future<void> _saveColumnStates() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_prefsKeyLeftColumn, _leftColumnExpanded);
+      await prefs.setBool(_prefsKeyRightColumn, _rightColumnExpanded);
+    } catch (e) {
+      // Ignorer les erreurs de sauvegarde
+    }
   }
 
   void _onMetricsUpdate() {
@@ -798,6 +825,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
               setState(() {
                 _leftColumnExpanded = !_leftColumnExpanded;
               });
+              _saveColumnStates();
             },
             child: MouseRegion(
               cursor: SystemMouseCursors.click,
@@ -960,6 +988,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
               setState(() {
                 _rightColumnExpanded = !_rightColumnExpanded;
               });
+              _saveColumnStates();
             },
             child: MouseRegion(
               cursor: SystemMouseCursors.click,
