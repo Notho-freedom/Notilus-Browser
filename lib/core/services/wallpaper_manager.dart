@@ -1,56 +1,34 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../constants/wallpapers.dart';
 
 /// Gestionnaire global du fond d'écran (même wallpaper pour toutes les vues,
-/// avec rotation automatique et pré-chargement).
+/// avec rotation automatique dans le temps et cache).
 class WallpaperManager extends ChangeNotifier {
   final List<String> _wallpapers = NotilusWallpapers.all;
   final Random _random = Random();
+  final Map<String, CachedNetworkImageProvider> _imageCache = {};
 
   late String _current;
-  ImageProvider? _currentImage;
+  String? _previous;
   Timer? _timer;
 
   WallpaperManager() {
-    unawaited(_setCurrent(_pickRandom(), notify: false));
+    _current = _pickRandom();
+    _preloadImage(_current);
+    // Rotation automatique toutes les 2 minutes (ajustable plus tard).
     _timer = Timer.periodic(const Duration(minutes: 2), (_) {
-      next();
+      _previous = _current;
+      _current = _pickRandom(exclude: _current);
+      _preloadImage(_current);
+      notifyListeners();
     });
   }
 
   String get current => _current;
-  ImageProvider? get currentImage => _currentImage;
-
-  Future<void> _setCurrent(String url, {bool notify = true}) async {
-    _current = url;
-    final provider = NetworkImage(url);
-    _currentImage = provider;
-    try {
-      final stream = provider.resolve(const ImageConfiguration());
-      final completer = Completer<void>();
-      late final ImageStreamListener listener;
-      listener = ImageStreamListener(
-        (_, __) {
-          completer.complete();
-          stream.removeListener(listener);
-        },
-        onError: (_, __) {
-          completer.complete();
-          stream.removeListener(listener);
-        },
-      );
-      stream.addListener(listener);
-      await completer.future;
-    } catch (_) {
-      // Ignore cache errors (network may fail, fallback to direct usage)
-    }
-    if (notify) {
-      notifyListeners();
-    }
-  }
+  String? get previous => _previous;
 
   String _pickRandom({String? exclude}) {
     if (_wallpapers.isEmpty) return '';
@@ -62,14 +40,28 @@ class WallpaperManager extends ChangeNotifier {
     return candidate;
   }
 
+  void _preloadImage(String url) {
+    if (!_imageCache.containsKey(url)) {
+      try {
+        _imageCache[url] = CachedNetworkImageProvider(url);
+      } catch (e) {
+        // Ignore preload errors
+      }
+    }
+  }
+
   /// Permet de forcer le changement de fond d'écran depuis l'UI.
   void next() {
-    unawaited(_setCurrent(_pickRandom(exclude: _current)));
+    _previous = _current;
+    _current = _pickRandom(exclude: _current);
+    _preloadImage(_current);
+    notifyListeners();
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    _imageCache.clear();
     super.dispose();
   }
 }

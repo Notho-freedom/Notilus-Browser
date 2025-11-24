@@ -13,7 +13,6 @@ import 'modern_bookmarks_panel.dart';
 import 'modern_downloads_panel.dart';
 import 'modern_settings_panel.dart';
 import '../../core/constants/notilus_colors.dart';
-import '../common/sidebar_panel_scope.dart';
 import '../common/notilus_tooltip.dart';
 
 class ModernBrowserWindow extends StatefulWidget {
@@ -27,9 +26,6 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
     with SingleTickerProviderStateMixin {
   bool _isSidebarVisible = true;
   SidebarSection _currentSection = SidebarSection.home;
-  static const double _panelMinFactor = 0.25;
-  static const double _panelMaxFactor = 0.5;
-  double _panelWidthFactor = 0.36;
   late AnimationController _sidebarAnimationController;
   late Animation<double> _sidebarAnimation;
 
@@ -74,15 +70,6 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
     }
   }
 
-  void _handlePanelResize(double delta, double totalWidth) {
-    final currentWidth = _panelWidthFactor * totalWidth;
-    final desiredWidth = (currentWidth - delta)
-        .clamp(totalWidth * _panelMinFactor, totalWidth * _panelMaxFactor);
-    setState(() {
-      _panelWidthFactor = desiredWidth / totalWidth;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -107,119 +94,131 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
             width: 0.6,
           ),
         ),
-        child: SidebarPanelScope(
-          openPanel: (section) {
-            setState(() {
-              if (!_isSidebarVisible) {
-                _isSidebarVisible = true;
-                _sidebarAnimationController.forward();
-              }
-              _currentSection = section;
-            });
-          },
-          closePanel: _closePanel,
-          child: Row(
-            children: [
-              // Sidebar moderne
-              AnimatedBuilder(
-                animation: _sidebarAnimation,
-                builder: (context, child) {
-                  return Container(
-                    width: _sidebarAnimation.value * 48,
-                    child: _sidebarAnimation.value > 0
-                        ? GXSidebar(
-                            onClose: _toggleSidebar,
-                            onSectionSelected: (section) {
-                              setState(() {
-                                _currentSection = section;
-                              });
-                            },
-                          )
-                        : null,
-                  );
-                },
-              ),
+        child: Row(
+          children: [
+            // Sidebar moderne
+            AnimatedBuilder(
+              animation: _sidebarAnimation,
+              builder: (context, child) {
+                return Container(
+                  width: _sidebarAnimation.value * 48,
+                  child: _sidebarAnimation.value > 0
+                      ? GXSidebar(
+                          onClose: _toggleSidebar,
+                          onSectionSelected: (section) {
+                            setState(() {
+                              _currentSection = section;
+                            });
+                          },
+                        )
+                      : null,
+                );
+              },
+            ),
 
-              // Zone principale
-              Expanded(
-                child: Column(
-                  children: [
-                    GXTabBar(
-                      onMenuTap: _toggleSidebar,
-                      isSidebarVisible: _isSidebarVisible,
-                    ),
-                    const GXAddressBar(),
-                    Expanded(
-                      child: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          Consumer<TabManager>(
-                            builder: (context, tabManager, _) {
-                              final activeTab = tabManager.activeTab;
-                              if (activeTab == null ||
-                                  activeTab.url == null ||
-                                  activeTab.url!.isEmpty ||
-                                  activeTab.url == 'about:blank' ||
-                                  activeTab.url == 'about:newtab') {
-                                return const ModernHomePage();
-                              }
-                              return WebContentView(tab: activeTab);
-                            },
-                          ),
-                          _buildSidebarPanelOverlay(context),
-                        ],
-                      ),
-                    ),
-                  ],
+            // Menu latéral qui s'étend depuis la sidebar
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutCubic,
+              width: _isPanelVisible ? 380 : 0,
+              child: _isPanelVisible ? _buildSideMenu(context) : null,
+            ),
+
+          // Zone principale
+          Expanded(
+            child: Column(
+              children: [
+                GXTabBar(
+                  onMenuTap: _toggleSidebar,
+                  isSidebarVisible: _isSidebarVisible,
                 ),
-              ),
-            ],
+                const GXAddressBar(),
+                Expanded(
+                  child: Consumer<TabManager>(
+                    builder: (context, tabManager, _) {
+                      final activeTab = tabManager.activeTab;
+                      if (activeTab == null ||
+                          activeTab.url == null ||
+                          activeTab.url!.isEmpty ||
+                          activeTab.url == 'about:blank' ||
+                          activeTab.url == 'about:newtab') {
+                        return const ModernHomePage();
+                      }
+                      return WebContentView(tab: activeTab);
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildSidebarPanelOverlay(BuildContext context) {
+  Widget _buildSideMenu(BuildContext context) {
     final config = _panelConfigForSection();
     if (config == null) return const SizedBox.shrink();
 
-    final media = MediaQuery.of(context);
-    final double minWidth = media.size.width * _panelMinFactor;
-    final double maxWidth = media.size.width * _panelMaxFactor;
-    final double width =
-        (media.size.width * _panelWidthFactor).clamp(minWidth, maxWidth);
-    final bool visible = _isPanelVisible;
-    const double toolbarHeight = 36 + 34;
-    final double topOffset = toolbarHeight + 6;
-
-    return IgnorePointer(
-      ignoring: !visible,
-      child: Stack(
+    return Container(
+      decoration: BoxDecoration(
+        color: NotilusColors.chromeDark,
+        border: Border(
+          right: BorderSide(
+            color: NotilusColors.neonRed.withOpacity(0.3),
+            width: 1,
+          ),
+        ),
+      ),
+      child: Column(
         children: [
-          AnimatedOpacity(
-            duration: const Duration(milliseconds: 220),
-            opacity: visible ? 0.15 : 0,
-            child: GestureDetector(
-              onTap: _closePanel,
-              child: Container(color: Colors.black),
+          // Header du menu
+          Container(
+            height: 36,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              color: NotilusColors.chrome,
+              border: Border(
+                bottom: BorderSide(
+                  color: NotilusColors.neonRed.withOpacity(0.2),
+                  width: 1,
+                ),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(config.icon, color: NotilusColors.neonRed, size: 18),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    config.title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: _closePanel,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    child: Icon(
+                      CupertinoIcons.xmark,
+                      color: Colors.white.withOpacity(0.7),
+                      size: 16,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          AnimatedPositioned(
-            duration: const Duration(milliseconds: 420),
-            curve: Curves.easeOutCubic,
-            top: topOffset,
-            bottom: 16,
-            left: visible ? 44 : -(width + 120),
-            child: SizedBox(
-              width: width,
-              child: _SidebarFloatingPanel(
-                title: config.title,
-                icon: config.icon,
-                onClose: _closePanel,
-                onResize: (delta) => _handlePanelResize(delta, media.size.width),
-                child: config.child,
-              ),
+          // Contenu du menu
+          Expanded(
+            child: Container(
+              color: Colors.black.withOpacity(0.05),
+              child: config.child,
             ),
           ),
         ],
@@ -289,124 +288,84 @@ class _SidebarFloatingPanel extends StatelessWidget {
   final IconData icon;
   final Widget child;
   final VoidCallback onClose;
-  final ValueChanged<double>? onResize;
 
   const _SidebarFloatingPanel({
     required this.title,
     required this.icon,
     required this.child,
     required this.onClose,
-    this.onResize,
   });
 
   @override
   Widget build(BuildContext context) {
     return Material(
       color: Colors.transparent,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          ClipRRect(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(22),
+        child: Container(
+          decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(22),
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(12),
-                  bottomLeft: Radius.circular(12),
-                  topRight: Radius.circular(22),
-                  bottomRight: Radius.circular(22),
-                ),
-                color: NotilusColors.chromeLight.withOpacity(0.96),
-                border: Border.all(color: Colors.white.withOpacity(0.05)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.35),
-                    blurRadius: 24,
-                    offset: const Offset(0, 18),
-                  ),
-                ],
+            color: NotilusColors.chromeLight.withOpacity(0.96),
+            border: Border.all(color: Colors.white.withOpacity(0.05)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.35),
+                blurRadius: 24,
+                offset: const Offset(0, 18),
               ),
-              child: Column(
-                children: [
-                  Container(
-                    height: 54,
-                    padding: const EdgeInsets.symmetric(horizontal: 18),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          NotilusColors.neonRed.withOpacity(0.85),
-                          NotilusColors.neonRedDark.withOpacity(0.85),
-                        ],
-                      ),
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(12),
-                        topRight: Radius.circular(22),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(icon, color: Colors.white, size: 18),
-                        const SizedBox(width: 10),
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const Spacer(),
-                        NotilusTooltip(
-                          message: 'Replier le panneau',
-                          child: IconButton(
-                            onPressed: onClose,
-                            icon: const Icon(
-                              CupertinoIcons.xmark_circle,
-                              color: Colors.white,
-                              size: 18,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: Container(
-                      color: Colors.black.withOpacity(0.08),
-                      child: child,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            ],
           ),
-          if (onResize != null)
-            Positioned(
-              left: -12,
-              top: 72,
-              bottom: 72,
-              child: GestureDetector(
-                behavior: HitTestBehavior.translucent,
-                onHorizontalDragUpdate: (details) =>
-                    onResize!(details.delta.dx),
-                child: Container(
-                  width: 18,
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.18),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.white.withOpacity(0.15)),
+          child: Column(
+            children: [
+              Container(
+                height: 54,
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      NotilusColors.neonRed.withOpacity(0.85),
+                      NotilusColors.neonRedDark.withOpacity(0.85),
+                    ],
                   ),
-                  child: Center(
-                    child: Container(
-                      width: 2,
-                      height: double.infinity,
-                      color: NotilusColors.neonRed.withOpacity(0.6),
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(22)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(icon, color: Colors.white, size: 18),
+                    const SizedBox(width: 10),
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
+                    const Spacer(),
+                    NotilusTooltip(
+                      message: 'Replier le panneau',
+                      child: IconButton(
+                        onPressed: onClose,
+                        icon: const Icon(
+                          CupertinoIcons.xmark_circle,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
-        ],
+              Expanded(
+                child: Container(
+                  color: Colors.black.withOpacity(0.08),
+                  child: child,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -425,6 +384,8 @@ class _NotilusWidgetsPanel extends StatelessWidget {
     ];
 
     return ListView.builder(
+      shrinkWrap: true,
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(18),
       itemCount: cards.length,
       itemBuilder: (context, index) {
@@ -484,6 +445,8 @@ class _NotilusAiPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
+      shrinkWrap: true,
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(18),
       children: [
         _AiToggleTile(

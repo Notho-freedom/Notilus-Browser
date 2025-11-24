@@ -1,19 +1,16 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../services/tab_manager.dart';
 import '../../core/services/wallpaper_manager.dart';
 import '../../services/quick_access_service.dart';
 import '../../services/history_service.dart';
-import '../../models/quick_access_item.dart';
 import '../../models/history_item.dart';
+import '../../core/utils/url_validator.dart';
 import '../common/notilus_monogram.dart';
-import '../common/notilus_tooltip.dart';
-import '../common/animated_wallpaper_background.dart';
-import '../common/sidebar_panel_scope.dart';
-import '../browser/gx_sidebar.dart';
+import '../common/context_menu.dart';
 
 class ModernHomePage extends StatefulWidget {
   const ModernHomePage({super.key});
@@ -27,12 +24,8 @@ class _ModernHomePageState extends State<ModernHomePage> {
   final FocusNode _searchFocusNode = FocusNode();
   final QuickAccessService _quickAccessService = QuickAccessService();
   final HistoryService _historyService = HistoryService();
-  final Random _randomColor = Random();
-
   List<QuickAccessItem> _quickAccessItems = [];
-  bool _loadingQuickAccess = true;
   List<HistoryItem> _recentHistory = [];
-  bool _loadingHistory = true;
 
   @override
   void initState() {
@@ -42,105 +35,92 @@ class _ModernHomePageState extends State<ModernHomePage> {
   }
 
   Future<void> _loadQuickAccessItems() async {
-    final items = await _quickAccessService.loadItems();
-    if (!mounted) return;
-    setState(() {
-      _quickAccessItems = items;
-      _loadingQuickAccess = false;
-    });
-  }
-
-  Future<void> _loadRecentHistory() async {
-    final history = await _historyService.getHistory();
-    if (!mounted) return;
-    setState(() {
-      _recentHistory = history.take(7).toList();
-      _loadingHistory = false;
-    });
-  }
-
-  Future<void> _showAddQuickAccessDialog() async {
-    final formKey = GlobalKey<FormState>();
-    final nameController = TextEditingController();
-    final urlController = TextEditingController();
-
-    final result = await showDialog<QuickAccessItem>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Ajouter un site rapide'),
-          content: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Nom'),
-                  validator: (value) =>
-                      value == null || value.trim().isEmpty ? 'Nom requis' : null,
-                ),
-                TextFormField(
-                  controller: urlController,
-                  decoration: const InputDecoration(labelText: 'URL'),
-                  validator: (value) =>
-                      value == null || value.trim().isEmpty ? 'URL requise' : null,
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Annuler'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                if (formKey.currentState?.validate() ?? false) {
-                  final item = QuickAccessItem(
-                    name: nameController.text.trim(),
-                    url: _normalizeUrl(urlController.text),
-                    color: _randomQuickAccessColor(),
-                  );
-                  Navigator.of(context).pop(item);
-                }
-              },
-              child: const Text('Ajouter'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (result != null) {
-      final items = await _quickAccessService.addItem(result);
-      if (!mounted) return;
+    final items = await _quickAccessService.getQuickAccessItems();
+    if (items.isEmpty) {
+      // Créer des items par défaut
+      final defaultItems = [
+        await _quickAccessService.extractSiteInfo('https://github.com'),
+        await _quickAccessService.extractSiteInfo('https://google.com'),
+        await _quickAccessService.extractSiteInfo('https://youtube.com'),
+        await _quickAccessService.extractSiteInfo('https://stackoverflow.com'),
+      ];
+      for (final item in defaultItems) {
+        if (item != null) {
+          await _quickAccessService.addQuickAccessItem(item);
+        }
+      }
+      await _loadQuickAccessItems();
+    } else {
       setState(() {
         _quickAccessItems = items;
       });
     }
   }
 
-  Color _randomQuickAccessColor() {
-    const palette = [
-      Color(0xFF1D2D50),
-      Color(0xFF162447),
-      Color(0xFF0F3460),
-      Color(0xFF533483),
-      Color(0xFF333A56),
-      Color(0xFF4F5D75),
-      Color(0xFF6930C3),
-    ];
-    return palette[_randomColor.nextInt(palette.length)];
+  Future<void> _loadRecentHistory() async {
+    final history = await _historyService.getHistory();
+    setState(() {
+      _recentHistory = history.take(5).toList();
+    });
   }
 
-  String _normalizeUrl(String value) {
-    var trimmed = value.trim();
-    if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
-      trimmed = 'https://$trimmed';
+  Future<void> _addQuickAccessSite() async {
+    final controller = TextEditingController();
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF15151A),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(color: const Color(0xFFFF2D55).withOpacity(0.6), width: 1),
+        ),
+        title: const Text('Ajouter un site rapide', style: TextStyle(color: Colors.white)),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          cursorColor: const Color(0xFFFF2D55),
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            hintText: 'https://example.com',
+            hintStyle: const TextStyle(color: Colors.white54),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: const Color(0xFFFF2D55).withOpacity(0.5)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Color(0xFFFF2D55)),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Annuler', style: TextStyle(color: Colors.white70)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(controller.text),
+            child: const Text('Ajouter', style: TextStyle(color: Color(0xFFFF2D55))),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null && result.isNotEmpty) {
+      final url = UrlValidator.validateAndFormat(result) ?? result;
+      final item = await _quickAccessService.extractSiteInfo(url);
+      if (item != null) {
+        await _quickAccessService.addQuickAccessItem(item);
+        await _loadQuickAccessItems();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Site rapide ajouté')),
+          );
+        }
+      }
     }
-    return trimmed;
   }
+
 
   void _handleSearch(String query) {
     if (query.trim().isEmpty) return;
@@ -157,275 +137,30 @@ class _ModernHomePageState extends State<ModernHomePage> {
     }
 
     tabManager.addTab(url: url);
-    _loadRecentHistory();
   }
 
   void _openQuickAccess(String url) {
     final tabManager = Provider.of<TabManager>(context, listen: false);
     tabManager.addTab(url: url);
-    _loadRecentHistory();
   }
 
-  Widget _buildHeroHeader(ThemeData theme) {
-    return Column(
-      children: [
-        const NotilusMonogram(
-          size: 78,
-        )
-            .animate()
-            .fadeIn(duration: 500.ms)
-            .scale(begin: const Offset(0.85, 0.85), end: const Offset(1, 1)),
-        const SizedBox(height: 20),
-        Text(
-          'Notilus Speed Dial',
-          style: theme.textTheme.headlineMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.5,
-          ),
-        )
-            .animate()
-            .fadeIn(duration: 500.ms, delay: 150.ms)
-            .slideY(begin: 0.12, end: 0),
-        const SizedBox(height: 6),
-        Text(
-          'Hub de lancement pour vos outils de développement',
-          style: theme.textTheme.bodyLarge?.copyWith(
-            color: theme.textTheme.bodyLarge?.color?.withOpacity(0.6),
-          ),
-        )
-            .animate()
-            .fadeIn(duration: 500.ms, delay: 220.ms)
-            .slideY(begin: 0.12, end: 0),
-      ],
-    );
-  }
-
-  Widget _buildSearchBar(ThemeData theme) {
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 720),
-      height: 56,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFFFF2D55).withOpacity(0.85),
-            const Color(0xFF6B2C5F).withOpacity(0.65),
-          ],
-        ),
-      ),
-      child: Container(
-        margin: const EdgeInsets.all(1.5),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
-          color: Colors.black.withOpacity(0.28),
-          border: Border.all(
-            color: Colors.white.withOpacity(0.05),
-            width: 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            const SizedBox(width: 18),
-            const Icon(
-              CupertinoIcons.search,
-              size: 20,
-              color: Color(0xFFFF2D55),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: TextField(
-                controller: _searchController,
-                focusNode: _searchFocusNode,
-                cursorColor: const Color(0xFFFF2D55),
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: Colors.white,
-                ),
-                decoration: InputDecoration(
-                  hintText: 'Rechercher sur le web ou saisir une adresse',
-                  hintStyle: theme.textTheme.bodyMedium?.copyWith(
-                    color: Colors.white.withOpacity(0.45),
-                  ),
-                  border: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                ),
-                onSubmitted: _handleSearch,
-              ),
-            ),
-            Container(
-              margin: const EdgeInsets.only(right: 6),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                color: const Color(0xFFFF2D55).withOpacity(0.14),
-              ),
-              child: IconButton(
-                icon: const Icon(
-                  CupertinoIcons.arrow_right,
-                  color: Color(0xFFFF2D55),
-                ),
-                onPressed: () => _handleSearch(_searchController.text),
-              ),
-            ),
-          ],
-        ),
-      ),
-    )
-        .animate()
-        .fadeIn(duration: 550.ms, delay: 300.ms)
-        .scale(
-          begin: const Offset(0.96, 0.96),
-          end: const Offset(1, 1),
-        );
-  }
-
-  Widget _buildStatsRow() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: const [
-        _StatChip(
-          icon: CupertinoIcons.gauge,
-          label: 'CPU',
-          value: '32%',
-        ),
-        SizedBox(width: 10),
-        _StatChip(
-          icon: Icons.memory,
-          label: 'RAM',
-          value: '45%',
-        ),
-        SizedBox(width: 10),
-        _StatChip(
-          icon: CupertinoIcons.waveform_path,
-          label: 'Réseau',
-          value: 'Stable',
-        ),
-      ],
-    )
-        .animate()
-        .fadeIn(duration: 450.ms, delay: 380.ms)
-        .slideY(begin: 0.08, end: 0);
-  }
-
-  Widget _buildQuickAccessHeader(ThemeData theme) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 2,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Color(0xFFFF2D55),
-                  Color(0xFF5856D6),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            'Sites rapides',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.3,
-            ),
-          ),
-          const Spacer(),
-          NotilusTooltip(
-            message: 'Ajouter un site rapide',
-            child: IconButton(
-              icon: const Icon(CupertinoIcons.plus_circle),
-              color: Colors.white.withOpacity(0.85),
-              onPressed: _showAddQuickAccessDialog,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuickAccessGrid() {
-    if (_loadingQuickAccess) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 32),
-        child: Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    final tiles = <Widget>[];
-    
-    // Ajouter les tiles de quick access
-    for (int index = 0; index < _quickAccessItems.length; index++) {
-      final item = _quickAccessItems[index];
-      tiles.add(
-        _QuickAccessTile(
-          item: item,
+  void _showQuickAccessContextMenu(BuildContext context, QuickAccessItem item) {
+    ContextMenu.show(
+      context: context,
+      actions: [
+        ContextMenuAction(
+          label: 'Ouvrir dans un nouvel onglet',
+          icon: CupertinoIcons.add,
           onTap: () => _openQuickAccess(item.url),
-          delay: (index * 60).ms,
         ),
-      );
-    }
-    
-    // Ajouter le tile "Ajouter"
-    tiles.add(_QuickAccessAddTile(onPressed: _showAddQuickAccessDialog));
-
-    return Wrap(
-      spacing: 18,
-      runSpacing: 18,
-      children: tiles,
-    );
-  }
-
-  Widget _buildRecentVisitsSection(
-      ThemeData theme, SidebarPanelScope? panelScope) {
-    if (_loadingHistory) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 16),
-        child: Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    if (_recentHistory.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Text(
-              'Dernières visites',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const Spacer(),
-            TextButton(
-              onPressed: () =>
-                  panelScope?.openPanel(SidebarSection.history),
-              child: const Text('Voir historique'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        SizedBox(
-          height: 58,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: _recentHistory.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 10),
-            itemBuilder: (context, index) {
-              final item = _recentHistory[index];
-              return _RecentVisitChip(
-                item: item,
-                onTap: () => _openQuickAccess(item.url),
-              );
-            },
-          ),
+        ContextMenuAction(
+          label: 'Supprimer',
+          icon: CupertinoIcons.delete,
+          isDestructive: true,
+          onTap: () async {
+            await _quickAccessService.removeQuickAccessItem(item.id);
+            await _loadQuickAccessItems();
+          },
         ),
       ],
     );
@@ -442,63 +177,327 @@ class _ModernHomePageState extends State<ModernHomePage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final panelScope = SidebarPanelScope.of(context);
-
-    return AnimatedWallpaperBackground(
-      darkness: isDark ? 0.65 : 0.75,
+    
+    final wallpaperManager = context.watch<WallpaperManager>();
+    
+    return Container(
+      decoration: BoxDecoration(
+        image: DecorationImage(
+          image: CachedNetworkImageProvider(wallpaperManager.current),
+          fit: BoxFit.cover,
+          colorFilter: ColorFilter.mode(
+            Colors.black.withOpacity(isDark ? 0.65 : 0.75),
+            BlendMode.srcOver,
+          ),
+        ),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.black.withOpacity(0.88),
+            Colors.black.withOpacity(0.94),
+          ],
+        ),
+      ),
       child: SafeArea(
         child: Stack(
           children: [
-            Align(
-              alignment: Alignment.topCenter,
+            // Contenu central
+            Center(
               child: SingleChildScrollView(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 900),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.58),
-                      borderRadius: BorderRadius.circular(32),
-                      border:
-                          Border.all(color: Colors.white.withOpacity(0.04)),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const SizedBox(height: 16),
+
+                    // Logo + titre
+                    Column(
+                      children: [
+                        const NotilusMonogram(
+                          size: 78,
+                        )
+                            .animate()
+                            .fadeIn(duration: 500.ms)
+                            .scale(begin: const Offset(0.85, 0.85), end: const Offset(1, 1)),
+
+                        const SizedBox(height: 20),
+
+                        Text(
+                          'Notilus Speed Dial',
+                          style: theme.textTheme.headlineMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
+                          ),
+                        )
+                            .animate()
+                            .fadeIn(duration: 500.ms, delay: 150.ms)
+                            .slideY(begin: 0.12, end: 0),
+
+                        const SizedBox(height: 6),
+
+                        Text(
+                          'Hub de lancement pour vos outils de développement',
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            color: theme.textTheme.bodyLarge?.color?.withOpacity(0.6),
+                          ),
+                        )
+                            .animate()
+                            .fadeIn(duration: 500.ms, delay: 220.ms)
+                            .slideY(begin: 0.12, end: 0),
+                      ],
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 28, vertical: 32),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const SizedBox(height: 8),
-                          _buildHeroHeader(theme),
-                          const SizedBox(height: 28),
-                          _buildSearchBar(theme),
-                          const SizedBox(height: 18),
-                          _buildStatsRow(),
-                          const SizedBox(height: 28),
-                          _buildQuickAccessHeader(theme),
-                          const SizedBox(height: 12),
-                          _buildQuickAccessGrid(),
-                          const SizedBox(height: 28),
-                          _buildRecentVisitsSection(theme, panelScope),
-                          const SizedBox(height: 24),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              'Suggestions (bientôt personnalisées pour vos workflows)',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.textTheme.bodySmall?.color
-                                    ?.withOpacity(0.55),
+
+                    const SizedBox(height: 32),
+
+                    // Barre de recherche avec double contour néon
+                    Container(
+                      constraints: const BoxConstraints(maxWidth: 720),
+                      height: 56,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(28),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            const Color(0xFFFF2D55).withOpacity(0.85),
+                            const Color(0xFF6B2C5F).withOpacity(0.65),
+                          ],
+                        ),
+                      ),
+                      child: Container(
+                        margin: const EdgeInsets.all(1.5),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(24),
+                          color: Colors.black.withOpacity(0.28),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.05),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            const SizedBox(width: 18),
+                            const Icon(
+                              CupertinoIcons.search,
+                              size: 20,
+                              color: Color(0xFFFF2D55),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: TextField(
+                                controller: _searchController,
+                                focusNode: _searchFocusNode,
+                                cursorColor: const Color(0xFFFF2D55),
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: Colors.white,
+                                ),
+                                decoration: InputDecoration(
+                                  hintText: 'Rechercher sur le web ou saisir une adresse',
+                                  hintStyle: theme.textTheme.bodyMedium?.copyWith(
+                                    color: Colors.white.withOpacity(0.45),
+                                  ),
+                                  border: InputBorder.none,
+                                  focusedBorder: InputBorder.none,
+                                  enabledBorder: InputBorder.none,
+                                ),
+                                onSubmitted: _handleSearch,
                               ),
                             ),
+                            Container(
+                              margin: const EdgeInsets.only(right: 6),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(20),
+                                color: const Color(0xFFFF2D55).withOpacity(0.14),
+                              ),
+                              child: IconButton(
+                                icon: const Icon(
+                                  CupertinoIcons.arrow_right,
+                                  color: Color(0xFFFF2D55),
+                                ),
+                                onPressed: () =>
+                                    _handleSearch(_searchController.text),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                        .animate()
+                        .fadeIn(duration: 550.ms, delay: 300.ms)
+                        .scale(
+                          begin: const Offset(0.96, 0.96),
+                          end: const Offset(1, 1),
+                        ),
+
+                      const SizedBox(height: 18),
+
+                    // Mini widgets CPU / RAM / Réseau façon GX
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          _StatChip(
+                            icon: CupertinoIcons.gauge,
+                            label: 'CPU',
+                            value: '32%',
+                          ),
+                          SizedBox(width: 10),
+                          _StatChip(
+                            icon: Icons.memory,
+                            label: 'RAM',
+                            value: '45%',
+                          ),
+                          SizedBox(width: 10),
+                          _StatChip(
+                            icon: CupertinoIcons.waveform_path,
+                            label: 'Réseau',
+                            value: 'Stable',
                           ),
                         ],
+                      )
+                        .animate()
+                        .fadeIn(duration: 450.ms, delay: 380.ms)
+                        .slideY(begin: 0.08, end: 0),
+
+                      const SizedBox(height: 32),
+
+                    // Titre de section Speed Dial
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 32,
+                              height: 2,
+                              decoration: const BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Color(0xFFFF2D55),
+                                    Color(0xFF5856D6),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Sites rapides',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                            const Spacer(),
+                            IconButton(
+                              icon: const Icon(CupertinoIcons.add_circled, color: Color(0xFFFF2D55)),
+                              tooltip: 'Ajouter un site rapide',
+                              onPressed: _addQuickAccessSite,
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
+
+                    const SizedBox(height: 18),
+
+                    // Grille Speed Dial
+                      Wrap(
+                        spacing: 18,
+                        runSpacing: 18,
+                        children:
+                            _quickAccessItems.asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final item = entry.value;
+
+                          return _QuickAccessTile(
+                            item: item,
+                            onTap: () => _openQuickAccess(item.url),
+                            onLongPress: () => _showQuickAccessContextMenu(context, item),
+                            delay: (index * 60).ms,
+                          );
+                        }).toList(),
+                      ),
+
+                      const SizedBox(height: 32),
+
+                      // Section Accès rapide (Historique récent)
+                      if (_recentHistory.isNotEmpty) ...[
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 32,
+                                height: 2,
+                                decoration: const BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Color(0xFFFF2D55),
+                                      Color(0xFF5856D6),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Accès rapide',
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                              const Spacer(),
+                              TextButton(
+                                onPressed: () {
+                                  // Ouvrir le panel historique
+                                  // TODO: Implémenter l'ouverture du panel
+                                },
+                                child: const Text(
+                                  'Voir tout',
+                                  style: TextStyle(color: Color(0xFFFF2D55)),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: _recentHistory.take(5).map((item) {
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 12),
+                                child: _HistoryQuickAccessTile(
+                                  historyItem: item,
+                                  onTap: () => _openQuickAccess(item.url),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                        const SizedBox(height: 32),
+                      ],
+
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Suggestions (bientôt personnalisées pour vos workflows)',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.textTheme.bodySmall?.color
+                                ?.withOpacity(0.55),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
                   ),
                 ),
               ),
             ),
+
+            // Label vertical "WIDGETS" à droite façon Opera GX
             Align(
               alignment: Alignment.centerRight,
               child: Container(
@@ -539,14 +538,20 @@ class _ModernHomePageState extends State<ModernHomePage> {
   }
 }
 
+// QuickAccessItem est maintenant défini dans quick_access_service.dart
+
 class _QuickAccessTile extends StatefulWidget {
   final QuickAccessItem item;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+  final bool compact;
   final Duration delay;
 
   const _QuickAccessTile({
     required this.item,
     required this.onTap,
+    this.onLongPress,
+    this.compact = false,
     required this.delay,
   });
 
@@ -639,11 +644,22 @@ class _QuickAccessTileState extends State<_QuickAccessTile> {
                               color: widget.item.color.withOpacity(0.14),
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: Icon(
-                              widget.item.icon,
-                              size: 18,
-                              color: widget.item.color,
-                            ),
+                            child: widget.item.iconUrl != null
+                                ? Image.network(
+                                    widget.item.iconUrl!,
+                                    width: 18,
+                                    height: 18,
+                                    errorBuilder: (_, __, ___) => Icon(
+                                      CupertinoIcons.globe,
+                                      size: 18,
+                                      color: widget.item.color,
+                                    ),
+                                  )
+                                : Icon(
+                                    CupertinoIcons.globe,
+                                    size: 18,
+                                    color: widget.item.color,
+                                  ),
                           ),
                           const SizedBox(width: 8),
                           Expanded(
@@ -697,102 +713,6 @@ class _QuickAccessTileState extends State<_QuickAccessTile> {
           end: const Offset(1, 1),
           delay: widget.delay,
         );
-  }
-}
-
-class _QuickAccessAddTile extends StatelessWidget {
-  final VoidCallback onPressed;
-
-  const _QuickAccessAddTile({required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onPressed,
-      child: DottedBorderContainer(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            Icon(CupertinoIcons.plus_circle, color: Colors.white70, size: 28),
-            SizedBox(height: 8),
-            Text(
-              'Ajouter',
-              style: TextStyle(color: Colors.white70, fontSize: 12),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _RecentVisitChip extends StatelessWidget {
-  final HistoryItem item;
-  final VoidCallback onTap;
-
-  const _RecentVisitChip({
-    required this.item,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ActionChip(
-      backgroundColor: Colors.white.withOpacity(0.08),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      label: SizedBox(
-        width: 150,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              item.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            Text(
-              item.url,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white60,
-                fontSize: 12,
-              ),
-            ),
-          ],
-        ),
-      ),
-      onPressed: onTap,
-    );
-  }
-}
-
-class DottedBorderContainer extends StatelessWidget {
-  final Widget child;
-
-  const DottedBorderContainer({required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 150,
-      height: 150,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.25),
-          width: 1,
-          style: BorderStyle.solid,
-        ),
-        color: Colors.white.withOpacity(0.02),
-      ),
-      child: Center(child: child),
-    );
   }
 }
 
@@ -850,6 +770,58 @@ class _StatChip extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _HistoryQuickAccessTile extends StatelessWidget {
+  final HistoryItem historyItem;
+  final VoidCallback onTap;
+
+  const _HistoryQuickAccessTile({
+    required this.historyItem,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 100,
+        height: 70,
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          color: const Color(0xFF5856D6).withOpacity(0.2),
+          border: Border.all(
+            color: const Color(0xFF5856D6).withOpacity(0.5),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              CupertinoIcons.globe,
+              size: 24,
+              color: Color(0xFF5856D6),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              historyItem.title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }

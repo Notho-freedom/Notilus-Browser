@@ -91,7 +91,7 @@ class _GXSidebarState extends State<GXSidebar> {
         children: [
           const SizedBox(height: 10),
           const NotilusMonogram(
-            size: 30,
+            size: 24,
             showGlow: false,
             showFrame: true,
           ),

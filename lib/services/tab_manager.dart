@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../models/tab_model.dart';
 import '../models/tab_group_model.dart';
-import '../core/utils/url_validator.dart';
 import 'storage_service.dart';
 import 'tab_performance_manager.dart';
 
@@ -12,7 +11,6 @@ class TabManager extends ChangeNotifier {
   final StorageService _storage = StorageService();
   final TabPerformanceManager _performanceManager = TabPerformanceManager();
   bool _isInitialized = false;
-  final Map<String, String> _domainGroupMap = {};
 
   List<TabModel> get tabs => List.unmodifiable(_tabs);
   List<TabGroupModel> get groups => List.unmodifiable(_groups);
@@ -63,7 +61,6 @@ class TabManager extends ChangeNotifier {
     }
 
     _isInitialized = true;
-    _autoGroupTabs();
     notifyListeners();
   }
 
@@ -100,7 +97,6 @@ class TabManager extends ChangeNotifier {
     _activeTabId = tab.id;
     final index = _tabs.length - 1;
     _tabs[index] = _tabs[index].copyWith(isSelected: true);
-    _autoGroupTabs();
     notifyListeners();
     _save();
     return _tabs[index];
@@ -155,7 +151,6 @@ class TabManager extends ChangeNotifier {
         selectTab(newTab.id);
       }
       
-      _autoGroupTabs();
       notifyListeners();
       _save();
     }
@@ -175,7 +170,6 @@ class TabManager extends ChangeNotifier {
         favicon: favicon,
         state: state,
       );
-      _autoGroupTabs();
       notifyListeners();
       _save();
     }
@@ -275,92 +269,8 @@ class TabManager extends ChangeNotifier {
         }
       }
       _groups.removeAt(index);
-      _domainGroupMap.removeWhere((_, id) => id == groupId);
       notifyListeners();
     }
-  }
-
-  void _autoGroupTabs() {
-    final Map<String, List<TabModel>> domainBuckets = {};
-    for (final tab in _tabs) {
-      final domain = UrlValidator.extractDomain(tab.url ?? '');
-      if (domain == null || domain.isEmpty) continue;
-      domainBuckets.putIfAbsent(domain, () => []).add(tab);
-    }
-
-    final Set<String> activeDomains = {};
-    domainBuckets.forEach((domain, tabs) {
-      if (tabs.length < 2) return;
-      activeDomains.add(domain);
-      final groupId = _domainGroupMap[domain] ?? _createDomainGroup(domain);
-      _syncGroupAssignments(groupId, domain, tabs);
-    });
-
-    final List<String> domainsToRemove = [];
-    _domainGroupMap.forEach((domain, groupId) {
-      final tabs = domainBuckets[domain];
-      if (tabs == null || tabs.length < 2) {
-        _removeGroupAssignments(groupId);
-        domainsToRemove.add(domain);
-      }
-    });
-
-    for (final domain in domainsToRemove) {
-      _domainGroupMap.remove(domain);
-    }
-  }
-
-  String _createDomainGroup(String domain) {
-    final group = TabGroupModel(
-      name: _formatDomainName(domain),
-      color: '#FF2D55',
-    );
-    _groups.add(group);
-    _domainGroupMap[domain] = group.id;
-    return group.id;
-  }
-
-  void _syncGroupAssignments(String groupId, String domain, List<TabModel> tabs) {
-    final tabIds = tabs.map((t) => t.id).toList();
-    final existingIndex = _groups.indexWhere((g) => g.id == groupId);
-    final updatedGroup = existingIndex == -1
-        ? TabGroupModel(
-            id: groupId,
-            name: _formatDomainName(domain),
-            color: '#FF2D55',
-            tabIds: tabIds,
-          )
-        : _groups[existingIndex].copyWith(
-            tabIds: tabIds,
-            name: _formatDomainName(domain),
-          );
-
-    if (existingIndex == -1) {
-      _groups.add(updatedGroup);
-    } else {
-      _groups[existingIndex] = updatedGroup;
-    }
-
-    for (final tab in tabs) {
-      final idx = _tabs.indexWhere((t) => t.id == tab.id);
-      if (idx != -1) {
-        _tabs[idx] = _tabs[idx].copyWith(groupId: groupId);
-      }
-    }
-  }
-
-  void _removeGroupAssignments(String groupId) {
-    for (int i = 0; i < _tabs.length; i++) {
-      if (_tabs[i].groupId == groupId) {
-        _tabs[i] = _tabs[i].copyWith(groupId: null);
-      }
-    }
-    _groups.removeWhere((group) => group.id == groupId);
-    _domainGroupMap.removeWhere((_, id) => id == groupId);
-  }
-
-  String _formatDomainName(String domain) {
-    return domain.replaceFirst(RegExp(r'^www\.'), '');
   }
 }
 

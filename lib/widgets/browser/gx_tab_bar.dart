@@ -38,6 +38,7 @@ class GXTabBar extends StatelessWidget {
       ),
       child: Row(
         children: [
+          SizedBox(width: isSidebarVisible ? 10 : 10),
           if (!isSidebarVisible) ...[
             const NotilusTooltip(
               message: 'Identité Notilus',
@@ -87,26 +88,19 @@ class GXTabBar extends StatelessWidget {
                         final tab = tabManager.tabs[index];
                         final isActive = tab.isSelected;
 
-                        final tooltipText = tab.title?.isNotEmpty == true
-                            ? tab.title!
-                            : (tab.url ?? 'Onglet');
-                        return NotilusTooltip(
-                          message: tooltipText,
-                          child: _GXTabItem(
-                            tab: tab,
-                            width: tabWidth,
-                            isActive: isActive,
-                            onTap: () => tabManager.selectTab(tab.id),
-                            onClose: () {
-                              final webViewManager =
-                                  Provider.of<TabWebViewManager>(
-                                context,
-                                listen: false,
-                              );
-                              webViewManager.removeEngineForTab(tab.id);
-                              tabManager.closeTab(tab.id);
-                            },
-                          ),
+                        return _GXTabItem(
+                          tab: tab,
+                          width: tabWidth,
+                          isActive: isActive,
+                          onTap: () => tabManager.selectTab(tab.id),
+                          onClose: () {
+                            final webViewManager = Provider.of<TabWebViewManager>(
+                              context,
+                              listen: false,
+                            );
+                            webViewManager.removeEngineForTab(tab.id);
+                            tabManager.closeTab(tab.id);
+                          },
                         );
                       },
                     );
@@ -301,44 +295,46 @@ class _GXTabItemState extends State<_GXTabItem> {
       end: Alignment.bottomRight,
     );
 
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: SizedBox(
-          width: widget.width,
-          height: 32,
-          child: Column(
-            children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                height: 3,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  gradient: widget.isActive ? activeGradient : null,
-                  color: widget.isActive ? null : Colors.transparent,
-                ),
-              ),
-              const SizedBox(height: 1),
-              Expanded(
-                child: AnimatedContainer(
+    return NotilusTooltip(
+      message: widget.tab.title ?? widget.tab.url ?? 'Onglet',
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _isHovered = true),
+        onExit: (_) => setState(() => _isHovered = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: SizedBox(
+            width: widget.width,
+            height: 32,
+            child: Column(
+              children: [
+                AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
+                  height: 3,
+                  width: double.infinity,
                   decoration: BoxDecoration(
-                    gradient: widget.isActive
-                        ? activeGradient
-                        : null,
-                    color: widget.isActive
-                        ? null
-                        : (_isHovered
-                            ? const Color(0xFF1F1F23)
-                            : Colors.transparent),
-                    borderRadius: BorderRadius.circular(8),
+                    gradient: widget.isActive ? activeGradient : null,
+                    color: widget.isActive ? null : Colors.transparent,
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: Row(
-                      children: [
+                ),
+                const SizedBox(height: 1),
+                Expanded(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    decoration: BoxDecoration(
+                      gradient: widget.isActive
+                          ? activeGradient
+                          : null,
+                      color: widget.isActive
+                          ? null
+                          : (_isHovered
+                              ? const Color(0xFF1F1F23)
+                              : Colors.transparent),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Row(
+                        children: [
                         // Favicon dynamique
                         SizedBox(
                           width: 24,
@@ -427,6 +423,7 @@ class _GXTabItemState extends State<_GXTabItem> {
           ),
         ),
       ),
+    ),
     );
   }
 
