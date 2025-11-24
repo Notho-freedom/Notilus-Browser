@@ -80,9 +80,11 @@ class _GXTerminalViewState extends State<GXTerminalView> {
     );
 
     // Configurer le callback d'écriture du terminal (input utilisateur)
-    _terminal.onOutput = (data) {
+    _terminal.onOutput = (data) async {
       if (_session != null && _session!.isInitialized) {
-        _session!.write(data);
+        await _session!.write(data);
+      } else {
+        debugPrint('⚠️ Session not ready, cannot write: $data');
       }
     };
 

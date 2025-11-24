@@ -14,8 +14,6 @@ import '../../models/history_item.dart';
 import '../../models/bookmark.dart';
 import '../../services/favicon_service.dart';
 import '../../core/utils/url_validator.dart';
-import '../../services/tab_manager.dart';
-import '../../models/tab_model.dart' show TabType;
 import '../common/notilus_monogram.dart';
 import '../common/context_menu.dart';
 
@@ -848,10 +846,10 @@ class _ModernHomePageState extends State<ModernHomePage> {
                       context,
                       icon: CupertinoIcons.square_list,
                       title: 'Terminal',
-                      subtitle: 'Ouvrir un terminal',
+                      subtitle: 'Ouvrir le terminal',
                       onTap: () {
-                        final tabManager = Provider.of<TabManager>(context, listen: false);
-                        tabManager.createNewTab(type: TabType.terminal);
+                        // Ouvrir le terminal dans la sidebar
+                        widget.onTerminalSelected?.call();
                       },
                     ),
                     const SizedBox(height: 12),

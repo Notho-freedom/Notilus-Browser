@@ -35,7 +35,9 @@ class TerminalSession {
       if (shell == null) {
         if (Platform.isWindows) {
           _shellCommand = 'powershell.exe';
-          _shellArgs = ['-NoExit', '-Command'];
+          // -NoExit : garde la fenêtre ouverte
+          // -Command - : prend stdin comme source de commandes
+          _shellArgs = ['-NoExit', '-Command', '-'];
         } else if (Platform.isMacOS) {
           _shellCommand = '/bin/zsh';
           _shellArgs = [];
@@ -55,7 +57,7 @@ class TerminalSession {
         _shellCommand!,
         _shellArgs ?? [],
         mode: ProcessStartMode.normal,
-        runInShell: false,
+        runInShell: Platform.isWindows, // runInShell nécessaire pour Windows
       );
 
       // Écouter la sortie stdout

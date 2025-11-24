@@ -79,6 +79,11 @@ class _GXSidebarState extends State<GXSidebar> {
       icon: CupertinoIcons.gear_alt,
       label: 'Paramètres',
     ),
+    _SidebarDestination(
+      section: SidebarSection.terminal,
+      icon: CupertinoIcons.square_list,
+      label: 'Terminal',
+    ),
   ];
 
   // Services web avec webview - tous en rouge GX

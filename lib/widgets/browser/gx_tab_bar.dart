@@ -115,18 +115,6 @@ class GXTabBar extends StatelessWidget {
                                         ),
                                         onTap: () => tabManager.createNewTab(),
                                       ),
-                                      PopupMenuItem(
-                                        child: const Row(
-                                          children: [
-                                            Icon(CupertinoIcons.square_list, size: 16),
-                                            SizedBox(width: 8),
-                                            Text('Nouveau terminal'),
-                                          ],
-                                        ),
-                                        onTap: () {
-                                          tabManager.createNewTab(type: TabType.terminal);
-                                        },
-                                      ),
                                     ],
                                   );
                                 },

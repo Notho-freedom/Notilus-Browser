@@ -19,8 +19,7 @@ import '../../core/services/wallpaper_manager.dart';
 import '../../services/split_screen_service.dart';
 import '../../widgets/splitscreen/advanced_split_view.dart';
 import '../../widgets/terminal/terminal_panel.dart';
-import '../../widgets/terminal/gx_terminal_view.dart';
-import '../../models/tab_model.dart' show TabType;
+import '../../widgets/terminal/native_terminal_panel.dart';
 
 // Intent pour les raccourcis clavier
 class _OpenDevToolsIntent extends Intent {}
@@ -187,12 +186,7 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                             );
                           }
                           
-                          // Gérer les différents types d'onglets
-                          if (activeTab.type == TabType.terminal) {
-                            return GXTerminalView(tab: activeTab);
-                          }
-                          
-                          // Onglets web
+                          // Onglets web uniquement (terminal géré via sidebar)
                           if (activeTab.url == null ||
                               activeTab.url!.isEmpty ||
                               activeTab.url == 'about:blank' ||
@@ -396,7 +390,7 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
         return _SidebarPanelConfig(
           title: 'Terminal',
           icon: CupertinoIcons.square_list,
-          child: const TerminalPanel(),
+          child: const NativeTerminalPanel(),
         );
       case SidebarSection.youtubeMusic:
         return _SidebarPanelConfig(
