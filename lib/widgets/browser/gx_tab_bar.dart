@@ -6,6 +6,7 @@ import 'package:window_manager/window_manager.dart';
 import '../../core/constants/notilus_colors.dart';
 import '../../services/tab_manager.dart';
 import '../../services/tab_webview_manager.dart';
+import '../../services/split_screen_service.dart';
 import '../../services/quick_access_service.dart';
 import '../../services/bookmark_service.dart';
 import '../../models/tab_model.dart';
@@ -106,20 +107,28 @@ class GXTabBar extends StatelessWidget {
                             return LongPressDraggable<TabModel>(
                               key: ValueKey(tab.id),
                               data: tab,
+                              dragAnchorStrategy: pointerDragAnchorStrategy,
                               feedback: Material(
                                 color: Colors.transparent,
-                                child: Opacity(
-                                  opacity: 0.8,
+                                child: Transform.scale(
+                                  scale: 1.05,
                                   child: Container(
                                     width: tabWidth,
                                     height: 32,
                                     decoration: BoxDecoration(
                                       color: _chromeColor,
-                                      borderRadius: BorderRadius.circular(6),
+                                      borderRadius: BorderRadius.circular(8),
                                       border: Border.all(
                                         color: _gxRed,
-                                        width: 2,
+                                        width: 2.5,
                                       ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: _gxRed.withOpacity(0.5),
+                                          blurRadius: 12,
+                                          spreadRadius: 2,
+                                        ),
+                                      ],
                                     ),
                                     child: _GXTabItem(
                                       tab: tab,
@@ -131,8 +140,9 @@ class GXTabBar extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                              childWhenDragging: Opacity(
-                                opacity: 0.3,
+                              childWhenDragging: AnimatedOpacity(
+                                opacity: 0.2,
+                                duration: const Duration(milliseconds: 200),
                                 child: _GXTabItem(
                                   tab: tab,
                                   width: tabWidth,
@@ -148,14 +158,23 @@ class GXTabBar extends StatelessWidget {
                                   },
                                 ),
                               ),
-                              child: Container(
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                curve: Curves.easeOutCubic,
                                 decoration: candidateData.isNotEmpty
                                     ? BoxDecoration(
                                         border: Border.all(
                                           color: _gxRed,
-                                          width: 2,
+                                          width: 2.5,
                                         ),
                                         borderRadius: BorderRadius.circular(6),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: _gxRed.withOpacity(0.3),
+                                            blurRadius: 8,
+                                            spreadRadius: 1,
+                                          ),
+                                        ],
                                       )
                                     : null,
                                 child: _GXTabItem(
@@ -194,10 +213,14 @@ class GXTabBar extends StatelessWidget {
                 tooltip: 'Rechercher un onglet',
                 onPressed: () => _openTabSearch(context),
               ),
-              _GXTabBarIconButton(
-                icon: CupertinoIcons.square_split_2x1,
-                tooltip: 'Split view (bientôt)',
-                onPressed: () {},
+              Consumer<SplitScreenService>(
+                builder: (context, splitService, _) => _GXTabBarIconButton(
+                  icon: CupertinoIcons.square_split_2x1,
+                  tooltip: splitService.isActive
+                      ? 'Désactiver le split-screen'
+                      : 'Activer le split-screen',
+                  onPressed: () => splitService.toggle(),
+                ),
               ),
               _GXTabBarIconButton(
                 icon: CupertinoIcons.square_grid_2x2,

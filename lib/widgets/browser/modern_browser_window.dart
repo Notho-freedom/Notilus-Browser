@@ -14,6 +14,8 @@ import 'modern_settings_panel.dart';
 import 'webview_service_panel.dart';
 import '../../core/constants/notilus_colors.dart';
 import '../../core/services/wallpaper_manager.dart';
+import '../../services/split_screen_service.dart';
+import '../../widgets/splitscreen/advanced_split_view.dart';
 
 class ModernBrowserWindow extends StatefulWidget {
   const ModernBrowserWindow({super.key});
@@ -131,8 +133,14 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                     ),
                     const GXAddressBar(),
                     Expanded(
-                      child: Consumer<TabManager>(
-                        builder: (context, tabManager, _) {
+                      child: Consumer2<SplitScreenService, TabManager>(
+                        builder: (context, splitService, tabManager, _) {
+                          // Si split-screen est actif, afficher la vue split
+                          if (splitService.isActive) {
+                            return const AdvancedSplitView();
+                          }
+                          
+                          // Sinon, afficher la vue normale
                           final activeTab = tabManager.activeTab;
                           if (activeTab == null ||
                               activeTab.url == null ||
