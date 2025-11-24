@@ -44,6 +44,11 @@ abstract class BrowserEngine {
   /// Récupère le contrôleur pour l'affichage (peut être null selon la plateforme)
   Future<dynamic> getController() async => null;
   
+  /// Ouvre les DevTools (si supporté par la plateforme)
+  Future<void> openDevTools() async {
+    // Par défaut, non supporté - à implémenter dans les sous-classes
+  }
+  
   // Callbacks pour les événements
   Function(String)? onUrlChanged;
   Function(String)? onTitleChanged;

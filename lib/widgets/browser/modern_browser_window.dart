@@ -1,7 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../services/tab_manager.dart';
+import '../../services/tab_webview_manager.dart';
 import 'gx_address_bar.dart';
 import 'gx_tab_bar.dart';
 import 'gx_sidebar.dart';
@@ -16,6 +18,10 @@ import '../../core/constants/notilus_colors.dart';
 import '../../core/services/wallpaper_manager.dart';
 import '../../services/split_screen_service.dart';
 import '../../widgets/splitscreen/advanced_split_view.dart';
+import '../../services/browser_engine.dart';
+
+// Intent pour les raccourcis clavier
+class _OpenDevToolsIntent extends Intent {}
 
 class ModernBrowserWindow extends StatefulWidget {
   const ModernBrowserWindow({super.key});
@@ -74,21 +80,48 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
     }
   }
 
+  void _handleOpenDevTools() async {
+    final tabManager = Provider.of<TabManager>(context, listen: false);
+    final webViewManager = Provider.of<TabWebViewManager>(context, listen: false);
+    final activeTab = tabManager.activeTab;
+    
+    if (activeTab != null && activeTab.url != null && activeTab.url!.isNotEmpty) {
+      final engine = webViewManager.getEngineForTab(activeTab.id, url: activeTab.url);
+      await engine.openDevTools();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFFFF2D55),
-            Color(0x00FF2D55),
-          ],
-        ),
-      ),
-      child: Container(
+    return Shortcuts(
+      shortcuts: {
+        LogicalKeySet(LogicalKeyboardKey.f12): _OpenDevToolsIntent(),
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.shift, LogicalKeyboardKey.keyI): _OpenDevToolsIntent(),
+      },
+      child: Actions(
+        actions: {
+          _OpenDevToolsIntent: CallbackAction<_OpenDevToolsIntent>(
+            onInvoke: (_) {
+              _handleOpenDevTools();
+              return null;
+            },
+          ),
+        },
+        child: Focus(
+          autofocus: true,
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFFFF2D55),
+                  Color(0x00FF2D55),
+                ],
+              ),
+            ),
+            child: Container(
         margin: const EdgeInsets.all(1.8),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
@@ -215,6 +248,9 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
             ),
           ),
           ],
+        ),
+            ),
+          ),
         ),
       ),
     );

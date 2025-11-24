@@ -320,6 +320,31 @@ class WebView2BrowserEngine extends BrowserEngine {
     }
   }
 
+  @override
+  Future<void> openDevTools() async {
+    // webview_windows 0.2.0 ne supporte pas les DevTools nativement
+    // On essaie d'utiliser les APIs WebView2 natives via une approche alternative
+    if (_webView == null) return;
+    
+    try {
+      // Méthode 1: Essayer d'ouvrir via JavaScript (ne fonctionne pas vraiment)
+      // Méthode 2: Utiliser les APIs natives de WebView2 via FFI (nécessite un plugin custom)
+      // Pour l'instant, on affiche un message informatif
+      debugPrint('⚠️ DevTools non disponibles avec webview_windows 0.2.0');
+      debugPrint('💡 Pour activer les DevTools, passez à webview2_wrapper ou créez un plugin custom');
+      
+      // Tentative d'ouverture via injection JavaScript (limité)
+      await _webView!.executeScript('''
+        (function() {
+          console.warn('DevTools non disponibles avec webview_windows 0.2.0');
+          console.warn('Pour activer les DevTools, utilisez un package qui supporte WebView2 DevTools');
+        })();
+      ''');
+    } catch (e) {
+      debugPrint('Erreur lors de la tentative d\'ouverture des DevTools: $e');
+    }
+  }
+
   void dispose() {
     _stopNewWindowPolling();
     _webView?.dispose();
