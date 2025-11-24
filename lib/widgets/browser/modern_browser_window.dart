@@ -19,6 +19,8 @@ import '../../core/services/wallpaper_manager.dart';
 import '../../services/split_screen_service.dart';
 import '../../widgets/splitscreen/advanced_split_view.dart';
 import '../../widgets/terminal/terminal_panel.dart';
+import '../../widgets/terminal/gx_terminal_view.dart';
+import '../../models/tab_model.dart' show TabType;
 
 // Intent pour les raccourcis clavier
 class _OpenDevToolsIntent extends Intent {}
@@ -175,8 +177,23 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                           
                           // Sinon, afficher la vue normale
                           final activeTab = tabManager.activeTab;
-                          if (activeTab == null ||
-                              activeTab.url == null ||
+                          if (activeTab == null) {
+                            return ModernHomePage(
+                              onTerminalSelected: () {
+                                setState(() {
+                                  _currentSection = SidebarSection.terminal;
+                                });
+                              },
+                            );
+                          }
+                          
+                          // Gérer les différents types d'onglets
+                          if (activeTab.type == TabType.terminal) {
+                            return GXTerminalView(tab: activeTab);
+                          }
+                          
+                          // Onglets web
+                          if (activeTab.url == null ||
                               activeTab.url!.isEmpty ||
                               activeTab.url == 'about:blank' ||
                               activeTab.url == 'about:newtab') {

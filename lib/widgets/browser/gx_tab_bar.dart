@@ -11,6 +11,7 @@ import '../../services/quick_access_service.dart';
 import 'package:flutter/services.dart';
 import '../../services/bookmark_service.dart';
 import '../../models/tab_model.dart';
+import '../../services/terminal_manager.dart';
 import '../../models/bookmark.dart';
 import '../common/notilus_monogram.dart';
 import '../common/notilus_tooltip.dart';
@@ -87,9 +88,48 @@ class GXTabBar extends StatelessWidget {
                               padding: const EdgeInsets.symmetric(horizontal: 4),
                               child: _GXTabBarIconButton(
                                 icon: CupertinoIcons.add,
-                                tooltip: 'Nouvel onglet',
+                                tooltip: 'Nouvel onglet (maintenir pour menu)',
                                 compact: true,
                                 onPressed: () => tabManager.createNewTab(),
+                                onLongPress: () {
+                                  // Menu contextuel pour choisir le type d'onglet
+                                  final RenderBox renderBox = context.findRenderObject() as RenderBox;
+                                  final Offset offset = renderBox.localToGlobal(Offset.zero);
+                                  
+                                  showMenu(
+                                    context: context,
+                                    position: RelativeRect.fromLTRB(
+                                      offset.dx,
+                                      offset.dy + 30,
+                                      offset.dx + 100,
+                                      offset.dy + 100,
+                                    ),
+                                    items: [
+                                      PopupMenuItem(
+                                        child: const Row(
+                                          children: [
+                                            Icon(CupertinoIcons.globe, size: 16),
+                                            SizedBox(width: 8),
+                                            Text('Nouvel onglet web'),
+                                          ],
+                                        ),
+                                        onTap: () => tabManager.createNewTab(),
+                                      ),
+                                      PopupMenuItem(
+                                        child: const Row(
+                                          children: [
+                                            Icon(CupertinoIcons.square_list, size: 16),
+                                            SizedBox(width: 8),
+                                            Text('Nouveau terminal'),
+                                          ],
+                                        ),
+                                        onTap: () {
+                                          tabManager.createNewTab(type: TabType.terminal);
+                                        },
+                                      ),
+                                    ],
+                                  );
+                                },
                               ),
                             );
                           }
@@ -629,12 +669,14 @@ class _GXTabBarIconButton extends StatefulWidget {
   final IconData icon;
   final String? tooltip;
   final VoidCallback? onPressed;
+  final VoidCallback? onLongPress;
   final bool compact;
 
   const _GXTabBarIconButton({
     required this.icon,
     this.tooltip,
     this.onPressed,
+    this.onLongPress,
     this.compact = false,
   });
 
@@ -649,6 +691,7 @@ class _GXTabBarIconButtonState extends State<_GXTabBarIconButton> {
   Widget build(BuildContext context) {
     final button = GestureDetector(
       onTap: widget.onPressed,
+      onLongPress: widget.onLongPress,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         width: widget.compact ? 28 : 32,

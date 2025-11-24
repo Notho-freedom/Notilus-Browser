@@ -12,6 +12,7 @@ import 'services/side_webview_manager.dart';
 import 'services/system_metrics_service.dart';
 import 'services/split_screen_service.dart';
 import 'services/terminal_service.dart';
+import 'services/terminal_manager.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -67,6 +68,7 @@ class NotilusApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => SystemMetricsService()),
         ChangeNotifierProvider(create: (_) => SplitScreenService()),
         ChangeNotifierProvider(create: (_) => TerminalService()..initialize()),
+        ChangeNotifierProvider(create: (_) => TerminalManager()),
       ],
       child: Consumer<ThemeModeNotifier>(
         builder: (context, themeModeNotifier, _) {

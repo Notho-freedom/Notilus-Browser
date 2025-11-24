@@ -73,28 +73,32 @@ class TabManager extends ChangeNotifier {
     ]);
   }
 
-  TabModel _createNewTab({String? url, String? groupId}) {
+  TabModel _createNewTab({String? url, String? groupId, TabType? type}) {
     // Si pas d'URL, utiliser la page d'accueil
     final tabUrl = url ?? 'about:newtab';
+    final tabType = type ?? TabType.web;
     final tab = TabModel(
       url: tabUrl,
       groupId: groupId,
-      state: (url != null && url != 'about:newtab' && url != 'about:blank') 
-          ? TabState.loading 
-          : TabState.blank,
+      type: tabType,
+      state: (tabType == TabType.terminal)
+          ? TabState.loaded
+          : (url != null && url != 'about:newtab' && url != 'about:blank') 
+              ? TabState.loading 
+              : TabState.blank,
     );
     _tabs.add(tab);
     notifyListeners();
     return tab;
   }
 
-  TabModel createNewTab({String? url, String? groupId}) {
+  TabModel createNewTab({String? url, String? groupId, TabType? type}) {
     // Deselect all tabs
     for (int i = 0; i < _tabs.length; i++) {
       _tabs[i] = _tabs[i].copyWith(isSelected: false);
     }
     
-    final tab = _createNewTab(url: url, groupId: groupId);
+    final tab = _createNewTab(url: url, groupId: groupId, type: type);
     _activeTabId = tab.id;
     final index = _tabs.length - 1;
     _tabs[index] = _tabs[index].copyWith(isSelected: true);
@@ -147,7 +151,7 @@ class TabManager extends ChangeNotifier {
         selectTab(_tabs[newIndex].id);
       } else if (_tabs.isEmpty) {
         // Recréer un onglet d'accueil et le sélectionner
-        final newTab = _createNewTab(url: 'about:newtab');
+        final newTab = _createNewTab(url: 'about:newtab', type: TabType.web);
         _activeTabId = newTab.id;
         selectTab(newTab.id);
       }

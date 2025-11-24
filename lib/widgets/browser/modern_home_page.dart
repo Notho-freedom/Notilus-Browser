@@ -14,9 +14,10 @@ import '../../models/history_item.dart';
 import '../../models/bookmark.dart';
 import '../../services/favicon_service.dart';
 import '../../core/utils/url_validator.dart';
+import '../../services/tab_manager.dart';
+import '../../models/tab_model.dart' show TabType;
 import '../common/notilus_monogram.dart';
 import '../common/context_menu.dart';
-import '../terminal/terminal_list_widget.dart';
 
 class ModernHomePage extends StatefulWidget {
   final VoidCallback? onTerminalSelected;
@@ -40,7 +41,6 @@ class _ModernHomePageState extends State<ModernHomePage> {
   List<HistoryItem> _recentHistory = [];
   bool _leftColumnExpanded = false; // Collapsed par défaut
   bool _rightColumnExpanded = false; // Collapsed par défaut
-  bool _showTerminalList = false; // Afficher la liste des terminaux
   
   static const String _prefsKeyLeftColumn = 'notilus_left_column_expanded';
   static const String _prefsKeyRightColumn = 'notilus_right_column_expanded';
@@ -844,14 +844,17 @@ class _ModernHomePageState extends State<ModernHomePage> {
                       onTap: () {},
                     ),
                     const SizedBox(height: 12),
-                    // Widget de liste des terminaux (affiché quand on clique sur Terminal)
-                    if (_showTerminalList) ...[
-                      const SizedBox(height: 8),
-                      TerminalListWidget(
-                        onTerminalSelected: widget.onTerminalSelected,
-                      ),
-                      const SizedBox(height: 12),
-                    ],
+                    _buildDevWidget(
+                      context,
+                      icon: CupertinoIcons.square_list,
+                      title: 'Terminal',
+                      subtitle: 'Ouvrir un terminal',
+                      onTap: () {
+                        final tabManager = Provider.of<TabManager>(context, listen: false);
+                        tabManager.createNewTab(type: TabType.terminal);
+                      },
+                    ),
+                    const SizedBox(height: 12),
                     _buildDevWidget(
                       context,
                       icon: CupertinoIcons.doc_text_search,

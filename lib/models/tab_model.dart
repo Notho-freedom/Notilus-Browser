@@ -1,6 +1,7 @@
 import 'package:uuid/uuid.dart';
 
 enum TabState { loading, loaded, error, blank }
+enum TabType { web, terminal }
 
 class TabModel {
   final String id;
@@ -12,6 +13,7 @@ class TabModel {
   bool isPinned;
   bool isSelected;
   String? groupId;
+  final TabType type;
 
   TabModel({
     String? id,
@@ -23,6 +25,7 @@ class TabModel {
     this.isPinned = false,
     this.isSelected = false,
     this.groupId,
+    this.type = TabType.web,
   })  : id = id ?? const Uuid().v4(),
         createdAt = createdAt ?? DateTime.now();
 
@@ -36,6 +39,7 @@ class TabModel {
     bool? isPinned,
     bool? isSelected,
     String? groupId,
+    TabType? type,
   }) {
     return TabModel(
       id: id ?? this.id,
@@ -47,6 +51,7 @@ class TabModel {
       isPinned: isPinned ?? this.isPinned,
       isSelected: isSelected ?? this.isSelected,
       groupId: groupId ?? this.groupId,
+      type: type ?? this.type,
     );
   }
 
@@ -61,6 +66,7 @@ class TabModel {
       'isPinned': isPinned,
       'isSelected': isSelected,
       'groupId': groupId,
+      'type': type.toString(),
     };
   }
 
@@ -78,6 +84,12 @@ class TabModel {
       isPinned: json['isPinned'] ?? false,
       isSelected: json['isSelected'] ?? false,
       groupId: json['groupId'],
+      type: json['type'] != null
+          ? TabType.values.firstWhere(
+              (e) => e.toString() == json['type'],
+              orElse: () => TabType.web,
+            )
+          : TabType.web,
     );
   }
 }

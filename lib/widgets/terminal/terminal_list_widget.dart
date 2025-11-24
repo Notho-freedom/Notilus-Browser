@@ -2,38 +2,24 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/terminal_service.dart';
+import '../../services/tab_manager.dart';
 import '../../models/terminal_model.dart';
+import '../../models/tab_model.dart' show TabType;
 
 /// Widget pour afficher la liste des terminaux dans la colonne gauche
-class TerminalListWidget extends StatefulWidget {
-  final VoidCallback? onTerminalSelected;
-  
-  const TerminalListWidget({
-    super.key,
-    this.onTerminalSelected,
-  });
-
-  @override
-  State<TerminalListWidget> createState() => _TerminalListWidgetState();
-}
-
-class _TerminalListWidgetState extends State<TerminalListWidget> {
-  @override
-  void initState() {
-    super.initState();
-    // Initialiser le service si pas déjà fait
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final terminalService = Provider.of<TerminalService>(context, listen: false);
-      if (terminalService.availableTerminals.isEmpty) {
-        terminalService.initialize();
-      }
-    });
-  }
+class TerminalListWidget extends StatelessWidget {
+  const TerminalListWidget({super.key});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final terminalService = Provider.of<TerminalService>(context);
+    final tabManager = Provider.of<TabManager>(context, listen: false);
+
+    // Initialiser le service si pas déjà fait
+    if (terminalService.availableTerminals.isEmpty) {
+      terminalService.initialize();
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -52,7 +38,7 @@ class _TerminalListWidgetState extends State<TerminalListWidget> {
           context,
           title: 'Natif',
           terminals: terminalService.nativeTerminals,
-          terminalService: terminalService,
+          tabManager: tabManager,
         ),
         const SizedBox(height: 16),
         // Section Terminaux Isolés
@@ -60,7 +46,7 @@ class _TerminalListWidgetState extends State<TerminalListWidget> {
           context,
           title: 'Isolé',
           terminals: terminalService.isolatedTerminals,
-          terminalService: terminalService,
+          tabManager: tabManager,
         ),
       ],
     );
@@ -70,7 +56,7 @@ class _TerminalListWidgetState extends State<TerminalListWidget> {
     BuildContext context, {
     required String title,
     required List<TerminalModel> terminals,
-    required TerminalService terminalService,
+    required TabManager tabManager,
   }) {
     final theme = Theme.of(context);
 
@@ -91,9 +77,8 @@ class _TerminalListWidgetState extends State<TerminalListWidget> {
               child: _TerminalItem(
                 terminal: terminal,
                 onTap: () {
-                  terminalService.selectTerminal(terminal.id);
-                  // Notifier le parent pour ouvrir la sidemenu
-                  widget.onTerminalSelected?.call();
+                  // Créer directement un onglet terminal
+                  tabManager.createNewTab(type: TabType.terminal);
                 },
               ),
             )),
