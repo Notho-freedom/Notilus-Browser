@@ -30,6 +30,10 @@ class _AdvancedSplitViewState extends State<AdvancedSplitView> {
         if (!splitService.isActive) {
           return const SizedBox.shrink();
         }
+        
+        if (!splitService.isVisible) {
+          return const SizedBox.shrink();
+        }
 
         return Container(
           color: const Color(0xFF0B0B0E),
@@ -198,7 +202,7 @@ class _AdvancedSplitViewState extends State<AdvancedSplitView> {
             paneIndex: i,
             tab: tab,
             onTabDropped: (droppedTab) {
-              splitService.setPaneTab(i, droppedTab.id);
+              splitService.setPaneTab(i, droppedTab.id, tabManager: tabManager);
               HapticFeedback.mediumImpact();
             },
             onClose: splitService.panes.length > 1
@@ -283,7 +287,7 @@ class _AdvancedSplitViewState extends State<AdvancedSplitView> {
             paneIndex: i,
             tab: tab,
             onTabDropped: (droppedTab) {
-              splitService.setPaneTab(i, droppedTab.id);
+              splitService.setPaneTab(i, droppedTab.id, tabManager: tabManager);
               HapticFeedback.mediumImpact();
             },
             onClose: splitService.panes.length > 1

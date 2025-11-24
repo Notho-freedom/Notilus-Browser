@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../models/tab_model.dart';
+import 'tab_manager.dart';
 
 enum SplitLayout { horizontal, vertical, grid }
 
@@ -29,6 +30,7 @@ class SplitScreenService extends ChangeNotifier {
   static const String _prefsKey = 'notilus_split_screen_config';
   
   bool _isActive = false;
+  bool _isVisible = true; // Nouvel état pour masquer/afficher sans désactiver
   SplitLayout _layout = SplitLayout.horizontal;
   List<SplitPaneConfig> _panes = [
     SplitPaneConfig(size: 0.5),
@@ -36,6 +38,7 @@ class SplitScreenService extends ChangeNotifier {
   ];
 
   bool get isActive => _isActive;
+  bool get isVisible => _isVisible;
   SplitLayout get layout => _layout;
   List<SplitPaneConfig> get panes => List.unmodifiable(_panes);
 
@@ -50,6 +53,7 @@ class SplitScreenService extends ChangeNotifier {
       if (configJson != null) {
         final config = jsonDecode(configJson) as Map<String, dynamic>;
         _isActive = config['isActive'] ?? false;
+        _isVisible = config['isVisible'] ?? true;
         _layout = SplitLayout.values[config['layout'] ?? 0];
         _panes = (config['panes'] as List)
             .map((p) => SplitPaneConfig.fromJson(p as Map<String, dynamic>))
@@ -66,6 +70,7 @@ class SplitScreenService extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       final config = {
         'isActive': _isActive,
+        'isVisible': _isVisible,
         'layout': _layout.index,
         'panes': _panes.map((p) => p.toJson()).toList(),
       };
@@ -130,12 +135,19 @@ class SplitScreenService extends ChangeNotifier {
     _saveConfig();
   }
 
-  void setPaneTab(int paneIndex, String? tabId) {
+  void setPaneTab(int paneIndex, String? tabId, {TabManager? tabManager}) {
     if (paneIndex >= 0 && paneIndex < _panes.length) {
+      final oldTabId = _panes[paneIndex].tabId;
+      
       _panes[paneIndex] = SplitPaneConfig(
         tabId: tabId,
         size: _panes[paneIndex].size,
       );
+      
+      // Si une tab est assignée au split, la retirer de la main tabsbar
+      // Note: Pour l'instant, on ne retire pas complètement la tab
+      // mais on pourrait ajouter un flag pour la masquer
+      
       notifyListeners();
       _saveConfig();
     }
@@ -179,6 +191,16 @@ class SplitScreenService extends ChangeNotifier {
     notifyListeners();
     _saveConfig();
   }
+  
+  /// Masque ou affiche le split sans le désactiver
+  void setVisible(bool visible) {
+    _isVisible = visible;
+    notifyListeners();
+    _saveConfig();
+  }
+  
+  /// Retourne true si le split est actif ET visible
+  bool get isSplitScreenActive => _isActive && _isVisible;
 
   /// Applique une configuration de layout prédéfinie
   void applyLayoutPreset(String presetName) {
@@ -214,7 +236,7 @@ class SplitScreenService extends ChangeNotifier {
         ];
         break;
       case '4_grid':
-        // Layout en grille 2x2 (sera géré différemment)
+        // Layout en grille 2x2
         _layout = SplitLayout.grid;
         _panes = [
           SplitPaneConfig(size: 0.5),
@@ -222,6 +244,16 @@ class SplitScreenService extends ChangeNotifier {
           SplitPaneConfig(size: 0.5),
           SplitPaneConfig(size: 0.5),
         ];
+        break;
+      case '9_grid':
+        // Layout en grille 3x3
+        _layout = SplitLayout.grid;
+        _panes = List.generate(9, (_) => SplitPaneConfig(size: 1.0 / 9));
+        break;
+      case '16_grid':
+        // Layout en grille 4x4
+        _layout = SplitLayout.grid;
+        _panes = List.generate(16, (_) => SplitPaneConfig(size: 1.0 / 16));
         break;
       case 'left_sidebar':
         _layout = SplitLayout.horizontal;
@@ -251,6 +283,8 @@ class SplitScreenService extends ChangeNotifier {
     {'id': '3_horizontal', 'name': '3 Colonnes', 'icon': '⥀⥀'},
     {'id': '3_vertical', 'name': '3 Lignes', 'icon': '⥁⥁'},
     {'id': '4_grid', 'name': 'Grille 2x2', 'icon': '⊞'},
+    {'id': '9_grid', 'name': 'Grille 3x3', 'icon': '⊞⊞'},
+    {'id': '16_grid', 'name': 'Grille 4x4', 'icon': '⊞⊞⊞'},
     {'id': 'left_sidebar', 'name': 'Sidebar Gauche', 'icon': '◧'},
     {'id': 'right_sidebar', 'name': 'Sidebar Droite', 'icon': '◨'},
   ];

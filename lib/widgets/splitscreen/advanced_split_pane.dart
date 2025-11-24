@@ -259,33 +259,65 @@ class _AdvancedSplitPaneState extends State<AdvancedSplitPane> {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            CupertinoIcons.square_split_2x1,
-            size: 64,
-            color: NotilusColors.neonRed.withOpacity(0.4),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Panneau ${widget.paneIndex + 1}',
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.6),
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            NotilusColors.chromeDark.withOpacity(0.5),
+            NotilusColors.chrome.withOpacity(0.3),
+          ],
+        ),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: NotilusColors.chrome.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: NotilusColors.neonRed.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              child: Icon(
+                CupertinoIcons.square_split_2x1,
+                size: 64,
+                color: NotilusColors.neonRed.withOpacity(0.6),
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Glissez un onglet ici',
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.4),
-              fontSize: 12,
+            const SizedBox(height: 24),
+            Text(
+              'Panneau ${widget.paneIndex + 1}',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.8),
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.5,
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 12),
+            Text(
+              'Glissez un onglet depuis la barre d\'onglets',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.5),
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'ou sélectionnez-en un dans le menu ci-dessus',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.4),
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -135,8 +135,8 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                     Expanded(
                       child: Consumer2<SplitScreenService, TabManager>(
                         builder: (context, splitService, tabManager, _) {
-                          // Si split-screen est actif, afficher la vue split
-                          if (splitService.isActive) {
+                          // Si split-screen est actif ET visible, afficher la vue split
+                          if (splitService.isActive && splitService.isVisible) {
                             return const AdvancedSplitView();
                           }
                           
@@ -226,7 +226,7 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
 
     return Container(
       decoration: BoxDecoration(
-        color: NotilusColors.chromeDark,
+        color: NotilusColors.chrome,
         border: Border(
           right: BorderSide(
             color: NotilusColors.neonRed.withOpacity(0.3),

@@ -124,16 +124,7 @@ class _GXSidebarState extends State<GXSidebar> {
   Widget build(BuildContext context) {
     return Container(
       width: 50,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            NotilusColors.chromeDark,
-            NotilusColors.chrome,
-          ],
-        ),
-      ),
+      color: NotilusColors.chrome,
       child: Column(
         children: [
           const SizedBox(height: 10),
