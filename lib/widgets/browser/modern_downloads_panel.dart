@@ -65,22 +65,28 @@ class _ModernDownloadsPanelState extends State<ModernDownloadsPanel> {
               padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
               child: Row(
                 children: [
-                  Text(
-                    'Téléchargements',
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
+                  Expanded(
+                    child: Text(
+                      'Téléchargements',
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 8),
                   TextButton(
                     onPressed: _downloads.isEmpty ? null : _clearDownloads,
-                    child: const Text('Tout effacer'),
+                    child: const Text('Effacer'),
                   ),
-                  const SizedBox(width: 8),
-                  FilledButton.icon(
+                  const SizedBox(width: 4),
+                  IconButton(
                     onPressed: _addMockDownload,
-                    icon: const Icon(Icons.download, size: 16),
-                    label: const Text('Simuler un téléchargement'),
+                    icon: const Icon(Icons.download, size: 18),
+                    tooltip: 'Simuler un téléchargement',
+                    style: IconButton.styleFrom(
+                      backgroundColor: theme.colorScheme.primary.withOpacity(0.2),
+                    ),
                   ),
                 ],
               ),
