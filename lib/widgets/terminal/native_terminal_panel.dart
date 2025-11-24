@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import '../../services/native_terminal_service.dart';
 import '../../core/services/wallpaper_manager.dart';
 import '../../core/constants/notilus_colors.dart';
 
 /// Panneau terminal natif avec UI Flutter custom (sans xterm)
+/// Design totalement immersif Notilus
 class NativeTerminalPanel extends StatefulWidget {
   final String? sessionId;
   final String? host;
@@ -29,10 +29,11 @@ class NativeTerminalPanel extends StatefulWidget {
 class _NativeTerminalPanelState extends State<NativeTerminalPanel> {
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final List<String> _outputLines = [];
+  final FocusNode _inputFocusNode = FocusNode();
+  final List<_TerminalLine> _outputLines = [];
   NativeTerminalSession? _session;
   bool _isInitialized = false;
-  String _currentPrompt = '> ';
+  final String _currentPrompt = 'PS> ';
 
   @override
   void initState() {
@@ -44,6 +45,7 @@ class _NativeTerminalPanelState extends State<NativeTerminalPanel> {
   void dispose() {
     _inputController.dispose();
     _scrollController.dispose();
+    _inputFocusNode.dispose();
     super.dispose();
   }
 
@@ -69,13 +71,9 @@ class _NativeTerminalPanelState extends State<NativeTerminalPanel> {
       (data) {
         if (mounted) {
           setState(() {
-            // Ajouter les lignes une par une pour éviter les problèmes de formatage
-            final lines = data.split('\n');
-            for (var line in lines) {
-              if (line.isNotEmpty || _outputLines.isEmpty || _outputLines.last.isNotEmpty) {
-                _outputLines.add(line);
-              }
-            }
+            // Parser la sortie avec coloration
+            final parsedLines = _parseOutput(data);
+            _outputLines.addAll(parsedLines);
             // Limiter à 10000 lignes pour la performance
             if (_outputLines.length > 10000) {
               _outputLines.removeRange(0, _outputLines.length - 10000);
@@ -87,7 +85,10 @@ class _NativeTerminalPanelState extends State<NativeTerminalPanel> {
       onError: (error) {
         if (mounted) {
           setState(() {
-            _outputLines.add('❌ Erreur: $error');
+            _outputLines.add(_TerminalLine(
+              text: '❌ Erreur: $error',
+              type: _LineType.error,
+            ));
           });
         }
       },
@@ -100,13 +101,210 @@ class _NativeTerminalPanelState extends State<NativeTerminalPanel> {
     // Envoyer une commande vide pour initialiser le prompt PowerShell
     await Future.delayed(const Duration(milliseconds: 200));
     _session?.writeLine('');
+    
+    // Focus automatique sur l'input
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _inputFocusNode.requestFocus();
+    });
   }
 
-  void _addOutputLine(String line) {
-    setState(() {
-      _outputLines.add(line);
-    });
-    _scrollToBottom();
+  /// Parse la sortie avec coloration syntaxique profonde
+  List<_TerminalLine> _parseOutput(String data) {
+    final lines = data.split('\n');
+    final result = <_TerminalLine>[];
+    
+    for (var line in lines) {
+      if (line.isEmpty && result.isNotEmpty && result.last.text.isEmpty) {
+        continue; // Éviter les lignes vides multiples
+      }
+      
+      final trimmed = line.trimRight();
+      if (trimmed.isEmpty) {
+        result.add(_TerminalLine(text: '', type: _LineType.normal));
+        continue;
+      }
+
+      // Détection du type de ligne avec coloration profonde
+      _LineType type = _detectLineType(trimmed);
+      final segments = _parseLineSegments(trimmed, type);
+      
+      result.add(_TerminalLine(
+        text: trimmed,
+        type: type,
+        segments: segments,
+      ));
+    }
+    
+    return result;
+  }
+
+  /// Détecte le type de ligne pour la coloration
+  _LineType _detectLineType(String line) {
+    // Erreurs
+    if (line.contains(RegExp(r'^(error|Error|ERROR|❌|Exception|Failed|Failure)', caseSensitive: false))) {
+      return _LineType.error;
+    }
+    
+    // Succès
+    if (line.contains(RegExp(r'^(success|Success|SUCCESS|✅|Completed|Done|OK)', caseSensitive: false))) {
+      return _LineType.success;
+    }
+    
+    // Avertissements
+    if (line.contains(RegExp(r'^(warning|Warning|WARNING|⚠|WARN)', caseSensitive: false))) {
+      return _LineType.warning;
+    }
+    
+    // Commandes PowerShell
+    if (line.startsWith('PS> ') || line.startsWith('PS ') || line.startsWith('> ')) {
+      return _LineType.command;
+    }
+    
+    // Informations
+    if (line.contains(RegExp(r'^(info|Info|INFO|ℹ|Information)', caseSensitive: false))) {
+      return _LineType.info;
+    }
+    
+    // Chemins de fichiers
+    if (line.contains(RegExp(r'^[A-Z]:\\.*|^/.*|^~/'))) {
+      return _LineType.path;
+    }
+    
+    // URLs
+    if (line.contains(RegExp(r'https?://|www\.'))) {
+      return _LineType.url;
+    }
+    
+    // Nombres
+    if (line.contains(RegExp(r'^\d+\.?\d*[KMGT]?[B]?$'))) {
+      return _LineType.number;
+    }
+    
+    return _LineType.normal;
+  }
+
+  /// Parse les segments d'une ligne pour coloration syntaxique
+  List<_ColoredSegment> _parseLineSegments(String line, _LineType baseType) {
+    final segments = <_ColoredSegment>[];
+    
+    // Coloration PowerShell spécifique
+    if (baseType == _LineType.command) {
+      // Détecter les commandes PowerShell
+      final cmdMatch = RegExp(r'^(\w+(-\w+)*)').firstMatch(line);
+      if (cmdMatch != null) {
+        segments.add(_ColoredSegment(
+          text: cmdMatch.group(0)!,
+          color: NotilusColors.neonRed,
+          fontWeight: FontWeight.bold,
+        ));
+        final rest = line.substring(cmdMatch.end);
+        if (rest.isNotEmpty) {
+          segments.add(_ColoredSegment(text: rest, color: Colors.white70));
+        }
+        return segments;
+      }
+    }
+    
+    // Coloration des chemins
+    if (baseType == _LineType.path) {
+      final pathMatch = RegExp(r'([A-Z]:\\.*|/.*|~/.+)').firstMatch(line);
+      if (pathMatch != null) {
+        final before = line.substring(0, pathMatch.start);
+        final path = pathMatch.group(0)!;
+        final after = line.substring(pathMatch.end);
+        
+        if (before.isNotEmpty) {
+          segments.add(_ColoredSegment(text: before, color: Colors.white70));
+        }
+        segments.add(_ColoredSegment(
+          text: path,
+          color: const Color(0xFF00D4FF),
+          fontWeight: FontWeight.w500,
+        ));
+        if (after.isNotEmpty) {
+          segments.add(_ColoredSegment(text: after, color: Colors.white70));
+        }
+        return segments;
+      }
+    }
+    
+    // Coloration des URLs
+    if (baseType == _LineType.url) {
+      final urlMatch = RegExp(r'(https?://[^\s]+|www\.[^\s]+)').firstMatch(line);
+      if (urlMatch != null) {
+        final before = line.substring(0, urlMatch.start);
+        final url = urlMatch.group(0)!;
+        final after = line.substring(urlMatch.end);
+        
+        if (before.isNotEmpty) {
+          segments.add(_ColoredSegment(text: before, color: Colors.white70));
+        }
+        segments.add(_ColoredSegment(
+          text: url,
+          color: const Color(0xFF00FF88),
+          decoration: TextDecoration.underline,
+        ));
+        if (after.isNotEmpty) {
+          segments.add(_ColoredSegment(text: after, color: Colors.white70));
+        }
+        return segments;
+      }
+    }
+    
+    // Coloration des nombres
+    if (baseType == _LineType.number) {
+      final numberMatch = RegExp(r'\d+\.?\d*[KMGT]?[B]?').firstMatch(line);
+      if (numberMatch != null) {
+        final before = line.substring(0, numberMatch.start);
+        final number = numberMatch.group(0)!;
+        final after = line.substring(numberMatch.end);
+        
+        if (before.isNotEmpty) {
+          segments.add(_ColoredSegment(text: before, color: Colors.white70));
+        }
+        segments.add(_ColoredSegment(
+          text: number,
+          color: const Color(0xFFFFD700),
+          fontWeight: FontWeight.w600,
+        ));
+        if (after.isNotEmpty) {
+          segments.add(_ColoredSegment(text: after, color: Colors.white70));
+        }
+        return segments;
+      }
+    }
+    
+    // Par défaut, utiliser la couleur du type
+    segments.add(_ColoredSegment(
+      text: line,
+      color: _getColorForType(baseType),
+    ));
+    
+    return segments;
+  }
+
+  Color _getColorForType(_LineType type) {
+    switch (type) {
+      case _LineType.error:
+        return const Color(0xFFFF3B30);
+      case _LineType.success:
+        return const Color(0xFF34C759);
+      case _LineType.warning:
+        return const Color(0xFFFF9500);
+      case _LineType.command:
+        return NotilusColors.neonRed;
+      case _LineType.info:
+        return const Color(0xFF5AC8FA);
+      case _LineType.path:
+        return const Color(0xFF00D4FF);
+      case _LineType.url:
+        return const Color(0xFF00FF88);
+      case _LineType.number:
+        return const Color(0xFFFFD700);
+      case _LineType.normal:
+      default:
+        return Colors.white70;
+    }
   }
 
   void _scrollToBottom() {
@@ -125,18 +323,35 @@ class _NativeTerminalPanelState extends State<NativeTerminalPanel> {
     if (command.trim().isEmpty) return;
 
     // Afficher la commande dans l'output
-    _addOutputLine('$_currentPrompt$command');
+    setState(() {
+      _outputLines.add(_TerminalLine(
+        text: '$_currentPrompt$command',
+        type: _LineType.command,
+        segments: [
+          _ColoredSegment(
+            text: _currentPrompt,
+            color: NotilusColors.neonRed,
+            fontWeight: FontWeight.bold,
+          ),
+          _ColoredSegment(
+            text: command,
+            color: Colors.white,
+            fontWeight: FontWeight.w500,
+          ),
+        ],
+      ));
+    });
 
     // Envoyer au terminal
     _session?.writeLine(command);
 
     // Effacer l'input
     _inputController.clear();
+    _scrollToBottom();
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final wallpaperManager = context.watch<WallpaperManager>();
 
     return Container(
@@ -145,139 +360,54 @@ class _NativeTerminalPanelState extends State<NativeTerminalPanel> {
           image: NetworkImage(wallpaperManager.current),
           fit: BoxFit.cover,
           colorFilter: ColorFilter.mode(
-            Colors.black.withOpacity(0.85),
+            Colors.black.withValues(alpha: 0.85),
             BlendMode.srcOver,
           ),
         ),
       ),
       child: Container(
-        color: Colors.black.withOpacity(0.5),
+        color: Colors.black.withValues(alpha: 0.3),
         child: Column(
           children: [
-            // Header
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.3),
-                border: Border(
-                  bottom: BorderSide(
-                    color: NotilusColors.neonRed.withOpacity(0.3),
-                    width: 1,
-                  ),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    CupertinoIcons.square_list,
-                    color: NotilusColors.neonRed,
-                    size: 18,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      widget.useSSH && widget.host != null
-                          ? 'SSH: ${widget.user ?? "user"}@${widget.host}'
-                          : 'Terminal Local',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: _isInitialized
-                          ? const Color(0xFF34C759).withOpacity(0.2)
-                          : const Color(0xFFFF9500).withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      _isInitialized ? 'ACTIF' : 'CONNEXION...',
-                      style: TextStyle(
-                        color: _isInitialized ? const Color(0xFF34C759) : const Color(0xFFFF9500),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Zone de sortie
+            // Zone de sortie - totalement intégrée, pas de conteneur visible
             Expanded(
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                child: _isInitialized
-                    ? _buildOutputArea(theme)
-                    : const Center(
-                        child: CircularProgressIndicator(
-                          color: NotilusColors.neonRed,
-                        ),
+              child: _isInitialized
+                  ? _buildOutputArea()
+                  : const Center(
+                      child: CircularProgressIndicator(
+                        color: NotilusColors.neonRed,
+                        strokeWidth: 2,
                       ),
-              ),
+                    ),
             ),
-            // Zone de saisie
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.3),
-                border: Border(
-                  top: BorderSide(
-                    color: NotilusColors.neonRed.withOpacity(0.3),
-                    width: 1,
-                  ),
-                ),
-              ),
-              child: _buildInputArea(theme),
-            ),
+            // Zone de saisie - totalement transparente et fondue
+            _buildInputArea(),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildOutputArea(ThemeData theme) {
+  Widget _buildOutputArea() {
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.4),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: NotilusColors.neonRed.withOpacity(0.2),
-          width: 1,
-        ),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Scrollbar(
-        thickness: 2,
-        radius: const Radius.circular(1),
+        thickness: 1,
+        radius: const Radius.circular(0),
+        thumbVisibility: true,
         child: ListView.builder(
           controller: _scrollController,
-          padding: const EdgeInsets.all(12),
           itemCount: _outputLines.length,
           itemBuilder: (context, index) {
             final line = _outputLines[index];
-            final isError = line.startsWith('❌') || line.startsWith('ERROR');
-            final isSuccess = line.startsWith('✅');
-            final isCommand = line.startsWith('> ') || line.startsWith(r'$ ');
-
+            
+            if (line.text.isEmpty) {
+              return const SizedBox(height: 4);
+            }
+            
             return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
-              child: SelectableText(
-                line,
-                style: TextStyle(
-                  fontFamily: 'Courier New',
-                  fontSize: 13,
-                  color: isError
-                      ? const Color(0xFFFF3B30)
-                      : isSuccess
-                          ? const Color(0xFF34C759)
-                          : isCommand
-                              ? NotilusColors.neonRed
-                              : Colors.white70,
-                ),
-              ),
+              padding: const EdgeInsets.symmetric(vertical: 1.5),
+              child: _buildLine(line),
             );
           },
         ),
@@ -285,47 +415,129 @@ class _NativeTerminalPanelState extends State<NativeTerminalPanel> {
     );
   }
 
-  Widget _buildInputArea(ThemeData theme) {
-    return Row(
-      children: [
-        Text(
-          _currentPrompt,
-          style: const TextStyle(
-            fontFamily: 'Courier New',
-            fontSize: 13,
-            color: NotilusColors.neonRed,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        Expanded(
-          child: TextField(
-            controller: _inputController,
-            autofocus: true,
-            style: const TextStyle(
-              fontFamily: 'Courier New',
-              fontSize: 13,
-              color: Colors.white,
-            ),
-            decoration: const InputDecoration(
-              border: InputBorder.none,
-              hintText: 'Entrez une commande...',
-              hintStyle: TextStyle(
-                color: Colors.white38,
+  Widget _buildLine(_TerminalLine line) {
+    if (line.segments != null && line.segments!.isNotEmpty) {
+      // Ligne avec segments colorés
+      return RichText(
+        text: TextSpan(
+          children: line.segments!.map((segment) {
+            return TextSpan(
+              text: segment.text,
+              style: TextStyle(
+                fontFamily: 'Consolas',
+                fontSize: 13,
+                color: segment.color,
+                fontWeight: segment.fontWeight ?? FontWeight.normal,
+                decoration: segment.decoration,
+                height: 1.4,
               ),
+            );
+          }).toList(),
+        ),
+      );
+    } else {
+      // Ligne simple avec couleur de type
+      return SelectableText(
+        line.text,
+        style: TextStyle(
+          fontFamily: 'Consolas',
+          fontSize: 13,
+          color: _getColorForType(line.type),
+          height: 1.4,
+        ),
+      );
+    }
+  }
+
+  Widget _buildInputArea() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Prompt - rouge Notilus
+          Text(
+            _currentPrompt,
+            style: const TextStyle(
+              fontFamily: 'Consolas',
+              fontSize: 13,
+              color: NotilusColors.neonRed,
+              fontWeight: FontWeight.bold,
+              height: 1.4,
             ),
-            onSubmitted: _sendCommand,
           ),
-        ),
-        IconButton(
-          icon: const Icon(
-            CupertinoIcons.arrow_right_circle_fill,
-            color: NotilusColors.neonRed,
+          // Input - totalement transparent, sans bordures
+          Expanded(
+            child: TextField(
+              controller: _inputController,
+              focusNode: _inputFocusNode,
+              autofocus: true,
+              style: const TextStyle(
+                fontFamily: 'Consolas',
+                fontSize: 13,
+                color: Colors.white,
+                fontWeight: FontWeight.w400,
+                height: 1.4,
+              ),
+              decoration: const InputDecoration(
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                disabledBorder: InputBorder.none,
+                errorBorder: InputBorder.none,
+                focusedErrorBorder: InputBorder.none,
+                contentPadding: EdgeInsets.zero,
+                isDense: true,
+                hintText: '',
+              ),
+              cursorColor: NotilusColors.neonRed,
+              cursorWidth: 2,
+              onSubmitted: _sendCommand,
+            ),
           ),
-          onPressed: () => _sendCommand(_inputController.text),
-          tooltip: 'Exécuter',
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
 
+/// Type de ligne pour la coloration
+enum _LineType {
+  normal,
+  error,
+  success,
+  warning,
+  command,
+  info,
+  path,
+  url,
+  number,
+}
+
+/// Segment coloré d'une ligne
+class _ColoredSegment {
+  final String text;
+  final Color color;
+  final FontWeight? fontWeight;
+  final TextDecoration? decoration;
+
+  _ColoredSegment({
+    required this.text,
+    required this.color,
+    this.fontWeight,
+    this.decoration,
+  });
+}
+
+/// Ligne de terminal avec métadonnées
+class _TerminalLine {
+  final String text;
+  final _LineType type;
+  final List<_ColoredSegment>? segments;
+
+  _TerminalLine({
+    required this.text,
+    required this.type,
+    this.segments,
+  });
+}
