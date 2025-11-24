@@ -11,6 +11,7 @@ import 'modern_history_panel.dart';
 import 'modern_bookmarks_panel.dart';
 import 'modern_downloads_panel.dart';
 import 'modern_settings_panel.dart';
+import 'webview_service_panel.dart';
 import '../../core/constants/notilus_colors.dart';
 import '../../core/services/wallpaper_manager.dart';
 
@@ -278,6 +279,72 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
           title: 'Mises à jour',
           icon: CupertinoIcons.arrow_up_circle,
           child: const _NotilusUpdatesPanel(),
+        );
+      case SidebarSection.youtubeMusic:
+        return _SidebarPanelConfig(
+          title: 'YouTube Music',
+          icon: CupertinoIcons.music_note,
+          child: WebViewServicePanel(
+            url: 'https://music.youtube.com',
+            title: 'YouTube Music',
+            icon: CupertinoIcons.music_note,
+            color: const Color(0xFFFF0000),
+          ),
+        );
+      case SidebarSection.youtube:
+        return _SidebarPanelConfig(
+          title: 'YouTube',
+          icon: CupertinoIcons.play_circle,
+          child: WebViewServicePanel(
+            url: 'https://www.youtube.com',
+            title: 'YouTube',
+            icon: CupertinoIcons.play_circle,
+            color: const Color(0xFFFF0000),
+          ),
+        );
+      case SidebarSection.chatgpt:
+        return _SidebarPanelConfig(
+          title: 'ChatGPT',
+          icon: CupertinoIcons.chat_bubble_2,
+          child: WebViewServicePanel(
+            url: 'https://chat.openai.com',
+            title: 'ChatGPT',
+            icon: CupertinoIcons.chat_bubble_2,
+            color: const Color(0xFF10A37F),
+          ),
+        );
+      case SidebarSection.deepseek:
+        return _SidebarPanelConfig(
+          title: 'DeepSeek',
+          icon: CupertinoIcons.sparkles,
+          child: WebViewServicePanel(
+            url: 'https://chat.deepseek.com',
+            title: 'DeepSeek',
+            icon: CupertinoIcons.sparkles,
+            color: const Color(0xFF00A8FF),
+          ),
+        );
+      case SidebarSection.whatsapp:
+        return _SidebarPanelConfig(
+          title: 'WhatsApp',
+          icon: CupertinoIcons.chat_bubble_text,
+          child: WebViewServicePanel(
+            url: 'https://web.whatsapp.com',
+            title: 'WhatsApp',
+            icon: CupertinoIcons.chat_bubble_text,
+            color: const Color(0xFF25D366),
+          ),
+        );
+      case SidebarSection.telegram:
+        return _SidebarPanelConfig(
+          title: 'Telegram',
+          icon: CupertinoIcons.paperplane,
+          child: WebViewServicePanel(
+            url: 'https://web.telegram.org',
+            title: 'Telegram',
+            icon: CupertinoIcons.paperplane,
+            color: const Color(0xFF0088CC),
+          ),
         );
       case SidebarSection.home:
         return null;

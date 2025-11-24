@@ -17,6 +17,12 @@ enum SidebarSection {
   ai,
   settings,
   updates,
+  youtubeMusic,
+  youtube,
+  chatgpt,
+  deepseek,
+  whatsapp,
+  telegram,
 }
 
 class GXSidebar extends StatefulWidget {
@@ -74,6 +80,46 @@ class _GXSidebarState extends State<GXSidebar> {
     ),
   ];
 
+  // Services web avec webview
+  final List<_WebServiceDestination> _webServices = const [
+    _WebServiceDestination(
+      url: 'https://music.youtube.com',
+      icon: CupertinoIcons.music_note,
+      label: 'YouTube Music',
+      color: Color(0xFFFF0000),
+    ),
+    _WebServiceDestination(
+      url: 'https://www.youtube.com',
+      icon: CupertinoIcons.play_circle,
+      label: 'YouTube',
+      color: Color(0xFFFF0000),
+    ),
+    _WebServiceDestination(
+      url: 'https://chat.openai.com',
+      icon: CupertinoIcons.chat_bubble_2,
+      label: 'ChatGPT',
+      color: Color(0xFF10A37F),
+    ),
+    _WebServiceDestination(
+      url: 'https://chat.deepseek.com',
+      icon: CupertinoIcons.sparkles,
+      label: 'DeepSeek',
+      color: Color(0xFF00A8FF),
+    ),
+    _WebServiceDestination(
+      url: 'https://web.whatsapp.com',
+      icon: CupertinoIcons.chat_bubble_text,
+      label: 'WhatsApp',
+      color: Color(0xFF25D366),
+    ),
+    _WebServiceDestination(
+      url: 'https://web.telegram.org',
+      icon: CupertinoIcons.paperplane,
+      label: 'Telegram',
+      color: Color(0xFF0088CC),
+    ),
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -115,6 +161,59 @@ class _GXSidebarState extends State<GXSidebar> {
                   widget.onSectionSelected?.call(_destinations[i].section);
                 },
                 onHover: (hover) => setState(() => _hoveredIndex = hover ? i : -1),
+              ),
+            ),
+            const SizedBox(height: 4),
+          ],
+          const SizedBox(height: 12),
+          Container(
+            width: 40,
+            height: 1,
+            color: _gxRed.withOpacity(0.3),
+          ),
+          const SizedBox(height: 12),
+          // Services web
+          for (int i = 0; i < _webServices.length; i++) ...[
+            NotilusTooltip(
+              message: _webServices[i].label,
+              child: _GXSidebarWebServiceIcon(
+                icon: _webServices[i].icon,
+                color: _webServices[i].color,
+                isHovered: _hoveredIndex == _destinations.length + i,
+                onTap: () {
+                  setState(() {
+                    _selectedIndex = -1; // Désélectionner les destinations principales
+                  });
+                  // Déterminer la section correspondante
+                  SidebarSection? section;
+                  switch (i) {
+                    case 0:
+                      section = SidebarSection.youtubeMusic;
+                      break;
+                    case 1:
+                      section = SidebarSection.youtube;
+                      break;
+                    case 2:
+                      section = SidebarSection.chatgpt;
+                      break;
+                    case 3:
+                      section = SidebarSection.deepseek;
+                      break;
+                    case 4:
+                      section = SidebarSection.whatsapp;
+                      break;
+                    case 5:
+                      section = SidebarSection.telegram;
+                      break;
+                  }
+                  if (section != null) {
+                    widget.onSectionSelected?.call(section);
+                  } else {
+                    Provider.of<TabManager>(context, listen: false)
+                        .addTab(url: _webServices[i].url);
+                  }
+                },
+                onHover: (hover) => setState(() => _hoveredIndex = hover ? _destinations.length + i : -1),
               ),
             ),
             const SizedBox(height: 4),
@@ -275,6 +374,74 @@ class _SidebarDestination {
     required this.icon,
     required this.label,
   });
+}
+
+class _WebServiceDestination {
+  final String url;
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  const _WebServiceDestination({
+    required this.url,
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+}
+
+class _GXSidebarWebServiceIcon extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final bool isHovered;
+  final VoidCallback onTap;
+  final ValueChanged<bool> onHover;
+
+  const _GXSidebarWebServiceIcon({
+    required this.icon,
+    required this.color,
+    required this.isHovered,
+    required this.onTap,
+    required this.onHover,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => onHover(true),
+      onExit: (_) => onHover(false),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 48,
+          height: 40,
+          child: Stack(
+            children: [
+              Center(
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: isHovered
+                        ? color.withOpacity(0.15)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    icon,
+                    size: 18,
+                    color: color.withOpacity(isHovered ? 1 : 0.7),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _SidebarVerticalLabel extends StatelessWidget {

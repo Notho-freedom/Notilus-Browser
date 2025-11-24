@@ -7,8 +7,11 @@ import '../../services/tab_manager.dart';
 import '../../core/services/wallpaper_manager.dart';
 import '../../services/quick_access_service.dart';
 import '../../services/history_service.dart';
+import '../../services/bookmark_service.dart';
 import '../../services/system_metrics_service.dart';
 import '../../models/history_item.dart';
+import '../../models/bookmark.dart';
+import '../../services/favicon_service.dart';
 import '../../core/utils/url_validator.dart';
 import '../common/notilus_monogram.dart';
 import '../common/context_menu.dart';
@@ -215,17 +218,21 @@ class _ModernHomePageState extends State<ModernHomePage> {
         ),
       ),
       child: SafeArea(
-        child: Stack(
+        child: Row(
           children: [
+            // Colonne gauche - Widgets dev
+            _buildLeftColumn(context, theme),
+            
             // Contenu central - recentré sans limiter la largeur
-            Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                      const SizedBox(height: 16),
+            Expanded(
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const SizedBox(height: 40),
 
                     // Logo + titre
                     Column(
@@ -237,7 +244,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                             .fadeIn(duration: 500.ms)
                             .scale(begin: const Offset(0.85, 0.85), end: const Offset(1, 1)),
 
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 32),
 
                         Text(
                           'Notilus Speed Dial',
@@ -250,7 +257,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                             .fadeIn(duration: 500.ms, delay: 150.ms)
                             .slideY(begin: 0.12, end: 0),
 
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 12),
 
                         Text(
                           'Hub de lancement pour vos outils de développement',
@@ -264,7 +271,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                       ],
                     ),
 
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 48),
 
                     // Barre de recherche avec double contour néon
                     Container(
@@ -340,13 +347,13 @@ class _ModernHomePageState extends State<ModernHomePage> {
                       ),
                     )
                         .animate()
-                        .fadeIn(duration: 550.ms, delay: 300.ms)
+                        .fadeIn(duration: 550.ms, delay: 300.ms                        )
                         .scale(
                           begin: const Offset(0.96, 0.96),
                           end: const Offset(1, 1),
                         ),
 
-                      const SizedBox(height: 18),
+                      const SizedBox(height: 48),
 
                     // Widgets système - Grille de 6 widgets
                       LayoutBuilder(
@@ -414,7 +421,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                         },
                       ),
 
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 48),
 
                     // Titre de section Speed Dial
                       Row(
@@ -557,9 +564,9 @@ class _ModernHomePageState extends State<ModernHomePage> {
                                       if (colIndex < rowItems.length) {
                                         final item = rowItems[colIndex];
                                         return Padding(
-                                          padding: EdgeInsets.only(right: colIndex < 4 ? 12 : 0),
+                                          padding: EdgeInsets.only(right: colIndex < 4 ? 18 : 0),
                                           child: SizedBox(
-                                            width: 180,
+                                            width: 120,
                                             child: _HistoryQuickAccessTile(
                                               historyItem: item,
                                               onTap: () => _openQuickAccess(item.url),
@@ -567,7 +574,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                                           ),
                                         );
                                       } else {
-                                        return const SizedBox(width: 180);
+                                        return const SizedBox(width: 120);
                                       }
                                     }),
                                   ),
@@ -652,40 +659,283 @@ class _ModernHomePageState extends State<ModernHomePage> {
                     ],
                   ),
                 ),
+              ),
             ),
+            
+            // Colonne droite - Widgets dev
+            _buildRightColumn(context, theme),
+          ],
+        ),
+      ),
+    );
+  }
 
-            // Label vertical "WIDGETS" à droite façon Opera GX
-            Align(
-              alignment: Alignment.centerRight,
-              child: Container(
-                margin: const EdgeInsets.only(right: 10),
-                padding:
-                    const EdgeInsets.symmetric(vertical: 18, horizontal: 6),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.55),
-                  borderRadius: BorderRadius.circular(30),
-                  border: Border.all(
-                    color: const Color(0xFFFF2D55).withOpacity(0.8),
-                    width: 1.3,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFFFF2D55).withOpacity(0.4),
-                      blurRadius: 18,
-                      offset: const Offset(0, 6),
+  Widget _buildLeftColumn(BuildContext context, ThemeData theme) {
+    return Container(
+      width: 280,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      decoration: BoxDecoration(
+        border: Border(
+          right: BorderSide(
+            color: const Color(0xFFFF2D55).withOpacity(0.2),
+            width: 1,
+          ),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'DEV TOOLS',
+            style: theme.textTheme.labelSmall?.copyWith(
+              letterSpacing: 3,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFFFF2D55),
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildDevWidget(
+            context,
+            icon: CupertinoIcons.doc_text,
+            title: 'Code Editor',
+            subtitle: 'VS Code',
+            onTap: () {},
+          ),
+          const SizedBox(height: 12),
+          _buildDevWidget(
+            context,
+            icon: CupertinoIcons.square_list,
+            title: 'Terminal',
+            subtitle: 'PowerShell',
+            onTap: () {},
+          ),
+          const SizedBox(height: 12),
+          _buildDevWidget(
+            context,
+            icon: CupertinoIcons.doc_text_search,
+            title: 'API Docs',
+            subtitle: 'REST Client',
+            onTap: () {},
+          ),
+          const Spacer(),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: const Color(0xFFFF2D55).withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF34C759),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'System Status',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
-                child: RotatedBox(
-                  quarterTurns: 3,
-                  child: Text(
-                    'WIDGETS',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      letterSpacing: 4,
-                      fontWeight: FontWeight.w700,
+                const SizedBox(height: 8),
+                ListenableBuilder(
+                  listenable: _metricsService,
+                  builder: (context, _) => Text(
+                    'CPU: ${_metricsService.cpuUsage.toStringAsFixed(0)}%',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontSize: 11,
                     ),
                   ),
                 ),
+                ListenableBuilder(
+                  listenable: _metricsService,
+                  builder: (context, _) => Text(
+                    'RAM: ${_metricsService.ramUsage.toStringAsFixed(0)}%',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRightColumn(BuildContext context, ThemeData theme) {
+    return Container(
+      width: 280,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      decoration: BoxDecoration(
+        border: Border(
+          left: BorderSide(
+            color: const Color(0xFFFF2D55).withOpacity(0.2),
+            width: 1,
+          ),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'QUICK ACTIONS',
+            style: theme.textTheme.labelSmall?.copyWith(
+              letterSpacing: 3,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFFFF2D55),
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildDevWidget(
+            context,
+            icon: CupertinoIcons.cloud,
+            title: 'GitHub',
+            subtitle: 'Repositories',
+            onTap: () => _openQuickAccess('https://github.com'),
+          ),
+          const SizedBox(height: 12),
+          _buildDevWidget(
+            context,
+            icon: CupertinoIcons.doc_on_doc,
+            title: 'Stack Overflow',
+            subtitle: 'Q&A',
+            onTap: () => _openQuickAccess('https://stackoverflow.com'),
+          ),
+          const SizedBox(height: 12),
+          _buildDevWidget(
+            context,
+            icon: CupertinoIcons.book,
+            title: 'MDN Docs',
+            subtitle: 'Web Docs',
+            onTap: () => _openQuickAccess('https://developer.mozilla.org'),
+          ),
+          const Spacer(),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: const Color(0xFFFF2D55).withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF2D55),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Active Session',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ListenableBuilder(
+                  listenable: _metricsService,
+                  builder: (context, _) => Text(
+                    'Time: ${_metricsService.formatActiveTime()}',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+                ListenableBuilder(
+                  listenable: _metricsService,
+                  builder: (context, _) => Text(
+                    'Tabs: ${_metricsService.tabCount}',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDevWidget(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          color: Colors.white.withOpacity(0.05),
+          border: Border.all(
+            color: const Color(0xFFFF2D55).withOpacity(0.2),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFF2D55).withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                icon,
+                size: 18,
+                color: const Color(0xFFFF2D55),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontSize: 10,
+                      color: theme.textTheme.bodySmall?.color?.withOpacity(0.6),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -1010,43 +1260,172 @@ class _HistoryQuickAccessTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 100,
-        height: 70,
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          color: const Color(0xFF5856D6).withOpacity(0.2),
-          border: Border.all(
-            color: const Color(0xFF5856D6).withOpacity(0.5),
-            width: 1,
-          ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              CupertinoIcons.globe,
-              size: 24,
-              color: Color(0xFF5856D6),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              historyItem.title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
+    return FutureBuilder<String?>(
+      future: FaviconService.getFaviconWithCache(historyItem.url),
+      builder: (context, faviconSnapshot) {
+        return GestureDetector(
+          onTap: onTap,
+          onLongPress: () => _showContextMenu(context),
+          child: Container(
+            width: 120,
+            height: 90,
+            padding: const EdgeInsets.all(1.6),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(22),
+              gradient: LinearGradient(
+                colors: [
+                  const Color(0xFF5856D6).withOpacity(0.65),
+                  const Color(0xFF5856D6).withOpacity(0.25),
+                ],
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
             ),
-          ],
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                color: isDark
+                    ? const Color(0xFF050509).withOpacity(0.96)
+                    : Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.35),
+                    blurRadius: 16,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Stack(
+                children: [
+                  Align(
+                    alignment: Alignment.bottomCenter,
+                    child: Container(
+                      height: 4,
+                      decoration: BoxDecoration(
+                        borderRadius: const BorderRadius.vertical(
+                          bottom: Radius.circular(20),
+                        ),
+                        gradient: LinearGradient(
+                          colors: [
+                            const Color(0xFF5856D6),
+                            const Color(0xFF5856D6).withOpacity(0.4),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 28,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF5856D6).withOpacity(0.14),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: faviconSnapshot.hasData && faviconSnapshot.data != null
+                                  ? Image.network(
+                                      faviconSnapshot.data!,
+                                      width: 18,
+                                      height: 18,
+                                      errorBuilder: (_, __, ___) => const Icon(
+                                        CupertinoIcons.globe,
+                                        size: 18,
+                                        color: Color(0xFF5856D6),
+                                      ),
+                                    )
+                                  : const Icon(
+                                      CupertinoIcons.globe,
+                                      size: 18,
+                                      color: Color(0xFF5856D6),
+                                    ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                historyItem.title,
+                                style: theme.textTheme.labelMedium?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                Uri.parse(historyItem.url).host.replaceFirst('www.', ''),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  fontSize: 11,
+                                  color: theme.textTheme.bodySmall?.color?.withOpacity(0.6),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Icon(
+                              CupertinoIcons.chevron_right,
+                              size: 14,
+                              color: Color(0xFF5856D6),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showContextMenu(BuildContext context) {
+    final quickAccessService = QuickAccessService();
+    final bookmarkService = BookmarkService();
+    
+    ContextMenu.show(
+      context: context,
+      actions: [
+        ContextMenuAction(
+          label: 'Ajouter aux sites rapides',
+          icon: CupertinoIcons.add_circled,
+          onTap: () async {
+            final item = await quickAccessService.extractSiteInfo(historyItem.url);
+            if (item != null) {
+              await quickAccessService.addQuickAccessItem(item);
+            }
+          },
         ),
-      ),
+        ContextMenuAction(
+          label: 'Ajouter aux favoris',
+          icon: CupertinoIcons.bookmark,
+          onTap: () async {
+            final bookmark = Bookmark(
+              url: historyItem.url,
+              title: historyItem.title,
+              description: '',
+              tags: [],
+              createdAt: DateTime.now(),
+            );
+            await bookmarkService.addBookmark(bookmark);
+          },
+        ),
+      ],
     );
   }
 }

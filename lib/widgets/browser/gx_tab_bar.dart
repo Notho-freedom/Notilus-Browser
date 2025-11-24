@@ -6,9 +6,13 @@ import 'package:window_manager/window_manager.dart';
 import '../../core/constants/notilus_colors.dart';
 import '../../services/tab_manager.dart';
 import '../../services/tab_webview_manager.dart';
+import '../../services/quick_access_service.dart';
+import '../../services/bookmark_service.dart';
 import '../../models/tab_model.dart';
+import '../../models/bookmark.dart';
 import '../common/notilus_monogram.dart';
 import '../common/notilus_tooltip.dart';
+import '../common/context_menu.dart';
 
 const Color _gxRed = NotilusColors.neonRed;
 const Color _chromeColor = NotilusColors.chrome;
@@ -353,6 +357,46 @@ class _GXTabItemState extends State<_GXTabItem> {
   bool _isHovered = false;
   bool _closeHovered = false;
 
+  void _showContextMenu(BuildContext context, Offset position) {
+    if (widget.tab.url == null || widget.tab.url!.isEmpty || widget.tab.url!.startsWith('about:')) {
+      return;
+    }
+
+    final quickAccessService = QuickAccessService();
+    final bookmarkService = BookmarkService();
+    
+    ContextMenu.show(
+      context: context,
+      position: position,
+      actions: [
+        ContextMenuAction(
+          label: 'Ajouter aux sites rapides',
+          icon: CupertinoIcons.add_circled,
+          onTap: () async {
+            final item = await quickAccessService.extractSiteInfo(widget.tab.url!);
+            if (item != null) {
+              await quickAccessService.addQuickAccessItem(item);
+            }
+          },
+        ),
+        ContextMenuAction(
+          label: 'Ajouter aux favoris',
+          icon: CupertinoIcons.bookmark,
+          onTap: () async {
+            final bookmark = Bookmark(
+              url: widget.tab.url!,
+              title: widget.tab.title ?? widget.tab.url!,
+              description: '',
+              tags: [],
+              createdAt: DateTime.now(),
+            );
+            await bookmarkService.addBookmark(bookmark);
+          },
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final displayTitle = widget.tab.title ?? 'Speed Dial';
@@ -372,6 +416,14 @@ class _GXTabItemState extends State<_GXTabItem> {
         onExit: (_) => setState(() => _isHovered = false),
         child: GestureDetector(
           onTap: widget.onTap,
+          onSecondaryTapDown: (details) => _showContextMenu(context, details.globalPosition),
+          onLongPress: () {
+            final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
+            if (renderBox != null) {
+              final position = renderBox.localToGlobal(Offset.zero);
+              _showContextMenu(context, position);
+            }
+          },
           child: SizedBox(
             width: widget.width,
             height: 32,
