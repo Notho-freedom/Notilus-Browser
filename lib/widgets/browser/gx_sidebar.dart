@@ -1,16 +1,20 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
+import '../../core/constants/notilus_colors.dart';
 import '../../services/tab_manager.dart';
+import '../common/notilus_monogram.dart';
+import '../common/notilus_tooltip.dart';
 
-const Color _gxRed = Color(0xFFFF2D55);
+const Color _gxRed = NotilusColors.neonRed;
 
 enum SidebarSection {
   home,
   favorites,
   history,
   downloads,
+  widgets,
+  ai,
   settings,
 }
 
@@ -29,88 +33,91 @@ class GXSidebar extends StatefulWidget {
 }
 
 class _GXSidebarState extends State<GXSidebar> {
-  int _selectedIndex = -1; // -1 = aucune sélection par défaut
+  int _selectedIndex = 0;
   int _hoveredIndex = -1;
+  final List<_SidebarDestination> _destinations = const [
+    _SidebarDestination(
+      section: SidebarSection.home,
+      icon: CupertinoIcons.square_grid_2x2,
+      label: 'Accueil',
+    ),
+    _SidebarDestination(
+      section: SidebarSection.favorites,
+      icon: CupertinoIcons.bookmark,
+      label: 'Favoris',
+    ),
+    _SidebarDestination(
+      section: SidebarSection.history,
+      icon: CupertinoIcons.time,
+      label: 'Historique',
+    ),
+    _SidebarDestination(
+      section: SidebarSection.downloads,
+      icon: CupertinoIcons.arrow_down_to_line,
+      label: 'Téléchargements',
+    ),
+    _SidebarDestination(
+      section: SidebarSection.widgets,
+      icon: CupertinoIcons.layers_alt,
+      label: 'Widgets dynamiques',
+    ),
+    _SidebarDestination(
+      section: SidebarSection.ai,
+      icon: CupertinoIcons.sparkles,
+      label: 'Hyper Assistant',
+    ),
+    _SidebarDestination(
+      section: SidebarSection.settings,
+      icon: CupertinoIcons.gear_alt,
+      label: 'Paramètres',
+    ),
+  ];
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 48,
+      width: 50,
       decoration: const BoxDecoration(
-        // Fond noir mat avec très léger gradient
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            Color(0xFF16161A),
-            Color(0xFF0D0D10),
+            NotilusColors.chromeDark,
+            NotilusColors.chrome,
           ],
         ),
       ),
       child: Column(
         children: [
           const SizedBox(height: 10),
-          const _NotilusGlyph(),
+          const NotilusMonogram(
+            size: 30,
+            showGlow: false,
+            showFrame: true,
+          ),
           const SizedBox(height: 18),
-          // Icône Home/Speed Dial
-          _GXSidebarIcon(
-            icon: CupertinoIcons.square_grid_2x2,
-            isSelected: _selectedIndex == 0,
-            isHovered: _hoveredIndex == 0,
-            onTap: () {
-              setState(() => _selectedIndex = 0);
-              widget.onSectionSelected?.call(SidebarSection.home);
-            },
-            onHover: (hover) => setState(() => _hoveredIndex = hover ? 0 : -1),
-          ),
-          const SizedBox(height: 4),
-          // Icône Favoris
-          _GXSidebarIcon(
-            icon: CupertinoIcons.bookmark,
-            isSelected: _selectedIndex == 1,
-            isHovered: _hoveredIndex == 1,
-            onTap: () {
-              setState(() => _selectedIndex = 1);
-              widget.onSectionSelected?.call(SidebarSection.favorites);
-            },
-            onHover: (hover) => setState(() => _hoveredIndex = hover ? 1 : -1),
-          ),
-          const SizedBox(height: 4),
-          // Icône Historique
-          _GXSidebarIcon(
-            icon: CupertinoIcons.time,
-            isSelected: _selectedIndex == 2,
-            isHovered: _hoveredIndex == 2,
-            onTap: () {
-              setState(() => _selectedIndex = 2);
-              widget.onSectionSelected?.call(SidebarSection.history);
-            },
-            onHover: (hover) => setState(() => _hoveredIndex = hover ? 2 : -1),
-          ),
-          const SizedBox(height: 4),
-          // Icône Téléchargements
-          _GXSidebarIcon(
-            icon: CupertinoIcons.arrow_down_to_line,
-            isSelected: _selectedIndex == 3,
-            isHovered: _hoveredIndex == 3,
-            onTap: () {
-              setState(() => _selectedIndex = 3);
-              widget.onSectionSelected?.call(SidebarSection.downloads);
-            },
-            onHover: (hover) => setState(() => _hoveredIndex = hover ? 3 : -1),
-          ),
-          const SizedBox(height: 4),
-          // Icône Paramètres
-          _GXSidebarIcon(
-            icon: CupertinoIcons.gear_alt,
-            isSelected: _selectedIndex == 4,
-            isHovered: _hoveredIndex == 4,
-            onTap: () {
-              setState(() => _selectedIndex = 4);
-              widget.onSectionSelected?.call(SidebarSection.settings);
-            },
-            onHover: (hover) => setState(() => _hoveredIndex = hover ? 4 : -1),
-          ),
+          for (int i = 0; i < _destinations.length; i++) ...[
+            NotilusTooltip(
+              message: _destinations[i].label,
+              child: _GXSidebarIcon(
+                icon: _destinations[i].icon,
+                isSelected: _selectedIndex == i,
+                isHovered: _hoveredIndex == i,
+                onTap: () {
+                  setState(() {
+                    _selectedIndex = i;
+                  });
+                  if (_destinations[i].section == SidebarSection.home) {
+                    Provider.of<TabManager>(context, listen: false)
+                        .addTab(url: 'about:newtab');
+                  }
+                  widget.onSectionSelected?.call(_destinations[i].section);
+                },
+                onHover: (hover) => setState(() => _hoveredIndex = hover ? i : -1),
+              ),
+            ),
+            const SizedBox(height: 4),
+          ],
           const SizedBox(height: 20),
           const _SidebarSignature(),
           const Spacer(),
@@ -206,64 +213,6 @@ class _GXSidebarIcon extends StatelessWidget {
   }
 }
 
-class _NotilusGlyph extends StatelessWidget {
-  const _NotilusGlyph();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 34,
-      height: 34,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: _gxRed, width: 1.4),
-        gradient: const LinearGradient(
-          colors: [
-            Color(0xFF1F1F2A),
-            Color(0xFF0D0D12),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: _gxRed.withOpacity(0.35),
-            blurRadius: 20,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Transform.rotate(
-            angle: -math.pi / 7,
-            child: Container(
-              width: 4,
-              height: 24,
-              decoration: BoxDecoration(
-                color: _gxRed,
-                borderRadius: BorderRadius.circular(6),
-              ),
-            ),
-          ),
-          Transform.rotate(
-            angle: math.pi / 7,
-            child: Container(
-              width: 4,
-              height: 24,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(6),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _SidebarSignature extends StatelessWidget {
   const _SidebarSignature();
 
@@ -313,6 +262,18 @@ class _SidebarSignature extends StatelessWidget {
       ),
     );
   }
+}
+
+class _SidebarDestination {
+  final SidebarSection section;
+  final IconData icon;
+  final String label;
+
+  const _SidebarDestination({
+    required this.section,
+    required this.icon,
+    required this.label,
+  });
 }
 
 class _SidebarVerticalLabel extends StatelessWidget {

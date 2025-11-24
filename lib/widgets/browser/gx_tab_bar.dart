@@ -3,11 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
+import '../../core/constants/notilus_colors.dart';
 import '../../services/tab_manager.dart';
 import '../../services/tab_webview_manager.dart';
 import '../../models/tab_model.dart';
+import '../common/notilus_monogram.dart';
+import '../common/notilus_tooltip.dart';
 
-const Color _gxRed = Color(0xFFFF2D55);
+const Color _gxRed = NotilusColors.neonRed;
+const Color _chromeColor = NotilusColors.chrome;
 
 class GXTabBar extends StatelessWidget {
   final VoidCallback? onMenuTap;
@@ -24,7 +28,7 @@ class GXTabBar extends StatelessWidget {
     return Container(
       height: 36,
       decoration: BoxDecoration(
-        color: const Color(0xFF141417),
+        color: _chromeColor,
         border: Border(
           bottom: BorderSide(
             color: _gxRed.withOpacity(0.2),
@@ -35,6 +39,14 @@ class GXTabBar extends StatelessWidget {
       child: Row(
         children: [
           const SizedBox(width: 10),
+          const NotilusTooltip(
+            message: 'Identité Notilus',
+            child: NotilusMonogram(
+              size: 22,
+              showGlow: false,
+            ),
+          ),
+          const SizedBox(width: 8),
           _GXTabBarIconButton(
             icon: isSidebarVisible
                 ? CupertinoIcons.sidebar_left
@@ -47,40 +59,47 @@ class GXTabBar extends StatelessWidget {
           Expanded(
             child: Consumer<TabManager>(
               builder: (context, tabManager, _) {
-                return ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  itemCount: tabManager.tabs.length + 1,
-                  itemBuilder: (context, index) {
-                    if (index == tabManager.tabs.length) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: Tooltip(
-                          message: 'Nouvel onglet',
-                          child: _GXTabBarIconButton(
-                            icon: CupertinoIcons.add,
-                            tooltip: 'Nouvel onglet',
-                            compact: true,
-                            onPressed: () => tabManager.createNewTab(),
-                          ),
-                        ),
-                      );
-                    }
+                return LayoutBuilder(
+                  builder: (context, constraints) {
+                    final tabCount = tabManager.tabs.isEmpty ? 1 : tabManager.tabs.length;
+                    final double tabWidth = (constraints.maxWidth / (tabCount + 0.4))
+                        .clamp(110, 210)
+                        .toDouble();
 
-                    final tab = tabManager.tabs[index];
-                    final isActive = tab.isSelected;
+                    return ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      itemCount: tabManager.tabs.length + 1,
+                      itemBuilder: (context, index) {
+                        if (index == tabManager.tabs.length) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            child: _GXTabBarIconButton(
+                              icon: CupertinoIcons.add,
+                              tooltip: 'Nouvel onglet',
+                              compact: true,
+                              onPressed: () => tabManager.createNewTab(),
+                            ),
+                          );
+                        }
 
-                    return _GXTabItem(
-                      tab: tab,
-                      isActive: isActive,
-                      onTap: () => tabManager.selectTab(tab.id),
-                      onClose: () {
-                        final webViewManager = Provider.of<TabWebViewManager>(
-                          context,
-                          listen: false,
+                        final tab = tabManager.tabs[index];
+                        final isActive = tab.isSelected;
+
+                        return _GXTabItem(
+                          tab: tab,
+                          width: tabWidth,
+                          isActive: isActive,
+                          onTap: () => tabManager.selectTab(tab.id),
+                          onClose: () {
+                            final webViewManager = Provider.of<TabWebViewManager>(
+                              context,
+                              listen: false,
+                            );
+                            webViewManager.removeEngineForTab(tab.id);
+                            tabManager.closeTab(tab.id);
+                          },
                         );
-                        webViewManager.removeEngineForTab(tab.id);
-                        tabManager.closeTab(tab.id);
                       },
                     );
                   },
@@ -241,12 +260,14 @@ class GXTabBar extends StatelessWidget {
 
 class _GXTabItem extends StatefulWidget {
   final TabModel tab;
+  final double width;
   final bool isActive;
   final VoidCallback onTap;
   final VoidCallback onClose;
 
   const _GXTabItem({
     required this.tab,
+    required this.width,
     required this.isActive,
     required this.onTap,
     required this.onClose,
@@ -277,13 +298,9 @@ class _GXTabItemState extends State<_GXTabItem> {
       onExit: (_) => setState(() => _isHovered = false),
       child: GestureDetector(
         onTap: widget.onTap,
-        child: Container(
-          constraints: const BoxConstraints(
-            minWidth: 120,
-            maxWidth: 240,
-          ),
+        child: SizedBox(
+          width: widget.width,
           height: 32,
-          margin: const EdgeInsets.only(right: 2),
           child: Column(
             children: [
               AnimatedContainer(
@@ -366,26 +383,29 @@ class _GXTabItemState extends State<_GXTabItem> {
                         ),
                         const SizedBox(width: 6),
                         // Close button
-                        MouseRegion(
-                          onEnter: (_) => setState(() => _closeHovered = true),
-                          onExit: (_) => setState(() => _closeHovered = false),
-                          child: GestureDetector(
-                            onTap: widget.onClose,
-                            child: Container(
-                              width: 22,
-                              height: 22,
-                              decoration: BoxDecoration(
-                                color: _closeHovered
-                                    ? Colors.white.withOpacity(0.12)
-                                    : Colors.transparent,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Icon(
-                                CupertinoIcons.xmark,
-                                size: 12,
-                                color: widget.isActive || _isHovered
-                                    ? Colors.white
-                                    : Colors.white.withOpacity(0.6),
+                        NotilusTooltip(
+                          message: 'Fermer cet onglet',
+                          child: MouseRegion(
+                            onEnter: (_) => setState(() => _closeHovered = true),
+                            onExit: (_) => setState(() => _closeHovered = false),
+                            child: GestureDetector(
+                              onTap: widget.onClose,
+                              child: Container(
+                                width: 22,
+                                height: 22,
+                                decoration: BoxDecoration(
+                                  color: _closeHovered
+                                      ? Colors.white.withOpacity(0.12)
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Icon(
+                                  CupertinoIcons.xmark,
+                                  size: 12,
+                                  color: widget.isActive || _isHovered
+                                      ? Colors.white
+                                      : Colors.white.withOpacity(0.6),
+                                ),
                               ),
                             ),
                           ),
@@ -460,7 +480,7 @@ class _GXTabBarIconButtonState extends State<_GXTabBarIconButton> {
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
       child: widget.tooltip != null
-          ? Tooltip(
+          ? NotilusTooltip(
               message: widget.tooltip!,
               child: button,
             )
@@ -552,7 +572,8 @@ class _GXWindowControlsState extends State<GXWindowControls>
           icon: CupertinoIcons.xmark,
           iconSize: 13,
           tooltip: 'Fermer',
-          hoverColor: const Color(0xFFE81123),
+          hoverColor: _gxRed.withOpacity(0.2),
+          iconColor: _gxRed,
           onTap: () => windowManager.close(),
         ),
       ],
@@ -565,6 +586,7 @@ class _WindowButton extends StatefulWidget {
   final double iconSize;
   final String tooltip;
   final Color? hoverColor;
+  final Color? iconColor;
   final VoidCallback onTap;
 
   const _WindowButton({
@@ -572,6 +594,7 @@ class _WindowButton extends StatefulWidget {
     required this.iconSize,
     required this.tooltip,
     this.hoverColor,
+    this.iconColor,
     required this.onTap,
   });
 
@@ -590,15 +613,15 @@ class _WindowButtonState extends State<_WindowButton> {
         width: 44,
         height: 32,
         color: _hovered
-            ? (widget.hoverColor ?? _gxRed.withOpacity(0.18))
+            ? (widget.hoverColor ?? Colors.white.withOpacity(0.08))
             : Colors.transparent,
         child: Center(
           child: Icon(
             widget.icon,
             size: widget.iconSize,
-            color: widget.hoverColor != null
-                ? Colors.white
-                : (_hovered ? _gxRed : _gxRed.withOpacity(0.8)),
+            color: _hovered
+                ? (widget.iconColor ?? Colors.white)
+                : (widget.iconColor ?? Colors.white.withOpacity(0.8)),
           ),
         ),
       ),
@@ -608,10 +631,7 @@ class _WindowButtonState extends State<_WindowButton> {
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: Tooltip(
-        message: widget.tooltip,
-        child: button,
-      ),
+      child: NotilusTooltip(message: widget.tooltip, child: button),
     );
   }
 }

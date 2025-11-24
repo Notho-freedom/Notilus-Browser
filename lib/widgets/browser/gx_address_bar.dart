@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
+import '../../core/constants/notilus_colors.dart';
 import '../../services/tab_manager.dart';
 import '../../services/tab_webview_manager.dart';
 import '../../core/utils/url_validator.dart';
@@ -9,8 +10,10 @@ import '../../services/bookmark_service.dart';
 import '../../services/favicon_service.dart';
 import '../../models/bookmark.dart';
 import '../../models/tab_model.dart';
+import '../common/notilus_tooltip.dart';
 
-const Color _gxRed = Color(0xFFFF2D55);
+const Color _gxRed = NotilusColors.neonRed;
+const Color _chromeColor = NotilusColors.chrome;
 
 class GXAddressBar extends StatefulWidget {
   const GXAddressBar({super.key});
@@ -105,7 +108,7 @@ class _GXAddressBarState extends State<GXAddressBar> {
 
         return Container(
           height: 34,
-          color: const Color(0xFF25252A),
+          color: _chromeColor,
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           child: Row(
             children: [
@@ -115,6 +118,7 @@ class _GXAddressBarState extends State<GXAddressBar> {
                   _GXNavButton(
                     icon: CupertinoIcons.left_chevron,
                     size: 16,
+                    tooltip: 'Retour',
                     onPressed: activeTab != null ? () {
                       final engine = Provider.of<TabWebViewManager>(context, listen: false)
                           .getEngineForTab(activeTab.id);
@@ -125,6 +129,7 @@ class _GXAddressBarState extends State<GXAddressBar> {
                   _GXNavButton(
                     icon: CupertinoIcons.right_chevron,
                     size: 16,
+                    tooltip: 'Avancer',
                     onPressed: activeTab != null ? () {
                       final engine = Provider.of<TabWebViewManager>(context, listen: false)
                           .getEngineForTab(activeTab.id);
@@ -137,6 +142,7 @@ class _GXAddressBarState extends State<GXAddressBar> {
                         ? CupertinoIcons.xmark
                         : CupertinoIcons.arrow_clockwise,
                     size: 16,
+                    tooltip: activeTab?.state == TabState.loading ? 'Arrêter' : 'Actualiser',
                     onPressed: activeTab != null ? () {
                       final engine = Provider.of<TabWebViewManager>(context, listen: false)
                           .getEngineForTab(activeTab.id);
@@ -151,6 +157,7 @@ class _GXAddressBarState extends State<GXAddressBar> {
                   _GXNavButton(
                     icon: CupertinoIcons.house,
                     size: 16,
+                    tooltip: 'Nouvel onglet d\'accueil',
                     onPressed: () {
                       tabManager.addTab(url: 'about:newtab');
                     },
@@ -163,9 +170,9 @@ class _GXAddressBarState extends State<GXAddressBar> {
               // Address field - Style GX avec bordure dégradée
               Expanded(
                 child: Container(
-                  height: 28,
+                  height: 30,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(18),
                     gradient: LinearGradient(
                       begin: Alignment.centerLeft,
                       end: Alignment.centerRight,
@@ -176,10 +183,10 @@ class _GXAddressBarState extends State<GXAddressBar> {
                     ),
                   ),
                   child: Container(
-                    margin: const EdgeInsets.all(1),
+                    margin: const EdgeInsets.all(1.2),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(13),
-                      color: const Color(0xCC16161C),
+                      borderRadius: BorderRadius.circular(17),
+                      color: _chromeColor.withOpacity(0.88),
                     ),
                     child: Row(
                       children: [
@@ -227,6 +234,7 @@ class _GXAddressBarState extends State<GXAddressBar> {
                         // Bookmark button
                         _GXActionButton(
                           icon: CupertinoIcons.bookmark,
+                          tooltip: 'Ajouter aux favoris',
                           onPressed: activeTab?.url != null &&
                                   activeTab!.url!.isNotEmpty &&
                                   !activeTab.url!.startsWith('about:')
@@ -250,25 +258,26 @@ class _GXAddressBarState extends State<GXAddressBar> {
                         ),
 
                         const SizedBox(width: 4),
-                        Container(
-                          margin: const EdgeInsets.only(right: 4),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            color: _gxRed.withOpacity(0.15),
-                          ),
-                          child: IconButton(
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(minHeight: 26, minWidth: 26),
-                            icon: Icon(
-                              CupertinoIcons.arrow_right,
-                              size: 16,
-                              color: _gxRed,
+                        NotilusTooltip(
+                          message: 'Lancer la navigation',
+                          child: Container(
+                            margin: const EdgeInsets.only(right: 2),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(14),
+                              color: _gxRed.withOpacity(0.15),
                             ),
-                            onPressed: () => _navigateToUrl(_controller.text),
+                            child: IconButton(
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(minHeight: 26, minWidth: 26),
+                              icon: Icon(
+                                CupertinoIcons.arrow_right,
+                                size: 16,
+                                color: _gxRed,
+                              ),
+                              onPressed: () => _navigateToUrl(_controller.text),
+                            ),
                           ),
                         ),
-
-                        const SizedBox(width: 4),
                       ],
                     ),
                   ),
@@ -282,21 +291,25 @@ class _GXAddressBarState extends State<GXAddressBar> {
                 children: [
                   _GXActionButton(
                     icon: CupertinoIcons.person_crop_circle,
+                    tooltip: 'Compte Notilus',
                     onPressed: () {},
                   ),
                   const SizedBox(width: 4),
                   _GXActionButton(
                     icon: CupertinoIcons.layers_alt,
+                    tooltip: 'Panneau widgets',
                     onPressed: () {},
                   ),
                   const SizedBox(width: 4),
                   _GXActionButton(
                     icon: CupertinoIcons.tray_arrow_down,
+                    tooltip: 'Téléchargements',
                     onPressed: () {},
                   ),
                   const SizedBox(width: 4),
                   _GXActionButton(
                     icon: CupertinoIcons.ellipsis_vertical,
+                    tooltip: 'Plus d’outils',
                     onPressed: () {},
                   ),
                 ],
@@ -312,11 +325,13 @@ class _GXAddressBarState extends State<GXAddressBar> {
 class _GXNavButton extends StatefulWidget {
   final IconData icon;
   final double size;
+  final String tooltip;
   final VoidCallback? onPressed;
 
   const _GXNavButton({
     required this.icon,
     required this.size,
+    required this.tooltip,
     this.onPressed,
   });
 
@@ -331,29 +346,34 @@ class _GXNavButtonState extends State<_GXNavButton> {
   Widget build(BuildContext context) {
     final isEnabled = widget.onPressed != null;
     
+    final button = GestureDetector(
+      onTap: widget.onPressed,
+      child: Container(
+        width: 26,
+        height: 26,
+        decoration: BoxDecoration(
+          color: _isHovered && isEnabled
+              ? _gxRed.withOpacity(0.14)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Icon(
+          widget.icon,
+          size: widget.size,
+          color: isEnabled
+              ? (_isHovered ? _gxRed : _gxRed.withOpacity(0.8))
+              : _gxRed.withOpacity(0.3),
+        ),
+      ),
+    );
+
     return MouseRegion(
       cursor: isEnabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTap: widget.onPressed,
-        child: Container(
-          width: 26,
-          height: 26,
-          decoration: BoxDecoration(
-            color: _isHovered && isEnabled
-                ? _gxRed.withOpacity(0.14)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Icon(
-            widget.icon,
-            size: widget.size,
-            color: isEnabled
-                ? (_isHovered ? _gxRed : _gxRed.withOpacity(0.8))
-                : _gxRed.withOpacity(0.3),
-          ),
-        ),
+      child: NotilusTooltip(
+        message: widget.tooltip,
+        child: button,
       ),
     );
   }
@@ -361,10 +381,12 @@ class _GXNavButtonState extends State<_GXNavButton> {
 
 class _GXActionButton extends StatefulWidget {
   final IconData icon;
+  final String tooltip;
   final VoidCallback? onPressed;
 
   const _GXActionButton({
     required this.icon,
+    required this.tooltip,
     this.onPressed,
   });
 
@@ -379,29 +401,34 @@ class _GXActionButtonState extends State<_GXActionButton> {
   Widget build(BuildContext context) {
     final isEnabled = widget.onPressed != null;
     
+    final button = GestureDetector(
+      onTap: widget.onPressed,
+      child: Container(
+        width: 28,
+        height: 26,
+        decoration: BoxDecoration(
+          color: _isHovered && isEnabled
+              ? _gxRed.withOpacity(0.14)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Icon(
+          widget.icon,
+          size: 18,
+          color: isEnabled
+              ? (_isHovered ? _gxRed : _gxRed.withOpacity(0.8))
+              : _gxRed.withOpacity(0.3),
+        ),
+      ),
+    );
+
     return MouseRegion(
       cursor: isEnabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTap: widget.onPressed,
-        child: Container(
-          width: 28,
-          height: 26,
-          decoration: BoxDecoration(
-            color: _isHovered && isEnabled
-                ? _gxRed.withOpacity(0.14)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Icon(
-            widget.icon,
-            size: 18,
-            color: isEnabled
-                ? (_isHovered ? _gxRed : _gxRed.withOpacity(0.8))
-                : _gxRed.withOpacity(0.3),
-          ),
-        ),
+      child: NotilusTooltip(
+        message: widget.tooltip,
+        child: button,
       ),
     );
   }

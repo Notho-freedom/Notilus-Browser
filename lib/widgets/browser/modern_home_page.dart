@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../services/tab_manager.dart';
 import '../../core/services/wallpaper_manager.dart';
-import 'package:flutter_animate/flutter_animate.dart';
+import '../common/notilus_monogram.dart';
 
 class ModernHomePage extends StatefulWidget {
   const ModernHomePage({super.key});
@@ -142,35 +143,8 @@ class _ModernHomePageState extends State<ModernHomePage> {
                     // Logo + titre
                     Column(
                       children: [
-                        Container(
-                          width: 78,
-                          height: 78,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [
-                                Color(0xFFFF2D55),
-                                Color(0xFF5856D6),
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(24),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFFFF2D55).withOpacity(0.55),
-                                blurRadius: 26,
-                                offset: const Offset(0, 12),
-                              ),
-                            ],
-                          ),
-                          child: const Center(
-                            child: Text(
-                              'N',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 40,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
+                        const NotilusMonogram(
+                          size: 78,
                         )
                             .animate()
                             .fadeIn(duration: 500.ms)
@@ -210,23 +184,23 @@ class _ModernHomePageState extends State<ModernHomePage> {
                       constraints: const BoxConstraints(maxWidth: 720),
                       height: 56,
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(22),
+                        borderRadius: BorderRadius.circular(28),
                         gradient: LinearGradient(
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: [
-                            const Color(0xFFFF2D55).withOpacity(0.8),
-                            const Color(0x00FF2D55),
+                            const Color(0xFFFF2D55).withOpacity(0.85),
+                            const Color(0xFF6B2C5F).withOpacity(0.65),
                           ],
                         ),
                       ),
                       child: Container(
-                        margin: const EdgeInsets.all(1.2),
+                        margin: const EdgeInsets.all(1.5),
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
-                          color: Colors.black.withOpacity(0.25),
+                          borderRadius: BorderRadius.circular(24),
+                          color: Colors.black.withOpacity(0.28),
                           border: Border.all(
-                            color: Colors.white.withOpacity(0.04),
+                            color: Colors.white.withOpacity(0.05),
                             width: 1,
                           ),
                         ),
@@ -260,10 +234,10 @@ class _ModernHomePageState extends State<ModernHomePage> {
                               ),
                             ),
                             Container(
-                              margin: const EdgeInsets.only(right: 12),
+                              margin: const EdgeInsets.only(right: 6),
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(16),
-                                color: const Color(0xFFFF2D55).withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(20),
+                                color: const Color(0xFFFF2D55).withOpacity(0.14),
                               ),
                               child: IconButton(
                                 icon: const Icon(
