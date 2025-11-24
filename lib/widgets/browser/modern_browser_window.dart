@@ -174,7 +174,7 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                             },
                             onPanUpdate: (details) {
                               setState(() {
-                                _sideMenuWidth = (_sideMenuWidth - details.delta.dx).clamp(200.0, 800.0);
+                                _sideMenuWidth = (_sideMenuWidth + details.delta.dx).clamp(200.0, 800.0);
                               });
                             },
                             onPanEnd: (_) {

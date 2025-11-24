@@ -674,6 +674,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
 
   Widget _buildLeftColumn(BuildContext context, ThemeData theme) {
     return Stack(
+      clipBehavior: Clip.none,
       children: [
         AnimatedContainer(
           duration: const Duration(milliseconds: 300),
@@ -786,9 +787,9 @@ class _ModernHomePageState extends State<ModernHomePage> {
                 )
               : const SizedBox.shrink(),
         ),
-        // Label vertical pour collapse/expand
+        // Label vertical sur le bord extérieur gauche, pointant vers le centre
         Positioned(
-          left: 0,
+          left: -20,
           top: 0,
           bottom: 0,
           child: GestureDetector(
@@ -812,9 +813,9 @@ class _ModernHomePageState extends State<ModernHomePage> {
                 ),
                 child: Center(
                   child: RotatedBox(
-                    quarterTurns: 3,
+                    quarterTurns: 1,
                     child: Text(
-                      _leftColumnExpanded ? 'COLLAPSE' : 'EXPAND',
+                      'DEV TOOLS',
                       style: theme.textTheme.labelSmall?.copyWith(
                         letterSpacing: 2,
                         fontWeight: FontWeight.w700,
@@ -834,6 +835,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
 
   Widget _buildRightColumn(BuildContext context, ThemeData theme) {
     return Stack(
+      clipBehavior: Clip.none,
       children: [
         AnimatedContainer(
           duration: const Duration(milliseconds: 300),
@@ -946,9 +948,9 @@ class _ModernHomePageState extends State<ModernHomePage> {
                 )
               : const SizedBox.shrink(),
         ),
-        // Label vertical pour collapse/expand
+        // Label vertical sur le bord extérieur droit, pointant vers le centre
         Positioned(
-          right: 0,
+          right: -20,
           top: 0,
           bottom: 0,
           child: GestureDetector(
@@ -972,9 +974,9 @@ class _ModernHomePageState extends State<ModernHomePage> {
                 ),
                 child: Center(
                   child: RotatedBox(
-                    quarterTurns: 3,
+                    quarterTurns: 1,
                     child: Text(
-                      _rightColumnExpanded ? 'COLLAPSE' : 'EXPAND',
+                      'QUICK ACTIONS',
                       style: theme.textTheme.labelSmall?.copyWith(
                         letterSpacing: 2,
                         fontWeight: FontWeight.w700,
