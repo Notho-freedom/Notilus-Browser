@@ -245,16 +245,22 @@ class GXTabBar extends StatelessWidget {
                   }
                   
                   return _GXTabBarIconButton(
-                    icon: CupertinoIcons.square_split_2x1,
+                    icon: splitService.isActive
+                        ? CupertinoIcons.eye_slash // Icône différente quand actif pour indiquer qu'on peut masquer
+                        : CupertinoIcons.square_split_2x1,
                     tooltip: splitService.isActive
-                        ? 'Masquer le split-screen'
+                        ? 'Masquer le split-screen et revenir aux onglets'
                         : 'Activer le split-screen',
                     onPressed: () {
                       if (splitService.isActive) {
+                        // Masquer le split pour revenir aux tabsviews
                         splitService.setVisible(false);
+                        HapticFeedback.lightImpact();
                       } else {
+                        // Activer le split
                         final activeTabId = tabManager.activeTab?.id;
                         splitService.toggle(activeTabId: activeTabId);
+                        HapticFeedback.mediumImpact();
                       }
                     },
                   );

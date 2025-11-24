@@ -146,11 +146,26 @@ class _AdvancedSplitViewState extends State<AdvancedSplitView> {
           
           const SizedBox(width: 8),
           
-          // Fermer split-screen
+          // Masquer split-screen (revenir aux tabs)
+          _ControlButton(
+            icon: CupertinoIcons.eye_slash,
+            tooltip: 'Masquer le split-screen et revenir aux onglets',
+            onPressed: () {
+              splitService.setVisible(false);
+              HapticFeedback.lightImpact();
+            },
+          ),
+          
+          const SizedBox(width: 8),
+          
+          // Fermer split-screen complètement
           _ControlButton(
             icon: CupertinoIcons.xmark,
-            tooltip: 'Fermer le split-screen',
-            onPressed: () => splitService.toggle(),
+            tooltip: 'Fermer complètement le split-screen',
+            onPressed: () {
+              splitService.toggle();
+              HapticFeedback.mediumImpact();
+            },
           ),
         ],
       ),
