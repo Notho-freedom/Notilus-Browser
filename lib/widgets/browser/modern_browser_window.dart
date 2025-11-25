@@ -519,6 +519,7 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
         );
       case SidebarSection.home:
       case SidebarSection.nativeDevtools:
+      case SidebarSection.mosaic:
         return null;
       case SidebarSection.docs:
         return _SidebarPanelConfig(
