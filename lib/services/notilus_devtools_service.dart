@@ -58,10 +58,55 @@ class NotilusDevToolsService extends ChangeNotifier {
   late final _DevToolsHttpClient _httpClient;
   http.Client get httpClient => _httpClient;
   
+  // === FONCTIONNALITÉS AVANCÉES ===
+  
+  // Tab Analytics
+  final Map<String, TabAnalytics> _tabAnalytics = {};
+  Map<String, TabAnalytics> get tabAnalytics => Map.unmodifiable(_tabAnalytics);
+  
+  // Session Recording
+  final List<RecordedSession> _sessions = [];
+  List<RecordedSession> get sessions => List.unmodifiable(_sessions);
+  RecordedSession? _currentSession;
+  RecordedSession? get currentSession => _currentSession;
+  bool get isRecording => _currentSession?.isRecording ?? false;
+  
+  // Smart Alerts
+  final List<SmartAlert> _alerts = [];
+  List<SmartAlert> get alerts => List.unmodifiable(_alerts);
+  SmartMonitorConfig _monitorConfig = SmartMonitorConfig();
+  SmartMonitorConfig get monitorConfig => _monitorConfig;
+  Timer? _alertCheckTimer;
+  int _recentErrorCount = 0;
+  DateTime? _lastErrorBurstCheck;
+  
+  // Security Audit
+  final List<SecurityIssue> _securityIssues = [];
+  List<SecurityIssue> get securityIssues => List.unmodifiable(_securityIssues);
+  
+  // Bookmarks
+  final List<DevToolsBookmark> _bookmarks = [];
+  List<DevToolsBookmark> get bookmarks => List.unmodifiable(_bookmarks);
+  
+  // Widget Tree
+  List<WidgetTreeNode> _widgetTree = [];
+  List<WidgetTreeNode> get widgetTree => List.unmodifiable(_widgetTree);
+  
+  // Provider States
+  final Map<String, ProviderState> _providerStates = {};
+  Map<String, ProviderState> get providerStates => Map.unmodifiable(_providerStates);
+  
+  // Session start time
+  DateTime _sessionStartTime = DateTime.now();
+  DateTime get sessionStartTime => _sessionStartTime;
+  
   // === Getters ===
   bool get isNetworkRecording => _isNetworkRecording;
   bool get isPerformanceMonitoring => _isPerformanceMonitoring;
   double get currentFps => _currentFps;
+  int get alertCount => _alerts.where((a) => !a.isDismissed).length;
+  int get criticalAlertCount => _alerts.where((a) => !a.isDismissed && a.severity == AlertSeverity.critical).length;
+  int get securityIssueCount => _securityIssues.where((s) => !s.isResolved).length;
   
   // === WebView Console/Network Capture ===
   final Map<String, Function(String)> _webViewLogHandlers = {};
@@ -69,9 +114,24 @@ class NotilusDevToolsService extends ChangeNotifier {
   // === Initialization ===
   void initialize() {
     _httpClient = _DevToolsHttpClient(this);
-    _logSystem('Notilus DevTools initialisé');
-    _logSystem('Version: 2.0.0 | Build: native-real-metrics');
-    _logSystem('Métriques: CPU, Mémoire, Widgets, FPS - RÉELLES');
+    _sessionStartTime = DateTime.now();
+    
+    _logSystem('╔══════════════════════════════════════════╗');
+    _logSystem('║   NOTILUS DEVTOOLS v3.0 - ADVANCED       ║');
+    _logSystem('╠══════════════════════════════════════════╣');
+    _logSystem('║ ✓ Real-time Performance Metrics          ║');
+    _logSystem('║ ✓ Tab Analytics & Tracking               ║');
+    _logSystem('║ ✓ Session Recording & Replay             ║');
+    _logSystem('║ ✓ Smart Alerts & Monitoring              ║');
+    _logSystem('║ ✓ Security Audit Scanner                 ║');
+    _logSystem('║ ✓ Widget Tree Inspector                  ║');
+    _logSystem('║ ✓ Export Reports (JSON)                  ║');
+    _logSystem('╚══════════════════════════════════════════╝');
+    
+    // Démarrer le smart monitoring
+    startSmartMonitoring();
+    
+    logSuccess('DevTools initialisé avec succès', source: 'Init');
   }
   
   /// Script JavaScript à injecter pour capturer console.log et les requêtes réseau
@@ -475,6 +535,19 @@ class NotilusDevToolsService extends ChangeNotifier {
       status: status,
       error: error,
     );
+    
+    // Audit de sécurité automatique
+    if (status == RequestStatus.success) {
+      auditRequest(_requests[index]);
+      
+      // Track pour les analytics si c'est une requête WebView
+      final source = _requests[index].source;
+      if (source != null && source.startsWith('WebView:')) {
+        final tabId = source.replaceFirst('WebView:', '');
+        trackTabRequest(tabId, _requests[index]);
+      }
+    }
+    
     notifyListeners();
   }
   
@@ -915,7 +988,99 @@ Environnement:
         }
       
       case 'version':
-        return 'Notilus DevTools v1.0.0';
+        return 'Notilus DevTools v3.0.0 - Advanced Edition';
+      
+      // === NOUVELLES COMMANDES AVANCÉES ===
+      
+      case 'analytics':
+        final stats = getGlobalAnalytics();
+        return '''
+📊 ANALYTICS GLOBALES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Onglets: ${stats['totalTabs']} (${stats['activeTabs']} actifs)
+  Requêtes: ${stats['totalRequests']}
+  Erreurs: ${stats['totalErrors']}
+  Données: ${stats['totalDataMB']} MB
+  Temps réponse moyen: ${stats['avgResponseTime']} ms
+  Durée session: ${stats['sessionDuration']} min
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+''';
+      
+      case 'alerts':
+        final activeAlerts = _alerts.where((a) => !a.isDismissed).toList();
+        if (activeAlerts.isEmpty) return '✅ Aucune alerte active';
+        return '''
+🔔 ALERTES ACTIVES (${activeAlerts.length})
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${activeAlerts.take(10).map((a) => '  ${a.severity == AlertSeverity.critical ? "🚨" : "⚠️"} ${a.title}').join('\n')}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+''';
+      
+      case 'security':
+        final issues = _securityIssues.where((s) => !s.isResolved).toList();
+        if (issues.isEmpty) return '🔒 Aucun problème de sécurité détecté';
+        return '''
+🔒 PROBLÈMES DE SÉCURITÉ (${issues.length})
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${issues.take(10).map((s) => '  ${s.severity == AlertSeverity.critical ? "🔴" : "🟠"} ${s.title}').join('\n')}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+''';
+      
+      case 'record':
+        if (args.isEmpty) {
+          if (isRecording) {
+            stopRecording();
+            return '⏹️ Enregistrement arrêté';
+          } else {
+            startRecording();
+            return '📹 Enregistrement démarré';
+          }
+        }
+        if (args.first == 'start') {
+          startRecording(name: args.length > 1 ? args.skip(1).join(' ') : null);
+          return '📹 Enregistrement démarré: ${_currentSession?.name}';
+        }
+        if (args.first == 'stop') {
+          stopRecording();
+          return '⏹️ Enregistrement arrêté';
+        }
+        return 'Usage: record [start|stop] [name]';
+      
+      case 'sessions':
+        if (_sessions.isEmpty) return 'Aucune session enregistrée';
+        return '''
+📼 SESSIONS ENREGISTRÉES (${_sessions.length})
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${_sessions.map((s) => '  ${s.name} - ${s.formattedDuration} (${s.events.length} events)').join('\n')}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+''';
+      
+      case 'widgets':
+        captureWidgetTree();
+        return '🌳 Widget tree capturé: ${_countNodes(_widgetTree)} widgets';
+      
+      case 'bookmark':
+        if (args.isEmpty) return 'Usage: bookmark <titre>';
+        addBookmark(title: args.join(' '), category: 'custom');
+        return '🔖 Bookmark ajouté: ${args.join(' ')}';
+      
+      case 'export':
+        final json = exportReportToJson();
+        return '📄 Rapport généré (${json.length} caractères)\nUtilisez l\'UI pour sauvegarder';
+      
+      case 'monitor':
+        if (args.isEmpty) {
+          return 'Smart Monitoring: ${_alertCheckTimer != null ? "actif" : "inactif"}\nUsage: monitor [on|off]';
+        }
+        if (args.first == 'on') {
+          startSmartMonitoring();
+          return '🔔 Smart Monitoring activé';
+        }
+        if (args.first == 'off') {
+          stopSmartMonitoring();
+          return '🔕 Smart Monitoring désactivé';
+        }
+        return 'Usage: monitor [on|off]';
       
       default:
         return 'Commande inconnue: $cmd\nTapez "help" pour voir les commandes disponibles';
@@ -924,36 +1089,49 @@ Environnement:
   
   String _getHelpText() {
     return '''
-═══════════════════════════════════════
-  NOTILUS DEVTOOLS - COMMANDES REPL
-═══════════════════════════════════════
-
-Console:
-  help          Affiche cette aide
-  clear         Vide la console
-  logs          Nombre de logs
-  echo <msg>    Affiche un message
-
-Réseau:
-  requests      Nombre de requêtes
-  fetch <url>   Effectue une requête GET
-
-Performance:
-  perf          Métriques actuelles
-
-Storage:
-  storage       Nombre d'entrées
-  get <key>     Lire une valeur
-  set <k> <v>   Définir une valeur
-  del <key>     Supprimer une clé
-
-Utilitaires:
-  env           Infos environnement
-  time          Heure actuelle
-  json <str>    Formater du JSON
-  version       Version DevTools
-
-═══════════════════════════════════════
+╔═══════════════════════════════════════════════╗
+║    NOTILUS DEVTOOLS v3.0 - COMMANDES REPL     ║
+╠═══════════════════════════════════════════════╣
+║                                               ║
+║  📋 CONSOLE                                   ║
+║    help          Affiche cette aide           ║
+║    clear         Vide la console              ║
+║    logs          Nombre de logs               ║
+║    echo <msg>    Affiche un message           ║
+║                                               ║
+║  🌐 RÉSEAU                                    ║
+║    requests      Nombre de requêtes           ║
+║    fetch <url>   Effectue une requête GET     ║
+║                                               ║
+║  📊 PERFORMANCE                               ║
+║    perf          Métriques actuelles          ║
+║    widgets       Capturer l'arbre widgets     ║
+║                                               ║
+║  💾 STORAGE                                   ║
+║    storage       Nombre d'entrées             ║
+║    get <key>     Lire une valeur              ║
+║    set <k> <v>   Définir une valeur           ║
+║    del <key>     Supprimer une clé            ║
+║                                               ║
+║  📈 ANALYTICS (NOUVEAU)                       ║
+║    analytics     Stats globales               ║
+║    alerts        Alertes actives              ║
+║    security      Problèmes de sécurité        ║
+║                                               ║
+║  📹 SESSION (NOUVEAU)                         ║
+║    record        Toggle enregistrement        ║
+║    sessions      Liste des sessions           ║
+║                                               ║
+║  🛠️ UTILITAIRES                              ║
+║    bookmark <t>  Ajouter un bookmark          ║
+║    export        Exporter rapport JSON        ║
+║    monitor       Smart Monitoring on/off      ║
+║    env           Infos environnement          ║
+║    time          Heure actuelle               ║
+║    json <str>    Formater du JSON             ║
+║    version       Version DevTools             ║
+║                                               ║
+╚═══════════════════════════════════════════════╝
 ''';
   }
   
@@ -962,11 +1140,605 @@ Utilitaires:
     notifyListeners();
   }
   
+  // ============================================================================
+  // FONCTIONNALITÉS AVANCÉES NOTILUS DEVTOOLS
+  // ============================================================================
+  
+  // === TAB ANALYTICS ===
+  
+  /// Enregistre l'ouverture d'un onglet
+  void trackTabOpen(String tabId, {String? title, String? url}) {
+    _tabAnalytics[tabId] = TabAnalytics(
+      tabId: tabId,
+      tabTitle: title,
+      tabUrl: url,
+      openedAt: DateTime.now(),
+      visitedUrls: url != null ? [url] : [],
+    );
+    _logSystem('Tab ouvert: $tabId');
+    notifyListeners();
+  }
+  
+  /// Met à jour les analytics d'un onglet
+  void updateTabAnalytics(String tabId, {String? title, String? url}) {
+    final analytics = _tabAnalytics[tabId];
+    if (analytics == null) {
+      trackTabOpen(tabId, title: title, url: url);
+      return;
+    }
+    
+    if (title != null) analytics.tabTitle;
+    if (url != null && !analytics.visitedUrls.contains(url)) {
+      analytics.visitedUrls = [...analytics.visitedUrls, url];
+    }
+    notifyListeners();
+  }
+  
+  /// Enregistre la fermeture d'un onglet
+  void trackTabClose(String tabId) {
+    final analytics = _tabAnalytics[tabId];
+    if (analytics != null) {
+      analytics.closedAt = DateTime.now();
+      analytics.totalActiveTime = analytics.closedAt!.difference(analytics.openedAt);
+    }
+    notifyListeners();
+  }
+  
+  /// Enregistre une requête pour un onglet
+  void trackTabRequest(String tabId, NetworkRequest request) {
+    final analytics = _tabAnalytics[tabId];
+    if (analytics == null) return;
+    
+    analytics.totalRequests++;
+    if (request.status == RequestStatus.error) {
+      analytics.failedRequests++;
+    }
+    if (request.responseSize != null) {
+      analytics.totalDataTransferred += request.responseSize!;
+    }
+    if (request.duration != null) {
+      final total = analytics.avgResponseTime * (analytics.totalRequests - 1) + request.duration!.inMilliseconds;
+      analytics.avgResponseTime = total / analytics.totalRequests;
+    }
+    
+    // Track domain
+    final domain = request.host;
+    analytics.domainRequests = Map.from(analytics.domainRequests);
+    analytics.domainRequests[domain] = (analytics.domainRequests[domain] ?? 0) + 1;
+    
+    notifyListeners();
+  }
+  
+  /// Obtient les statistiques agrégées de tous les onglets
+  Map<String, dynamic> getGlobalAnalytics() {
+    int totalRequests = 0;
+    int totalErrors = 0;
+    int totalData = 0;
+    double avgResponseTime = 0;
+    
+    for (final analytics in _tabAnalytics.values) {
+      totalRequests += analytics.totalRequests;
+      totalErrors += analytics.failedRequests + analytics.errorCount;
+      totalData += analytics.totalDataTransferred;
+      avgResponseTime += analytics.avgResponseTime;
+    }
+    
+    if (_tabAnalytics.isNotEmpty) {
+      avgResponseTime /= _tabAnalytics.length;
+    }
+    
+    return {
+      'totalTabs': _tabAnalytics.length,
+      'activeTabs': _tabAnalytics.values.where((a) => a.closedAt == null).length,
+      'totalRequests': totalRequests,
+      'totalErrors': totalErrors,
+      'totalDataMB': (totalData / (1024 * 1024)).toStringAsFixed(2),
+      'avgResponseTime': avgResponseTime.toStringAsFixed(0),
+      'sessionDuration': DateTime.now().difference(_sessionStartTime).inMinutes,
+    };
+  }
+  
+  // === SESSION RECORDING ===
+  
+  /// Démarre l'enregistrement d'une session
+  void startRecording({String? name}) {
+    if (_currentSession?.isRecording == true) {
+      stopRecording();
+    }
+    
+    _currentSession = RecordedSession(
+      id: _uuid.v4(),
+      name: name ?? 'Session ${_sessions.length + 1}',
+      startTime: DateTime.now(),
+      events: [],
+      isRecording: true,
+    );
+    
+    _logSystem('📹 Enregistrement démarré: ${_currentSession!.name}');
+    notifyListeners();
+  }
+  
+  /// Arrête l'enregistrement
+  void stopRecording() {
+    if (_currentSession == null || !_currentSession!.isRecording) return;
+    
+    _currentSession!.endTime = DateTime.now();
+    _currentSession!.isRecording = false;
+    _sessions.add(_currentSession!);
+    
+    _logSystem('⏹️ Enregistrement arrêté: ${_currentSession!.name} (${_currentSession!.events.length} événements)');
+    _currentSession = null;
+    notifyListeners();
+  }
+  
+  /// Enregistre un événement dans la session
+  void recordEvent(SessionEventType type, {String? tabId, String? url, Map<String, dynamic>? data}) {
+    if (_currentSession == null || !_currentSession!.isRecording) return;
+    
+    final event = SessionEvent(
+      id: _uuid.v4(),
+      timestamp: DateTime.now(),
+      type: type,
+      tabId: tabId,
+      url: url,
+      data: data ?? {},
+    );
+    
+    _currentSession!.events.add(event);
+    notifyListeners();
+  }
+  
+  /// Supprime une session enregistrée
+  void deleteSession(String sessionId) {
+    _sessions.removeWhere((s) => s.id == sessionId);
+    notifyListeners();
+  }
+  
+  /// Exporte une session en JSON
+  String exportSession(String sessionId) {
+    final session = _sessions.firstWhere((s) => s.id == sessionId);
+    return jsonEncode({
+      'id': session.id,
+      'name': session.name,
+      'startTime': session.startTime.toIso8601String(),
+      'endTime': session.endTime?.toIso8601String(),
+      'duration': session.duration.inSeconds,
+      'eventsCount': session.events.length,
+      'events': session.events.map((e) => {
+        'id': e.id,
+        'timestamp': e.timestamp.toIso8601String(),
+        'type': e.type.name,
+        'tabId': e.tabId,
+        'url': e.url,
+        'data': e.data,
+      }).toList(),
+    });
+  }
+  
+  // === SMART ALERTS ===
+  
+  /// Démarre le monitoring intelligent
+  void startSmartMonitoring() {
+    _alertCheckTimer?.cancel();
+    _alertCheckTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      _checkForAlerts();
+    });
+    _logSystem('🔔 Smart Monitoring activé');
+  }
+  
+  /// Arrête le monitoring intelligent
+  void stopSmartMonitoring() {
+    _alertCheckTimer?.cancel();
+    _alertCheckTimer = null;
+    _logSystem('🔕 Smart Monitoring désactivé');
+  }
+  
+  /// Vérifie les conditions d'alerte
+  void _checkForAlerts() {
+    final config = _monitorConfig;
+    
+    // Check FPS
+    if (config.fpsDropAlert && _currentFps < config.fpsThreshold) {
+      _createAlert(
+        severity: _currentFps < 15 ? AlertSeverity.critical : AlertSeverity.warning,
+        title: 'Chute de FPS détectée',
+        message: 'FPS actuel: ${_currentFps.toStringAsFixed(1)} (seuil: ${config.fpsThreshold})',
+        suggestion: 'Réduisez le nombre de widgets ou optimisez les rebuilds',
+        category: 'performance',
+      );
+    }
+    
+    // Check Memory
+    if (config.memorySpikAlert && _performanceHistory.isNotEmpty) {
+      final memMB = _performanceHistory.last.memoryUsedMB;
+      if (memMB > config.memoryThresholdMB) {
+        _createAlert(
+          severity: memMB > config.memoryThresholdMB * 1.5 ? AlertSeverity.critical : AlertSeverity.warning,
+          title: 'Utilisation mémoire élevée',
+          message: 'Mémoire: $memMB MB (seuil: ${config.memoryThresholdMB} MB)',
+          suggestion: 'Vérifiez les fuites mémoire et optimisez les images',
+          category: 'memory',
+        );
+      }
+    }
+    
+    // Check slow requests
+    if (config.slowRequestAlert) {
+      final slowRequests = _requests.where((r) => 
+        r.duration != null && r.duration!.inMilliseconds > config.slowRequestThresholdMs
+      ).toList();
+      
+      if (slowRequests.isNotEmpty) {
+        final latest = slowRequests.last;
+        _createAlert(
+          severity: AlertSeverity.warning,
+          title: 'Requête lente détectée',
+          message: '${latest.url} - ${latest.formattedDuration}',
+          suggestion: 'Optimisez l\'API ou ajoutez du caching',
+          category: 'network',
+        );
+      }
+    }
+    
+    // Check error burst
+    if (config.errorBurstAlert) {
+      final now = DateTime.now();
+      final windowStart = now.subtract(Duration(seconds: config.errorBurstWindowSeconds));
+      final recentErrors = _logs.where((l) => 
+        l.level == LogLevel.error && l.timestamp.isAfter(windowStart)
+      ).length;
+      
+      if (recentErrors >= config.errorBurstThreshold) {
+        _createAlert(
+          severity: AlertSeverity.critical,
+          title: 'Rafale d\'erreurs détectée',
+          message: '$recentErrors erreurs en ${config.errorBurstWindowSeconds}s',
+          suggestion: 'Vérifiez les logs pour identifier la cause',
+          category: 'errors',
+        );
+      }
+    }
+  }
+  
+  /// Crée une alerte (évite les doublons)
+  void _createAlert({
+    required AlertSeverity severity,
+    required String title,
+    required String message,
+    String? suggestion,
+    required String category,
+    Map<String, dynamic>? relatedData,
+  }) {
+    // Éviter les doublons (même titre dans les 60 dernières secondes)
+    final recent = _alerts.where((a) => 
+      a.title == title && 
+      !a.isDismissed &&
+      DateTime.now().difference(a.timestamp).inSeconds < 60
+    );
+    if (recent.isNotEmpty) return;
+    
+    final alert = SmartAlert(
+      id: _uuid.v4(),
+      timestamp: DateTime.now(),
+      severity: severity,
+      title: title,
+      message: message,
+      suggestion: suggestion,
+      category: category,
+      relatedData: relatedData,
+    );
+    
+    _alerts.add(alert);
+    
+    // Log l'alerte
+    if (severity == AlertSeverity.critical) {
+      logError('🚨 ALERTE: $title - $message', source: 'SmartMonitor');
+    } else if (severity == AlertSeverity.warning) {
+      logWarning('⚠️ $title - $message', source: 'SmartMonitor');
+    } else {
+      logInfo('ℹ️ $title - $message', source: 'SmartMonitor');
+    }
+    
+    notifyListeners();
+  }
+  
+  /// Marque une alerte comme lue
+  void markAlertAsRead(String alertId) {
+    final alert = _alerts.firstWhere((a) => a.id == alertId);
+    alert.isRead = true;
+    notifyListeners();
+  }
+  
+  /// Ferme une alerte
+  void dismissAlert(String alertId) {
+    final alert = _alerts.firstWhere((a) => a.id == alertId);
+    alert.isDismissed = true;
+    notifyListeners();
+  }
+  
+  /// Efface toutes les alertes
+  void clearAlerts() {
+    _alerts.clear();
+    notifyListeners();
+  }
+  
+  /// Met à jour la configuration du monitoring
+  void updateMonitorConfig(SmartMonitorConfig config) {
+    _monitorConfig = config;
+    notifyListeners();
+  }
+  
+  // === SECURITY AUDIT ===
+  
+  /// Analyse une requête pour les problèmes de sécurité
+  void auditRequest(NetworkRequest request) {
+    if (!_monitorConfig.securityScanEnabled) return;
+    
+    final url = request.url;
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    
+    // Check HTTPS
+    if (uri.scheme == 'http' && !uri.host.contains('localhost')) {
+      _addSecurityIssue(
+        type: SecurityIssueType.noHttps,
+        severity: AlertSeverity.warning,
+        title: 'Connexion non sécurisée',
+        description: 'La requête utilise HTTP au lieu de HTTPS',
+        url: url,
+        recommendation: 'Utilisez HTTPS pour toutes les connexions',
+      );
+    }
+    
+    // Check for exposed API keys in URL
+    final apiKeyPatterns = ['api_key=', 'apikey=', 'key=', 'token=', 'secret=', 'password='];
+    for (final pattern in apiKeyPatterns) {
+      if (url.toLowerCase().contains(pattern)) {
+        _addSecurityIssue(
+          type: SecurityIssueType.exposedApiKey,
+          severity: AlertSeverity.critical,
+          title: 'Clé API exposée dans l\'URL',
+          description: 'Une clé API ou token est visible dans l\'URL de la requête',
+          url: url,
+          recommendation: 'Utilisez les headers Authorization pour les tokens',
+        );
+        break;
+      }
+    }
+    
+    // Check for sensitive data in response
+    if (request.responseBody != null) {
+      final sensitivePatterns = ['password', 'credit_card', 'ssn', 'social_security'];
+      final bodyLower = request.responseBody!.toLowerCase();
+      for (final pattern in sensitivePatterns) {
+        if (bodyLower.contains(pattern)) {
+          _addSecurityIssue(
+            type: SecurityIssueType.sensitiveData,
+            severity: AlertSeverity.warning,
+            title: 'Données sensibles potentielles',
+            description: 'La réponse peut contenir des données sensibles ($pattern)',
+            url: url,
+            recommendation: 'Vérifiez que les données sont correctement masquées',
+          );
+          break;
+        }
+      }
+    }
+  }
+  
+  /// Ajoute un problème de sécurité
+  void _addSecurityIssue({
+    required SecurityIssueType type,
+    required AlertSeverity severity,
+    required String title,
+    required String description,
+    String? url,
+    String? recommendation,
+    Map<String, dynamic>? evidence,
+  }) {
+    // Éviter les doublons
+    final existing = _securityIssues.where((s) => 
+      s.type == type && s.url == url && !s.isResolved
+    );
+    if (existing.isNotEmpty) return;
+    
+    final issue = SecurityIssue(
+      id: _uuid.v4(),
+      timestamp: DateTime.now(),
+      type: type,
+      severity: severity,
+      title: title,
+      description: description,
+      url: url,
+      recommendation: recommendation,
+      evidence: evidence,
+    );
+    
+    _securityIssues.add(issue);
+    
+    if (severity == AlertSeverity.critical) {
+      logError('🔒 SÉCURITÉ: $title', source: 'SecurityAudit');
+    }
+    
+    notifyListeners();
+  }
+  
+  /// Marque un problème de sécurité comme résolu
+  void resolveSecurityIssue(String issueId) {
+    final issue = _securityIssues.firstWhere((i) => i.id == issueId);
+    issue.isResolved = true;
+    notifyListeners();
+  }
+  
+  // === BOOKMARKS ===
+  
+  /// Ajoute un bookmark
+  void addBookmark({
+    required String title,
+    String? description,
+    required String category,
+    String? referenceId,
+    Map<String, dynamic>? snapshot,
+    Color color = const Color(0xFFFFD54F),
+  }) {
+    final bookmark = DevToolsBookmark(
+      id: _uuid.v4(),
+      timestamp: DateTime.now(),
+      title: title,
+      description: description,
+      category: category,
+      referenceId: referenceId,
+      snapshot: snapshot,
+      color: color,
+    );
+    
+    _bookmarks.add(bookmark);
+    _logSystem('🔖 Bookmark ajouté: $title');
+    notifyListeners();
+  }
+  
+  /// Supprime un bookmark
+  void removeBookmark(String bookmarkId) {
+    _bookmarks.removeWhere((b) => b.id == bookmarkId);
+    notifyListeners();
+  }
+  
+  // === WIDGET TREE INSPECTOR ===
+  
+  /// Capture l'arbre des widgets Flutter
+  void captureWidgetTree() {
+    try {
+      _widgetTree = [];
+      final binding = WidgetsBinding.instance;
+      final rootElement = binding.rootElement;
+      
+      if (rootElement != null) {
+        _widgetTree = [_buildWidgetTreeNode(rootElement, 0)];
+      }
+      
+      _logSystem('🌳 Arbre des widgets capturé (${_countNodes(_widgetTree)} widgets)');
+      notifyListeners();
+    } catch (e) {
+      logError('Erreur capture widget tree: $e');
+    }
+  }
+  
+  WidgetTreeNode _buildWidgetTreeNode(Element element, int depth, {int maxDepth = 15}) {
+    final widget = element.widget;
+    final List<WidgetTreeNode> children = [];
+    
+    if (depth < maxDepth) {
+      element.visitChildren((child) {
+        children.add(_buildWidgetTreeNode(child, depth + 1, maxDepth: maxDepth));
+      });
+    }
+    
+    // Get render bounds if available
+    Rect? bounds;
+    if (element.renderObject is RenderBox) {
+      try {
+        final box = element.renderObject as RenderBox;
+        if (box.hasSize) {
+          final offset = box.localToGlobal(Offset.zero);
+          bounds = Rect.fromLTWH(offset.dx, offset.dy, box.size.width, box.size.height);
+        }
+      } catch (_) {}
+    }
+    
+    return WidgetTreeNode(
+      id: element.hashCode.toString(),
+      widgetType: widget.runtimeType.toString(),
+      key: widget.key?.toString(),
+      depth: depth,
+      hasChildren: children.isNotEmpty,
+      children: children,
+      renderBounds: bounds,
+      properties: {
+        if (widget.toString().length < 200) 'widget': widget.toString(),
+      },
+    );
+  }
+  
+  int _countNodes(List<WidgetTreeNode> nodes) {
+    int count = nodes.length;
+    for (final node in nodes) {
+      count += _countNodes(node.children);
+    }
+    return count;
+  }
+  
+  // === EXPORT REPORTS ===
+  
+  /// Génère un rapport complet
+  DevToolsReport generateReport({String? title}) {
+    final summary = getGlobalAnalytics();
+    summary['totalLogs'] = _logs.length;
+    summary['totalErrors'] = _logs.where((l) => l.level == LogLevel.error).length;
+    summary['totalWarnings'] = _logs.where((l) => l.level == LogLevel.warning).length;
+    summary['totalNetworkRequests'] = _requests.length;
+    summary['failedRequests'] = _requests.where((r) => r.status == RequestStatus.error).length;
+    summary['securityIssues'] = _securityIssues.where((s) => !s.isResolved).length;
+    summary['criticalAlerts'] = _alerts.where((a) => a.severity == AlertSeverity.critical && !a.isDismissed).length;
+    
+    return DevToolsReport(
+      id: _uuid.v4(),
+      generatedAt: DateTime.now(),
+      title: title ?? 'Rapport Notilus DevTools',
+      sessionDuration: DateTime.now().difference(_sessionStartTime),
+      summary: summary,
+      logs: List.from(_logs),
+      requests: List.from(_requests),
+      performanceHistory: List.from(_performanceHistory),
+      alerts: List.from(_alerts),
+      securityIssues: List.from(_securityIssues),
+      bookmarks: List.from(_bookmarks),
+      tabAnalytics: Map.from(_tabAnalytics),
+    );
+  }
+  
+  /// Exporte le rapport en JSON
+  String exportReportToJson({String? title}) {
+    final report = generateReport(title: title);
+    return const JsonEncoder.withIndent('  ').convert({
+      'report': report.toJson(),
+      'logs': _logs.take(100).map((l) => {
+        'timestamp': l.timestamp.toIso8601String(),
+        'level': l.level.name,
+        'message': l.message,
+        'source': l.source,
+      }).toList(),
+      'requests': _requests.take(100).map((r) => {
+        'timestamp': r.timestamp.toIso8601String(),
+        'method': r.methodLabel,
+        'url': r.url,
+        'status': r.statusCode,
+        'duration': r.duration?.inMilliseconds,
+        'size': r.responseSize,
+      }).toList(),
+      'alerts': _alerts.map((a) => {
+        'timestamp': a.timestamp.toIso8601String(),
+        'severity': a.severity.name,
+        'title': a.title,
+        'message': a.message,
+        'category': a.category,
+      }).toList(),
+      'securityIssues': _securityIssues.map((s) => {
+        'timestamp': s.timestamp.toIso8601String(),
+        'type': s.type.name,
+        'severity': s.severity.name,
+        'title': s.title,
+        'url': s.url,
+        'resolved': s.isResolved,
+      }).toList(),
+    });
+  }
+  
   // === Cleanup ===
   
   @override
   void dispose() {
     _performanceTimer?.cancel();
+    _alertCheckTimer?.cancel();
     super.dispose();
   }
 }
