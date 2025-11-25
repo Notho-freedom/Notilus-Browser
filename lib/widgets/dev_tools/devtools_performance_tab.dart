@@ -89,7 +89,7 @@ class _DevToolsPerformanceTabState extends State<DevToolsPerformanceTab> {
                                 ? '--'
                                 : devTools.performanceHistory.last.cpuUsage.toStringAsFixed(1),
                             unit: '%',
-                            icon: CupertinoIcons.cpu,
+                            icon: Icons.developer_board,
                             color: const Color(0xFFFFB74D),
                             accentColor: accentColor,
                             progress: devTools.performanceHistory.isEmpty
