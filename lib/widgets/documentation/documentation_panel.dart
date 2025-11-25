@@ -26,8 +26,8 @@ class _DocumentationPanelState extends State<DocumentationPanel>
           title: 'À propos de Notilus',
           items: [
             _DocItem(icon: CupertinoIcons.info_circle, label: 'Navigateur moderne pour développeurs'),
-            _DocItem(icon: CupertinoIcons.wrench, label: 'DevTools intégrés natifs'),
-            _DocItem(icon: CupertinoIcons.shield, label: 'Audit de sécurité automatique'),
+            _DocItem(icon: CupertinoIcons.ant, label: 'DevTools intégrés (F12)', detail: 'Panel en bas de l\'écran'),
+            _DocItem(icon: CupertinoIcons.shield, label: 'Moteur Chromium WebView2'),
             _DocItem(icon: CupertinoIcons.chart_bar, label: 'Monitoring réseau avancé'),
             _DocItem(icon: CupertinoIcons.text_cursor, label: 'Terminal intégré'),
           ],
@@ -37,7 +37,7 @@ class _DocumentationPanelState extends State<DocumentationPanel>
           items: [
             _DocItem(icon: CupertinoIcons.checkmark_circle, label: 'Windows 10/11 requis'),
             _DocItem(icon: CupertinoIcons.checkmark_circle, label: 'WebView2 Runtime inclus'),
-            _DocItem(icon: CupertinoIcons.arrow_down_circle, label: 'Télécharger depuis GitHub'),
+            _DocItem(icon: CupertinoIcons.arrow_down_circle, label: 'flutter run -d windows'),
           ],
         ),
       ],
@@ -49,12 +49,12 @@ class _DocumentationPanelState extends State<DocumentationPanel>
         _DocSection(
           title: 'Sidebar',
           items: [
-            _DocItem(icon: CupertinoIcons.house, label: 'Accueil', detail: 'Nouvelle page avec speed dial'),
+            _DocItem(icon: CupertinoIcons.house, label: 'Accueil', detail: 'Page avec speed dial'),
             _DocItem(icon: CupertinoIcons.bookmark, label: 'Favoris', detail: 'Gestionnaire de bookmarks'),
             _DocItem(icon: CupertinoIcons.clock, label: 'Historique', detail: 'Historique de navigation'),
             _DocItem(icon: CupertinoIcons.arrow_down_to_line, label: 'Téléchargements', detail: 'Gestionnaire de downloads'),
-            _DocItem(icon: CupertinoIcons.wrench_fill, label: 'DevTools', detail: 'Outils développeur'),
-            _DocItem(icon: CupertinoIcons.text_cursor, label: 'Terminal', detail: 'Shell intégré'),
+            _DocItem(icon: CupertinoIcons.text_cursor, label: 'Terminal', detail: 'Shell PowerShell intégré'),
+            _DocItem(icon: CupertinoIcons.ant, label: 'DevTools (F12)', detail: 'Outils développeur en bas'),
             _DocItem(icon: CupertinoIcons.book, label: 'Documentation', detail: 'Ce panneau'),
           ],
         ),
@@ -67,19 +67,39 @@ class _DocumentationPanelState extends State<DocumentationPanel>
             _DocItem(icon: CupertinoIcons.rectangle_split_3x1, label: 'Split-screen disponible'),
           ],
         ),
+        _DocSection(
+          title: 'Services Web Intégrés',
+          items: [
+            _DocItem(icon: CupertinoIcons.music_note, label: 'YouTube Music', detail: 'Musique en sidebar'),
+            _DocItem(icon: CupertinoIcons.play_circle, label: 'YouTube', detail: 'Vidéos en panneau'),
+            _DocItem(icon: CupertinoIcons.chat_bubble_2, label: 'ChatGPT', detail: 'Assistant IA OpenAI'),
+            _DocItem(icon: CupertinoIcons.sparkles, label: 'DeepSeek', detail: 'IA alternative'),
+            _DocItem(icon: CupertinoIcons.chat_bubble_text, label: 'WhatsApp', detail: 'Messagerie'),
+            _DocItem(icon: CupertinoIcons.paperplane, label: 'Telegram', detail: 'Messagerie'),
+          ],
+        ),
       ],
     ),
     _DocCategory(
       title: 'DevTools',
-      icon: CupertinoIcons.wrench_fill,
+      icon: CupertinoIcons.ant,
       sections: [
+        _DocSection(
+          title: 'Accès DevTools',
+          items: [
+            _DocItem(icon: CupertinoIcons.ant, label: 'Bouton Fourmi 🐜', detail: 'Dans la sidebar'),
+            _DocItem(icon: CupertinoIcons.keyboard, label: 'F12', detail: 'Raccourci clavier'),
+            _DocItem(icon: CupertinoIcons.keyboard, label: 'Ctrl+Shift+I', detail: 'Raccourci alternatif'),
+            _DocItem(icon: CupertinoIcons.arrow_up_down, label: 'Redimensionnable', detail: 'Glisser la bordure'),
+          ],
+        ),
         _DocSection(
           title: 'Console',
           items: [
             _DocItem(icon: CupertinoIcons.text_alignleft, label: 'Logs WebView', detail: 'console.log, warn, error'),
             _DocItem(icon: CupertinoIcons.line_horizontal_3_decrease, label: 'Filtres par niveau'),
             _DocItem(icon: CupertinoIcons.search, label: 'Recherche textuelle'),
-            _DocItem(icon: CupertinoIcons.keyboard, label: 'REPL interactif'),
+            _DocItem(icon: CupertinoIcons.trash, label: 'Clear console'),
           ],
         ),
         _DocSection(
@@ -89,6 +109,15 @@ class _DocumentationPanelState extends State<DocumentationPanel>
             _DocItem(icon: CupertinoIcons.doc_text, label: 'Headers request/response'),
             _DocItem(icon: CupertinoIcons.timer, label: 'Timing détaillé'),
             _DocItem(icon: CupertinoIcons.exclamationmark_triangle, label: 'Détection erreurs'),
+            _DocItem(icon: CupertinoIcons.line_horizontal_3_decrease, label: 'Filtres par méthode'),
+          ],
+        ),
+        _DocSection(
+          title: 'Elements',
+          items: [
+            _DocItem(icon: CupertinoIcons.chevron_left_slash_chevron_right, label: 'Arbre DOM de la page'),
+            _DocItem(icon: CupertinoIcons.paintbrush, label: 'Inspection styles CSS'),
+            _DocItem(icon: CupertinoIcons.square_on_square, label: 'Box model'),
           ],
         ),
         _DocSection(
@@ -97,70 +126,16 @@ class _DocumentationPanelState extends State<DocumentationPanel>
             _DocItem(icon: CupertinoIcons.gauge, label: 'Métriques temps réel'),
             _DocItem(icon: CupertinoIcons.memories, label: 'Usage mémoire'),
             _DocItem(icon: CupertinoIcons.chart_bar, label: 'Graphiques FPS'),
+            _DocItem(icon: CupertinoIcons.timer, label: 'Frame timing'),
           ],
         ),
         _DocSection(
-          title: 'Alerts',
+          title: 'Application',
           items: [
-            _DocItem(icon: CupertinoIcons.bell_fill, label: 'Alertes automatiques'),
-            _DocItem(icon: CupertinoIcons.speedometer, label: 'Requêtes lentes', detail: '> 3000ms'),
-            _DocItem(icon: CupertinoIcons.exclamationmark_bubble, label: 'Rafales d\'erreurs', detail: '5+ en 60s'),
-          ],
-        ),
-        _DocSection(
-          title: 'Security',
-          items: [
-            _DocItem(icon: CupertinoIcons.lock_open, label: 'Connexions HTTP non sécurisées'),
-            _DocItem(icon: CupertinoIcons.lock, label: 'Clés API exposées dans URLs'),
-            _DocItem(icon: CupertinoIcons.eye_slash, label: 'Données sensibles détectées'),
-            _DocItem(icon: CupertinoIcons.chart_pie, label: 'Score de sécurité 0-100'),
-          ],
-        ),
-        _DocSection(
-          title: 'Analytics',
-          items: [
-            _DocItem(icon: CupertinoIcons.graph_square, label: 'Stats par onglet'),
-            _DocItem(icon: CupertinoIcons.videocam, label: 'Session Recording'),
-            _DocItem(icon: CupertinoIcons.bookmark, label: 'Bookmarks & annotations'),
-            _DocItem(icon: CupertinoIcons.square_arrow_up, label: 'Export rapport JSON'),
-          ],
-        ),
-      ],
-    ),
-    _DocCategory(
-      title: 'Commandes',
-      icon: CupertinoIcons.command,
-      sections: [
-        _DocSection(
-          title: 'Console',
-          items: [
-            _DocItem(icon: CupertinoIcons.question_circle, label: 'help', detail: 'Affiche l\'aide'),
-            _DocItem(icon: CupertinoIcons.trash, label: 'clear', detail: 'Vide la console'),
-            _DocItem(icon: CupertinoIcons.text_bubble, label: 'echo <msg>', detail: 'Affiche un message'),
-          ],
-        ),
-        _DocSection(
-          title: 'Réseau',
-          items: [
-            _DocItem(icon: CupertinoIcons.list_number, label: 'requests', detail: 'Nombre de requêtes'),
-            _DocItem(icon: CupertinoIcons.cloud_download, label: 'fetch <url>', detail: 'Requête GET'),
-          ],
-        ),
-        _DocSection(
-          title: 'Session',
-          items: [
-            _DocItem(icon: CupertinoIcons.circle_fill, label: 'record start', detail: 'Démarrer enregistrement'),
-            _DocItem(icon: CupertinoIcons.stop_fill, label: 'record stop', detail: 'Arrêter enregistrement'),
-            _DocItem(icon: CupertinoIcons.list_bullet, label: 'sessions', detail: 'Lister les sessions'),
-          ],
-        ),
-        _DocSection(
-          title: 'Utilitaires',
-          items: [
-            _DocItem(icon: CupertinoIcons.bookmark, label: 'bookmark <t>', detail: 'Créer bookmark'),
-            _DocItem(icon: CupertinoIcons.square_arrow_up, label: 'export', detail: 'Export JSON'),
-            _DocItem(icon: CupertinoIcons.bell, label: 'monitor on/off', detail: 'Toggle monitoring'),
-            _DocItem(icon: CupertinoIcons.doc_text, label: 'json <str>', detail: 'Formater JSON'),
+            _DocItem(icon: CupertinoIcons.tray_full, label: 'LocalStorage'),
+            _DocItem(icon: CupertinoIcons.tray, label: 'SessionStorage'),
+            _DocItem(icon: CupertinoIcons.archivebox, label: 'Cookies'),
+            _DocItem(icon: CupertinoIcons.folder, label: 'Cache'),
           ],
         ),
       ],
@@ -176,13 +151,15 @@ class _DocumentationPanelState extends State<DocumentationPanel>
             _DocItem(icon: CupertinoIcons.xmark, label: 'Ctrl+W', detail: 'Fermer onglet'),
             _DocItem(icon: CupertinoIcons.arrow_right, label: 'Ctrl+Tab', detail: 'Onglet suivant'),
             _DocItem(icon: CupertinoIcons.arrow_counterclockwise, label: 'Ctrl+R', detail: 'Recharger'),
+            _DocItem(icon: CupertinoIcons.arrow_counterclockwise, label: 'F5', detail: 'Recharger'),
           ],
         ),
         _DocSection(
           title: 'DevTools',
           items: [
-            _DocItem(icon: CupertinoIcons.wrench, label: 'F12', detail: 'Toggle DevTools'),
-            _DocItem(icon: CupertinoIcons.wrench, label: 'Ctrl+Shift+I', detail: 'Toggle DevTools'),
+            _DocItem(icon: CupertinoIcons.ant, label: 'F12', detail: 'Toggle DevTools'),
+            _DocItem(icon: CupertinoIcons.ant, label: 'Ctrl+Shift+I', detail: 'Toggle DevTools'),
+            _DocItem(icon: CupertinoIcons.escape, label: 'Echap', detail: 'Fermer DevTools'),
           ],
         ),
         _DocSection(
@@ -190,23 +167,72 @@ class _DocumentationPanelState extends State<DocumentationPanel>
           items: [
             _DocItem(icon: CupertinoIcons.link, label: 'Ctrl+L', detail: 'Focus barre d\'adresse'),
             _DocItem(icon: CupertinoIcons.bookmark, label: 'Ctrl+D', detail: 'Ajouter aux favoris'),
+            _DocItem(icon: CupertinoIcons.doc_on_doc, label: 'Ctrl+C', detail: 'Copier'),
+            _DocItem(icon: CupertinoIcons.doc_on_clipboard, label: 'Ctrl+V', detail: 'Coller'),
+          ],
+        ),
+        _DocSection(
+          title: 'Système',
+          items: [
+            _DocItem(icon: CupertinoIcons.arrow_up_left_arrow_down_right, label: 'F11', detail: 'Plein écran'),
+            _DocItem(icon: CupertinoIcons.clock, label: 'Ctrl+H', detail: 'Historique'),
+            _DocItem(icon: CupertinoIcons.arrow_down_to_line, label: 'Ctrl+J', detail: 'Téléchargements'),
           ],
         ),
       ],
     ),
     _DocCategory(
-      title: 'Services',
-      icon: CupertinoIcons.globe,
+      title: 'Terminal',
+      icon: CupertinoIcons.text_cursor,
       sections: [
         _DocSection(
-          title: 'Intégrés',
+          title: 'Accès',
           items: [
-            _DocItem(icon: CupertinoIcons.music_note, label: 'YouTube Music', detail: 'Musique en sidebar'),
-            _DocItem(icon: CupertinoIcons.play_circle, label: 'YouTube', detail: 'Vidéos en panneau'),
-            _DocItem(icon: CupertinoIcons.chat_bubble_2, label: 'ChatGPT', detail: 'Assistant IA'),
-            _DocItem(icon: CupertinoIcons.sparkles, label: 'DeepSeek', detail: 'IA alternative'),
-            _DocItem(icon: CupertinoIcons.chat_bubble_text, label: 'WhatsApp', detail: 'Messagerie'),
-            _DocItem(icon: CupertinoIcons.paperplane, label: 'Telegram', detail: 'Messagerie'),
+            _DocItem(icon: CupertinoIcons.square_list, label: 'Icône Terminal', detail: 'Dans la sidebar'),
+            _DocItem(icon: CupertinoIcons.text_cursor, label: 'PowerShell', detail: 'Shell par défaut Windows'),
+          ],
+        ),
+        _DocSection(
+          title: 'Fonctionnalités',
+          items: [
+            _DocItem(icon: CupertinoIcons.doc_text, label: 'Historique commandes'),
+            _DocItem(icon: CupertinoIcons.paintbrush, label: 'Coloration syntaxique'),
+            _DocItem(icon: CupertinoIcons.arrow_up_down, label: 'Redimensionnable'),
+            _DocItem(icon: CupertinoIcons.doc_on_doc, label: 'Copier/Coller'),
+          ],
+        ),
+      ],
+    ),
+    _DocCategory(
+      title: 'Architecture',
+      icon: CupertinoIcons.layers_fill,
+      sections: [
+        _DocSection(
+          title: 'Stack Technique',
+          items: [
+            _DocItem(icon: CupertinoIcons.paintbrush, label: 'Flutter 3.x', detail: 'Framework UI'),
+            _DocItem(icon: CupertinoIcons.globe, label: 'WebView2', detail: 'Moteur Chromium'),
+            _DocItem(icon: CupertinoIcons.bolt, label: 'Dart', detail: 'Langage principal'),
+            _DocItem(icon: CupertinoIcons.desktopcomputer, label: 'Windows', detail: 'Plateforme cible'),
+          ],
+        ),
+        _DocSection(
+          title: 'Services Principaux',
+          items: [
+            _DocItem(icon: CupertinoIcons.rectangle_stack, label: 'TabManager', detail: 'Gestion des onglets'),
+            _DocItem(icon: CupertinoIcons.globe, label: 'TabWebViewManager', detail: 'Moteurs WebView'),
+            _DocItem(icon: CupertinoIcons.ant, label: 'DevToolsService', detail: 'Outils développeur'),
+            _DocItem(icon: CupertinoIcons.arrow_down_circle, label: 'DownloadService', detail: 'Téléchargements'),
+            _DocItem(icon: CupertinoIcons.text_cursor, label: 'TerminalService', detail: 'Terminal intégré'),
+          ],
+        ),
+        _DocSection(
+          title: 'Structure Fichiers',
+          items: [
+            _DocItem(icon: CupertinoIcons.folder, label: 'lib/core/', detail: 'Constants, Theme, Utils'),
+            _DocItem(icon: CupertinoIcons.folder, label: 'lib/models/', detail: 'Modèles de données'),
+            _DocItem(icon: CupertinoIcons.folder, label: 'lib/services/', detail: 'Logique métier'),
+            _DocItem(icon: CupertinoIcons.folder, label: 'lib/widgets/', detail: 'Composants UI'),
           ],
         ),
       ],
@@ -300,7 +326,7 @@ class _DocumentationPanelState extends State<DocumentationPanel>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      const Text(
                         'Notilus Browser',
                         style: TextStyle(
                           color: Colors.white,
@@ -394,7 +420,7 @@ class _DocumentationPanelState extends State<DocumentationPanel>
           ),
           const SizedBox(width: 6),
           Text(
-            'v3.0',
+            'v3.1',
             style: TextStyle(
               color: accentColor,
               fontSize: 11,

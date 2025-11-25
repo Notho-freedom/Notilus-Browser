@@ -1,6 +1,6 @@
 # 📚 Notilus Browser - Documentation Développeur
 
-> **Version 3.0.0** | Navigateur conçu par et pour les développeurs
+> **Version 3.1.0** | Navigateur conçu par et pour les développeurs
 > 
 > Dernière mise à jour : Novembre 2025
 
@@ -12,10 +12,10 @@
 2. [Installation & Lancement](#-installation--lancement)
 3. [Interface Utilisateur](#-interface-utilisateur)
 4. [DevTools Notilus](#-devtools-notilus)
-5. [Commandes Console REPL](#-commandes-console-repl)
+5. [Terminal Intégré](#-terminal-intégré)
 6. [Raccourcis Clavier](#-raccourcis-clavier)
 7. [Architecture Technique](#-architecture-technique)
-8. [API & Services](#-api--services)
+8. [Services Web Intégrés](#-services-web-intégrés)
 9. [Configuration](#-configuration)
 10. [Changelog](#-changelog)
 
@@ -27,13 +27,12 @@
 
 ### Caractéristiques principales
 
-- 🔧 **DevTools intégrés** - Console, Network, Performance, Security Audit
-- 📊 **Métriques temps réel** - FPS, mémoire, CPU, widgets Flutter
-- 🔒 **Audit de sécurité automatique** - Détection des vulnérabilités
-- 📹 **Session Recording** - Enregistrez et rejouez vos sessions
-- 🌳 **Widget Inspector** - Inspectez l'arbre Flutter en temps réel
-- 🖥️ **Terminal intégré** - PowerShell/Bash directement dans le navigateur
+- 🐜 **DevTools intégrés** - Console, Network, Elements, Performance, Application
+- 🌐 **Moteur Chromium** - WebView2 pour Windows (même moteur que Edge)
+- 🖥️ **Terminal intégré** - PowerShell directement dans le navigateur
 - 🎨 **Thèmes personnalisables** - Couleurs d'accent configurables
+- 📱 **Services web intégrés** - YouTube, ChatGPT, WhatsApp, etc.
+- ⚡ **Performance native** - Flutter pour une UI fluide et réactive
 
 ---
 
@@ -52,11 +51,30 @@ flutter --version
 ### Lancement
 
 ```bash
+# Cloner le repo
+git clone https://github.com/Notho-freedom/Notilus-Browser.git
+cd Notilus-Browser
+
 # Mode développement
-flutter run -d windows --hot
+flutter run -d windows
 
 # Build release
 flutter build windows --release
+```
+
+### Structure du projet
+
+```
+Notilus-Browser/
+├── lib/
+│   ├── core/           # Constants, Theme, Utils
+│   ├── models/         # Modèles de données
+│   ├── services/       # Logique métier
+│   ├── widgets/        # Composants UI
+│   └── main.dart       # Point d'entrée
+├── windows/            # Code natif Windows
+├── build/              # Fichiers générés
+└── DOCS.md             # Cette documentation
 ```
 
 ---
@@ -67,71 +85,88 @@ flutter build windows --release
 
 | Icône | Section | Description |
 |-------|---------|-------------|
-| 🏠 | Accueil | Page d'accueil avec raccourcis |
+| 🏠 | Accueil | Page d'accueil avec speed dial |
 | 🔖 | Favoris | Gestionnaire de bookmarks |
 | 🕐 | Historique | Historique de navigation |
 | ⬇️ | Téléchargements | Gestionnaire de downloads |
 | 📦 | Widgets | Widgets système dynamiques |
 | ✨ | AI | Assistant Hyper AI |
 | ⚙️ | Paramètres | Configuration rapide |
-| 📟 | Terminal | Terminal intégré |
-| 🔧 | DevTools | Outils de développement |
-| 🐜 | DevTools Natif | Chrome DevTools (F12) |
+| 📟 | Terminal | Terminal PowerShell intégré |
+| 🐜 | DevTools (F12) | Outils de développement |
 | 📖 | Documentation | Cette documentation |
+
+### Services Web (en bas de sidebar)
+
+| Icône | Service | URL |
+|-------|---------|-----|
+| 🎵 | YouTube Music | music.youtube.com |
+| ▶️ | YouTube | youtube.com |
+| 💬 | ChatGPT | chatgpt.com |
+| 🔮 | DeepSeek | chat.deepseek.com |
+| 📱 | WhatsApp | web.whatsapp.com |
+| ✈️ | Telegram | web.telegram.org |
 
 ### Barre d'onglets
 
-- **Glisser-déposer** pour réorganiser
-- **Clic molette** pour fermer
+- **Glisser-déposer** pour réorganiser les onglets
+- **Clic molette** pour fermer un onglet
 - **Double-clic** pour renommer
-- **Groupes d'onglets** avec couleurs
+- **Indicateur de couleur** pour l'onglet actif
+- **Favicon dynamique** pour chaque site
 
 ### Barre d'adresse
 
 - **Autocomplétion** intelligente
 - **Suggestions** de recherche
-- **Indicateurs** de sécurité (HTTPS, certificat)
+- **Indicateurs** de sécurité (HTTPS)
 - **Actions rapides** (reload, favoris, partage)
 
 ---
 
-## 🔧 DevTools Notilus
+## 🐜 DevTools Notilus
 
-Les DevTools Notilus sont des outils de développement **natifs Flutter**, pas un wrapper des DevTools Chrome. Ils offrent des insights uniques sur votre application.
+Les DevTools s'ouvrent en **bas de l'écran** (comme les DevTools Chrome) via:
+- **Bouton Fourmi** 🐜 dans la sidebar
+- **F12** - Raccourci clavier
+- **Ctrl+Shift+I** - Raccourci alternatif
 
-### Console (Onglet 1)
+### Panel redimensionnable
+
+Le panel DevTools peut être redimensionné en glissant la bordure supérieure. Hauteur min: 150px, max: 600px.
+
+### Onglet Console
 
 ```
 📋 Fonctionnalités:
-- Logs Flutter (debugPrint, print)
-- Logs WebView (console.log, console.error)
-- Filtres par niveau: INFO, WARN, ERROR, DEBUG, SUCCESS, SYSTEM
-- Recherche textuelle
-- Export des logs
-- REPL interactif
+- Logs WebView (console.log, console.warn, console.error)
+- Filtres par niveau: log, info, warn, error, debug, table
+- Recherche textuelle dans les logs
+- Compteur d'erreurs/warnings
+- Bouton "Clear" pour effacer
 ```
 
 **Niveaux de log:**
-| Niveau | Couleur | Usage |
+| Niveau | Couleur | Icône |
 |--------|---------|-------|
-| INFO | 🔵 Bleu | Information générale |
-| WARN | 🟠 Orange | Avertissements |
-| ERROR | 🔴 Rouge | Erreurs |
-| DEBUG | 🟢 Vert | Debug uniquement |
-| SUCCESS | 🟢 Vert vif | Opérations réussies |
-| SYSTEM | 🟣 Violet | Messages système |
+| log | ⚪ Gris | ○ |
+| info | 🔵 Bleu | ℹ |
+| warn | 🟠 Orange | ⚠ |
+| error | 🔴 Rouge | ✕ |
+| debug | 🟢 Vert | 🐛 |
+| table | 🟣 Violet | 📊 |
 
-### Network (Onglet 2)
+### Onglet Network
 
 ```
 🌐 Fonctionnalités:
-- Interception requêtes Flutter (http package)
-- Interception requêtes WebView (fetch, XMLHttpRequest)
+- Capture requêtes HTTP/HTTPS (fetch, XMLHttpRequest)
 - Headers request/response
-- Body request/response
-- Timing détaillé
-- Filtres par méthode, status, URL
-- Audit de sécurité automatique
+- Body request/response (JSON, HTML, etc.)
+- Timing détaillé (durée, taille)
+- Filtres par méthode (GET, POST, etc.)
+- Filtres par status (2xx, 4xx, 5xx)
+- Recherche par URL
 ```
 
 **Indicateurs de status:**
@@ -142,175 +177,82 @@ Les DevTools Notilus sont des outils de développement **natifs Flutter**, pas u
 | 4xx | 🟠 Orange | Erreur client |
 | 5xx | 🔴 Rouge | Erreur serveur |
 
-### Performance (Onglet 3)
+### Onglet Elements
+
+```
+🏗️ Fonctionnalités:
+- Arbre DOM de la page web
+- Inspection des éléments HTML
+- Propriétés CSS
+- Box model (margin, padding, border)
+- Navigation dans la hiérarchie
+```
+
+### Onglet Performance
 
 ```
 📊 Métriques temps réel:
-- FPS (frames par seconde) - via SchedulerBinding
-- Mémoire utilisée (MB) - via ProcessInfo.currentRss
-- CPU estimé (%) - basé sur frame time
-- Render time (ms) - temps de rendu par frame
-- Widgets actifs - comptage arbre Flutter
-- GC count - détection garbage collection
+- Timeline d'activité
+- Métriques de rendu
+- Profiling JavaScript
+- Détection des bottlenecks
 ```
 
-**Graphiques:**
-- Timeline FPS (60 dernières secondes)
-- Timeline Mémoire
-- Indicateur 60 FPS target
-
-### Alerts (Onglet 4) 🆕
+### Onglet Application
 
 ```
-🔔 Smart Monitoring:
-- Alerte chute FPS (< 30 FPS par défaut)
-- Alerte mémoire élevée (> 500 MB)
-- Alerte requêtes lentes (> 3000 ms)
-- Alerte rafale d'erreurs (5+ en 60s)
-- Suggestions de correction
-- Configuration des seuils
+💾 Stockage et ressources:
+- LocalStorage - Stockage local persistant
+- SessionStorage - Stockage de session
+- Cookies - Gestion des cookies
+- Cache - Cache du navigateur
+- Service Workers - Workers enregistrés
 ```
 
-**Sévérités:**
-| Niveau | Icône | Action |
-|--------|-------|--------|
-| INFO | ℹ️ | Information |
-| WARNING | ⚠️ | Attention requise |
-| CRITICAL | 🚨 | Action immédiate |
+### Barre d'outils DevTools
 
-### Security (Onglet 5) 🆕
-
-```
-🔒 Audit automatique:
-- Détection connexions HTTP (non HTTPS)
-- Clés API exposées dans URLs
-- Données sensibles dans réponses
-- Score de sécurité 0-100
-- Recommandations de correction
-```
-
-**Types de problèmes:**
-| Type | Sévérité | Description |
-|------|----------|-------------|
-| NO_HTTPS | Warning | Connexion non chiffrée |
-| EXPOSED_API_KEY | Critical | Token visible dans URL |
-| SENSITIVE_DATA | Warning | Données sensibles exposées |
-| MIXED_CONTENT | Warning | HTTP dans page HTTPS |
-
-### Widgets (Onglet 6) 🆕
-
-```
-🌳 Widget Tree Inspector:
-- Capture arbre Flutter complet
-- Hiérarchie navigable
-- Propriétés des widgets
-- Bounds de rendu (x, y, width, height)
-- Couleurs par type de widget
-- Comptage enfants
-```
-
-**Navigation:**
-- Clic pour sélectionner
-- Chevron pour expand/collapse
-- Panneau propriétés à droite
-
-### Analytics (Onglet 7) 🆕
-
-```
-📈 Statistiques avancées:
-- Stats par onglet (requêtes, données, erreurs)
-- Session Recording (enregistrer/rejouer)
-- Bookmarks annotés
-- Export rapport JSON complet
-- Durée de session
-- Taux de succès global
-```
-
-**Session Recording:**
-```
-record start [name]  - Démarrer l'enregistrement
-record stop          - Arrêter l'enregistrement
-sessions             - Lister les sessions
-```
-
-### Storage (Onglet 8)
-
-```
-💾 Gestion SharedPreferences:
-- Liste des clés/valeurs
-- Types: String, int, double, bool, List<String>
-- Modification en place
-- Suppression
-- Export
-```
+| Bouton | Action |
+|--------|--------|
+| 🧹 | Effacer tous les logs/requêtes |
+| 📌 | Docker/Détacher le panel |
+| ✕ | Fermer les DevTools |
 
 ---
 
-## 💻 Commandes Console REPL
+## 🖥️ Terminal Intégré
 
-Le REPL (Read-Eval-Print Loop) permet d'exécuter des commandes directement dans la console DevTools.
+Le terminal intégré permet d'exécuter des commandes shell directement dans le navigateur.
 
-### Commandes de base
+### Accès
 
-```bash
-help              # Affiche l'aide complète
-clear             # Vide la console
-logs              # Nombre de logs
-echo <message>    # Affiche un message
-version           # Version DevTools
-```
+- Icône **Terminal** 📟 dans la sidebar
+- Ouvre un panel latéral avec PowerShell
 
-### Commandes réseau
+### Fonctionnalités
 
-```bash
-requests          # Nombre de requêtes
-fetch <url>       # Effectue une requête GET
-```
+- **Shell PowerShell** natif Windows
+- **Historique** des commandes
+- **Coloration syntaxique** de l'output
+- **Redimensionnable** (glisser la bordure)
+- **Copier/Coller** supporté
 
-### Commandes performance
+### Commandes utiles
 
-```bash
-perf              # Métriques actuelles
-widgets           # Capture l'arbre des widgets
-```
+```powershell
+# Navigation
+cd <path>          # Changer de répertoire
+ls / dir           # Lister les fichiers
+pwd                # Répertoire actuel
 
-### Commandes analytics 🆕
+# Flutter
+flutter doctor     # Vérifier l'installation
+flutter run        # Lancer l'app
+flutter build      # Compiler
 
-```bash
-analytics         # Statistiques globales
-alerts            # Liste des alertes actives
-security          # Problèmes de sécurité
-```
-
-### Commandes session 🆕
-
-```bash
-record            # Toggle enregistrement
-record start      # Démarrer avec nom auto
-record start Test # Démarrer avec nom "Test"
-record stop       # Arrêter l'enregistrement
-sessions          # Lister les sessions
-```
-
-### Commandes storage
-
-```bash
-storage           # Nombre d'entrées
-get <key>         # Lire une valeur
-set <key> <value> # Définir une valeur (String)
-del <key>         # Supprimer une clé
-```
-
-### Commandes utilitaires
-
-```bash
-bookmark <titre>  # Ajouter un bookmark
-export            # Générer rapport JSON
-monitor on        # Activer Smart Monitor
-monitor off       # Désactiver Smart Monitor
-env               # Informations environnement
-time              # Heure actuelle ISO
-json <string>     # Formater du JSON
+# Git
+git status         # État du repo
+git pull           # Récupérer les changements
+git push           # Pousser les changements
 ```
 
 ---
@@ -328,17 +270,16 @@ json <string>     # Formater du JSON
 | `Ctrl+1-9` | Aller à l'onglet N |
 | `Alt+←` | Page précédente |
 | `Alt+→` | Page suivante |
-| `Ctrl+R` ou `F5` | Recharger |
+| `Ctrl+R` / `F5` | Recharger |
 | `Ctrl+Shift+R` | Recharger (ignorer cache) |
 
 ### DevTools
 
 | Raccourci | Action |
 |-----------|--------|
-| `F12` | Toggle DevTools Notilus |
-| `Ctrl+Shift+I` | Toggle DevTools Notilus |
-| `Ctrl+Shift+C` | Inspecter élément |
-| `Ctrl+Shift+J` | Ouvrir Console |
+| `F12` | Toggle DevTools |
+| `Ctrl+Shift+I` | Toggle DevTools |
+| `Echap` | Fermer DevTools |
 
 ### Édition
 
@@ -347,16 +288,18 @@ json <string>     # Formater du JSON
 | `Ctrl+L` | Focus barre d'adresse |
 | `Ctrl+K` | Recherche rapide |
 | `Ctrl+D` | Ajouter aux favoris |
-| `Ctrl+Shift+B` | Toggle barre favoris |
+| `Ctrl+C` | Copier |
+| `Ctrl+V` | Coller |
+| `Ctrl+A` | Tout sélectionner |
 
 ### Système
 
 | Raccourci | Action |
 |-----------|--------|
 | `F11` | Plein écran |
-| `Ctrl+Shift+Delete` | Effacer données navigation |
 | `Ctrl+H` | Historique |
 | `Ctrl+J` | Téléchargements |
+| `Ctrl+Shift+Delete` | Effacer données navigation |
 
 ---
 
@@ -370,176 +313,132 @@ json <string>     # Formater du JSON
 ├─────────────────────────────────────────┤
 │  UI Layer (Flutter Widgets)             │
 │  - GXSidebar, GXTabBar, GXAddressBar   │
-│  - DevTools Panels                      │
+│  - NotilusDevTools                      │
+│  - DocumentationPanel                   │
 ├─────────────────────────────────────────┤
 │  Service Layer                          │
-│  - TabManager, TabWebViewManager       │
-│  - NotilusDevToolsService              │
-│  - DownloadService, TerminalService    │
+│  - TabManager, TabWebViewManager        │
+│  - DevToolsService                      │
+│  - DownloadService, TerminalService     │
 ├─────────────────────────────────────────┤
 │  Engine Layer                           │
-│  - WebView2BrowserEngine (Windows)     │
+│  - WebView2BrowserEngine (Windows)      │
 │  - JavaScript Bridge                    │
 ├─────────────────────────────────────────┤
 │  Platform Layer                         │
-│  - webview_windows (WebView2)          │
+│  - webview_windows (WebView2)           │
 │  - window_manager                       │
 │  - shared_preferences                   │
 └─────────────────────────────────────────┘
 ```
 
-### Structure des fichiers
-
-```
-lib/
-├── core/
-│   ├── constants/      # Couleurs, dimensions
-│   ├── services/       # ColorThemeManager, WallpaperManager
-│   ├── theme/          # ModernTheme, DarkTheme
-│   └── utils/          # Extensions, helpers
-├── models/
-│   ├── tab_model.dart
-│   └── devtools_models.dart
-├── services/
-│   ├── tab_manager.dart
-│   ├── tab_webview_manager.dart
-│   ├── notilus_devtools_service.dart
-│   ├── browser_engine.dart
-│   └── webview2_browser_engine.dart
-├── widgets/
-│   ├── browser/        # UI principale
-│   ├── dev_tools/      # Onglets DevTools
-│   ├── terminal/       # Terminal intégré
-│   └── common/         # Composants réutilisables
-└── main.dart
-```
-
 ### Services principaux
 
 #### TabManager
-Gestion des onglets (création, fermeture, réorganisation).
+Gestion des onglets (création, fermeture, réorganisation, activation).
 
 #### TabWebViewManager
-Association onglets ↔ moteurs WebView avec cache intelligent.
+Association onglets ↔ moteurs WebView avec cache intelligent pour éviter les rechargements.
 
-#### NotilusDevToolsService
-Service singleton pour tous les DevTools:
-- Logging (console)
-- Network interception
-- Performance monitoring
-- Smart alerts
-- Security audit
-- Session recording
-- Analytics
+#### DevToolsService
+Service pour les DevTools intégrés:
+- Capture des logs console WebView
+- Interception des requêtes réseau
+- Métriques de performance
+- Inspection DOM
 
 #### BrowserEngine
 Interface abstraite pour le moteur de rendu, implémentée par:
 - `WebView2BrowserEngine` (Windows - production)
-- `PlaceholderBrowserEngine` (fallback)
-
----
-
-## 🔌 API & Services
-
-### Injection WebView
-
-Le DevTools injecte automatiquement du JavaScript dans chaque WebView pour capturer:
-
-```javascript
-// Console interception
-console.log/warn/error/info/debug → DevTools Console
-
-// Network interception
-fetch() → DevTools Network
-XMLHttpRequest → DevTools Network
-```
 
 ### Provider Pattern
 
 ```dart
 // Accès aux services via Provider
 final tabManager = context.read<TabManager>();
-final devTools = context.read<NotilusDevToolsService>();
-```
-
-### Événements DevTools
-
-```dart
-// Logger un message
-devTools.logInfo('Message', source: 'MyComponent');
-devTools.logError('Error', stackTrace: stackTrace);
-
-// Ajouter une requête
-devTools.addRequest(NetworkRequest(...));
-devTools.updateRequest(id, statusCode: 200, ...);
-
-// Créer une alerte
-devTools._createAlert(
-  severity: AlertSeverity.warning,
-  title: 'Titre',
-  message: 'Message',
-  category: 'performance',
-);
-
-// Bookmark
-devTools.addBookmark(title: 'Checkpoint', category: 'debug');
+final devTools = context.read<DevToolsService>();
+final tabWebViewManager = context.read<TabWebViewManager>();
 ```
 
 ---
 
+## 🌐 Services Web Intégrés
+
+Les services web s'ouvrent dans des panels latéraux dédiés, permettant d'avoir YouTube, ChatGPT, etc. à portée de main sans quitter votre navigation.
+
+### YouTube Music
+- Écouter de la musique en arrière-plan
+- Contrôles intégrés
+- Ne se ferme pas en changeant d'onglet
+
+### YouTube
+- Regarder des vidéos dans un panel
+- Mode mini-player possible
+
+### ChatGPT / DeepSeek
+- Assistant IA toujours accessible
+- Poser des questions sur votre code
+
+### WhatsApp / Telegram
+- Messageries intégrées
+- Notifications dans le panel
+
+---
+
 ## ⚙️ Configuration
-
-### SmartMonitorConfig
-
-```dart
-SmartMonitorConfig(
-  fpsDropAlert: true,           // Alerte chute FPS
-  fpsThreshold: 30,             // Seuil FPS
-  memorySpikAlert: true,        // Alerte mémoire
-  memoryThresholdMB: 500,       // Seuil mémoire (MB)
-  slowRequestAlert: true,       // Alerte requêtes lentes
-  slowRequestThresholdMs: 3000, // Seuil requête (ms)
-  errorBurstAlert: true,        // Alerte rafale erreurs
-  errorBurstThreshold: 5,       // Nombre erreurs
-  errorBurstWindowSeconds: 60,  // Fenêtre temporelle
-  securityScanEnabled: true,    // Scan sécurité auto
-)
-```
 
 ### Thèmes
 
 Le thème est géré par `ColorThemeManager`:
 - Couleur d'accent personnalisable
 - Mode sombre natif
-- Wallpapers dynamiques
+- Wallpapers dynamiques via `WallpaperManager`
+
+### Stockage
+
+Les préférences utilisateur sont stockées via `SharedPreferences`:
+- Historique de navigation
+- Favoris
+- Paramètres d'affichage
+- État des panels
 
 ---
 
 ## 📝 Changelog
 
-### v3.0.0 (Novembre 2025) - Advanced DevTools Edition
+### v3.1.0 (Novembre 2025) - DevTools Unifiés
+
+**Changements majeurs:**
+- 🐜 **Nouveau système DevTools** - Récupéré de la branche f509
+- 🔧 **DevTools en bas** - Panel qui s'ouvre en bas de l'écran (comme Chrome)
+- 🎯 **Bouton unique** - Un seul bouton "DevTools (F12)" avec icône fourmi
+- ⚡ **DevToolsService** - Nouveau service unifié
+
+**Onglets DevTools:**
+- Console - Logs avec filtres par niveau
+- Network - Capture des requêtes HTTP
+- Elements - Inspection DOM
+- Performance - Métriques
+- Application - Storage, cookies, cache
+
+### v3.0.0 - Advanced DevTools Edition
 
 **Nouveautés:**
-- ✨ Onglet Alerts - Smart Monitoring avec alertes intelligentes
-- ✨ Onglet Security - Audit de sécurité automatique
-- ✨ Onglet Widgets - Widget Tree Inspector Flutter
-- ✨ Onglet Analytics - Stats, sessions, export
-- ✨ Session Recording - Enregistrer/rejouer
-- ✨ Bookmarks DevTools - Annoter les moments importants
-- ✨ Export JSON - Rapports complets
-- ✨ Documentation intégrée
+- ✨ DevTools intégrés natifs Flutter
+- ✨ Terminal PowerShell intégré
+- ✨ Documentation interactive
+- ✨ Services web dans la sidebar
 
 **Améliorations:**
-- 🔧 Métriques performance réelles (ProcessInfo)
-- 🔧 Capture console WebView (injection JS)
-- 🔧 Capture réseau WebView (fetch, XHR)
-- 🔧 Nouvelles commandes REPL
+- 🔧 Animations fluides
+- 🔧 Thèmes personnalisables
+- 🔧 Split-screen
 
-### v2.0.0 - Native DevTools
+### v2.0.0 - Modern UI
 
-- DevTools Console, Network, Performance, Storage
-- Terminal intégré
-- Split screen
+- Interface GX moderne
+- Sidebar redessinée
+- Gestion avancée des onglets
 
 ### v1.0.0 - Initial Release
 
@@ -553,8 +452,23 @@ Le thème est géré par `ColorThemeManager`:
 
 Ce projet est développé avec ❤️ pour la communauté des développeurs.
 
+### Comment contribuer
+
+1. Fork le repo
+2. Créer une branche feature (`git checkout -b feature/amazing`)
+3. Commit les changements (`git commit -m 'Add amazing feature'`)
+4. Push la branche (`git push origin feature/amazing`)
+5. Ouvrir une Pull Request
+
+### Liens utiles
+
+- **GitHub**: [github.com/Notho-freedom/Notilus-Browser](https://github.com/Notho-freedom/Notilus-Browser)
+- **Issues**: Pour signaler des bugs ou demander des fonctionnalités
+
+---
+
 ```
-Notilus Browser
+Notilus Browser v3.1.0
 ├── Fait avec Flutter 💙
 ├── Moteur: WebView2 (Chromium)
 └── Pour les développeurs, par les développeurs
@@ -562,5 +476,4 @@ Notilus Browser
 
 ---
 
-*Documentation générée automatiquement - Notilus Browser v3.0.0*
-
+*Documentation générée - Notilus Browser v3.1.0*
