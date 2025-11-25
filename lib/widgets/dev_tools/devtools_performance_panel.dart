@@ -1,4 +1,5 @@
 /// Panneau Performance du DevTools natif Notilus
+/// Utilise la couleur secondaire du thème
 library devtools_performance_panel;
 
 import 'dart:async';
@@ -6,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/devtools_models.dart';
 import '../../services/devtools_service.dart';
-import '../../core/constants/notilus_colors.dart';
+import '../../core/services/color_theme_manager.dart';
 
 class DevToolsPerformancePanel extends StatefulWidget {
   const DevToolsPerformancePanel({super.key});
@@ -59,6 +60,9 @@ class _DevToolsPerformancePanelState extends State<DevToolsPerformancePanel> {
 
   @override
   Widget build(BuildContext context) {
+    final colorTheme = Provider.of<ColorThemeManager>(context);
+    final accentColor = colorTheme.nativeSecondaryColor;
+
     return Consumer<DevToolsService>(
       builder: (context, devTools, _) {
         final metrics = devTools.performanceMetrics;
@@ -67,16 +71,13 @@ class _DevToolsPerformancePanelState extends State<DevToolsPerformancePanel> {
           color: const Color(0xFF0D0D12),
           child: Column(
             children: [
-              // Toolbar
-              _buildToolbar(),
-
-              // Contenu principal
+              _buildToolbar(accentColor),
               Expanded(
                 child: _isLoading && metrics == null
-                    ? _buildLoadingState()
+                    ? _buildLoadingState(accentColor)
                     : metrics == null
-                        ? _buildEmptyState()
-                        : _buildMetricsContent(metrics),
+                        ? _buildEmptyState(accentColor)
+                        : _buildMetricsContent(metrics, accentColor),
               ),
             ],
           ),
@@ -85,23 +86,20 @@ class _DevToolsPerformancePanelState extends State<DevToolsPerformancePanel> {
     );
   }
 
-  Widget _buildToolbar() {
+  Widget _buildToolbar(Color accentColor) {
     return Container(
       height: 36,
       padding: const EdgeInsets.symmetric(horizontal: 8),
       decoration: BoxDecoration(
         color: const Color(0xFF131318),
-        border: Border(
-          bottom: BorderSide(
-            color: NotilusColors.neonRed.withOpacity(0.2),
-          ),
-        ),
+        border: Border(bottom: BorderSide(color: accentColor.withOpacity(0.2))),
       ),
       child: Row(
         children: [
           _ToolbarButton(
             icon: Icons.refresh,
             tooltip: 'Actualiser les métriques',
+            accentColor: accentColor,
             onPressed: _loadMetrics,
           ),
           const SizedBox(width: 4),
@@ -111,6 +109,7 @@ class _DevToolsPerformancePanelState extends State<DevToolsPerformancePanel> {
                 ? 'Arrêter l\'actualisation auto'
                 : 'Actualisation automatique',
             isActive: _autoRefresh,
+            accentColor: accentColor,
             onPressed: _toggleAutoRefresh,
           ),
           const Spacer(),
@@ -120,7 +119,7 @@ class _DevToolsPerformancePanelState extends State<DevToolsPerformancePanel> {
               height: 14,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                color: NotilusColors.neonRed.withOpacity(0.5),
+                color: accentColor.withOpacity(0.5),
               ),
             ),
         ],
@@ -128,7 +127,7 @@ class _DevToolsPerformancePanelState extends State<DevToolsPerformancePanel> {
     );
   }
 
-  Widget _buildLoadingState() {
+  Widget _buildLoadingState(Color accentColor) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -136,56 +135,36 @@ class _DevToolsPerformancePanelState extends State<DevToolsPerformancePanel> {
           SizedBox(
             width: 32,
             height: 32,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: NotilusColors.neonRed,
-            ),
+            child: CircularProgressIndicator(strokeWidth: 2, color: accentColor),
           ),
           const SizedBox(height: 12),
           Text(
             'Chargement des métriques...',
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.5),
-              fontSize: 12,
-            ),
+            style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(Color accentColor) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.speed_outlined,
-            size: 48,
-            color: Colors.white.withOpacity(0.15),
-          ),
+          Icon(Icons.speed_outlined, size: 48, color: Colors.white.withOpacity(0.15)),
           const SizedBox(height: 12),
           Text(
             'Aucune métrique disponible',
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.3),
-              fontSize: 13,
-            ),
+            style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 13),
           ),
           const SizedBox(height: 8),
           TextButton.icon(
             onPressed: _loadMetrics,
-            icon: Icon(
-              Icons.refresh,
-              size: 16,
-              color: NotilusColors.neonRed,
-            ),
+            icon: Icon(Icons.refresh, size: 16, color: accentColor),
             label: Text(
               'Charger les métriques',
-              style: TextStyle(
-                color: NotilusColors.neonRed,
-                fontSize: 12,
-              ),
+              style: TextStyle(color: accentColor, fontSize: 12),
             ),
           ),
         ],
@@ -193,14 +172,13 @@ class _DevToolsPerformancePanelState extends State<DevToolsPerformancePanel> {
     );
   }
 
-  Widget _buildMetricsContent(PerformanceMetrics metrics) {
+  Widget _buildMetricsContent(PerformanceMetrics metrics, Color accentColor) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Web Vitals
-          _SectionTitle('Core Web Vitals'),
+          _SectionTitle('Core Web Vitals', accentColor: accentColor),
           const SizedBox(height: 12),
           Wrap(
             spacing: 12,
@@ -211,11 +189,7 @@ class _DevToolsPerformancePanelState extends State<DevToolsPerformancePanel> {
                 subtitle: 'FCP',
                 value: metrics.formatMs(metrics.firstContentfulPaint),
                 icon: Icons.brush_outlined,
-                color: _getVitalColor(
-                  metrics.firstContentfulPaint,
-                  good: 1800,
-                  needsImprovement: 3000,
-                ),
+                color: _getVitalColor(metrics.firstContentfulPaint, good: 1800, needsImprovement: 3000),
                 description: 'Temps jusqu\'au premier contenu visible',
               ),
               _MetricCard(
@@ -223,11 +197,7 @@ class _DevToolsPerformancePanelState extends State<DevToolsPerformancePanel> {
                 subtitle: 'LCP',
                 value: metrics.formatMs(metrics.largestContentfulPaint),
                 icon: Icons.image_outlined,
-                color: _getVitalColor(
-                  metrics.largestContentfulPaint,
-                  good: 2500,
-                  needsImprovement: 4000,
-                ),
+                color: _getVitalColor(metrics.largestContentfulPaint, good: 2500, needsImprovement: 4000),
                 description: 'Temps jusqu\'au plus grand élément visible',
               ),
               _MetricCard(
@@ -235,27 +205,19 @@ class _DevToolsPerformancePanelState extends State<DevToolsPerformancePanel> {
                 subtitle: 'FP',
                 value: metrics.formatMs(metrics.firstPaint),
                 icon: Icons.palette_outlined,
-                color: _getVitalColor(
-                  metrics.firstPaint,
-                  good: 1000,
-                  needsImprovement: 2500,
-                ),
+                color: _getVitalColor(metrics.firstPaint, good: 1000, needsImprovement: 2500),
                 description: 'Temps jusqu\'au premier pixel peint',
               ),
             ],
           ),
 
           const SizedBox(height: 24),
-
-          // Timing
-          _SectionTitle('Page Timing'),
+          _SectionTitle('Page Timing', accentColor: accentColor),
           const SizedBox(height: 12),
-          _TimingBar(metrics: metrics),
+          _TimingBar(metrics: metrics, accentColor: accentColor),
 
           const SizedBox(height: 24),
-
-          // Ressources
-          _SectionTitle('Ressources'),
+          _SectionTitle('Ressources', accentColor: accentColor),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -264,11 +226,7 @@ class _DevToolsPerformancePanelState extends State<DevToolsPerformancePanel> {
                   title: 'DOM Nodes',
                   value: metrics.domNodes?.toString() ?? '-',
                   icon: Icons.account_tree_outlined,
-                  color: _getResourceColor(
-                    metrics.domNodes,
-                    warning: 1500,
-                    danger: 3000,
-                  ),
+                  color: _getResourceColor(metrics.domNodes, warning: 1500, danger: 3000),
                 ),
               ),
               const SizedBox(width: 12),
@@ -277,11 +235,7 @@ class _DevToolsPerformancePanelState extends State<DevToolsPerformancePanel> {
                   title: 'Resources',
                   value: metrics.resources?.toString() ?? '-',
                   icon: Icons.folder_outlined,
-                  color: _getResourceColor(
-                    metrics.resources,
-                    warning: 100,
-                    danger: 200,
-                  ),
+                  color: _getResourceColor(metrics.resources, warning: 100, danger: 200),
                 ),
               ),
               const SizedBox(width: 12),
@@ -299,16 +253,12 @@ class _DevToolsPerformancePanelState extends State<DevToolsPerformancePanel> {
           ),
 
           const SizedBox(height: 24),
-
-          // Mémoire
-          _SectionTitle('Mémoire JavaScript'),
+          _SectionTitle('Mémoire JavaScript', accentColor: accentColor),
           const SizedBox(height: 12),
           _MemoryBar(metrics: metrics),
 
           const SizedBox(height: 24),
-
-          // Temps de chargement détaillé
-          _SectionTitle('Détails du chargement'),
+          _SectionTitle('Détails du chargement', accentColor: accentColor),
           const SizedBox(height: 12),
           _DetailedTimingList(metrics: metrics),
         ],
@@ -316,20 +266,14 @@ class _DevToolsPerformancePanelState extends State<DevToolsPerformancePanel> {
     );
   }
 
-  Color _getVitalColor(double? value, {
-    required double good,
-    required double needsImprovement,
-  }) {
+  Color _getVitalColor(double? value, {required double good, required double needsImprovement}) {
     if (value == null) return Colors.grey;
     if (value <= good) return const Color(0xFF4CAF50);
     if (value <= needsImprovement) return const Color(0xFFFF9800);
     return const Color(0xFFF44336);
   }
 
-  Color _getResourceColor(int? value, {
-    required int warning,
-    required int danger,
-  }) {
+  Color _getResourceColor(int? value, {required int warning, required int danger}) {
     if (value == null) return Colors.grey;
     if (value <= warning) return const Color(0xFF4CAF50);
     if (value <= danger) return const Color(0xFFFF9800);
@@ -341,12 +285,14 @@ class _ToolbarButton extends StatelessWidget {
   final IconData icon;
   final String tooltip;
   final VoidCallback onPressed;
+  final Color accentColor;
   final bool isActive;
 
   const _ToolbarButton({
     required this.icon,
     required this.tooltip,
     required this.onPressed,
+    required this.accentColor,
     this.isActive = false,
   });
 
@@ -355,9 +301,7 @@ class _ToolbarButton extends StatelessWidget {
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: isActive
-            ? NotilusColors.neonRed.withOpacity(0.15)
-            : Colors.transparent,
+        color: isActive ? accentColor.withOpacity(0.15) : Colors.transparent,
         borderRadius: BorderRadius.circular(4),
         child: InkWell(
           onTap: onPressed,
@@ -367,9 +311,7 @@ class _ToolbarButton extends StatelessWidget {
             child: Icon(
               icon,
               size: 16,
-              color: isActive
-                  ? NotilusColors.neonRed
-                  : Colors.white.withOpacity(0.6),
+              color: isActive ? accentColor : Colors.white.withOpacity(0.6),
             ),
           ),
         ),
@@ -380,8 +322,9 @@ class _ToolbarButton extends StatelessWidget {
 
 class _SectionTitle extends StatelessWidget {
   final String title;
+  final Color accentColor;
 
-  const _SectionTitle(this.title);
+  const _SectionTitle(this.title, {required this.accentColor});
 
   @override
   Widget build(BuildContext context) {
@@ -390,7 +333,7 @@ class _SectionTitle extends StatelessWidget {
       style: TextStyle(
         fontSize: 12,
         fontWeight: FontWeight.w600,
-        color: NotilusColors.neonRed,
+        color: accentColor,
         letterSpacing: 0.5,
       ),
     );
@@ -422,9 +365,7 @@ class _MetricCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: color.withOpacity(0.05),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: color.withOpacity(0.2),
-        ),
+        border: Border.all(color: color.withOpacity(0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -433,43 +374,18 @@ class _MetricCard extends StatelessWidget {
             children: [
               Icon(icon, size: 18, color: color),
               const SizedBox(width: 8),
-              Text(
-                subtitle,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: color,
-                ),
-              ),
+              Text(subtitle, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
             ],
           ),
           const SizedBox(height: 12),
           Text(
             value,
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w700,
-              color: color,
-              fontFamily: 'JetBrains Mono',
-            ),
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: color, fontFamily: 'JetBrains Mono'),
           ),
           const SizedBox(height: 8),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-              color: Colors.white,
-            ),
-          ),
+          Text(title, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Colors.white)),
           const SizedBox(height: 4),
-          Text(
-            description,
-            style: TextStyle(
-              fontSize: 9,
-              color: Colors.white.withOpacity(0.5),
-            ),
-          ),
+          Text(description, style: TextStyle(fontSize: 9, color: Colors.white.withOpacity(0.5))),
         ],
       ),
     );
@@ -496,31 +412,15 @@ class _ResourceCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.03),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.08),
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: Column(
         children: [
           Icon(icon, size: 24, color: color),
           const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: color,
-              fontFamily: 'JetBrains Mono',
-            ),
-          ),
+          Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: color, fontFamily: 'JetBrains Mono')),
           const SizedBox(height: 4),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 10,
-              color: Colors.white.withOpacity(0.5),
-            ),
-          ),
+          Text(title, style: TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.5))),
         ],
       ),
     );
@@ -529,8 +429,9 @@ class _ResourceCard extends StatelessWidget {
 
 class _TimingBar extends StatelessWidget {
   final PerformanceMetrics metrics;
+  final Color accentColor;
 
-  const _TimingBar({required this.metrics});
+  const _TimingBar({required this.metrics, required this.accentColor});
 
   @override
   Widget build(BuildContext context) {
@@ -538,40 +439,22 @@ class _TimingBar extends StatelessWidget {
     final domContent = metrics.domContentLoaded ?? 0;
     final interactive = metrics.timeToInteractive ?? 0;
 
-    final maxTime = [pageLoad, domContent, interactive, 5000.0]
-        .reduce((a, b) => a > b ? a : b);
+    final maxTime = [pageLoad, domContent, interactive, 5000.0].reduce((a, b) => a > b ? a : b);
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.03),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.08),
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: Column(
         children: [
-          _TimingRow(
-            label: 'DOM Content Loaded',
-            value: metrics.formatMs(domContent),
-            progress: domContent / maxTime,
-            color: const Color(0xFF64B5F6),
-          ),
+          _TimingRow(label: 'DOM Content Loaded', value: metrics.formatMs(domContent), progress: domContent / maxTime, color: const Color(0xFF64B5F6)),
           const SizedBox(height: 12),
-          _TimingRow(
-            label: 'Time to Interactive',
-            value: metrics.formatMs(interactive),
-            progress: interactive / maxTime,
-            color: const Color(0xFF81C784),
-          ),
+          _TimingRow(label: 'Time to Interactive', value: metrics.formatMs(interactive), progress: interactive / maxTime, color: const Color(0xFF81C784)),
           const SizedBox(height: 12),
-          _TimingRow(
-            label: 'Page Load',
-            value: metrics.formatMs(pageLoad),
-            progress: pageLoad / maxTime,
-            color: NotilusColors.neonRed,
-          ),
+          _TimingRow(label: 'Page Load', value: metrics.formatMs(pageLoad), progress: pageLoad / maxTime, color: accentColor),
         ],
       ),
     );
@@ -584,12 +467,7 @@ class _TimingRow extends StatelessWidget {
   final double progress;
   final Color color;
 
-  const _TimingRow({
-    required this.label,
-    required this.value,
-    required this.progress,
-    required this.color,
-  });
+  const _TimingRow({required this.label, required this.value, required this.progress, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -599,42 +477,20 @@ class _TimingRow extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                color: Colors.white.withOpacity(0.7),
-              ),
-            ),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: color,
-                fontFamily: 'JetBrains Mono',
-              ),
-            ),
+            Text(label, style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.7))),
+            Text(value, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color, fontFamily: 'JetBrains Mono')),
           ],
         ),
         const SizedBox(height: 6),
         Container(
           height: 6,
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(3),
-          ),
+          decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(3)),
           child: FractionallySizedBox(
             widthFactor: progress.clamp(0.0, 1.0),
             alignment: Alignment.centerLeft,
             child: Container(
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    color.withOpacity(0.8),
-                    color,
-                  ],
-                ),
+                gradient: LinearGradient(colors: [color.withOpacity(0.8), color]),
                 borderRadius: BorderRadius.circular(3),
               ),
             ),
@@ -661,65 +517,37 @@ class _MemoryBar extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.03),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.08),
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: Column(
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'JS Heap Used',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.white.withOpacity(0.7),
-                ),
-              ),
+              Text('JS Heap Used', style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.7))),
               Text(
                 '${metrics.formatBytes(used)} / ${metrics.formatBytes(total)}',
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                  fontFamily: 'JetBrains Mono',
-                ),
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white, fontFamily: 'JetBrains Mono'),
               ),
             ],
           ),
           const SizedBox(height: 12),
           Container(
             height: 20,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(10),
-            ),
+            decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(10)),
             child: Stack(
               children: [
                 FractionallySizedBox(
                   widthFactor: (percentage / 100).clamp(0.0, 1.0),
                   child: Container(
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          _getMemoryColor(percentage).withOpacity(0.7),
-                          _getMemoryColor(percentage),
-                        ],
-                      ),
+                      gradient: LinearGradient(colors: [_getMemoryColor(percentage).withOpacity(0.7), _getMemoryColor(percentage)]),
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
                 ),
                 Center(
-                  child: Text(
-                    '${percentage.toStringAsFixed(1)}%',
-                    style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
+                  child: Text('${percentage.toStringAsFixed(1)}%', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.white)),
                 ),
               ],
             ),
@@ -747,9 +575,7 @@ class _DetailedTimingList extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.03),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.08),
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: Column(
         children: [
@@ -777,31 +603,13 @@ class _DetailRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: Colors.white.withOpacity(0.05),
-          ),
-        ),
+        border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              color: Colors.white.withOpacity(0.7),
-            ),
-          ),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: Colors.white,
-              fontFamily: 'JetBrains Mono',
-            ),
-          ),
+          Text(label, style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.7))),
+          Text(value, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white, fontFamily: 'JetBrains Mono')),
         ],
       ),
     );

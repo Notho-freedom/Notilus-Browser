@@ -1,5 +1,6 @@
 /// Module DevTools natif de Notilus
 /// Interface complète pour l'inspection et le débogage web
+/// Utilise la couleur secondaire du thème
 library notilus_devtools;
 
 import 'package:flutter/material.dart';
@@ -7,7 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../services/devtools_service.dart';
 import '../../services/browser_engine.dart';
-import '../../core/constants/notilus_colors.dart';
+import '../../core/services/color_theme_manager.dart';
 import 'devtools_console_panel.dart';
 import 'devtools_network_panel.dart';
 import 'devtools_elements_panel.dart';
@@ -16,63 +17,56 @@ import 'devtools_application_panel.dart';
 
 /// Onglets disponibles dans le DevTools
 enum NotilusDevToolsTab {
+  elements,
   console,
   network,
-  elements,
   performance,
   application,
-  sources,
 }
 
 extension NotilusDevToolsTabExtension on NotilusDevToolsTab {
   String get label {
     switch (this) {
+      case NotilusDevToolsTab.elements:
+        return 'Elements';
       case NotilusDevToolsTab.console:
         return 'Console';
       case NotilusDevToolsTab.network:
         return 'Network';
-      case NotilusDevToolsTab.elements:
-        return 'Elements';
       case NotilusDevToolsTab.performance:
         return 'Performance';
       case NotilusDevToolsTab.application:
         return 'Application';
-      case NotilusDevToolsTab.sources:
-        return 'Sources';
     }
   }
 
   IconData get icon {
     switch (this) {
+      case NotilusDevToolsTab.elements:
+        return Icons.code_rounded;
       case NotilusDevToolsTab.console:
         return Icons.terminal_rounded;
       case NotilusDevToolsTab.network:
         return Icons.wifi_rounded;
-      case NotilusDevToolsTab.elements:
-        return Icons.code_rounded;
       case NotilusDevToolsTab.performance:
         return Icons.speed_rounded;
       case NotilusDevToolsTab.application:
         return Icons.storage_rounded;
-      case NotilusDevToolsTab.sources:
-        return Icons.source_rounded;
     }
   }
 
   String get shortcut {
     switch (this) {
+      case NotilusDevToolsTab.elements:
+        return 'Ctrl+Shift+C';
       case NotilusDevToolsTab.console:
         return 'Ctrl+Shift+J';
       case NotilusDevToolsTab.network:
         return 'Ctrl+Shift+E';
-      case NotilusDevToolsTab.elements:
-        return 'Ctrl+Shift+C';
       case NotilusDevToolsTab.performance:
         return 'Ctrl+Shift+P';
       case NotilusDevToolsTab.application:
         return 'Ctrl+Shift+A';
-      case NotilusDevToolsTab.sources:
-        return 'Ctrl+Shift+S';
     }
   }
 }
@@ -97,16 +91,16 @@ class NotilusDevTools extends StatefulWidget {
 class _NotilusDevToolsState extends State<NotilusDevTools>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  NotilusDevToolsTab _activeTab = NotilusDevToolsTab.console;
+  NotilusDevToolsTab _activeTab = NotilusDevToolsTab.elements;
   double _height = 300;
   bool _isResizing = false;
   bool _isDocked = true;
+  bool _inspectMode = false;
 
-  // Tabs disponibles dans l'ordre
   final List<NotilusDevToolsTab> _tabs = [
+    NotilusDevToolsTab.elements,
     NotilusDevToolsTab.console,
     NotilusDevToolsTab.network,
-    NotilusDevToolsTab.elements,
     NotilusDevToolsTab.performance,
     NotilusDevToolsTab.application,
   ];
@@ -124,7 +118,6 @@ class _NotilusDevToolsState extends State<NotilusDevTools>
       }
     });
 
-    // Attacher le moteur au service DevTools
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (widget.engine != null) {
         final devTools = context.read<DevToolsService>();
@@ -152,15 +145,97 @@ class _NotilusDevToolsState extends State<NotilusDevTools>
 
   void _handleKeyEvent(RawKeyEvent event) {
     if (event is RawKeyDownEvent) {
-      // Fermer avec Escape
       if (event.logicalKey == LogicalKeyboardKey.escape) {
         widget.onClose?.call();
       }
     }
   }
 
+  void _toggleInspectMode() {
+    setState(() => _inspectMode = !_inspectMode);
+    
+    if (_inspectMode) {
+      // Activer le mode inspection - injecter le script dans la page
+      final devTools = context.read<DevToolsService>();
+      devTools.executeScript('''
+        (function() {
+          if (window.__notilusInspectMode) return;
+          window.__notilusInspectMode = true;
+          
+          const highlight = document.createElement('div');
+          highlight.id = '__notilus_highlight';
+          highlight.style.cssText = 'position:fixed;pointer-events:none;z-index:999999;border:2px solid #FF6B6B;background:rgba(255,107,107,0.1);transition:all 0.1s;display:none;';
+          document.body.appendChild(highlight);
+          
+          const info = document.createElement('div');
+          info.id = '__notilus_info';
+          info.style.cssText = 'position:fixed;z-index:999999;background:#1E1E24;color:white;padding:4px 8px;font-size:11px;font-family:monospace;border-radius:4px;pointer-events:none;display:none;box-shadow:0 2px 8px rgba(0,0,0,0.3);';
+          document.body.appendChild(info);
+          
+          document.addEventListener('mousemove', function(e) {
+            if (!window.__notilusInspectMode) return;
+            const el = document.elementFromPoint(e.clientX, e.clientY);
+            if (el && el.id !== '__notilus_highlight' && el.id !== '__notilus_info') {
+              const rect = el.getBoundingClientRect();
+              highlight.style.display = 'block';
+              highlight.style.left = rect.left + 'px';
+              highlight.style.top = rect.top + 'px';
+              highlight.style.width = rect.width + 'px';
+              highlight.style.height = rect.height + 'px';
+              
+              info.style.display = 'block';
+              info.style.left = (e.clientX + 10) + 'px';
+              info.style.top = (e.clientY + 10) + 'px';
+              info.innerHTML = '<' + el.tagName.toLowerCase() + '>' + (el.id ? ' #' + el.id : '') + (el.className ? ' .' + el.className.split(' ')[0] : '') + ' <span style="color:#888">' + Math.round(rect.width) + '×' + Math.round(rect.height) + '</span>';
+            }
+          });
+          
+          document.addEventListener('click', function(e) {
+            if (!window.__notilusInspectMode) return;
+            e.preventDefault();
+            e.stopPropagation();
+            const el = document.elementFromPoint(e.clientX, e.clientY);
+            if (el && el.id !== '__notilus_highlight' && el.id !== '__notilus_info') {
+              window.chrome.webview.postMessage(JSON.stringify({
+                type: 'inspect_element',
+                tagName: el.tagName,
+                id: el.id,
+                className: el.className,
+                rect: el.getBoundingClientRect(),
+                attributes: Array.from(el.attributes).reduce((acc, attr) => { acc[attr.name] = attr.value; return acc; }, {}),
+                outerHTML: el.outerHTML.substring(0, 500)
+              }));
+            }
+          }, true);
+        })();
+      ''');
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('🎯 Mode inspection activé - Cliquez sur un élément'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } else {
+      // Désactiver le mode inspection
+      final devTools = context.read<DevToolsService>();
+      devTools.executeScript('''
+        (function() {
+          window.__notilusInspectMode = false;
+          const highlight = document.getElementById('__notilus_highlight');
+          const info = document.getElementById('__notilus_info');
+          if (highlight) highlight.style.display = 'none';
+          if (info) info.style.display = 'none';
+        })();
+      ''');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final colorTheme = Provider.of<ColorThemeManager>(context);
+    final accentColor = colorTheme.nativeSecondaryColor;
+
     return RawKeyboardListener(
       focusNode: FocusNode(),
       onKey: _handleKeyEvent,
@@ -169,14 +244,11 @@ class _NotilusDevToolsState extends State<NotilusDevTools>
         decoration: BoxDecoration(
           color: const Color(0xFF0D0D12),
           border: Border(
-            top: BorderSide(
-              color: NotilusColors.neonRed.withOpacity(0.5),
-              width: 1,
-            ),
+            top: BorderSide(color: accentColor.withOpacity(0.5), width: 1),
           ),
           boxShadow: [
             BoxShadow(
-              color: NotilusColors.neonRed.withOpacity(0.1),
+              color: accentColor.withOpacity(0.1),
               blurRadius: 20,
               offset: const Offset(0, -5),
             ),
@@ -184,13 +256,8 @@ class _NotilusDevToolsState extends State<NotilusDevTools>
         ),
         child: Column(
           children: [
-            // Barre de redimensionnement
-            _buildResizeHandle(),
-
-            // Barre d'onglets
-            _buildTabBar(),
-
-            // Contenu
+            _buildResizeHandle(accentColor),
+            _buildTabBar(accentColor),
             Expanded(
               child: TabBarView(
                 controller: _tabController,
@@ -204,36 +271,28 @@ class _NotilusDevToolsState extends State<NotilusDevTools>
     );
   }
 
-  Widget _buildResizeHandle() {
+  Widget _buildResizeHandle(Color accentColor) {
     return GestureDetector(
-      onVerticalDragStart: (_) {
-        setState(() => _isResizing = true);
-      },
+      onVerticalDragStart: (_) => setState(() => _isResizing = true),
       onVerticalDragUpdate: (details) {
         setState(() {
           _height = (_height - details.delta.dy).clamp(150.0, 600.0);
         });
       },
-      onVerticalDragEnd: (_) {
-        setState(() => _isResizing = false);
-      },
+      onVerticalDragEnd: (_) => setState(() => _isResizing = false),
       child: MouseRegion(
         cursor: SystemMouseCursors.resizeRow,
         child: Container(
           height: 6,
           decoration: BoxDecoration(
-            color: _isResizing
-                ? NotilusColors.neonRed.withOpacity(0.3)
-                : Colors.transparent,
+            color: _isResizing ? accentColor.withOpacity(0.3) : Colors.transparent,
           ),
           child: Center(
             child: Container(
               width: 40,
               height: 3,
               decoration: BoxDecoration(
-                color: _isResizing
-                    ? NotilusColors.neonRed
-                    : Colors.white.withOpacity(0.2),
+                color: _isResizing ? accentColor : Colors.white.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(1.5),
               ),
             ),
@@ -243,16 +302,12 @@ class _NotilusDevToolsState extends State<NotilusDevTools>
     );
   }
 
-  Widget _buildTabBar() {
+  Widget _buildTabBar(Color accentColor) {
     return Container(
       height: 36,
       decoration: BoxDecoration(
         color: const Color(0xFF131318),
-        border: Border(
-          bottom: BorderSide(
-            color: NotilusColors.neonRed.withOpacity(0.2),
-          ),
-        ),
+        border: Border(bottom: BorderSide(color: accentColor.withOpacity(0.2))),
       ),
       child: Row(
         children: [
@@ -266,42 +321,32 @@ class _NotilusDevToolsState extends State<NotilusDevTools>
                   height: 18,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [
-                        NotilusColors.neonRed,
-                        NotilusColors.neonRedDark,
-                      ],
+                      colors: [accentColor, accentColor.withOpacity(0.7)],
                     ),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: const Center(
-                    child: Text(
-                      'N',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                      ),
-                    ),
+                    child: Text('N', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.white)),
                   ),
                 ),
                 const SizedBox(width: 6),
-                Text(
-                  'DevTools',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: NotilusColors.neonRed,
-                  ),
-                ),
+                Text('DevTools', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: accentColor)),
               ],
             ),
           ),
 
-          Container(
-            width: 1,
-            height: 20,
-            color: Colors.white.withOpacity(0.1),
+          Container(width: 1, height: 20, color: Colors.white.withOpacity(0.1)),
+
+          // Bouton mode inspection
+          _ActionButton(
+            icon: Icons.gps_fixed,
+            tooltip: 'Sélectionner un élément (Ctrl+Shift+C)',
+            isActive: _inspectMode,
+            accentColor: accentColor,
+            onPressed: _toggleInspectMode,
           ),
+
+          Container(width: 1, height: 20, color: Colors.white.withOpacity(0.1)),
 
           // Onglets
           Expanded(
@@ -310,23 +355,12 @@ class _NotilusDevToolsState extends State<NotilusDevTools>
               isScrollable: true,
               tabAlignment: TabAlignment.start,
               indicator: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(
-                    color: NotilusColors.neonRed,
-                    width: 2,
-                  ),
-                ),
+                border: Border(bottom: BorderSide(color: accentColor, width: 2)),
               ),
-              labelColor: NotilusColors.neonRed,
+              labelColor: accentColor,
               unselectedLabelColor: Colors.white.withOpacity(0.5),
-              labelStyle: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-              ),
-              unselectedLabelStyle: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.normal,
-              ),
+              labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+              unselectedLabelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.normal),
               labelPadding: const EdgeInsets.symmetric(horizontal: 12),
               dividerColor: Colors.transparent,
               tabs: _tabs.map((tab) {
@@ -352,17 +386,9 @@ class _NotilusDevToolsState extends State<NotilusDevTools>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (devTools.errorCount > 0)
-                    _StatBadge(
-                      icon: Icons.error_outline,
-                      count: devTools.errorCount,
-                      color: Colors.red,
-                    ),
+                    _StatBadge(icon: Icons.error_outline, count: devTools.errorCount, color: Colors.red),
                   if (devTools.warningCount > 0)
-                    _StatBadge(
-                      icon: Icons.warning_amber_rounded,
-                      count: devTools.warningCount,
-                      color: Colors.orange,
-                    ),
+                    _StatBadge(icon: Icons.warning_amber_rounded, count: devTools.warningCount, color: Colors.orange),
                 ],
               );
             },
@@ -370,27 +396,24 @@ class _NotilusDevToolsState extends State<NotilusDevTools>
 
           const SizedBox(width: 8),
 
-          // Actions
           _ActionButton(
             icon: Icons.cleaning_services_outlined,
             tooltip: 'Tout effacer',
-            onPressed: () {
-              context.read<DevToolsService>().clearAll();
-            },
+            accentColor: accentColor,
+            onPressed: () => context.read<DevToolsService>().clearAll(),
           ),
 
           _ActionButton(
             icon: _isDocked ? Icons.open_in_new : Icons.dock,
             tooltip: _isDocked ? 'Détacher' : 'Docker',
-            onPressed: () {
-              setState(() => _isDocked = !_isDocked);
-              // TODO: Implémenter la fenêtre détachée
-            },
+            accentColor: accentColor,
+            onPressed: () => setState(() => _isDocked = !_isDocked),
           ),
 
           _ActionButton(
             icon: Icons.close,
             tooltip: 'Fermer (Echap)',
+            accentColor: accentColor,
             onPressed: widget.onClose,
           ),
 
@@ -402,50 +425,17 @@ class _NotilusDevToolsState extends State<NotilusDevTools>
 
   Widget _buildTabContent(NotilusDevToolsTab tab) {
     switch (tab) {
+      case NotilusDevToolsTab.elements:
+        return const DevToolsElementsPanel();
       case NotilusDevToolsTab.console:
         return const DevToolsConsolePanel();
       case NotilusDevToolsTab.network:
         return const DevToolsNetworkPanel();
-      case NotilusDevToolsTab.elements:
-        return const DevToolsElementsPanel();
       case NotilusDevToolsTab.performance:
         return const DevToolsPerformancePanel();
       case NotilusDevToolsTab.application:
         return const DevToolsApplicationPanel();
-      case NotilusDevToolsTab.sources:
-        return _buildSourcesPlaceholder();
     }
-  }
-
-  Widget _buildSourcesPlaceholder() {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.source_rounded,
-            size: 48,
-            color: Colors.white.withOpacity(0.15),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Sources',
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.3),
-              fontSize: 13,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Cette fonctionnalité sera disponible prochainement',
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.2),
-              fontSize: 11,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 
@@ -454,11 +444,7 @@ class _StatBadge extends StatelessWidget {
   final int count;
   final Color color;
 
-  const _StatBadge({
-    required this.icon,
-    required this.count,
-    required this.color,
-  });
+  const _StatBadge({required this.icon, required this.count, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -474,14 +460,7 @@ class _StatBadge extends StatelessWidget {
         children: [
           Icon(icon, size: 12, color: color),
           const SizedBox(width: 4),
-          Text(
-            '$count',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: color,
-            ),
-          ),
+          Text('$count', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color)),
         ],
       ),
     );
@@ -492,11 +471,15 @@ class _ActionButton extends StatelessWidget {
   final IconData icon;
   final String tooltip;
   final VoidCallback? onPressed;
+  final Color accentColor;
+  final bool isActive;
 
   const _ActionButton({
     required this.icon,
     required this.tooltip,
+    required this.accentColor,
     this.onPressed,
+    this.isActive = false,
   });
 
   @override
@@ -504,7 +487,7 @@ class _ActionButton extends StatelessWidget {
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: Colors.transparent,
+        color: isActive ? accentColor.withOpacity(0.2) : Colors.transparent,
         borderRadius: BorderRadius.circular(4),
         child: InkWell(
           onTap: onPressed,
@@ -514,7 +497,7 @@ class _ActionButton extends StatelessWidget {
             child: Icon(
               icon,
               size: 16,
-              color: Colors.white.withOpacity(0.6),
+              color: isActive ? accentColor : Colors.white.withOpacity(0.6),
             ),
           ),
         ),
@@ -540,10 +523,11 @@ class NotilusDevToolsToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorTheme = Provider.of<ColorThemeManager>(context);
+    final accentColor = colorTheme.nativeSecondaryColor;
+
     return Material(
-      color: isOpen
-          ? NotilusColors.neonRed.withOpacity(0.2)
-          : Colors.white.withOpacity(0.05),
+      color: isOpen ? accentColor.withOpacity(0.2) : Colors.white.withOpacity(0.05),
       borderRadius: BorderRadius.circular(6),
       child: InkWell(
         onTap: onToggle,
@@ -556,49 +540,33 @@ class NotilusDevToolsToggle extends StatelessWidget {
               Icon(
                 Icons.bug_report_outlined,
                 size: 16,
-                color: isOpen
-                    ? NotilusColors.neonRed
-                    : Colors.white.withOpacity(0.6),
+                color: isOpen ? accentColor : Colors.white.withOpacity(0.6),
               ),
               if (errorCount > 0 || warningCount > 0) ...[
                 const SizedBox(width: 6),
                 if (errorCount > 0)
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 5,
-                      vertical: 1,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                     decoration: BoxDecoration(
                       color: Colors.red.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       '$errorCount',
-                      style: const TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.red,
-                      ),
+                      style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: Colors.red),
                     ),
                   ),
                 if (warningCount > 0) ...[
                   const SizedBox(width: 4),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 5,
-                      vertical: 1,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                     decoration: BoxDecoration(
                       color: Colors.orange.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       '$warningCount',
-                      style: const TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.orange,
-                      ),
+                      style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: Colors.orange),
                     ),
                   ),
                 ],
