@@ -59,6 +59,18 @@ class SettingsService extends ChangeNotifier {
   // DevTools
   static const String _keyDevToolsPosition = 'notilus_devtools_position'; // 'bottom', 'right', 'detached'
   static const String _keyDevToolsHeight = 'notilus_devtools_height';
+  static const String _keyDevToolsShowTimestamps = 'notilus_devtools_show_timestamps';
+  static const String _keyDevToolsGroupLogs = 'notilus_devtools_group_logs';
+  static const String _keyDevToolsAutoScroll = 'notilus_devtools_auto_scroll';
+  static const String _keyDevToolsPreserveLogs = 'notilus_devtools_preserve_logs';
+  static const String _keyDevToolsCaptureBody = 'notilus_devtools_capture_body';
+  static const String _keyDevToolsDisableCache = 'notilus_devtools_disable_cache';
+  static const String _keyDevToolsShowBoxModel = 'notilus_devtools_show_box_model';
+  static const String _keyDevToolsShowDimensions = 'notilus_devtools_show_dimensions';
+  static const String _keyDevToolsShowGuides = 'notilus_devtools_show_guides';
+  static const String _keyDevToolsHighlightColor = 'notilus_devtools_highlight_color';
+  static const String _keyDevToolsRefreshRate = 'notilus_devtools_refresh_rate';
+  static const String _keyDevToolsFontSize = 'notilus_devtools_font_size';
   
   // ============================================
   // INITIALISATION
@@ -331,16 +343,110 @@ class SettingsService extends ChangeNotifier {
   // ============================================
   
   String get devToolsPosition => _prefs?.getString(_keyDevToolsPosition) ?? 'bottom';
-  
   Future<void> setDevToolsPosition(String position) async {
     await _prefs?.setString(_keyDevToolsPosition, position);
     notifyListeners();
   }
   
   double get devToolsHeight => _prefs?.getDouble(_keyDevToolsHeight) ?? 300.0;
-  
   Future<void> setDevToolsHeight(double height) async {
     await _prefs?.setDouble(_keyDevToolsHeight, height);
+    notifyListeners();
+  }
+  
+  // Console
+  bool get devToolsShowTimestamps => _prefs?.getBool(_keyDevToolsShowTimestamps) ?? true;
+  Future<void> setDevToolsShowTimestamps(bool value) async {
+    await _prefs?.setBool(_keyDevToolsShowTimestamps, value);
+    notifyListeners();
+  }
+  
+  bool get devToolsGroupLogs => _prefs?.getBool(_keyDevToolsGroupLogs) ?? true;
+  Future<void> setDevToolsGroupLogs(bool value) async {
+    await _prefs?.setBool(_keyDevToolsGroupLogs, value);
+    notifyListeners();
+  }
+  
+  bool get devToolsAutoScroll => _prefs?.getBool(_keyDevToolsAutoScroll) ?? true;
+  Future<void> setDevToolsAutoScroll(bool value) async {
+    await _prefs?.setBool(_keyDevToolsAutoScroll, value);
+    notifyListeners();
+  }
+  
+  bool get devToolsPreserveLogs => _prefs?.getBool(_keyDevToolsPreserveLogs) ?? false;
+  Future<void> setDevToolsPreserveLogs(bool value) async {
+    await _prefs?.setBool(_keyDevToolsPreserveLogs, value);
+    notifyListeners();
+  }
+  
+  // Network
+  bool get devToolsCaptureBody => _prefs?.getBool(_keyDevToolsCaptureBody) ?? true;
+  Future<void> setDevToolsCaptureBody(bool value) async {
+    await _prefs?.setBool(_keyDevToolsCaptureBody, value);
+    notifyListeners();
+  }
+  
+  bool get devToolsDisableCache => _prefs?.getBool(_keyDevToolsDisableCache) ?? false;
+  Future<void> setDevToolsDisableCache(bool value) async {
+    await _prefs?.setBool(_keyDevToolsDisableCache, value);
+    notifyListeners();
+  }
+  
+  // Inspection
+  bool get devToolsShowBoxModel => _prefs?.getBool(_keyDevToolsShowBoxModel) ?? true;
+  Future<void> setDevToolsShowBoxModel(bool value) async {
+    await _prefs?.setBool(_keyDevToolsShowBoxModel, value);
+    notifyListeners();
+  }
+  
+  bool get devToolsShowDimensions => _prefs?.getBool(_keyDevToolsShowDimensions) ?? true;
+  Future<void> setDevToolsShowDimensions(bool value) async {
+    await _prefs?.setBool(_keyDevToolsShowDimensions, value);
+    notifyListeners();
+  }
+  
+  bool get devToolsShowGuides => _prefs?.getBool(_keyDevToolsShowGuides) ?? true;
+  Future<void> setDevToolsShowGuides(bool value) async {
+    await _prefs?.setBool(_keyDevToolsShowGuides, value);
+    notifyListeners();
+  }
+  
+  String get devToolsHighlightColor => _prefs?.getString(_keyDevToolsHighlightColor) ?? '#FF6B6B';
+  Future<void> setDevToolsHighlightColor(String value) async {
+    await _prefs?.setString(_keyDevToolsHighlightColor, value);
+    notifyListeners();
+  }
+  
+  // Performance
+  int get devToolsRefreshRate => _prefs?.getInt(_keyDevToolsRefreshRate) ?? 2;
+  Future<void> setDevToolsRefreshRate(int value) async {
+    await _prefs?.setInt(_keyDevToolsRefreshRate, value);
+    notifyListeners();
+  }
+  
+  // Apparence
+  double get devToolsFontSize => _prefs?.getDouble(_keyDevToolsFontSize) ?? 12.0;
+  Future<void> setDevToolsFontSize(double value) async {
+    await _prefs?.setDouble(_keyDevToolsFontSize, value);
+    notifyListeners();
+  }
+  
+  // Reset
+  Future<void> resetDevToolsSettings() async {
+    await _prefs?.remove(_keyDevToolsPosition);
+    await _prefs?.remove(_keyDevToolsHeight);
+    await _prefs?.remove(_keyDevToolsShowTimestamps);
+    await _prefs?.remove(_keyDevToolsGroupLogs);
+    await _prefs?.remove(_keyDevToolsAutoScroll);
+    await _prefs?.remove(_keyDevToolsPreserveLogs);
+    await _prefs?.remove(_keyDevToolsCaptureBody);
+    await _prefs?.remove(_keyDevToolsDisableCache);
+    await _prefs?.remove(_keyDevToolsShowBoxModel);
+    await _prefs?.remove(_keyDevToolsShowDimensions);
+    await _prefs?.remove(_keyDevToolsShowGuides);
+    await _prefs?.remove(_keyDevToolsHighlightColor);
+    await _prefs?.remove(_keyDevToolsRefreshRate);
+    await _prefs?.remove(_keyDevToolsFontSize);
     notifyListeners();
   }
 

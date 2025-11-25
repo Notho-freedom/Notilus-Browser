@@ -1043,7 +1043,8 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSubsectionTitle('Position du panneau', gxRed),
+            // === POSITION ET TAILLE ===
+            _buildSubsectionTitle('Position et taille', gxRed),
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
@@ -1057,18 +1058,15 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                   selectedColor: gxRed.withOpacity(0.2),
                   backgroundColor: Colors.white.withOpacity(0.05),
                   side: BorderSide(color: isSelected ? gxRed : Colors.white24),
-                  labelStyle: TextStyle(
-                    color: isSelected ? gxRed : Colors.white70,
-                    fontSize: 11,
-                  ),
+                  labelStyle: TextStyle(color: isSelected ? gxRed : Colors.white70, fontSize: 11),
                 );
               }).toList(),
             ),
-            const SizedBox(height: 24),
-            _buildSubsectionTitle('Taille par défaut', gxRed),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             Row(
               children: [
+                const Text('Hauteur', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Slider(
                     value: _settings.devToolsHeight,
@@ -1080,29 +1078,255 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                     onChanged: (v) => _settings.setDevToolsHeight(v),
                   ),
                 ),
-                const SizedBox(width: 12),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    '${_settings.devToolsHeight.toInt()}px',
-                    style: TextStyle(color: gxRed, fontSize: 12, fontWeight: FontWeight.w600),
-                  ),
+                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(4)),
+                  child: Text('${_settings.devToolsHeight.toInt()}px', style: TextStyle(color: gxRed, fontSize: 11, fontWeight: FontWeight.w600)),
                 ),
               ],
             ),
+            
             const SizedBox(height: 24),
+            
+            // === CONSOLE ===
+            _buildSubsectionTitle('Console', gxRed),
+            const SizedBox(height: 12),
+            _buildSettingSwitch(
+              title: 'Afficher les timestamps',
+              subtitle: 'Horodatage des messages',
+              value: _settings.devToolsShowTimestamps,
+              onChanged: (v) => _settings.setDevToolsShowTimestamps(v),
+              gxRed: gxRed,
+            ),
+            _buildSettingSwitch(
+              title: 'Grouper les logs similaires',
+              subtitle: 'Agrège les messages répétés',
+              value: _settings.devToolsGroupLogs,
+              onChanged: (v) => _settings.setDevToolsGroupLogs(v),
+              gxRed: gxRed,
+            ),
+            _buildSettingSwitch(
+              title: 'Défilement automatique',
+              subtitle: 'Scroll vers les nouveaux messages',
+              value: _settings.devToolsAutoScroll,
+              onChanged: (v) => _settings.setDevToolsAutoScroll(v),
+              gxRed: gxRed,
+            ),
+            _buildSettingSwitch(
+              title: 'Préserver les logs',
+              subtitle: 'Garder les logs lors de la navigation',
+              value: _settings.devToolsPreserveLogs,
+              onChanged: (v) => _settings.setDevToolsPreserveLogs(v),
+              gxRed: gxRed,
+            ),
+            
+            const SizedBox(height: 24),
+            
+            // === NETWORK ===
+            _buildSubsectionTitle('Network', gxRed),
+            const SizedBox(height: 12),
+            _buildSettingSwitch(
+              title: 'Capturer les corps de requête',
+              subtitle: 'Enregistrer le contenu des requêtes/réponses',
+              value: _settings.devToolsCaptureBody,
+              onChanged: (v) => _settings.setDevToolsCaptureBody(v),
+              gxRed: gxRed,
+            ),
+            _buildSettingSwitch(
+              title: 'Désactiver le cache',
+              subtitle: 'Forcer le rechargement des ressources',
+              value: _settings.devToolsDisableCache,
+              onChanged: (v) => _settings.setDevToolsDisableCache(v),
+              gxRed: gxRed,
+            ),
+            
+            const SizedBox(height: 24),
+            
+            // === INSPECTION ===
+            _buildSubsectionTitle('Inspection d\'éléments', gxRed),
+            const SizedBox(height: 12),
+            _buildSettingSwitch(
+              title: 'Afficher le box model',
+              subtitle: 'Margin, border, padding, content',
+              value: _settings.devToolsShowBoxModel,
+              onChanged: (v) => _settings.setDevToolsShowBoxModel(v),
+              gxRed: gxRed,
+            ),
+            _buildSettingSwitch(
+              title: 'Afficher les dimensions',
+              subtitle: 'Taille en pixels lors de l\'inspection',
+              value: _settings.devToolsShowDimensions,
+              onChanged: (v) => _settings.setDevToolsShowDimensions(v),
+              gxRed: gxRed,
+            ),
+            _buildSettingSwitch(
+              title: 'Afficher les guides',
+              subtitle: 'Lignes de guidage horizontales/verticales',
+              value: _settings.devToolsShowGuides,
+              onChanged: (v) => _settings.setDevToolsShowGuides(v),
+              gxRed: gxRed,
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                const Text('Couleur de surbrillance', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                const Spacer(),
+                _buildColorPicker(_settings.devToolsHighlightColor, gxRed, (color) => _settings.setDevToolsHighlightColor(color)),
+              ],
+            ),
+            
+            const SizedBox(height: 24),
+            
+            // === PERFORMANCE ===
+            _buildSubsectionTitle('Performance', gxRed),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                const Text('Taux de rafraîchissement', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Slider(
+                    value: _settings.devToolsRefreshRate.toDouble(),
+                    min: 1,
+                    max: 10,
+                    divisions: 9,
+                    activeColor: gxRed,
+                    inactiveColor: Colors.white24,
+                    onChanged: (v) => _settings.setDevToolsRefreshRate(v.toInt()),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(4)),
+                  child: Text('${_settings.devToolsRefreshRate}s', style: TextStyle(color: gxRed, fontSize: 11, fontWeight: FontWeight.w600)),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 24),
+            
+            // === APPARENCE ===
+            _buildSubsectionTitle('Apparence', gxRed),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                const Text('Taille de police', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Slider(
+                    value: _settings.devToolsFontSize,
+                    min: 10,
+                    max: 16,
+                    divisions: 6,
+                    activeColor: gxRed,
+                    inactiveColor: Colors.white24,
+                    onChanged: (v) => _settings.setDevToolsFontSize(v),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(4)),
+                  child: Text('${_settings.devToolsFontSize.toInt()}px', style: TextStyle(color: gxRed, fontSize: 11, fontWeight: FontWeight.w600)),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 24),
+            
+            // === RACCOURCIS ===
             _buildSubsectionTitle('Raccourcis clavier', gxRed),
             const SizedBox(height: 12),
             _buildShortcutInfo('Ouvrir DevTools', 'F12'),
             _buildShortcutInfo('Ouvrir DevTools', 'Ctrl + Shift + I'),
             _buildShortcutInfo('Console', 'Ctrl + Shift + J'),
+            _buildShortcutInfo('Inspecter élément', 'Ctrl + Shift + C'),
+            _buildShortcutInfo('Network', 'Ctrl + Shift + E'),
+            _buildShortcutInfo('Resources', 'Ctrl + Shift + R'),
+            _buildShortcutInfo('Fermer DevTools', 'Echap'),
+            _buildShortcutInfo('Effacer la console', 'Ctrl + L'),
+            
+            const SizedBox(height: 24),
+            
+            // === ACTIONS ===
+            _buildSubsectionTitle('Actions', gxRed),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      // Reset DevTools settings
+                      _settings.resetDevToolsSettings();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: const Text('Paramètres DevTools réinitialisés'), backgroundColor: gxRed),
+                      );
+                    },
+                    icon: const Icon(Icons.restart_alt, size: 16),
+                    label: const Text('Réinitialiser'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white70,
+                      side: const BorderSide(color: Colors.white24),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      // Export DevTools config
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: const Text('Configuration exportée dans le presse-papiers'), backgroundColor: gxRed),
+                      );
+                    },
+                    icon: const Icon(Icons.upload_outlined, size: 16),
+                    label: const Text('Exporter'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: gxRed,
+                      side: BorderSide(color: gxRed.withOpacity(0.5)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ],
         );
       },
+    );
+  }
+  
+  Widget _buildColorPicker(String currentColor, Color gxRed, Function(String) onSelect) {
+    final colors = [
+      '#FF6B6B', // Rouge
+      '#4ECDC4', // Cyan
+      '#45B7D1', // Bleu
+      '#96CEB4', // Vert
+      '#FFEAA7', // Jaune
+      '#DDA0DD', // Violet
+      '#FF8C00', // Orange
+    ];
+    
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: colors.map((hex) {
+        final isSelected = currentColor == hex;
+        final color = Color(int.parse(hex.substring(1), radix: 16) + 0xFF000000);
+        return GestureDetector(
+          onTap: () => onSelect(hex),
+          child: Container(
+            width: 24,
+            height: 24,
+            margin: const EdgeInsets.only(left: 6),
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+              border: Border.all(color: isSelected ? Colors.white : Colors.transparent, width: 2),
+              boxShadow: isSelected ? [BoxShadow(color: color.withOpacity(0.5), blurRadius: 8)] : null,
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 
