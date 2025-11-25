@@ -761,6 +761,12 @@ class _EmptyTileContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorTheme = Provider.of<ColorThemeManager>(context);
     final accentColor = colorTheme.nativeSecondaryColor;
+    final mosaicService = context.read<NotilusMosaicService>();
+
+    // Types de contenu disponibles (sans custom et empty)
+    final availableTypes = MosaicTileType.values
+        .where((t) => t != MosaicTileType.custom && t != MosaicTileType.empty)
+        .toList();
 
     return Container(
       decoration: BoxDecoration(
@@ -773,49 +779,212 @@ class _EmptyTileContent extends StatelessWidget {
           ],
         ),
       ),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: accentColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: accentColor.withOpacity(0.2),
-                  width: 1,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Adapter la grille selon la taille
+          final isCompact = constraints.maxWidth < 300 || constraints.maxHeight < 300;
+          
+          if (isCompact) {
+            // Mode compact - liste simple
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(12),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.center,
+                children: availableTypes.map((type) => _CompactTypeButton(
+                  type: type,
+                  accentColor: accentColor,
+                  onTap: () {
+                    if (tile != null) {
+                      mosaicService.setTileContent(tile!.id, type);
+                    }
+                  },
+                )).toList(),
+              ),
+            );
+          }
+          
+          // Mode normal - grille
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Choisir un contenu',
+                  style: TextStyle(
+                    color: accentColor,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
-              child: Icon(
-                CupertinoIcons.plus,
-                size: 32,
-                color: accentColor.withOpacity(0.5),
-              ),
+                const SizedBox(height: 4),
+                Text(
+                  'ou glissez un onglet ici',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.3),
+                    fontSize: 11,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  alignment: WrapAlignment.center,
+                  children: availableTypes.map((type) => _TypeButton(
+                    type: type,
+                    accentColor: accentColor,
+                    onTap: () {
+                      if (tile != null) {
+                        mosaicService.setTileContent(tile!.id, type);
+                      }
+                    },
+                  )).toList(),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            Text(
-              'Panneau vide',
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.6),
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Glissez un élément ou cliquez sur ⋯',
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.3),
-                fontSize: 11,
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     )
         .animate()
         .fadeIn(duration: 300.ms);
+  }
+}
+
+/// Bouton de type pour la grille
+class _TypeButton extends StatefulWidget {
+  final MosaicTileType type;
+  final Color accentColor;
+  final VoidCallback onTap;
+
+  const _TypeButton({
+    required this.type,
+    required this.accentColor,
+    required this.onTap,
+  });
+
+  @override
+  State<_TypeButton> createState() => _TypeButtonState();
+}
+
+class _TypeButtonState extends State<_TypeButton> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          width: 80,
+          height: 70,
+          decoration: BoxDecoration(
+            color: _isHovered
+                ? widget.accentColor.withOpacity(0.15)
+                : Colors.white.withOpacity(0.03),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: _isHovered
+                  ? widget.accentColor.withOpacity(0.5)
+                  : Colors.white.withOpacity(0.08),
+            ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                widget.type.icon,
+                size: 24,
+                color: _isHovered ? widget.accentColor : Colors.white.withOpacity(0.6),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                widget.type.label,
+                style: TextStyle(
+                  color: _isHovered ? widget.accentColor : Colors.white.withOpacity(0.5),
+                  fontSize: 10,
+                  fontWeight: _isHovered ? FontWeight.w600 : FontWeight.normal,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Bouton de type compact
+class _CompactTypeButton extends StatefulWidget {
+  final MosaicTileType type;
+  final Color accentColor;
+  final VoidCallback onTap;
+
+  const _CompactTypeButton({
+    required this.type,
+    required this.accentColor,
+    required this.onTap,
+  });
+
+  @override
+  State<_CompactTypeButton> createState() => _CompactTypeButtonState();
+}
+
+class _CompactTypeButtonState extends State<_CompactTypeButton> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: _isHovered
+                ? widget.accentColor.withOpacity(0.2)
+                : Colors.white.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: _isHovered
+                  ? widget.accentColor.withOpacity(0.5)
+                  : Colors.white.withOpacity(0.1),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                widget.type.icon,
+                size: 14,
+                color: _isHovered ? widget.accentColor : Colors.white.withOpacity(0.6),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                widget.type.label,
+                style: TextStyle(
+                  color: _isHovered ? widget.accentColor : Colors.white.withOpacity(0.6),
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

@@ -459,58 +459,92 @@ class _ContentMenuButton extends StatefulWidget {
 
 class _ContentMenuButtonState extends State<_ContentMenuButton> {
   bool _isHovered = false;
-  bool _showMenu = false;
+  OverlayEntry? _overlayEntry;
+  final LayerLink _layerLink = LayerLink();
+
+  void _showMenu() {
+    _overlayEntry = OverlayEntry(
+      builder: (context) => Stack(
+        children: [
+          // Fond transparent pour fermer
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: _hideMenu,
+              behavior: HitTestBehavior.opaque,
+              child: Container(color: Colors.transparent),
+            ),
+          ),
+          // Menu positionné
+          CompositedTransformFollower(
+            link: _layerLink,
+            offset: const Offset(-150, 30),
+            child: Material(
+              color: Colors.transparent,
+              child: _ContentMenu(
+                tile: widget.tile,
+                accentColor: widget.accentColor,
+                onClose: _hideMenu,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    Overlay.of(context).insert(_overlayEntry!);
+  }
+
+  void _hideMenu() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+  }
+
+  @override
+  void dispose() {
+    _hideMenu();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Tooltip(
-          message: 'Changer le contenu',
-          child: MouseRegion(
-            cursor: SystemMouseCursors.click,
-            onEnter: (_) => setState(() => _isHovered = true),
-            onExit: (_) => setState(() => _isHovered = false),
-            child: GestureDetector(
-              onTap: () => setState(() => _showMenu = !_showMenu),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                width: 26,
-                height: 26,
-                decoration: BoxDecoration(
-                  color: _isHovered || _showMenu
-                      ? widget.accentColor.withOpacity(0.2)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Center(
-                  child: Icon(
-                    CupertinoIcons.ellipsis,
-                    size: 14,
-                    color: _isHovered || _showMenu
-                        ? widget.accentColor
-                        : Colors.white.withOpacity(0.7),
-                  ),
+    return CompositedTransformTarget(
+      link: _layerLink,
+      child: Tooltip(
+        message: 'Changer le contenu',
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          onEnter: (_) => setState(() => _isHovered = true),
+          onExit: (_) => setState(() => _isHovered = false),
+          child: GestureDetector(
+            onTap: () {
+              if (_overlayEntry != null) {
+                _hideMenu();
+              } else {
+                _showMenu();
+              }
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              width: 26,
+              height: 26,
+              decoration: BoxDecoration(
+                color: _isHovered || _overlayEntry != null
+                    ? widget.accentColor.withOpacity(0.2)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Center(
+                child: Icon(
+                  CupertinoIcons.ellipsis,
+                  size: 14,
+                  color: _isHovered || _overlayEntry != null
+                      ? widget.accentColor
+                      : Colors.white.withOpacity(0.7),
                 ),
               ),
             ),
           ),
         ),
-        if (_showMenu)
-          Positioned(
-            top: 30,
-            right: 0,
-            child: _ContentMenu(
-              tile: widget.tile,
-              accentColor: widget.accentColor,
-              onClose: () => setState(() => _showMenu = false),
-            )
-                .animate()
-                .fadeIn(duration: 150.ms)
-                .slideY(begin: -0.1, end: 0, duration: 150.ms),
-          ),
-      ],
+      ),
     );
   }
 }
@@ -531,39 +565,57 @@ class _ContentMenu extends StatelessWidget {
     final types = MosaicTileType.values.where((t) => t != MosaicTileType.custom).toList();
 
     return Container(
-      width: 180,
-      constraints: const BoxConstraints(maxHeight: 300),
+      width: 200,
+      constraints: const BoxConstraints(maxHeight: 400),
       decoration: BoxDecoration(
         color: const Color(0xFF18181E),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: accentColor.withOpacity(0.4)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.5),
-            blurRadius: 15,
-            spreadRadius: 2,
+            color: Colors.black.withOpacity(0.6),
+            blurRadius: 20,
+            spreadRadius: 4,
           ),
         ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(10),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(vertical: 4),
+          padding: const EdgeInsets.symmetric(vertical: 6),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            children: types.map((type) {
-              final isSelected = tile.type == type;
-              return _ContentMenuItem(
-                type: type,
-                isSelected: isSelected,
-                accentColor: accentColor,
-                onTap: () {
-                  context.read<NotilusMosaicService>().setTileContent(tile.id, type);
-                  onClose();
-                  HapticFeedback.selectionClick();
-                },
-              );
-            }).toList(),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+                child: Text(
+                  'Changer le contenu',
+                  style: TextStyle(
+                    color: accentColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Container(height: 1, color: Colors.white.withOpacity(0.1)),
+              const SizedBox(height: 4),
+              // Types
+              ...types.map((type) {
+                final isSelected = tile.type == type;
+                return _ContentMenuItem(
+                  type: type,
+                  isSelected: isSelected,
+                  accentColor: accentColor,
+                  onTap: () {
+                    context.read<NotilusMosaicService>().setTileContent(tile.id, type);
+                    onClose();
+                    HapticFeedback.selectionClick();
+                  },
+                );
+              }),
+            ],
           ),
         ),
       ),
