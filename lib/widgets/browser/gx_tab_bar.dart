@@ -6,7 +6,6 @@ import 'package:window_manager/window_manager.dart';
 import '../../core/constants/notilus_colors.dart';
 import '../../services/tab_manager.dart';
 import '../../services/tab_webview_manager.dart';
-import '../../services/split_screen_service.dart';
 import '../../services/quick_access_service.dart';
 import 'package:flutter/services.dart';
 import '../../services/bookmark_service.dart';
@@ -256,45 +255,6 @@ class GXTabBar extends StatelessWidget {
                 icon: CupertinoIcons.search,
                 tooltip: 'Rechercher un onglet',
                 onPressed: () => _openTabSearch(context),
-              ),
-              Builder(
-                builder: (context) {
-                  final splitService = context.watch<SplitScreenService>();
-                  final tabManager = context.watch<TabManager>();
-                  
-                  if (splitService.isActive && !splitService.isVisible) {
-                    // Bouton pour réafficher le split
-                    return _GXTabBarIconButton(
-                      icon: CupertinoIcons.eye,
-                      tooltip: 'Afficher le split-screen',
-                      onPressed: () {
-                        splitService.setVisible(true);
-                        HapticFeedback.lightImpact();
-                      },
-                    );
-                  }
-                  
-                  return _GXTabBarIconButton(
-                    icon: splitService.isActive
-                        ? CupertinoIcons.eye_slash // Icône différente quand actif pour indiquer qu'on peut masquer
-                        : CupertinoIcons.square_split_2x1,
-                    tooltip: splitService.isActive
-                        ? 'Masquer le split-screen et revenir aux onglets'
-                        : 'Activer le split-screen',
-                    onPressed: () {
-                      if (splitService.isActive) {
-                        // Masquer le split pour revenir aux tabsviews
-                        splitService.setVisible(false);
-                        HapticFeedback.lightImpact();
-                      } else {
-                        // Activer le split
-                        final activeTabId = tabManager.activeTab?.id;
-                        splitService.toggle(activeTabId: activeTabId);
-                        HapticFeedback.mediumImpact();
-                      }
-                    },
-                  );
-                },
               ),
               _GXTabBarIconButton(
                 icon: CupertinoIcons.square_grid_2x2,
