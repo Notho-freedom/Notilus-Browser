@@ -15,12 +15,10 @@ import 'modern_bookmarks_panel.dart';
 import 'modern_downloads_panel.dart';
 import 'modern_settings_panel.dart';
 import 'webview_service_panel.dart';
-import '../../core/constants/notilus_colors.dart';
 import '../../core/services/wallpaper_manager.dart';
 import '../../core/services/color_theme_manager.dart';
 import '../../services/split_screen_service.dart';
 import '../../widgets/splitscreen/advanced_split_view.dart';
-import '../../widgets/terminal/terminal_panel.dart';
 import '../../widgets/terminal/native_terminal_panel.dart';
 import '../../widgets/dev_tools/notilus_devtools_panel.dart';
 
@@ -127,6 +125,7 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
 
   @override
   Widget build(BuildContext context) {
+    final gxRed = Provider.of<ColorThemeManager>(context, listen: true).nativeSecondaryColor;
     return Shortcuts(
       shortcuts: {
         LogicalKeySet(LogicalKeyboardKey.f12): _OpenDevToolsIntent(),
@@ -146,11 +145,11 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
-              gradient: const LinearGradient(
+              gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  NotilusColors.neonRed,
+                  gxRed,
                   Colors.transparent,
                 ],
               ),
@@ -161,7 +160,7 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
           borderRadius: BorderRadius.circular(12),
           color: const Color(0xFF0B0B0E),
           border: Border.all(
-            color: Colors.white.withOpacity(0.02),
+            color: Colors.white.withValues(alpha: 0.02),
             width: 0.6,
           ),
         ),
@@ -283,12 +282,12 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                               child: Container(
                                 width: 4,
                                 color: _isResizing
-                                    ? const Color(0xFFFF2D55).withOpacity(0.8)
+                                    ? gxRed.withValues(alpha: 0.8)
                                     : Colors.transparent,
                                 child: Container(
                                   margin: const EdgeInsets.symmetric(vertical: 8),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFFF2D55).withOpacity(0.3),
+                                    color: gxRed.withValues(alpha: 0.3),
                                     borderRadius: BorderRadius.circular(2),
                                   ),
                                 ),
@@ -315,13 +314,14 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
     final config = _panelConfigForSection();
     if (config == null) return const SizedBox.shrink();
     final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: true);
+    final gxRed = colorThemeManager.nativeSecondaryColor;
 
     return Container(
       decoration: BoxDecoration(
         color: colorThemeManager.nativeBackgroundColor,
         border: Border(
           right: BorderSide(
-            color: NotilusColors.neonRed.withOpacity(0.3),
+            color: gxRed.withValues(alpha: 0.3),
             width: 1,
           ),
         ),
@@ -336,14 +336,14 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
               color: colorThemeManager.nativeBackgroundColor,
               border: Border(
                 bottom: BorderSide(
-                  color: NotilusColors.neonRed.withOpacity(0.2),
+                  color: gxRed.withValues(alpha: 0.2),
                   width: 1,
                 ),
               ),
             ),
             child: Row(
               children: [
-                Icon(config.icon, color: NotilusColors.neonRed, size: 18),
+                Icon(config.icon, color: gxRed, size: 18),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -361,7 +361,7 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                     padding: const EdgeInsets.all(4),
                     child: Icon(
                       CupertinoIcons.xmark,
-                      color: Colors.white.withOpacity(0.7),
+                      color: Colors.white.withValues(alpha: 0.7),
                       size: 16,
                     ),
                   ),
@@ -372,7 +372,7 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
           // Contenu du menu
           Expanded(
             child: Container(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               child: config.child,
             ),
           ),
@@ -534,13 +534,13 @@ class _NotilusWidgetsPanel extends StatelessWidget {
           image: NetworkImage(context.watch<WallpaperManager>().current),
           fit: BoxFit.cover,
           colorFilter: ColorFilter.mode(
-            Colors.black.withOpacity(0.85),
+            Colors.black.withValues(alpha: 0.85),
             BlendMode.srcOver,
           ),
         ),
       ),
       child: Container(
-        color: Colors.black.withOpacity(0.5),
+        color: Colors.black.withValues(alpha: 0.5),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -567,45 +567,50 @@ class _NotilusWidgetsPanel extends StatelessWidget {
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(12),
-                      color: Colors.white.withOpacity(0.05),
-                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                      color: Colors.white.withValues(alpha: 0.05),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
                     ),
-                    child: Row(
-                      children: [
-                        Icon(widget.icon, color: NotilusColors.neonRed, size: 18),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                widget.title,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                    child: Builder(
+                      builder: (context) {
+                        final gxRed = Provider.of<ColorThemeManager>(context, listen: true).nativeSecondaryColor;
+                        return Row(
+                          children: [
+                            Icon(widget.icon, color: gxRed, size: 18),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    widget.title,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    widget.subtitle,
+                                    style: TextStyle(
+                                      color: Colors.white.withValues(alpha: 0.5),
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: 2),
-                              Text(
-                                widget.subtitle,
-                                style: TextStyle(
-                                  color: Colors.white.withOpacity(0.5),
-                                  fontSize: 10,
-                                ),
+                            ),
+                            Text(
+                              widget.value,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
                               ),
-                            ],
-                          ),
-                        ),
-                        Text(
-                          widget.value,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   );
                 },
@@ -648,13 +653,13 @@ class _NotilusAiPanel extends StatelessWidget {
           image: NetworkImage(context.watch<WallpaperManager>().current),
           fit: BoxFit.cover,
           colorFilter: ColorFilter.mode(
-            Colors.black.withOpacity(0.85),
+            Colors.black.withValues(alpha: 0.85),
             BlendMode.srcOver,
           ),
         ),
       ),
       child: Container(
-        color: Colors.black.withOpacity(0.5),
+        color: Colors.black.withValues(alpha: 0.5),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -674,60 +679,66 @@ class _NotilusAiPanel extends StatelessWidget {
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                 children: [
-                  _AiToggleTile(
+                  const _AiToggleTile(
                     title: 'Assistant contextuel',
                     subtitle: 'Analyse la page et propose des actions rapides',
                     value: true,
                   ),
                   const SizedBox(height: 8),
-                  _AiToggleTile(
+                  const _AiToggleTile(
                     title: 'Résumé instantané',
                     subtitle: 'Synthétise les articles longs en un clic',
                     value: false,
                   ),
                   const SizedBox(height: 8),
-                  _AiToggleTile(
+                  const _AiToggleTile(
                     title: 'Protection intelligente',
                     subtitle: 'Bloque les scripts suspects en arrière plan',
                     value: true,
                   ),
                   const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      gradient: LinearGradient(
-                        colors: [
-                          NotilusColors.neonRed.withOpacity(0.15),
-                          NotilusColors.neonRedDark.withOpacity(0.15),
-                        ],
-                      ),
-                      border: Border.all(
-                        color: NotilusColors.neonRed.withOpacity(0.3),
-                        width: 1,
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Hyper prompts',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
+                  Builder(
+                    builder: (context) {
+                      final gxRed = Provider.of<ColorThemeManager>(context, listen: true).nativeSecondaryColor;
+                      final gxRedDark = Provider.of<ColorThemeManager>(context, listen: true).primaryDarkColor;
+                      return Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          gradient: LinearGradient(
+                            colors: [
+                              gxRed.withValues(alpha: 0.15),
+                              gxRedDark.withValues(alpha: 0.15),
+                            ],
+                          ),
+                          border: Border.all(
+                            color: gxRed.withValues(alpha: 0.3),
+                            width: 1,
                           ),
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Glissez-déposez une URL ou un texte ici pour générer des commandes Notilus.',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 10,
-                          ),
+                        child: const Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Hyper prompts',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            SizedBox(height: 6),
+                            Text(
+                              'Glissez-déposez une URL ou un texte ici pour générer des commandes Notilus.',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -756,8 +767,8 @@ class _AiToggleTile extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        color: Colors.white.withOpacity(0.05),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        color: Colors.white.withValues(alpha: 0.05),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
       child: Row(
         children: [
@@ -767,7 +778,7 @@ class _AiToggleTile extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -776,7 +787,7 @@ class _AiToggleTile extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   subtitle,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Colors.white60,
                     fontSize: 10,
                   ),
@@ -784,10 +795,16 @@ class _AiToggleTile extends StatelessWidget {
               ],
             ),
           ),
-          Switch(
-            value: value,
-            onChanged: (_) {},
-            activeColor: NotilusColors.neonRed,
+          Builder(
+            builder: (context) {
+              final gxRed = Provider.of<ColorThemeManager>(context, listen: true).nativeSecondaryColor;
+              return Switch(
+                value: value,
+                onChanged: (_) {},
+                activeTrackColor: gxRed.withValues(alpha: 0.5),
+                activeThumbColor: gxRed,
+              );
+            },
           ),
         ],
       ),
@@ -807,13 +824,13 @@ class _NotilusUpdatesPanel extends StatelessWidget {
           image: NetworkImage(context.watch<WallpaperManager>().current),
           fit: BoxFit.cover,
           colorFilter: ColorFilter.mode(
-            Colors.black.withOpacity(0.85),
+            Colors.black.withValues(alpha: 0.85),
             BlendMode.srcOver,
           ),
         ),
       ),
       child: Container(
-        color: Colors.black.withOpacity(0.5),
+        color: Colors.black.withValues(alpha: 0.5),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -832,21 +849,21 @@ class _NotilusUpdatesPanel extends StatelessWidget {
                 shrinkWrap: true,
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                children: [
+                children: const [
                   _UpdateCard(
                     title: 'Nouvelle intégration: Speed Dial',
                     description: 'Ajout de la section Speed Dial avec grilles personnalisables',
                     date: 'Aujourd\'hui',
                     isNew: true,
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   _UpdateCard(
                     title: 'Amélioration: Sidemenus',
                     description: 'Nouveaux menus latéraux avec animations fluides',
                     date: 'Hier',
                     isNew: false,
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   _UpdateCard(
                     title: 'Optimisation: Performance',
                     description: 'Réduction de la consommation mémoire de 15%',
@@ -878,15 +895,16 @@ class _UpdateCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final gxRed = Provider.of<ColorThemeManager>(context, listen: true).nativeSecondaryColor;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withValues(alpha: 0.05),
         border: Border.all(
           color: isNew
-              ? NotilusColors.neonRed.withOpacity(0.4)
-              : Colors.white.withOpacity(0.1),
+              ? gxRed.withValues(alpha: 0.4)
+              : Colors.white.withValues(alpha: 0.1),
           width: 1,
         ),
       ),
@@ -896,26 +914,31 @@ class _UpdateCard extends StatelessWidget {
           Row(
             children: [
               if (isNew)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: NotilusColors.neonRed.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    'NOUVEAU',
-                    style: TextStyle(
-                      color: NotilusColors.neonRed,
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+                Builder(
+                  builder: (context) {
+                    final gxRed = Provider.of<ColorThemeManager>(context, listen: true).nativeSecondaryColor;
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: gxRed.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        'NOUVEAU',
+                        style: TextStyle(
+                          color: gxRed,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    );
+                  },
                 ),
               if (isNew) const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   title,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -927,7 +950,7 @@ class _UpdateCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             description,
-            style: TextStyle(
+            style: const TextStyle(
               color: Colors.white60,
               fontSize: 10,
             ),
@@ -936,7 +959,7 @@ class _UpdateCard extends StatelessWidget {
           Text(
             date,
             style: TextStyle(
-              color: Colors.white.withOpacity(0.4),
+              color: Colors.white.withValues(alpha: 0.4),
               fontSize: 9,
             ),
           ),

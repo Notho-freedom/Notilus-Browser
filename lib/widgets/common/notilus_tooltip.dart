@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../core/constants/notilus_colors.dart';
+import '../../core/services/color_theme_manager.dart';
 
 /// Tooltip personnalisé pour refléter l'identité visuelle de Notilus.
 class NotilusTooltip extends StatelessWidget {
@@ -16,6 +18,9 @@ class NotilusTooltip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: true);
+    final gxRed = colorThemeManager.nativeSecondaryColor;
+    
     return Tooltip(
       message: message,
       textStyle: const TextStyle(
@@ -27,12 +32,12 @@ class NotilusTooltip extends StatelessWidget {
         color: NotilusColors.tooltipBackground,
         borderRadius: BorderRadius.circular(9),
         border: Border.all(
-          color: NotilusColors.neonRed.withOpacity(0.6),
+          color: gxRed.withValues(alpha: 0.6),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: NotilusColors.neonRed.withOpacity(0.2),
+            color: gxRed.withValues(alpha: 0.2),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),

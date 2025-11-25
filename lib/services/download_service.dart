@@ -1,8 +1,10 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/download_model.dart';
 
@@ -248,14 +250,69 @@ class DownloadService extends ChangeNotifier {
         .replaceAll(RegExp(r'\s+'), '_');
   }
 
+  /// Clé de stockage pour SharedPreferences
+  static const String _storageKey = 'notilus_downloads';
+
   /// Charge les téléchargements depuis le stockage
   Future<void> _loadDownloads() async {
-    // TODO: Implémenter le chargement depuis SharedPreferences si nécessaire
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final downloadsJson = prefs.getString(_storageKey);
+      
+      if (downloadsJson != null && downloadsJson.isNotEmpty) {
+        final List<dynamic> decoded = jsonDecode(downloadsJson);
+        final loadedDownloads = decoded
+            .map((json) => DownloadModel.fromJson(json as Map<String, dynamic>))
+            .where((d) => 
+                // Ne pas charger les téléchargements en cours (ils ne peuvent pas être repris)
+                d.status == DownloadStatus.completed ||
+                d.status == DownloadStatus.failed ||
+                d.status == DownloadStatus.cancelled)
+            .toList();
+        
+        _downloads.clear();
+        _downloads.addAll(loadedDownloads);
+        notifyListeners();
+        
+        debugPrint('📥 ${loadedDownloads.length} téléchargements chargés depuis le stockage');
+      }
+    } catch (e) {
+      debugPrint('Erreur lors du chargement des téléchargements: $e');
+    }
   }
 
   /// Sauvegarde les téléchargements
   Future<void> _saveDownloads() async {
-    // TODO: Implémenter la sauvegarde dans SharedPreferences si nécessaire
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Sauvegarder uniquement les téléchargements terminés, échoués ou annulés
+      // Les téléchargements en cours ne peuvent pas être repris après un redémarrage
+      final downloadsToSave = _downloads
+          .where((d) => 
+              d.status == DownloadStatus.completed ||
+              d.status == DownloadStatus.failed ||
+              d.status == DownloadStatus.cancelled)
+          .map((d) => d.toJson())
+          .toList();
+      
+      final jsonString = jsonEncode(downloadsToSave);
+      await prefs.setString(_storageKey, jsonString);
+      
+      debugPrint('💾 ${downloadsToSave.length} téléchargements sauvegardés');
+    } catch (e) {
+      debugPrint('Erreur lors de la sauvegarde des téléchargements: $e');
+    }
+  }
+
+  /// Efface tous les téléchargements terminés
+  void clearCompletedDownloads() {
+    _downloads.removeWhere((d) => 
+        d.status == DownloadStatus.completed ||
+        d.status == DownloadStatus.failed ||
+        d.status == DownloadStatus.cancelled);
+    notifyListeners();
+    _saveDownloads();
   }
 
   @override
