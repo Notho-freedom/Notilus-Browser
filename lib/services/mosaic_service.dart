@@ -271,11 +271,25 @@ class NotilusMosaicService extends ChangeNotifier {
 
   /// Définir le contenu d'une tile
   void setTileContent(String tileId, MosaicTileType type, {String? tabId, String? serviceId}) {
-    updateTile(tileId, (tile) => tile.copyWith(
-      type: type,
-      tabId: tabId,
-      serviceId: serviceId,
-    ));
+    updateTile(tileId, (tile) {
+      // Effacer tabId si ce n'est pas une tile web
+      final newTabId = type == MosaicTileType.web ? (tabId ?? tile.tabId) : null;
+      // Effacer serviceId si ce n'est pas un service web
+      final newServiceId = type == MosaicTileType.webService ? (serviceId ?? tile.serviceId) : null;
+      
+      return MosaicTile(
+        id: tile.id,
+        type: type,
+        flexFactor: tile.flexFactor,
+        tabId: newTabId,
+        serviceId: newServiceId,
+        metadata: tile.metadata,
+        children: tile.children,
+        splitDirection: tile.splitDirection,
+        isLocked: tile.isLocked,
+        isMinimized: tile.isMinimized,
+      );
+    });
   }
 
   /// Définir l'onglet web d'une tile
