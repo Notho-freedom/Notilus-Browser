@@ -7,6 +7,7 @@ import 'core/services/theme_mode_notifier.dart';
 import 'core/services/wallpaper_manager.dart';
 import 'core/services/color_theme_manager.dart';
 import 'screens/home_screen.dart';
+import 'screens/splash_screen.dart';
 import 'services/tab_manager.dart';
 import 'services/tab_webview_manager.dart';
 import 'services/side_webview_manager.dart';
@@ -61,6 +62,45 @@ void main() async {
   runApp(const NotilusApp());
 }
 
+/// Widget wrapper pour gérer l'affichage de la splash screen
+class _SplashWrapper extends StatefulWidget {
+  const _SplashWrapper();
+
+  @override
+  State<_SplashWrapper> createState() => _SplashWrapperState();
+}
+
+class _SplashWrapperState extends State<_SplashWrapper> {
+  bool _showSplash = true;
+
+  void _onSplashComplete() {
+    setState(() {
+      _showSplash = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 800),
+      switchInCurve: Curves.easeOut,
+      switchOutCurve: Curves.easeIn,
+      transitionBuilder: (child, animation) {
+        return FadeTransition(
+          opacity: animation,
+          child: child,
+        );
+      },
+      child: _showSplash
+          ? NotilusSplashScreen(
+              key: const ValueKey('splash'),
+              onComplete: _onSplashComplete,
+            )
+          : const HomeScreen(key: ValueKey('home')),
+    );
+  }
+}
+
 class NotilusApp extends StatelessWidget {
   const NotilusApp({super.key});
 
@@ -113,7 +153,7 @@ class NotilusApp extends StatelessWidget {
               ),
             ),
             themeMode: themeModeNotifier.mode,
-            home: const HomeScreen(),
+            home: const _SplashWrapper(),
           );
         },
       ),
