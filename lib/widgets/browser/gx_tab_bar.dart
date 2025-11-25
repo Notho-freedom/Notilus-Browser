@@ -19,7 +19,7 @@ import '../common/context_menu.dart';
 
 // La couleur rouge est maintenant gérée par ColorThemeManager
 
-class GXTabBar extends StatelessWidget {
+class GXTabBar extends StatefulWidget {
   final VoidCallback? onMenuTap;
   final bool isSidebarVisible;
 
@@ -28,6 +28,19 @@ class GXTabBar extends StatelessWidget {
     this.onMenuTap,
     this.isSidebarVisible = true,
   });
+
+  @override
+  State<GXTabBar> createState() => _GXTabBarState();
+}
+
+class _GXTabBarState extends State<GXTabBar> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,8 +59,8 @@ class GXTabBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          SizedBox(width: isSidebarVisible ? 10 : 10),
-          if (!isSidebarVisible) ...[
+          SizedBox(width: widget.isSidebarVisible ? 10 : 10),
+          if (!widget.isSidebarVisible) ...[
             const NotilusTooltip(
               message: 'Identité Notilus',
               child: NotilusMonogram(
@@ -58,11 +71,11 @@ class GXTabBar extends StatelessWidget {
             const SizedBox(width: 8),
           ],
           _GXTabBarIconButton(
-            icon: isSidebarVisible
+            icon: widget.isSidebarVisible
                 ? CupertinoIcons.sidebar_left
                 : CupertinoIcons.sidebar_right,
-            tooltip: isSidebarVisible ? 'Masquer la barre latérale' : 'Afficher la barre latérale',
-            onPressed: onMenuTap,
+            tooltip: widget.isSidebarVisible ? 'Masquer la barre latérale' : 'Afficher la barre latérale',
+            onPressed: widget.onMenuTap,
           ),
           const SizedBox(width: 10),
           // Tabs container
@@ -77,9 +90,12 @@ class GXTabBar extends StatelessWidget {
                         .toDouble();
 
                     return Scrollbar(
+                      controller: _scrollController,
                       thickness: 2,
                       radius: const Radius.circular(1),
+                      thumbVisibility: false,
                       child: ListView.builder(
+                        controller: _scrollController,
                         scrollDirection: Axis.horizontal,
                         padding: const EdgeInsets.symmetric(horizontal: 8),
                         itemCount: tabManager.tabs.length + 1,

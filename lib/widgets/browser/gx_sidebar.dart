@@ -174,86 +174,97 @@ class _GXSidebarState extends State<GXSidebar> {
   Widget build(BuildContext context) {
     final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: true);
     final gxRed = colorThemeManager.nativeSecondaryColor;
-    return Container(
-      width: 50,
-      color: colorThemeManager.nativeBackgroundColor,
-      child: Column(
-        children: [
-          const SizedBox(height: 10),
-          const NotilusMonogram(
-            size: 24,
-            showGlow: false,
-            showFrame: true,
-          ),
-          const SizedBox(height: 18),
-          for (int i = 0; i < _destinations.length; i++) ...[
-            NotilusTooltip(
-              message: _destinations[i].label,
-              child: _GXSidebarIcon(
-                icon: _destinations[i].icon,
-                isSelected: _selectedIndex == i,
-                isHovered: _hoveredIndex == i,
-                onTap: () {
-                  setState(() {
-                    _selectedIndex = i;
-                  });
-                  if (_destinations[i].section == SidebarSection.home) {
-                    Provider.of<TabManager>(context, listen: false)
-                        .addTab(url: 'about:newtab');
-                  } else if (_destinations[i].section == SidebarSection.mosaic) {
-                    // Activer/toggle le mode mosaïque
-                    final mosaicService = Provider.of<NotilusMosaicService>(context, listen: false);
-                    final tabManager = Provider.of<TabManager>(context, listen: false);
-                    final activeTabId = tabManager.activeTab?.id;
-                    mosaicService.toggle(activeTabId: activeTabId);
-                    HapticFeedback.mediumImpact();
-                    return; // Ne pas appeler onSectionSelected pour la mosaïque
-                  }
-                  widget.onSectionSelected?.call(_destinations[i].section);
-                },
-                onHover: (hover) => setState(() => _hoveredIndex = hover ? i : -1),
-              ),
-            ),
-            const SizedBox(height: 4),
-          ],
-          const SizedBox(height: 12),
-          Container(
-            width: 40,
-            height: 1,
-            color: gxRed.withValues(alpha: 0.3),
-          ),
-          const SizedBox(height: 12),
-          // Services web - filtrés par les paramètres
-          ...() {
-            final webServices = _getWebServices(gxRed);
-            return [
-              for (int i = 0; i < webServices.length; i++) ...[
-                NotilusTooltip(
-                  message: webServices[i].label,
-                  child: _GXSidebarWebServiceIcon(
-                    icon: webServices[i].icon,
-                    color: webServices[i].color,
-                    isHovered: _hoveredIndex == _destinations.length + i,
-                    onTap: () {
-                      setState(() {
-                        _selectedIndex = -1; // Désélectionner les destinations principales
-                      });
-                      // Utiliser directement la section du service
-                      widget.onSectionSelected?.call(webServices[i].section);
-                    },
-                    onHover: (hover) => setState(() => _hoveredIndex = hover ? _destinations.length + i : -1),
+    final webServices = _getWebServices(gxRed);
+    
+    return RepaintBoundary(
+      child: Container(
+        width: 50,
+        color: colorThemeManager.nativeBackgroundColor,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return Column(
+              children: [
+                const SizedBox(height: 10),
+                const NotilusMonogram(
+                  size: 24,
+                  showGlow: false,
+                  showFrame: true,
+                ),
+                const SizedBox(height: 18),
+                // Zone scrollable pour les icônes
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const ClampingScrollPhysics(),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        for (int i = 0; i < _destinations.length; i++) ...[
+                          NotilusTooltip(
+                            message: _destinations[i].label,
+                            child: _GXSidebarIcon(
+                              icon: _destinations[i].icon,
+                              isSelected: _selectedIndex == i,
+                              isHovered: _hoveredIndex == i,
+                              onTap: () {
+                                setState(() {
+                                  _selectedIndex = i;
+                                });
+                                if (_destinations[i].section == SidebarSection.home) {
+                                  Provider.of<TabManager>(context, listen: false)
+                                      .addTab(url: 'about:newtab');
+                                } else if (_destinations[i].section == SidebarSection.mosaic) {
+                                  final mosaicService = Provider.of<NotilusMosaicService>(context, listen: false);
+                                  final tabManager = Provider.of<TabManager>(context, listen: false);
+                                  final activeTabId = tabManager.activeTab?.id;
+                                  mosaicService.toggle(activeTabId: activeTabId);
+                                  HapticFeedback.mediumImpact();
+                                  return;
+                                }
+                                widget.onSectionSelected?.call(_destinations[i].section);
+                              },
+                              onHover: (hover) => setState(() => _hoveredIndex = hover ? i : -1),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                        ],
+                        const SizedBox(height: 12),
+                        Container(
+                          width: 40,
+                          height: 1,
+                          color: gxRed.withValues(alpha: 0.3),
+                        ),
+                        const SizedBox(height: 12),
+                        // Services web
+                        for (int i = 0; i < webServices.length; i++) ...[
+                          NotilusTooltip(
+                            message: webServices[i].label,
+                            child: _GXSidebarWebServiceIcon(
+                              icon: webServices[i].icon,
+                              color: webServices[i].color,
+                              isHovered: _hoveredIndex == _destinations.length + i,
+                              onTap: () {
+                                setState(() {
+                                  _selectedIndex = -1;
+                                });
+                                widget.onSectionSelected?.call(webServices[i].section);
+                              },
+                              onHover: (hover) => setState(() => _hoveredIndex = hover ? _destinations.length + i : -1),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                        ],
+                        const SizedBox(height: 20),
+                        const _SidebarSignature(),
+                      ],
+                    ),
                   ),
                 ),
-                const SizedBox(height: 4),
+                const _SidebarVerticalLabel(),
+                const SizedBox(height: 10),
               ],
-            ];
-          }(),
-          const SizedBox(height: 20),
-          const _SidebarSignature(),
-          const Spacer(),
-          const _SidebarVerticalLabel(),
-          const SizedBox(height: 10),
-        ],
+            );
+          },
+        ),
       ),
     );
   }

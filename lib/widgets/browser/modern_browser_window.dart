@@ -215,57 +215,68 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                     ),
                     const GXAddressBar(),
                     Expanded(
-                      child: Consumer2<NotilusMosaicService, TabManager>(
-                        builder: (context, mosaicService, tabManager, _) {
-                          // Priorité 1: Mosaïque si active
-                          if (mosaicService.isMosaicActive) {
-                            return const MosaicContainer();
-                          }
-                          
-                          // Priorité 2: Contenu normal
-                          final activeTab = tabManager.activeTab;
-                          if (activeTab == null) {
-                            return ModernHomePage(
-                              onTerminalSelected: () {
-                                setState(() {
-                                  _currentSection = SidebarSection.terminal;
-                                });
-                              },
-                            );
-                          }
-                          
-                          // Onglets web uniquement (terminal géré via sidebar)
-                          if (activeTab.url == null ||
-                              activeTab.url!.isEmpty ||
-                              activeTab.url == 'about:blank' ||
-                              activeTab.url == 'about:newtab') {
-                            return ModernHomePage(
-                              onTerminalSelected: () {
-                                setState(() {
-                                  _currentSection = SidebarSection.terminal;
-                                });
-                              },
-                            );
-                          }
-                          return WebContentView(tab: activeTab);
-                        },
+                      child: RepaintBoundary(
+                        child: Selector2<NotilusMosaicService, TabManager, ({bool isMosaicActive, String? activeTabId, String? activeTabUrl})>(
+                          selector: (_, mosaic, tabs) => (
+                            isMosaicActive: mosaic.isMosaicActive,
+                            activeTabId: tabs.activeTab?.id,
+                            activeTabUrl: tabs.activeTab?.url,
+                          ),
+                          builder: (context, data, _) {
+                            // Priorité 1: Mosaïque si active
+                            if (data.isMosaicActive) {
+                              return const MosaicContainer();
+                            }
+                            
+                            // Priorité 2: Contenu normal
+                            final tabManager = context.read<TabManager>();
+                            final activeTab = tabManager.activeTab;
+                            if (activeTab == null) {
+                              return ModernHomePage(
+                                onTerminalSelected: () {
+                                  setState(() {
+                                    _currentSection = SidebarSection.terminal;
+                                  });
+                                },
+                              );
+                            }
+                            
+                            // Onglets web uniquement (terminal géré via sidebar)
+                            if (activeTab.url == null ||
+                                activeTab.url!.isEmpty ||
+                                activeTab.url == 'about:blank' ||
+                                activeTab.url == 'about:newtab') {
+                              return ModernHomePage(
+                                onTerminalSelected: () {
+                                  setState(() {
+                                    _currentSection = SidebarSection.terminal;
+                                  });
+                                },
+                              );
+                            }
+                            return WebContentView(tab: activeTab);
+                          },
+                        ),
                       ),
                     ),
-                    // DevTools Panel en bas
+                    // DevTools Panel en bas - optimisé avec RepaintBoundary
                     if (_isDevToolsOpen)
-                      Consumer<TabWebViewManager>(
-                        builder: (context, tabWebViewManager, _) {
-                          final tabManager = context.read<TabManager>();
-                          final activeTab = tabManager.activeTab;
-                          final engine = activeTab != null 
-                              ? tabWebViewManager.getEngineForTab(activeTab.id)
-                              : null;
-                          return NotilusDevTools(
-                            engine: engine,
-                            onClose: _closeDevTools,
-                            initialHeight: 300,
-                          );
-                        },
+                      RepaintBoundary(
+                        child: Builder(
+                          builder: (context) {
+                            final tabWebViewManager = context.read<TabWebViewManager>();
+                            final tabManager = context.read<TabManager>();
+                            final activeTab = tabManager.activeTab;
+                            final engine = activeTab != null 
+                                ? tabWebViewManager.getEngineForTab(activeTab.id)
+                                : null;
+                            return NotilusDevTools(
+                              engine: engine,
+                              onClose: _closeDevTools,
+                              initialHeight: 300,
+                            );
+                          },
+                        ),
                       ),
                   ],
                 ),
