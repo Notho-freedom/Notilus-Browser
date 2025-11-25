@@ -188,14 +188,13 @@ class _DevToolsPanelState extends State<DevToolsPanel> {
                     hintStyle: TextStyle(
                       color: context.textSecondaryColor,
                     ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(4),
-                      borderSide: BorderSide(
-                        color: context.borderColor,
-                      ),
-                    ),
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
                     isDense: true,
                     contentPadding: const EdgeInsets.all(8),
+                    fillColor: Colors.transparent,
+                    filled: true,
                   ),
                 ),
               ),

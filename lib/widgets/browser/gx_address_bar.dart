@@ -13,7 +13,7 @@ import '../../models/tab_model.dart';
 import '../common/notilus_tooltip.dart';
 
 const Color _gxRed = NotilusColors.neonRed;
-const Color _chromeColor = NotilusColors.chrome;
+const Color _chromeColor = NotilusColors.nativeBackground;
 
 class GXAddressBar extends StatefulWidget {
   const GXAddressBar({super.key});
@@ -177,8 +177,8 @@ class _GXAddressBarState extends State<GXAddressBar> {
                       begin: Alignment.centerLeft,
                       end: Alignment.centerRight,
                       colors: [
-                        const Color(0xFFFF2D55).withOpacity(0.9),
-                        const Color(0x00FF2D55),
+                        NotilusColors.neonRed.withValues(alpha: 0.9),
+                        NotilusColors.neonRed.withValues(alpha: 0.0),
                       ],
                     ),
                   ),
@@ -226,6 +226,8 @@ class _GXAddressBarState extends State<GXAddressBar> {
                               enabledBorder: InputBorder.none,
                               isDense: true,
                               contentPadding: const EdgeInsets.symmetric(vertical: 6),
+                              fillColor: Colors.transparent,
+                              filled: true,
                             ),
                             onSubmitted: _navigateToUrl,
                           ),

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../models/tab_model.dart';
 import '../core/utils/url_validator.dart';
+import '../core/constants/notilus_colors.dart';
 
 class TabGroupingService {
   /// Groupe automatiquement les onglets selon différents critères
@@ -76,7 +77,7 @@ class TabGroupingService {
   static Color _generateColorForDomain(String domain) {
     final hash = domain.hashCode.abs();
     final colors = [
-      const Color(0xFFFF2D55), // Red
+      NotilusColors.neonRed, // Red
       const Color(0xFF5856D6), // Purple
       const Color(0xFF00C7BE), // Teal
       const Color(0xFFFF9500), // Orange

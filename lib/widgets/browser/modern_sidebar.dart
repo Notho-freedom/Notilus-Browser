@@ -68,7 +68,7 @@ class _ModernSidebarState extends State<ModernSidebar> {
         color: const Color(0xFF0B0B0E),
         border: Border(
           right: BorderSide(
-            color: const Color(0xFFFF2D55).withOpacity(0.3),
+            color: const NotilusColors.neonRed.withOpacity(0.3),
             width: 1,
           ),
         ),
@@ -83,14 +83,14 @@ class _ModernSidebarState extends State<ModernSidebar> {
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 colors: [
-                  Color(0xFFFF2D55),
+                  NotilusColors.neonRed,
                   Color(0xFF5856D6),
                 ],
               ),
               borderRadius: BorderRadius.circular(8),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFFFF2D55).withOpacity(0.6),
+                  color: const NotilusColors.neonRed.withOpacity(0.6),
                   blurRadius: 10,
                   offset: const Offset(0, 2),
                 ),
@@ -205,14 +205,14 @@ class _SidebarIconButtonState extends State<_SidebarIconButton> {
                   child: Container(
                     width: 3,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFF2D55),
+                      color: const NotilusColors.neonRed,
                       borderRadius: const BorderRadius.only(
                         topRight: Radius.circular(2),
                         bottomRight: Radius.circular(2),
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFFFF2D55).withOpacity(0.6),
+                          color: const NotilusColors.neonRed.withOpacity(0.6),
                           blurRadius: 6,
                           spreadRadius: 1,
                         ),
@@ -233,7 +233,7 @@ class _SidebarIconButtonState extends State<_SidebarIconButton> {
                     widget.icon,
                     size: 18,
                     color: widget.selected
-                        ? const Color(0xFFFF2D55)
+                        ? const NotilusColors.neonRed
                         : (_hovered
                             ? Colors.white.withOpacity(0.9)
                             : Colors.white.withOpacity(0.5)),

@@ -117,8 +117,8 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Color(0xFFFF2D55),
-                  Color(0x00FF2D55),
+                  NotilusColors.neonRed,
+                  Colors.transparent,
                 ],
               ),
             ),
@@ -279,7 +279,7 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
 
     return Container(
       decoration: BoxDecoration(
-        color: NotilusColors.chrome,
+        color: NotilusColors.nativeBackground,
         border: Border(
           right: BorderSide(
             color: NotilusColors.neonRed.withOpacity(0.3),
@@ -294,7 +294,7 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
             height: 36,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
-              color: NotilusColors.chrome,
+              color: NotilusColors.nativeBackground,
               border: Border(
                 bottom: BorderSide(
                   color: NotilusColors.neonRed.withOpacity(0.2),

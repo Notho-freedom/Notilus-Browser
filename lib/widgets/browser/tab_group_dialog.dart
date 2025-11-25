@@ -103,18 +103,11 @@ class _TabGroupDialogState extends State<TabGroupDialog> {
               decoration: InputDecoration(
                 labelText: 'Nom du groupe',
                 labelStyle: TextStyle(color: theme.textSecondary),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: theme.border),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: theme.border),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: theme.primary, width: 2),
-                ),
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                fillColor: Colors.transparent,
+                filled: true,
               ),
             ),
             

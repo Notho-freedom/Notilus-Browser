@@ -5,6 +5,7 @@ import 'package:window_manager/window_manager.dart';
 import 'core/theme/modern_theme.dart';
 import 'core/services/theme_mode_notifier.dart';
 import 'core/services/wallpaper_manager.dart';
+import 'core/services/color_theme_manager.dart';
 import 'screens/home_screen.dart';
 import 'services/tab_manager.dart';
 import 'services/tab_webview_manager.dart';
@@ -62,6 +63,7 @@ class NotilusApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeModeNotifier()),
+        ChangeNotifierProvider(create: (_) => ColorThemeManager()),
         ChangeNotifierProvider(create: (_) => WallpaperManager()),
         ChangeNotifierProvider(create: (_) => TabManager()),
         ChangeNotifierProvider(create: (_) => TabWebViewManager()),

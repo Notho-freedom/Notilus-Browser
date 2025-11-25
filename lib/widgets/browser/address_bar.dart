@@ -295,6 +295,10 @@ class AddressBarState extends State<AddressBar> {
                             color: Color(0xFF666666),
                           ),
                           border: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          fillColor: Colors.transparent,
+                          filled: true,
                           isDense: true,
                           contentPadding: EdgeInsets.symmetric(vertical: 12),
                           prefixIcon: activeTab?.favicon != null

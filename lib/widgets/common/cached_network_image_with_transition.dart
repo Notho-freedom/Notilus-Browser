@@ -28,7 +28,7 @@ class CachedNetworkImageWithTransition extends StatelessWidget {
         child: const Center(
           child: CircularProgressIndicator(
             strokeWidth: 2,
-            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFF2D55)),
+            valueColor: AlwaysStoppedAnimation<Color>(NotilusColors.neonRed),
           ),
         ),
       ),

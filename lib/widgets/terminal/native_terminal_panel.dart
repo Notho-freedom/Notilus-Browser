@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../services/native_terminal_service.dart';
 import '../../core/services/wallpaper_manager.dart';
 import '../../core/constants/notilus_colors.dart';
+import '../../core/constants/notilus_fonts.dart';
 
 /// Panneau terminal natif avec UI Flutter custom (sans xterm)
 /// Design totalement immersif Notilus
@@ -140,43 +141,46 @@ class _NativeTerminalPanelState extends State<NativeTerminalPanel> {
 
   /// Détecte le type de ligne pour la coloration
   _LineType _detectLineType(String line) {
-    // Erreurs
-    if (line.contains(RegExp(r'^(error|Error|ERROR|❌|Exception|Failed|Failure)', caseSensitive: false))) {
+    final lower = line.toLowerCase();
+    
+    // Erreurs (plus permissif)
+    if (lower.contains(RegExp(r'\b(error|exception|failed|failure|❌|erreur|échec)\b'))) {
       return _LineType.error;
     }
     
     // Succès
-    if (line.contains(RegExp(r'^(success|Success|SUCCESS|✅|Completed|Done|OK)', caseSensitive: false))) {
+    if (lower.contains(RegExp(r'\b(success|completed|done|ok|✅|succès|terminé)\b'))) {
       return _LineType.success;
     }
     
     // Avertissements
-    if (line.contains(RegExp(r'^(warning|Warning|WARNING|⚠|WARN)', caseSensitive: false))) {
+    if (lower.contains(RegExp(r'\b(warning|warn|⚠|avertissement)\b'))) {
       return _LineType.warning;
     }
     
-    // Commandes PowerShell
-    if (line.startsWith('PS> ') || line.startsWith('PS ') || line.startsWith('> ')) {
+    // Commandes PowerShell (détection améliorée)
+    if (line.startsWith('PS> ') || line.startsWith('PS ') || line.startsWith('> ') || 
+        line.startsWith('PS C:') || line.startsWith('PS D:')) {
       return _LineType.command;
     }
     
     // Informations
-    if (line.contains(RegExp(r'^(info|Info|INFO|ℹ|Information)', caseSensitive: false))) {
+    if (lower.contains(RegExp(r'\b(info|information|ℹ)\b'))) {
       return _LineType.info;
     }
     
-    // Chemins de fichiers
-    if (line.contains(RegExp(r'^[A-Z]:\\.*|^/.*|^~/'))) {
+    // Chemins de fichiers (plus permissif)
+    if (line.contains(RegExp(r'[A-Z]:\\[^\s]+|/[^\s]+|~/[^\s]+'))) {
       return _LineType.path;
     }
     
     // URLs
-    if (line.contains(RegExp(r'https?://|www\.'))) {
+    if (line.contains(RegExp(r'https?://[^\s]+|www\.[^\s]+'))) {
       return _LineType.url;
     }
     
-    // Nombres
-    if (line.contains(RegExp(r'^\d+\.?\d*[KMGT]?[B]?$'))) {
+    // Nombres (plus permissif)
+    if (line.contains(RegExp(r'\b\d+\.?\d*[KMGT]?[B]?\b'))) {
       return _LineType.number;
     }
     
@@ -187,8 +191,9 @@ class _NativeTerminalPanelState extends State<NativeTerminalPanel> {
   List<_ColoredSegment> _parseLineSegments(String line, _LineType baseType) {
     final segments = <_ColoredSegment>[];
     
+    // Toujours parser avec coloration syntaxique, même pour les réponses
     // Coloration PowerShell spécifique
-    if (baseType == _LineType.command) {
+    if (baseType == _LineType.command || line.startsWith('PS> ') || line.startsWith('PS ')) {
       // Détecter les commandes PowerShell
       final cmdMatch = RegExp(r'^(\w+(-\w+)*)').firstMatch(line);
       if (cmdMatch != null) {
@@ -205,80 +210,107 @@ class _NativeTerminalPanelState extends State<NativeTerminalPanel> {
       }
     }
     
-    // Coloration des chemins
-    if (baseType == _LineType.path) {
-      final pathMatch = RegExp(r'([A-Z]:\\.*|/.*|~/.+)').firstMatch(line);
-      if (pathMatch != null) {
-        final before = line.substring(0, pathMatch.start);
-        final path = pathMatch.group(0)!;
-        final after = line.substring(pathMatch.end);
-        
+    // Coloration multi-éléments : chemins, URLs, nombres dans la même ligne
+    int lastIndex = 0;
+    final allMatches = <_MatchInfo>[];
+    
+    // Chemins
+    final pathMatches = RegExp(r'[A-Z]:\\[^\s]+|/[^\s]+|~/[^\s]+').allMatches(line);
+    for (var match in pathMatches) {
+      allMatches.add(_MatchInfo(
+        start: match.start,
+        end: match.end,
+        text: match.group(0)!,
+        type: _SegmentType.path,
+      ));
+    }
+    
+    // URLs
+    final urlMatches = RegExp(r'https?://[^\s]+|www\.[^\s]+').allMatches(line);
+    for (var match in urlMatches) {
+      allMatches.add(_MatchInfo(
+        start: match.start,
+        end: match.end,
+        text: match.group(0)!,
+        type: _SegmentType.url,
+      ));
+    }
+    
+    // Nombres
+    final numberMatches = RegExp(r'\b\d+\.?\d*[KMGT]?[B]?\b').allMatches(line);
+    for (var match in numberMatches) {
+      allMatches.add(_MatchInfo(
+        start: match.start,
+        end: match.end,
+        text: match.group(0)!,
+        type: _SegmentType.number,
+      ));
+    }
+    
+    // Trier par position
+    allMatches.sort((a, b) => a.start.compareTo(b.start));
+    
+    // Construire les segments
+    for (var match in allMatches) {
+      // Texte avant le match
+      if (match.start > lastIndex) {
+        final before = line.substring(lastIndex, match.start);
         if (before.isNotEmpty) {
-          segments.add(_ColoredSegment(text: before, color: Colors.white70));
+          segments.add(_ColoredSegment(
+            text: before,
+            color: _getColorForType(baseType),
+          ));
         }
+      }
+      
+      // Le match coloré
+      Color matchColor;
+      FontWeight? matchWeight;
+      TextDecoration? matchDecoration;
+      
+      switch (match.type) {
+        case _SegmentType.path:
+          matchColor = const Color(0xFF00D4FF);
+          matchWeight = FontWeight.w500;
+          break;
+        case _SegmentType.url:
+          matchColor = const Color(0xFF00FF88);
+          matchDecoration = TextDecoration.underline;
+          break;
+        case _SegmentType.number:
+          matchColor = const Color(0xFFFFD700);
+          matchWeight = FontWeight.w600;
+          break;
+      }
+      
+      segments.add(_ColoredSegment(
+        text: match.text,
+        color: matchColor,
+        fontWeight: matchWeight,
+        decoration: matchDecoration,
+      ));
+      
+      lastIndex = match.end;
+    }
+    
+    // Texte après le dernier match
+    if (lastIndex < line.length) {
+      final after = line.substring(lastIndex);
+      if (after.isNotEmpty) {
         segments.add(_ColoredSegment(
-          text: path,
-          color: const Color(0xFF00D4FF),
-          fontWeight: FontWeight.w500,
+          text: after,
+          color: _getColorForType(baseType),
         ));
-        if (after.isNotEmpty) {
-          segments.add(_ColoredSegment(text: after, color: Colors.white70));
-        }
-        return segments;
       }
     }
     
-    // Coloration des URLs
-    if (baseType == _LineType.url) {
-      final urlMatch = RegExp(r'(https?://[^\s]+|www\.[^\s]+)').firstMatch(line);
-      if (urlMatch != null) {
-        final before = line.substring(0, urlMatch.start);
-        final url = urlMatch.group(0)!;
-        final after = line.substring(urlMatch.end);
-        
-        if (before.isNotEmpty) {
-          segments.add(_ColoredSegment(text: before, color: Colors.white70));
-        }
-        segments.add(_ColoredSegment(
-          text: url,
-          color: const Color(0xFF00FF88),
-          decoration: TextDecoration.underline,
-        ));
-        if (after.isNotEmpty) {
-          segments.add(_ColoredSegment(text: after, color: Colors.white70));
-        }
-        return segments;
-      }
+    // Si aucun segment n'a été créé, utiliser la couleur de base
+    if (segments.isEmpty) {
+      segments.add(_ColoredSegment(
+        text: line,
+        color: _getColorForType(baseType),
+      ));
     }
-    
-    // Coloration des nombres
-    if (baseType == _LineType.number) {
-      final numberMatch = RegExp(r'\d+\.?\d*[KMGT]?[B]?').firstMatch(line);
-      if (numberMatch != null) {
-        final before = line.substring(0, numberMatch.start);
-        final number = numberMatch.group(0)!;
-        final after = line.substring(numberMatch.end);
-        
-        if (before.isNotEmpty) {
-          segments.add(_ColoredSegment(text: before, color: Colors.white70));
-        }
-        segments.add(_ColoredSegment(
-          text: number,
-          color: const Color(0xFFFFD700),
-          fontWeight: FontWeight.w600,
-        ));
-        if (after.isNotEmpty) {
-          segments.add(_ColoredSegment(text: after, color: Colors.white70));
-        }
-        return segments;
-      }
-    }
-    
-    // Par défaut, utiliser la couleur du type
-    segments.add(_ColoredSegment(
-      text: line,
-      color: _getColorForType(baseType),
-    ));
     
     return segments;
   }
@@ -423,13 +455,13 @@ class _NativeTerminalPanelState extends State<NativeTerminalPanel> {
           children: line.segments!.map((segment) {
             return TextSpan(
               text: segment.text,
-              style: TextStyle(
-                fontFamily: 'Consolas',
+              style: NotilusFonts.code(
                 fontSize: 13,
+                fontWeight: segment.fontWeight ?? FontWeight.w400,
                 color: segment.color,
-                fontWeight: segment.fontWeight ?? FontWeight.normal,
-                decoration: segment.decoration,
                 height: 1.4,
+              ).copyWith(
+                decoration: segment.decoration,
               ),
             );
           }).toList(),
@@ -439,9 +471,9 @@ class _NativeTerminalPanelState extends State<NativeTerminalPanel> {
       // Ligne simple avec couleur de type
       return SelectableText(
         line.text,
-        style: TextStyle(
-          fontFamily: 'Consolas',
+        style: NotilusFonts.code(
           fontSize: 13,
+          fontWeight: FontWeight.w400,
           color: _getColorForType(line.type),
           height: 1.4,
         ),
@@ -458,41 +490,53 @@ class _NativeTerminalPanelState extends State<NativeTerminalPanel> {
           // Prompt - rouge Notilus
           Text(
             _currentPrompt,
-            style: const TextStyle(
-              fontFamily: 'Consolas',
+            style: NotilusFonts.code(
               fontSize: 13,
-              color: NotilusColors.neonRed,
               fontWeight: FontWeight.bold,
+              color: NotilusColors.neonRed,
               height: 1.4,
             ),
           ),
           // Input - totalement transparent, sans bordures
           Expanded(
-            child: TextField(
-              controller: _inputController,
-              focusNode: _inputFocusNode,
-              autofocus: true,
-              style: const TextStyle(
-                fontFamily: 'Consolas',
-                fontSize: 13,
-                color: Colors.white,
-                fontWeight: FontWeight.w400,
-                height: 1.4,
+            child: Focus(
+              onFocusChange: (hasFocus) {
+                if (!hasFocus && mounted) {
+                  // Maintenir le focus continu
+                  Future.delayed(const Duration(milliseconds: 50), () {
+                    if (mounted) {
+                      _inputFocusNode.requestFocus();
+                    }
+                  });
+                }
+              },
+              child: TextField(
+                controller: _inputController,
+                focusNode: _inputFocusNode,
+                autofocus: true,
+                style: NotilusFonts.code(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400,
+                  color: Colors.white,
+                  height: 1.4,
+                ),
+                decoration: const InputDecoration(
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  disabledBorder: InputBorder.none,
+                  errorBorder: InputBorder.none,
+                  focusedErrorBorder: InputBorder.none,
+                  contentPadding: EdgeInsets.zero,
+                  isDense: true,
+                  hintText: '',
+                  fillColor: Colors.transparent,
+                  filled: true,
+                ),
+                cursorColor: NotilusColors.neonRed,
+                cursorWidth: 2,
+                onSubmitted: _sendCommand,
               ),
-              decoration: const InputDecoration(
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                disabledBorder: InputBorder.none,
-                errorBorder: InputBorder.none,
-                focusedErrorBorder: InputBorder.none,
-                contentPadding: EdgeInsets.zero,
-                isDense: true,
-                hintText: '',
-              ),
-              cursorColor: NotilusColors.neonRed,
-              cursorWidth: 2,
-              onSubmitted: _sendCommand,
             ),
           ),
         ],
@@ -539,5 +583,27 @@ class _TerminalLine {
     required this.text,
     required this.type,
     this.segments,
+  });
+}
+
+/// Type de segment pour la coloration
+enum _SegmentType {
+  path,
+  url,
+  number,
+}
+
+/// Information sur un match pour la coloration
+class _MatchInfo {
+  final int start;
+  final int end;
+  final String text;
+  final _SegmentType type;
+
+  _MatchInfo({
+    required this.start,
+    required this.end,
+    required this.text,
+    required this.type,
   });
 }

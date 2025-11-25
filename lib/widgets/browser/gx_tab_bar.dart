@@ -18,7 +18,7 @@ import '../common/notilus_tooltip.dart';
 import '../common/context_menu.dart';
 
 const Color _gxRed = NotilusColors.neonRed;
-const Color _chromeColor = NotilusColors.chrome;
+const Color _chromeColor = NotilusColors.nativeBackground;
 
 class GXTabBar extends StatelessWidget {
   final VoidCallback? onMenuTap;

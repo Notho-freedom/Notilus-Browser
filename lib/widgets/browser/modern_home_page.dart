@@ -14,6 +14,7 @@ import '../../models/history_item.dart';
 import '../../models/bookmark.dart';
 import '../../services/favicon_service.dart';
 import '../../core/utils/url_validator.dart';
+import '../../core/constants/notilus_colors.dart';
 import '../common/notilus_monogram.dart';
 import '../common/context_menu.dart';
 
@@ -131,25 +132,22 @@ class _ModernHomePageState extends State<ModernHomePage> {
         backgroundColor: const Color(0xFF15151A),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
-          side: BorderSide(color: const Color(0xFFFF2D55).withOpacity(0.6), width: 1),
+          side: BorderSide(color: NotilusColors.neonRed.withValues(alpha: 0.6), width: 1),
         ),
         title: const Text('Ajouter un site rapide', style: TextStyle(color: Colors.white)),
         content: TextField(
           controller: controller,
           autofocus: true,
-          cursorColor: const Color(0xFFFF2D55),
+          cursorColor: NotilusColors.neonRed,
           style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
             hintText: 'https://example.com',
             hintStyle: const TextStyle(color: Colors.white54),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: const Color(0xFFFF2D55).withOpacity(0.5)),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: Color(0xFFFF2D55)),
-            ),
+            border: InputBorder.none,
+            focusedBorder: InputBorder.none,
+            enabledBorder: InputBorder.none,
+            fillColor: Colors.transparent,
+            filled: true,
           ),
         ),
         actions: [
@@ -159,7 +157,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(controller.text),
-            child: const Text('Ajouter', style: TextStyle(color: Color(0xFFFF2D55))),
+            child: Text('Ajouter', style: TextStyle(color: NotilusColors.neonRed)),
           ),
         ],
       ),
@@ -238,7 +236,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
           image: CachedNetworkImageProvider(wallpaperManager.current),
           fit: BoxFit.cover,
           colorFilter: ColorFilter.mode(
-            Colors.black.withOpacity(isDark ? 0.65 : 0.75),
+            Colors.black.withValues(alpha:isDark ? 0.65 : 0.75),
             BlendMode.srcOver,
           ),
         ),
@@ -246,8 +244,8 @@ class _ModernHomePageState extends State<ModernHomePage> {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            Colors.black.withOpacity(0.88),
-            Colors.black.withOpacity(0.94),
+            Colors.black.withValues(alpha:0.88),
+            Colors.black.withValues(alpha:0.94),
           ],
         ),
       ),
@@ -298,7 +296,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                         Text(
                           'Hub de lancement pour vos outils de développement',
                           style: theme.textTheme.bodyLarge?.copyWith(
-                            color: theme.textTheme.bodyLarge?.color?.withOpacity(0.6),
+                            color: theme.textTheme.bodyLarge?.color?.withValues(alpha:0.6),
                           ),
                         )
                             .animate()
@@ -319,8 +317,8 @@ class _ModernHomePageState extends State<ModernHomePage> {
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: [
-                            const Color(0xFFFF2D55).withOpacity(0.85),
-                            const Color(0xFF6B2C5F).withOpacity(0.65),
+                            NotilusColors.neonRed.withValues(alpha: 0.85),
+                            const Color(0xFF6B2C5F).withValues(alpha:0.65),
                           ],
                         ),
                       ),
@@ -328,9 +326,9 @@ class _ModernHomePageState extends State<ModernHomePage> {
                         margin: const EdgeInsets.all(1.5),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(24),
-                          color: Colors.black.withOpacity(0.28),
+                          color: Colors.black.withValues(alpha:0.28),
                           border: Border.all(
-                            color: Colors.white.withOpacity(0.05),
+                            color: Colors.white.withValues(alpha:0.05),
                             width: 1,
                           ),
                         ),
@@ -340,25 +338,27 @@ class _ModernHomePageState extends State<ModernHomePage> {
                             const Icon(
                               CupertinoIcons.search,
                               size: 20,
-                              color: Color(0xFFFF2D55),
+                              color: NotilusColors.neonRed,
                             ),
                             const SizedBox(width: 10),
                             Expanded(
                               child: TextField(
                                 controller: _searchController,
                                 focusNode: _searchFocusNode,
-                                cursorColor: const Color(0xFFFF2D55),
+                                cursorColor: NotilusColors.neonRed,
                                 style: theme.textTheme.bodyMedium?.copyWith(
                                   color: Colors.white,
                                 ),
                                 decoration: InputDecoration(
                                   hintText: 'Rechercher sur le web ou saisir une adresse',
                                   hintStyle: theme.textTheme.bodyMedium?.copyWith(
-                                    color: Colors.white.withOpacity(0.45),
+                                    color: Colors.white.withValues(alpha:0.45),
                                   ),
                                   border: InputBorder.none,
                                   focusedBorder: InputBorder.none,
                                   enabledBorder: InputBorder.none,
+                                  fillColor: Colors.transparent,
+                                  filled: true,
                                 ),
                                 onSubmitted: _handleSearch,
                               ),
@@ -367,12 +367,12 @@ class _ModernHomePageState extends State<ModernHomePage> {
                               margin: const EdgeInsets.only(right: 6),
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(20),
-                                color: const Color(0xFFFF2D55).withOpacity(0.14),
+                                color: NotilusColors.neonRed.withValues(alpha: 0.14),
                               ),
                               child: IconButton(
                                 icon: const Icon(
                                   CupertinoIcons.arrow_right,
-                                  color: Color(0xFFFF2D55),
+                                  color: NotilusColors.neonRed,
                                 ),
                                 onPressed: () =>
                                     _handleSearch(_searchController.text),
@@ -469,7 +469,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                             decoration: const BoxDecoration(
                               gradient: LinearGradient(
                                 colors: [
-                                  Color(0xFFFF2D55),
+                                  NotilusColors.neonRed,
                                   Color(0xFF5856D6),
                                 ],
                               ),
@@ -485,7 +485,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                           ),
                           const SizedBox(width: 16),
                           IconButton(
-                            icon: const Icon(CupertinoIcons.add_circled, color: Color(0xFFFF2D55)),
+                            icon: const Icon(CupertinoIcons.add_circled, color: NotilusColors.neonRed),
                             tooltip: 'Ajouter un site rapide',
                             onPressed: _addQuickAccessSite,
                           ),
@@ -551,7 +551,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                                 decoration: const BoxDecoration(
                                   gradient: LinearGradient(
                                     colors: [
-                                      Color(0xFFFF2D55),
+                                      NotilusColors.neonRed,
                                       Color(0xFF5856D6),
                                     ],
                                   ),
@@ -573,7 +573,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                                 },
                                 child: const Text(
                                   'Voir tout',
-                                  style: TextStyle(color: Color(0xFFFF2D55)),
+                                  style: TextStyle(color: NotilusColors.neonRed),
                                 ),
                               ),
                           ],
@@ -633,7 +633,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                               decoration: const BoxDecoration(
                                 gradient: LinearGradient(
                                   colors: [
-                                    Color(0xFFFF2D55),
+                                    NotilusColors.neonRed,
                                     Color(0xFF5856D6),
                                   ],
                                 ),
@@ -723,10 +723,10 @@ class _ModernHomePageState extends State<ModernHomePage> {
                   child: Container(
                     width: 20,
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.3),
+                      color: Colors.black.withValues(alpha:0.3),
                       border: Border(
                         left: BorderSide(
-                          color: const Color(0xFFFF2D55).withOpacity(0.5),
+                          color: NotilusColors.neonRed.withValues(alpha:0.5),
                           width: 1,
                         ),
                       ),
@@ -739,7 +739,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                           style: theme.textTheme.labelSmall?.copyWith(
                             letterSpacing: 2,
                             fontWeight: FontWeight.w700,
-                            color: const Color(0xFFFF2D55),
+                            color: NotilusColors.neonRed,
                             fontSize: 10,
                           ),
                         ),
@@ -768,10 +768,10 @@ class _ModernHomePageState extends State<ModernHomePage> {
                   child: Container(
                     width: 20,
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.3),
+                      color: Colors.black.withValues(alpha:0.3),
                       border: Border(
                         right: BorderSide(
-                          color: const Color(0xFFFF2D55).withOpacity(0.5),
+                          color: NotilusColors.neonRed.withValues(alpha:0.5),
                           width: 1,
                         ),
                       ),
@@ -784,7 +784,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                           style: theme.textTheme.labelSmall?.copyWith(
                             letterSpacing: 2,
                             fontWeight: FontWeight.w700,
-                            color: const Color(0xFFFF2D55),
+                            color: NotilusColors.neonRed,
                             fontSize: 10,
                           ),
                         ),
@@ -815,7 +815,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
             border: _leftColumnExpanded
                 ? Border(
                     right: BorderSide(
-                      color: const Color(0xFFFF2D55).withOpacity(0.2),
+                      color: NotilusColors.neonRed.withValues(alpha:0.2),
                       width: 1,
                     ),
                   )
@@ -830,7 +830,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                       style: theme.textTheme.labelSmall?.copyWith(
                         letterSpacing: 3,
                         fontWeight: FontWeight.w700,
-                        color: const Color(0xFFFF2D55),
+                        color: NotilusColors.neonRed,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -866,7 +866,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: const Color(0xFFFF2D55).withOpacity(0.3),
+                          color: NotilusColors.neonRed.withValues(alpha:0.3),
                           width: 1,
                         ),
                       ),
@@ -937,7 +937,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
             border: _rightColumnExpanded
                 ? Border(
                     left: BorderSide(
-                      color: const Color(0xFFFF2D55).withOpacity(0.2),
+                      color: NotilusColors.neonRed.withValues(alpha:0.2),
                       width: 1,
                     ),
                   )
@@ -952,7 +952,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                       style: theme.textTheme.labelSmall?.copyWith(
                         letterSpacing: 3,
                         fontWeight: FontWeight.w700,
-                        color: const Color(0xFFFF2D55),
+                        color: NotilusColors.neonRed,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -985,7 +985,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: const Color(0xFFFF2D55).withOpacity(0.3),
+                          color: NotilusColors.neonRed.withValues(alpha:0.3),
                           width: 1,
                         ),
                       ),
@@ -998,7 +998,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                                 width: 8,
                                 height: 8,
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFFF2D55),
+                                  color: NotilusColors.neonRed,
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                               ),
@@ -1055,9 +1055,9 @@ class _ModernHomePageState extends State<ModernHomePage> {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          color: Colors.white.withOpacity(0.05),
+          color: Colors.white.withValues(alpha:0.05),
           border: Border.all(
-            color: const Color(0xFFFF2D55).withOpacity(0.2),
+            color: NotilusColors.neonRed.withValues(alpha:0.2),
             width: 1,
           ),
         ),
@@ -1067,13 +1067,13 @@ class _ModernHomePageState extends State<ModernHomePage> {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: const Color(0xFFFF2D55).withOpacity(0.15),
+                color: NotilusColors.neonRed.withValues(alpha:0.15),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
                 icon,
                 size: 18,
-                color: const Color(0xFFFF2D55),
+                color: NotilusColors.neonRed,
               ),
             ),
             const SizedBox(width: 12),
@@ -1091,7 +1091,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                     subtitle,
                     style: theme.textTheme.bodySmall?.copyWith(
                       fontSize: 10,
-                      color: theme.textTheme.bodySmall?.color?.withOpacity(0.6),
+                      color: theme.textTheme.bodySmall?.color?.withValues(alpha:0.6),
                     ),
                   ),
                 ],
@@ -1149,14 +1149,14 @@ class _QuickAccessTileState extends State<_QuickAccessTile> {
             gradient: _isHovered
                 ? LinearGradient(
                     colors: [
-                      widget.item.color.withOpacity(0.95),
-                      const Color(0xFFFF2D55).withOpacity(0.9),
+                      widget.item.color.withValues(alpha:0.95),
+                      NotilusColors.neonRed.withValues(alpha:0.9),
                     ],
                   )
                 : LinearGradient(
                     colors: [
-                      widget.item.color.withOpacity(0.65),
-                      widget.item.color.withOpacity(0.25),
+                      widget.item.color.withValues(alpha:0.65),
+                      widget.item.color.withValues(alpha:0.25),
                     ],
                   ),
           ),
@@ -1164,11 +1164,11 @@ class _QuickAccessTileState extends State<_QuickAccessTile> {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
               color: isDark
-                  ? const Color(0xFF050509).withOpacity(0.96)
+                  ? const Color(0xFF050509).withValues(alpha:0.96)
                   : Colors.white,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.35),
+                  color: Colors.black.withValues(alpha:0.35),
                   blurRadius: 16,
                   offset: const Offset(0, 8),
                 ),
@@ -1188,7 +1188,7 @@ class _QuickAccessTileState extends State<_QuickAccessTile> {
                       gradient: LinearGradient(
                         colors: [
                           widget.item.color,
-                          widget.item.color.withOpacity(0.4),
+                          widget.item.color.withValues(alpha:0.4),
                         ],
                       ),
                     ),
@@ -1207,7 +1207,7 @@ class _QuickAccessTileState extends State<_QuickAccessTile> {
                             width: 28,
                             height: 28,
                             decoration: BoxDecoration(
-                              color: widget.item.color.withOpacity(0.14),
+                              color: widget.item.color.withValues(alpha:0.14),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: widget.item.iconUrl != null
@@ -1252,7 +1252,7 @@ class _QuickAccessTileState extends State<_QuickAccessTile> {
                               style: theme.textTheme.bodySmall?.copyWith(
                                 fontSize: 11,
                                 color: theme.textTheme.bodySmall?.color
-                                    ?.withOpacity(0.6),
+                                    ?.withValues(alpha:0.6),
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -1262,7 +1262,7 @@ class _QuickAccessTileState extends State<_QuickAccessTile> {
                           Icon(
                             CupertinoIcons.chevron_right,
                             size: 14,
-                            color: theme.iconTheme.color?.withOpacity(0.6),
+                            color: theme.iconTheme.color?.withValues(alpha:0.6),
                           ),
                         ],
                       ),
@@ -1303,9 +1303,9 @@ class _MetricWidget extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withValues(alpha:0.05),
         border: Border.all(
-          color: Colors.white.withOpacity(0.1),
+          color: Colors.white.withValues(alpha:0.1),
           width: 1,
         ),
       ),
@@ -1315,14 +1315,14 @@ class _MetricWidget extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, size: 16, color: const Color(0xFFFF2D55)),
+              Icon(icon, size: 16, color: NotilusColors.neonRed),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   title,
                   style: theme.textTheme.bodySmall?.copyWith(
                     fontSize: 11,
-                    color: Colors.white.withOpacity(0.6),
+                    color: Colors.white.withValues(alpha:0.6),
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -1370,7 +1370,7 @@ class _StatChip extends StatelessWidget {
           ],
         ),
         border: Border.all(
-          color: const Color(0xFFFF2D55).withOpacity(0.5),
+          color: NotilusColors.neonRed.withValues(alpha:0.5),
           width: 0.8,
         ),
       ),
@@ -1380,7 +1380,7 @@ class _StatChip extends StatelessWidget {
           Icon(
             icon,
             size: 14,
-            color: const Color(0xFFFF2D55),
+            color: NotilusColors.neonRed,
           ),
           const SizedBox(width: 6),
           Flexible(
@@ -1397,7 +1397,7 @@ class _StatChip extends StatelessWidget {
               value,
               style: theme.textTheme.labelSmall?.copyWith(
                 fontWeight: FontWeight.w700,
-                color: const Color(0xFFFF2D55),
+                color: NotilusColors.neonRed,
               ),
               overflow: TextOverflow.ellipsis,
             ),
@@ -1436,8 +1436,8 @@ class _HistoryQuickAccessTile extends StatelessWidget {
               borderRadius: BorderRadius.circular(22),
               gradient: LinearGradient(
                 colors: [
-                  const Color(0xFF5856D6).withOpacity(0.65),
-                  const Color(0xFF5856D6).withOpacity(0.25),
+                  const Color(0xFF5856D6).withValues(alpha:0.65),
+                  const Color(0xFF5856D6).withValues(alpha:0.25),
                 ],
               ),
             ),
@@ -1445,11 +1445,11 @@ class _HistoryQuickAccessTile extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(20),
                 color: isDark
-                    ? const Color(0xFF050509).withOpacity(0.96)
+                    ? const Color(0xFF050509).withValues(alpha:0.96)
                     : Colors.white,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.35),
+                    color: Colors.black.withValues(alpha:0.35),
                     blurRadius: 16,
                     offset: const Offset(0, 8),
                   ),
@@ -1468,7 +1468,7 @@ class _HistoryQuickAccessTile extends StatelessWidget {
                         gradient: LinearGradient(
                           colors: [
                             const Color(0xFF5856D6),
-                            const Color(0xFF5856D6).withOpacity(0.4),
+                            const Color(0xFF5856D6).withValues(alpha:0.4),
                           ],
                         ),
                       ),
@@ -1486,7 +1486,7 @@ class _HistoryQuickAccessTile extends StatelessWidget {
                               width: 28,
                               height: 28,
                               decoration: BoxDecoration(
-                                color: const Color(0xFF5856D6).withOpacity(0.14),
+                                color: const Color(0xFF5856D6).withValues(alpha:0.14),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: faviconSnapshot.hasData && faviconSnapshot.data != null
@@ -1527,7 +1527,7 @@ class _HistoryQuickAccessTile extends StatelessWidget {
                                 Uri.parse(historyItem.url).host.replaceFirst('www.', ''),
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   fontSize: 11,
-                                  color: theme.textTheme.bodySmall?.color?.withOpacity(0.6),
+                                  color: theme.textTheme.bodySmall?.color?.withValues(alpha:0.6),
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,

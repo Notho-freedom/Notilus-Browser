@@ -126,7 +126,7 @@ class _GXTerminalViewState extends State<GXTerminalView> {
         ),
         child: const Center(
           child: CircularProgressIndicator(
-            color: Color(0xFFFF2D55),
+            color: NotilusColors.neonRed,
           ),
         ),
       );

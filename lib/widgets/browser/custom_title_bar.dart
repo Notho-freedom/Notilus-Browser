@@ -34,7 +34,7 @@ class CustomTitleBar extends StatelessWidget {
         color: const Color(0xFF0B0B0E),
         border: Border(
           bottom: BorderSide(
-            color: const Color(0xFFFF2D55).withOpacity(0.3),
+            color: const NotilusColors.neonRed.withOpacity(0.3),
             width: 1,
           ),
         ),
@@ -64,12 +64,12 @@ class CustomTitleBar extends StatelessWidget {
                         color: Colors.transparent,
                         borderRadius: BorderRadius.circular(4),
                         border: Border.all(
-                          color: const Color(0xFFFF2D55),
+                          color: const NotilusColors.neonRed,
                           width: 1.5,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFFFF2D55).withOpacity(0.4),
+                            color: const NotilusColors.neonRed.withOpacity(0.4),
                             blurRadius: 4,
                             spreadRadius: 0,
                           ),
@@ -79,7 +79,7 @@ class CustomTitleBar extends StatelessWidget {
                         child: Text(
                           'N',
                           style: TextStyle(
-                            color: Color(0xFFFF2D55),
+                            color: NotilusColors.neonRed,
                             fontSize: 10,
                             fontWeight: FontWeight.w900,
                           ),

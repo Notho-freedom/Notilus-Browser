@@ -130,7 +130,7 @@ class _GXSidebarState extends State<GXSidebar> {
   Widget build(BuildContext context) {
     return Container(
       width: 50,
-      color: NotilusColors.chrome,
+      color: NotilusColors.nativeBackground,
       child: Column(
         children: [
           const SizedBox(height: 10),

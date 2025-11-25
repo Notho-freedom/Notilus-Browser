@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/services/wallpaper_manager.dart';
 import '../../core/services/theme_mode_notifier.dart';
+import '../../core/services/color_theme_manager.dart';
+import '../../core/constants/notilus_colors.dart';
 
 class ModernSettingsPanel extends StatefulWidget {
   const ModernSettingsPanel({super.key});
@@ -58,28 +60,134 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                     ),
                   ),
                   const SizedBox(height: 12),
+                  Text(
+                    'Mode',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
+                    runSpacing: 8,
                     children: [
                       ChoiceChip(
                         label: const Text('Système'),
                         selected: mode == ThemeMode.system,
                         onSelected: (_) =>
                             themeNotifier.setMode(ThemeMode.system),
+                        selectedColor: NotilusColors.neonRed.withValues(alpha: 0.2),
+                        labelStyle: TextStyle(
+                          color: mode == ThemeMode.system
+                              ? NotilusColors.neonRed
+                              : Colors.white70,
+                          fontSize: 11,
+                        ),
                       ),
                       ChoiceChip(
                         label: const Text('Clair'),
                         selected: mode == ThemeMode.light,
                         onSelected: (_) =>
                             themeNotifier.setMode(ThemeMode.light),
+                        selectedColor: NotilusColors.neonRed.withValues(alpha: 0.2),
+                        labelStyle: TextStyle(
+                          color: mode == ThemeMode.light
+                              ? NotilusColors.neonRed
+                              : Colors.white70,
+                          fontSize: 11,
+                        ),
                       ),
                       ChoiceChip(
                         label: const Text('Sombre'),
                         selected: mode == ThemeMode.dark,
                         onSelected: (_) =>
                             themeNotifier.setMode(ThemeMode.dark),
+                        selectedColor: NotilusColors.neonRed.withValues(alpha: 0.2),
+                        labelStyle: TextStyle(
+                          color: mode == ThemeMode.dark
+                              ? NotilusColors.neonRed
+                              : Colors.white70,
+                          fontSize: 11,
+                        ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 24),
+                  Consumer<ColorThemeManager>(
+                    builder: (context, colorThemeManager, _) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Thème de couleur',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: ColorThemeManager.availableThemes.map((theme) {
+                              final isSelected = colorThemeManager.currentTheme.id == theme.id;
+                              return GestureDetector(
+                                onTap: () => colorThemeManager.setTheme(theme.id),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? theme.primary.withValues(alpha: 0.2)
+                                        : Colors.white.withValues(alpha: 0.05),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? theme.primary
+                                          : Colors.white.withValues(alpha: 0.1),
+                                      width: isSelected ? 2 : 1,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        width: 16,
+                                        height: 16,
+                                        decoration: BoxDecoration(
+                                          color: theme.primary,
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: Colors.white.withValues(alpha: 0.3),
+                                            width: 1,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        theme.name,
+                                        style: TextStyle(
+                                          color: isSelected
+                                              ? theme.primary
+                                              : Colors.white70,
+                                          fontSize: 11,
+                                          fontWeight: isSelected
+                                              ? FontWeight.w600
+                                              : FontWeight.w400,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                   const SizedBox(height: 32),
                   Text(

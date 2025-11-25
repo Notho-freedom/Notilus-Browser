@@ -220,6 +220,10 @@ class _ModernAddressBarState extends State<ModernAddressBar> {
                               fontSize: 13,
                             ),
                             border: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            fillColor: Colors.transparent,
+                            filled: true,
                             contentPadding: const EdgeInsets.symmetric(
                               horizontal: 8,
                               vertical: 8,
