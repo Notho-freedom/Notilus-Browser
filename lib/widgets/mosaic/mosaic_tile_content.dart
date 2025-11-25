@@ -835,7 +835,7 @@ class _CustomTileContent extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              CupertinoIcons.extension,
+              CupertinoIcons.square_grid_2x2,
               size: 40,
               color: accentColor.withOpacity(0.5),
             ),

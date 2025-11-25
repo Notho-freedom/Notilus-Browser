@@ -23,12 +23,9 @@ import '../../widgets/splitscreen/advanced_split_view.dart';
 import '../../widgets/terminal/native_terminal_panel.dart';
 import '../../widgets/dev_tools/notilus_devtools.dart';
 import '../../widgets/documentation/documentation_panel.dart';
-import '../../widgets/mosaic/mosaic_container.dart';
-import '../../services/mosaic_service.dart';
 
 // Intent pour les raccourcis clavier
 class _OpenDevToolsIntent extends Intent {}
-class _ToggleMosaicIntent extends Intent {}
 
 class ModernBrowserWindow extends StatefulWidget {
   const ModernBrowserWindow({super.key});
@@ -134,21 +131,12 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
       shortcuts: {
         LogicalKeySet(LogicalKeyboardKey.f12): _OpenDevToolsIntent(),
         LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.shift, LogicalKeyboardKey.keyI): _OpenDevToolsIntent(),
-        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.shift, LogicalKeyboardKey.keyM): _ToggleMosaicIntent(),
       },
       child: Actions(
         actions: {
           _OpenDevToolsIntent: CallbackAction<_OpenDevToolsIntent>(
             onInvoke: (_) {
               _handleOpenDevTools();
-              return null;
-            },
-          ),
-          _ToggleMosaicIntent: CallbackAction<_ToggleMosaicIntent>(
-            onInvoke: (_) {
-              final mosaicService = Provider.of<NotilusMosaicService>(context, listen: false);
-              final tabManager = Provider.of<TabManager>(context, listen: false);
-              mosaicService.toggle(activeTabId: tabManager.activeTab?.id);
               return null;
             },
           ),
@@ -217,14 +205,9 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                     ),
                     const GXAddressBar(),
                     Expanded(
-                      child: Consumer3<NotilusMosaicService, SplitScreenService, TabManager>(
-                        builder: (context, mosaicService, splitService, tabManager, _) {
-                          // Priorité 1: Mosaïque si active et visible
-                          if (mosaicService.isMosaicActive) {
-                            return const MosaicContainer();
-                          }
-                          
-                          // Priorité 2: Split-screen si actif ET visible
+                      child: Consumer2<SplitScreenService, TabManager>(
+                        builder: (context, splitService, tabManager, _) {
+                          // Si split-screen est actif ET visible, afficher la vue split
                           if (splitService.isActive && splitService.isVisible) {
                             return const AdvancedSplitView();
                           }

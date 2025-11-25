@@ -37,7 +37,7 @@ class _DevToolsElementsPanelState extends State<DevToolsElementsPanel>
   
   // Onglet details
   late TabController _detailsTabController;
-  
+
   @override
   void initState() {
     super.initState();
@@ -339,14 +339,14 @@ class _DevToolsElementsPanelState extends State<DevToolsElementsPanel>
 
               // === PANNEAU DROITE: Styles/Attributs ===
               if (_selectedNode != null)
-                Container(
+                      Container(
                   width: 300,
                   decoration: BoxDecoration(
                     color: const Color(0xFF252526),
                     border: Border(left: BorderSide(color: accentColor.withOpacity(0.2))),
                   ),
                   child: _buildStylesPanel(accentColor),
-                ),
+              ),
             ],
           ),
         );
@@ -367,7 +367,7 @@ class _DevToolsElementsPanelState extends State<DevToolsElementsPanel>
           _ToolbarButton(icon: Icons.folder_open, tooltip: 'Ressources', isActive: _showResources, accentColor: accentColor, onPressed: () => setState(() => _showResources = !_showResources)),
           _ToolbarButton(icon: Icons.refresh, tooltip: 'Actualiser', accentColor: accentColor, onPressed: () { _loadDOMTree(); _loadResources(); }),
           _ToolbarButton(icon: Icons.unfold_more, tooltip: 'Tout développer', accentColor: accentColor, onPressed: () {
-            final devTools = context.read<DevToolsService>();
+              final devTools = context.read<DevToolsService>();
             if (devTools.domTree != null) _expandAllNodes(devTools.domTree!);
           }),
           _ToolbarButton(icon: Icons.unfold_less, tooltip: 'Tout réduire', accentColor: accentColor, onPressed: () => setState(() => _expandedNodes.clear())),
@@ -458,7 +458,7 @@ class _DevToolsElementsPanelState extends State<DevToolsElementsPanel>
           isExpanded: isExpanded,
           hasChildren: hasChildren,
           accentColor: accentColor,
-          onTap: () => _selectNode(node),
+            onTap: () => _selectNode(node),
           onToggle: hasChildren ? () => _toggleNode(node) : null,
           onEditAttribute: (name, value) => _editAttribute(node, name, value, accentColor),
           onEditText: (text) => _editTextContent(node, text, accentColor),
@@ -518,26 +518,26 @@ class _DevToolsElementsPanelState extends State<DevToolsElementsPanel>
 
   Widget _buildStylesPanel(Color accentColor) {
     return Column(
-      children: [
-        // Header
-        Container(
-          height: 32,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
+        children: [
+          // Header
+          Container(
+            height: 32,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
             color: const Color(0xFF2D2D30),
             border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.1))),
-          ),
-          child: Row(
-            children: [
+            ),
+            child: Row(
+              children: [
               Icon(Icons.style, size: 14, color: accentColor),
               const SizedBox(width: 8),
               Text('Propriétés', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: accentColor)),
-              const Spacer(),
-              IconButton(
+                const Spacer(),
+                IconButton(
                 icon: const Icon(Icons.close, size: 12),
                 color: Colors.white38,
                 onPressed: () => setState(() => _selectedNode = null),
-                padding: EdgeInsets.zero,
+                  padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
               ),
             ],
@@ -558,10 +558,10 @@ class _DevToolsElementsPanelState extends State<DevToolsElementsPanel>
                 Text(' #${_selectedNode!.attributes['id']}', style: const TextStyle(fontFamily: 'Consolas', fontSize: 11, color: Color(0xFF9CDCFE))),
               if (_selectedNode?.attributes['class']?.isNotEmpty == true)
                 Text(' .${_selectedNode!.attributes['class']!.split(' ').first}', style: const TextStyle(fontFamily: 'Consolas', fontSize: 11, color: Color(0xFFCE9178))),
-            ],
+              ],
+            ),
           ),
-        ),
-        
+
         // Attributs éditables
         _buildAttributesEditor(accentColor),
         
@@ -579,10 +579,10 @@ class _DevToolsElementsPanelState extends State<DevToolsElementsPanel>
     
     return Container(
       constraints: const BoxConstraints(maxHeight: 150),
-      child: ListView(
+            child: ListView(
         shrinkWrap: true,
         padding: const EdgeInsets.all(8),
-        children: [
+              children: [
           Text('ATTRIBUTS', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: accentColor, letterSpacing: 1)),
           const SizedBox(height: 8),
           ..._selectedNode!.attributes.entries.map((attr) {
@@ -660,7 +660,7 @@ class _DevToolsElementsPanelState extends State<DevToolsElementsPanel>
 
   Widget _buildCSSEditor(Color accentColor) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         InkWell(
           onTap: () => setState(() => _cssEditorExpanded = !_cssEditorExpanded),
@@ -686,7 +686,7 @@ class _DevToolsElementsPanelState extends State<DevToolsElementsPanel>
                       ],
                     ),
                   ),
-              ],
+                ],
             ),
           ),
         ),
@@ -881,7 +881,7 @@ class _EditableDOMNodeState extends State<_EditableDOMNode> {
         child: Padding(
           padding: EdgeInsets.only(left: widget.node.depth * 16.0, top: 2, bottom: 2, right: 4),
           child: Row(
-            children: [
+      children: [
               // Chevron expand/collapse
               GestureDetector(
                 onTap: widget.onToggle,
@@ -891,7 +891,7 @@ class _EditableDOMNodeState extends State<_EditableDOMNode> {
                       ? Icon(
                           widget.isExpanded ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_right,
                           size: 14,
-                          color: Colors.white.withOpacity(0.5),
+            color: Colors.white.withOpacity(0.5),
                         )
                       : null,
                 ),
@@ -1174,7 +1174,7 @@ class _VSCodeSidebar extends StatelessWidget {
             child: Wrap(
               spacing: 4,
               runSpacing: 4,
-              children: [
+            children: [
                 _TypeChip(label: 'Tous', count: resources.length, isSelected: selectedType == null, accentColor: accentColor, onTap: () => onTypeSelected(null)),
                 ..._ResourceType.values.map((type) {
                   final count = resources.where((r) => r.type == type).length;
@@ -1262,7 +1262,7 @@ class _ToolbarButton extends StatelessWidget {
       message: tooltip,
       child: Material(
         color: isActive ? accentColor.withOpacity(0.2) : Colors.transparent,
-        borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(4),
         child: InkWell(
           onTap: onPressed,
           borderRadius: BorderRadius.circular(4),
