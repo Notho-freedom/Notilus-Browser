@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../services/tab_manager.dart';
-import '../../services/tab_webview_manager.dart';
+import '../../services/tab_webview_manager.dart' show TabWebViewManager;
 import '../../services/notilus_devtools_service.dart';
 import 'gx_address_bar.dart';
 import 'gx_tab_bar.dart';
@@ -103,6 +103,28 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
     } catch (_) {}
   }
 
+  void _openNativeDevTools() {
+    // Ouvrir les DevTools natifs du WebView (Chrome DevTools)
+    try {
+      final tabManager = Provider.of<TabManager>(context, listen: false);
+      final tabWebviewManager = Provider.of<TabWebViewManager>(context, listen: false);
+      final activeTab = tabManager.activeTab;
+      
+      if (activeTab != null) {
+        final engine = tabWebviewManager.getEngineForTab(activeTab.id);
+        if (engine != null) {
+          engine.openDevTools();
+          
+          // Logger l'action
+          final devTools = Provider.of<NotilusDevToolsService>(context, listen: false);
+          devTools.logInfo('Native DevTools opened for tab: ${activeTab.title ?? activeTab.url}', source: 'Sidebar');
+        }
+      }
+    } catch (e) {
+      debugPrint('Erreur ouverture DevTools natifs: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Shortcuts(
@@ -155,6 +177,11 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                       ? GXSidebar(
                           onClose: _toggleSidebar,
                           onSectionSelected: (section) {
+                            // DevTools natif - ouvre les DevTools du WebView
+                            if (section == SidebarSection.nativeDevtools) {
+                              _openNativeDevTools();
+                              return;
+                            }
                             setState(() {
                               _currentSection = section;
                             });
@@ -477,6 +504,7 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
           ),
         );
       case SidebarSection.home:
+      case SidebarSection.nativeDevtools:
         return null;
     }
   }

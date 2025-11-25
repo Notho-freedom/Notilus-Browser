@@ -20,6 +20,7 @@ enum SidebarSection {
   updates,
   terminal,
   devtools,
+  nativeDevtools,
   youtubeMusic,
   youtube,
   chatgpt,
@@ -90,6 +91,11 @@ class _GXSidebarState extends State<GXSidebar> {
       section: SidebarSection.devtools,
       icon: CupertinoIcons.wrench_fill,
       label: 'DevTools',
+    ),
+    _SidebarDestination(
+      section: SidebarSection.nativeDevtools,
+      icon: CupertinoIcons.ant,
+      label: 'DevTools Natif (F12)',
     ),
   ];
 
