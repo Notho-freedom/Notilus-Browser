@@ -95,9 +95,10 @@ class DownloadService extends ChangeNotifier {
       String fileName = download.fileName;
       final contentDisposition = response.headers['content-disposition'];
       if (contentDisposition != null) {
-        final filenameMatch = RegExp(r'filename[*]?=["\']?([^"\';\n]+)["\']?').firstMatch(contentDisposition);
-        if (filenameMatch != null && filenameMatch.group(1) != null) {
-          fileName = _sanitizeFileName(Uri.decodeComponent(filenameMatch.group(1)!.trim()));
+        final pattern = RegExp('filename[*]?=["\']?([^"\';\\n]+)["\']?');
+        final match = pattern.firstMatch(contentDisposition);
+        if (match != null && match.group(1) != null) {
+          fileName = _sanitizeFileName(Uri.decodeComponent(match.group(1)!.trim()));
         }
       } else {
         fileName = _sanitizeFileName(fileName);

@@ -600,7 +600,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
             style: const TextStyle(color: Colors.white, fontSize: 12),
             decoration: InputDecoration(
               hintText: 'https://example.com',
-              hintStyle: TextStyle(color: Colors.white40, fontSize: 12),
+              hintStyle: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12),
               filled: true,
               fillColor: Colors.white.withOpacity(0.05),
               border: OutlineInputBorder(
@@ -804,7 +804,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                   Text(
                     terminal.description,
                     style: TextStyle(
-                      color: locked ? Colors.white20 : Colors.white50,
+                      color: locked ? Colors.white.withOpacity(0.2) : Colors.white.withOpacity(0.5),
                       fontSize: 10,
                     ),
                   ),
@@ -921,13 +921,13 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                   ),
                   child: Row(
                     children: [
-                      Icon(service.$3, size: 18, color: isEnabled ? gxRed : Colors.white40),
+                      Icon(service.$3, size: 18, color: isEnabled ? gxRed : Colors.white.withOpacity(0.4)),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           service.$2,
                           style: TextStyle(
-                            color: isEnabled ? Colors.white : Colors.white50,
+                            color: isEnabled ? Colors.white : Colors.white.withOpacity(0.5),
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
                           ),
