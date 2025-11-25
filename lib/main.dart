@@ -17,6 +17,7 @@ import 'services/native_terminal_service.dart';
 import 'services/download_service.dart';
 import 'services/devtools_service.dart';
 import 'services/settings_service.dart';
+import 'services/mosaic_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -75,6 +76,7 @@ class NotilusApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => DownloadService()),
         ChangeNotifierProvider(create: (_) => TabManager()),
         ChangeNotifierProvider(create: (_) => DevToolsService()),
+        ChangeNotifierProvider(create: (_) => NotilusMosaicService()),
         ChangeNotifierProvider(
           create: (context) {
             final tabWebViewManager = TabWebViewManager();
