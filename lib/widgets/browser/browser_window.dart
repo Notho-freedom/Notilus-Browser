@@ -9,7 +9,6 @@ import 'tab_groups_sidebar.dart';
 import 'extensions_panel.dart';
 import 'web_content_view.dart';
 import '../dev_tools/dev_tools_panel.dart';
-import '../splitscreen/split_view.dart';
 
 // Keyboard shortcuts intents
 class _NewTabIntent extends Intent {}
@@ -31,7 +30,6 @@ class BrowserWindow extends StatefulWidget {
 
 class _BrowserWindowState extends State<BrowserWindow> {
   bool _isDevToolsVisible = false;
-  bool _isSplitScreenMode = false;
   bool _isGroupsSidebarVisible = false;
   bool _isExtensionsVisible = false;
   final GlobalKey<AddressBarState> _addressBarKey = GlobalKey();
@@ -39,12 +37,6 @@ class _BrowserWindowState extends State<BrowserWindow> {
   void _toggleDevTools() {
     setState(() {
       _isDevToolsVisible = !_isDevToolsVisible;
-    });
-  }
-
-  void _toggleSplitScreen() {
-    setState(() {
-      _isSplitScreenMode = !_isSplitScreenMode;
     });
   }
 
@@ -174,7 +166,6 @@ class _BrowserWindowState extends State<BrowserWindow> {
                           AddressBar(
                             key: _addressBarKey,
                             onDevToolsToggle: _toggleDevTools,
-                            onSplitScreenToggle: _toggleSplitScreen,
                             onGroupsToggle: () {
                               setState(() {
                                 _isGroupsSidebarVisible = !_isGroupsSidebarVisible;
@@ -186,7 +177,6 @@ class _BrowserWindowState extends State<BrowserWindow> {
                               });
                             },
                             isDevToolsVisible: _isDevToolsVisible,
-                            isSplitScreenMode: _isSplitScreenMode,
                             isGroupsVisible: _isGroupsSidebarVisible,
                             isExtensionsVisible: _isExtensionsVisible,
                           ),
@@ -196,13 +186,11 @@ class _BrowserWindowState extends State<BrowserWindow> {
                     
                     // Content Area
                     Expanded(
-                      child: _isSplitScreenMode
-                          ? const SplitView()
-                          : Consumer<TabManager>(
-                              builder: (context, tabManager, _) {
-                                return WebContentView(tab: tabManager.activeTab);
-                              },
-                            ),
+                      child: Consumer<TabManager>(
+                        builder: (context, tabManager, _) {
+                          return WebContentView(tab: tabManager.activeTab);
+                        },
+                      ),
                     ),
                     
                     // DevTools Panel
