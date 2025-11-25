@@ -88,12 +88,6 @@ class ModernTabBar extends StatelessWidget {
           Row(
             children: [
               _HoverIconButton(
-                icon: CupertinoIcons.square_split_2x1,
-                tooltip: 'Split view (à venir)',
-                onPressed: () {},
-              ),
-              const SizedBox(width: 4),
-              _HoverIconButton(
                 icon: CupertinoIcons.square_grid_2x2,
                 tooltip: 'Groupes (à venir)',
                 onPressed: () {},
