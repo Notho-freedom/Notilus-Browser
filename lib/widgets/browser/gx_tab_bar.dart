@@ -462,13 +462,48 @@ class _GXTabItem extends StatefulWidget {
   State<_GXTabItem> createState() => _GXTabItemState();
 }
 
-class _GXTabItemState extends State<_GXTabItem> {
+class _GXTabItemState extends State<_GXTabItem>
+    with SingleTickerProviderStateMixin {
   Color get _gxRed {
     final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: false);
     return colorThemeManager.nativeSecondaryColor;
   }
   bool _isHovered = false;
   bool _closeHovered = false;
+  bool _isPressed = false;
+  late AnimationController _animController;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _glowAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.02).animate(
+      CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic),
+    );
+    _glowAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic),
+    );
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
+  }
+
+  void _handleHoverChange(bool hover) {
+    setState(() => _isHovered = hover);
+    if (hover) {
+      _animController.forward();
+    } else if (!_isPressed) {
+      _animController.reverse();
+    }
+  }
 
   void _showContextMenu(BuildContext context, Offset position) {
     if (widget.tab.url == null || widget.tab.url!.isEmpty || widget.tab.url!.startsWith('about:')) {
@@ -529,10 +564,15 @@ class _GXTabItemState extends State<_GXTabItem> {
     return NotilusTooltip(
       message: widget.tab.title ?? widget.tab.url ?? 'Onglet',
       child: MouseRegion(
-        onEnter: (_) => setState(() => _isHovered = true),
-        onExit: (_) => setState(() => _isHovered = false),
+        onEnter: (_) => _handleHoverChange(true),
+        onExit: (_) => _handleHoverChange(false),
         child: GestureDetector(
-          onTap: widget.onTap,
+          onTapDown: (_) => setState(() => _isPressed = true),
+          onTapUp: (_) {
+            setState(() => _isPressed = false);
+            widget.onTap();
+          },
+          onTapCancel: () => setState(() => _isPressed = false),
           onSecondaryTapDown: (details) => _showContextMenu(context, details.globalPosition),
           onLongPress: () {
             final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
@@ -541,35 +581,64 @@ class _GXTabItemState extends State<_GXTabItem> {
               _showContextMenu(context, position);
             }
           },
-          child: SizedBox(
-            width: widget.width,
-            height: 32,
-            child: Column(
-              children: [
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  height: 3,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    gradient: widget.isActive ? activeGradient : null,
-                    color: widget.isActive ? null : Colors.transparent,
-                  ),
-                ),
-                const SizedBox(height: 1),
-                Expanded(
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
+          child: AnimatedBuilder(
+            animation: _animController,
+            builder: (context, child) {
+              return Transform.scale(
+                scale: _isPressed ? 0.97 : _scaleAnimation.value,
+                child: child,
+              );
+            },
+            child: SizedBox(
+              width: widget.width,
+              height: 32,
+              child: Column(
+                children: [
+                  // Indicateur animé en haut de l'onglet
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeOutCubic,
+                    height: 3,
+                    width: widget.isActive ? double.infinity : (_isHovered ? widget.width * 0.6 : 0),
                     decoration: BoxDecoration(
-                      gradient: widget.isActive
-                          ? activeGradient
-                          : null,
-                      color: widget.isActive
-                          ? null
-                          : (_isHovered
-                              ? const Color(0xFF1F1F23)
-                              : Colors.transparent),
-                      borderRadius: BorderRadius.circular(8),
+                      gradient: widget.isActive || _isHovered ? activeGradient : null,
+                      borderRadius: BorderRadius.circular(2),
+                      boxShadow: widget.isActive
+                          ? [
+                              BoxShadow(
+                                color: gxRed.withValues(alpha: 0.5),
+                                blurRadius: 6,
+                                spreadRadius: 0,
+                              ),
+                            ]
+                          : [],
                     ),
+                  ),
+                  const SizedBox(height: 1),
+                  Expanded(
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeOutCubic,
+                      decoration: BoxDecoration(
+                        gradient: widget.isActive
+                            ? activeGradient
+                            : null,
+                        color: widget.isActive
+                            ? null
+                            : (_isHovered
+                                ? const Color(0xFF1F1F23)
+                                : Colors.transparent),
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: _isHovered && !widget.isActive
+                            ? [
+                                BoxShadow(
+                                  color: gxRed.withValues(alpha: _glowAnimation.value * 0.15),
+                                  blurRadius: 10,
+                                  spreadRadius: 0,
+                                ),
+                              ]
+                            : [],
+                      ),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                       child: Row(
@@ -663,6 +732,7 @@ class _GXTabItemState extends State<_GXTabItem> {
         ),
       ),
     ),
+  ),
     );
   }
 

@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../services/tab_manager.dart';
 import '../../services/tab_webview_manager.dart' show TabWebViewManager;
 import '../../services/notilus_devtools_service.dart';
+import '../../core/animations/notilus_animations.dart';
 import 'gx_address_bar.dart';
 import 'gx_tab_bar.dart';
 import 'gx_sidebar.dart';
@@ -21,6 +22,7 @@ import '../../services/split_screen_service.dart';
 import '../../widgets/splitscreen/advanced_split_view.dart';
 import '../../widgets/terminal/native_terminal_panel.dart';
 import '../../widgets/dev_tools/notilus_devtools_panel.dart';
+import '../../widgets/documentation/documentation_panel.dart';
 
 // Intent pour les raccourcis clavier
 class _OpenDevToolsIntent extends Intent {}
@@ -243,61 +245,72 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                   ],
                 ),
                 // Menu latéral en position absolue à droite de la sidebar
-                if (_isPanelVisible)
-                  Positioned(
-                    left: 0,
-                    top: 0,
-                    bottom: 0,
-                    child: Stack(
-                      children: [
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 450),
-                          curve: Curves.easeOutCubic,
-                          width: _sideMenuWidth,
-                          child: _buildSideMenu(context),
-                        ),
-                        // Drag handle pour redimensionner
-                        Positioned(
-                          right: 0,
-                          top: 0,
-                          bottom: 0,
-                          child: GestureDetector(
-                            onPanStart: (_) {
-                              setState(() {
-                                _isResizing = true;
-                              });
-                            },
-                            onPanUpdate: (details) {
-                              setState(() {
-                                _sideMenuWidth = (_sideMenuWidth + details.delta.dx).clamp(200.0, 800.0);
-                              });
-                            },
-                            onPanEnd: (_) {
-                              setState(() {
-                                _isResizing = false;
-                              });
-                            },
-                            child: MouseRegion(
-                              cursor: SystemMouseCursors.resizeColumn,
-                              child: Container(
-                                width: 4,
-                                color: _isResizing
-                                    ? gxRed.withValues(alpha: 0.8)
-                                    : Colors.transparent,
-                                child: Container(
-                                  margin: const EdgeInsets.symmetric(vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: gxRed.withValues(alpha: 0.3),
-                                    borderRadius: BorderRadius.circular(2),
+                Positioned(
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  child: AnimatedSlide(
+                    duration: const Duration(milliseconds: 350),
+                    curve: Curves.easeOutCubic,
+                    offset: _isPanelVisible ? Offset.zero : const Offset(-1, 0),
+                    child: AnimatedOpacity(
+                      duration: const Duration(milliseconds: 250),
+                      opacity: _isPanelVisible ? 1.0 : 0.0,
+                      child: IgnorePointer(
+                        ignoring: !_isPanelVisible,
+                        child: Stack(
+                          children: [
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeOutCubic,
+                              width: _sideMenuWidth,
+                              child: _buildSideMenu(context),
+                            ),
+                            // Drag handle pour redimensionner
+                            Positioned(
+                              right: 0,
+                              top: 0,
+                              bottom: 0,
+                              child: GestureDetector(
+                                onPanStart: (_) {
+                                  setState(() {
+                                    _isResizing = true;
+                                  });
+                                },
+                                onPanUpdate: (details) {
+                                  setState(() {
+                                    _sideMenuWidth = (_sideMenuWidth + details.delta.dx).clamp(200.0, 800.0);
+                                  });
+                                },
+                                onPanEnd: (_) {
+                                  setState(() {
+                                    _isResizing = false;
+                                  });
+                                },
+                                child: MouseRegion(
+                                  cursor: SystemMouseCursors.resizeColumn,
+                                  child: Container(
+                                    width: 4,
+                                    color: _isResizing
+                                        ? gxRed.withValues(alpha: 0.8)
+                                        : Colors.transparent,
+                                    child: Container(
+                                      margin: const EdgeInsets.symmetric(vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: gxRed.withValues(alpha: 0.3),
+                                        borderRadius: BorderRadius.circular(2),
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
+                ),
               ],
             ),
           ),
@@ -510,7 +523,7 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
         return _SidebarPanelConfig(
           title: 'Documentation',
           icon: CupertinoIcons.book,
-          child: const _NotilusDocsPanel(),
+          child: const DocumentationPanel(),
         );
     }
   }
@@ -975,412 +988,3 @@ class _UpdateCard extends StatelessWidget {
   }
 }
 
-/// Panneau de documentation de l'application
-class _NotilusDocsPanel extends StatelessWidget {
-  const _NotilusDocsPanel();
-
-  @override
-  Widget build(BuildContext context) {
-    final colorTheme = Provider.of<ColorThemeManager>(context, listen: true);
-    final accentColor = colorTheme.nativeSecondaryColor;
-    
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  accentColor.withOpacity(0.2),
-                  accentColor.withOpacity(0.05),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: accentColor.withOpacity(0.3)),
-            ),
-            child: Row(
-              children: [
-                Icon(CupertinoIcons.book_fill, size: 32, color: accentColor),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Notilus Browser',
-                        style: TextStyle(
-                          color: accentColor,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        'Documentation v3.0',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.5),
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          const SizedBox(height: 20),
-          
-          // DevTools Section
-          _DocsSection(
-            title: '🔧 DevTools Notilus',
-            accentColor: accentColor,
-            items: const [
-              _DocsItem(
-                title: 'Console',
-                description: 'Visualisez les logs de l\'application Flutter et des WebViews. Filtrez par niveau (info, warn, error, debug).',
-                shortcut: 'Ctrl+Shift+I',
-              ),
-              _DocsItem(
-                title: 'Network',
-                description: 'Surveillez toutes les requêtes HTTP/HTTPS de Flutter et des WebViews. Voir headers, body, timing.',
-              ),
-              _DocsItem(
-                title: 'Performance',
-                description: 'Métriques temps réel: FPS, mémoire (ProcessInfo), CPU estimé, render time, nombre de widgets.',
-              ),
-              _DocsItem(
-                title: 'Alerts',
-                description: 'Alertes intelligentes automatiques: chute FPS, mémoire élevée, requêtes lentes, rafales d\'erreurs.',
-                isNew: true,
-              ),
-              _DocsItem(
-                title: 'Security',
-                description: 'Audit de sécurité automatique: détection HTTP, clés API exposées, données sensibles.',
-                isNew: true,
-              ),
-              _DocsItem(
-                title: 'Widget Tree',
-                description: 'Inspecteur d\'arbre Flutter: visualisez la hiérarchie des widgets, propriétés, bounds de rendu.',
-                isNew: true,
-              ),
-              _DocsItem(
-                title: 'Analytics',
-                description: 'Statistiques par onglet, enregistrement de sessions, bookmarks, export de rapports JSON.',
-                isNew: true,
-              ),
-              _DocsItem(
-                title: 'Storage',
-                description: 'Gérez les SharedPreferences: voir, modifier, supprimer les entrées de stockage local.',
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // Commandes REPL
-          _DocsSection(
-            title: '💻 Commandes Console REPL',
-            accentColor: accentColor,
-            items: const [
-              _DocsItem(
-                title: 'Console',
-                description: 'help, clear, logs, echo <msg>',
-              ),
-              _DocsItem(
-                title: 'Réseau',
-                description: 'requests, fetch <url>',
-              ),
-              _DocsItem(
-                title: 'Performance',
-                description: 'perf, widgets',
-              ),
-              _DocsItem(
-                title: 'Analytics',
-                description: 'analytics, alerts, security',
-                isNew: true,
-              ),
-              _DocsItem(
-                title: 'Session',
-                description: 'record [start|stop], sessions',
-                isNew: true,
-              ),
-              _DocsItem(
-                title: 'Storage',
-                description: 'storage, get <key>, set <k> <v>, del <key>',
-              ),
-              _DocsItem(
-                title: 'Utilitaires',
-                description: 'bookmark <t>, export, monitor, env, time, json <str>, version',
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // Navigation
-          _DocsSection(
-            title: '🧭 Navigation',
-            accentColor: accentColor,
-            items: const [
-              _DocsItem(
-                title: 'Sidebar',
-                description: 'Accès rapide: Accueil, Favoris, Historique, Téléchargements, Widgets, AI, Paramètres, Terminal, DevTools, Documentation.',
-              ),
-              _DocsItem(
-                title: 'Onglets',
-                description: 'Glissez pour réorganiser, clic molette pour fermer, double-clic pour renommer.',
-              ),
-              _DocsItem(
-                title: 'Split Screen',
-                description: 'Divisez l\'écran pour afficher plusieurs pages simultanément.',
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // Raccourcis
-          _DocsSection(
-            title: '⌨️ Raccourcis clavier',
-            accentColor: accentColor,
-            items: const [
-              _DocsItem(
-                title: 'F12',
-                description: 'Ouvrir/fermer les DevTools Notilus',
-              ),
-              _DocsItem(
-                title: 'Ctrl+Shift+I',
-                description: 'Ouvrir/fermer les DevTools Notilus (alternatif)',
-              ),
-              _DocsItem(
-                title: 'Ctrl+T',
-                description: 'Nouvel onglet',
-              ),
-              _DocsItem(
-                title: 'Ctrl+W',
-                description: 'Fermer l\'onglet actif',
-              ),
-              _DocsItem(
-                title: 'Ctrl+R',
-                description: 'Recharger la page',
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // Services intégrés
-          _DocsSection(
-            title: '🌐 Services intégrés',
-            accentColor: accentColor,
-            items: const [
-              _DocsItem(
-                title: 'YouTube Music',
-                description: 'Écoutez de la musique en arrière-plan via la sidebar.',
-              ),
-              _DocsItem(
-                title: 'YouTube',
-                description: 'Regardez des vidéos dans un panneau dédié.',
-              ),
-              _DocsItem(
-                title: 'ChatGPT',
-                description: 'Accès rapide à l\'assistant IA d\'OpenAI.',
-              ),
-              _DocsItem(
-                title: 'DeepSeek',
-                description: 'Assistant IA alternatif.',
-              ),
-              _DocsItem(
-                title: 'WhatsApp / Telegram',
-                description: 'Messageries intégrées dans la sidebar.',
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 24),
-          
-          // Version info
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.03),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                Icon(CupertinoIcons.info, size: 16, color: Colors.white.withOpacity(0.4)),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Notilus Browser v3.0.0 • DevTools Advanced Edition\nMis à jour: ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.4),
-                      fontSize: 10,
-                      fontFamily: 'JetBrains Mono',
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DocsSection extends StatelessWidget {
-  final String title;
-  final Color accentColor;
-  final List<_DocsItem> items;
-
-  const _DocsSection({
-    required this.title,
-    required this.accentColor,
-    required this.items,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: accentColor.withOpacity(0.15)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Section header
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: accentColor.withOpacity(0.1),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(11)),
-            ),
-            child: Row(
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: accentColor,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          // Items
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              children: items.map((item) => _buildDocItem(item, accentColor)).toList(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDocItem(_DocsItem item, Color accentColor) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.03),
-        borderRadius: BorderRadius.circular(8),
-        border: item.isNew
-            ? Border.all(color: accentColor.withOpacity(0.3))
-            : null,
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      item.title,
-                      style: TextStyle(
-                        color: item.isNew ? accentColor : Colors.white.withOpacity(0.9),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    if (item.isNew) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: accentColor.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          'NEW',
-                          style: TextStyle(
-                            color: accentColor,
-                            fontSize: 8,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                    if (item.shortcut != null) ...[
-                      const Spacer(),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          item.shortcut!,
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.5),
-                            fontSize: 9,
-                            fontFamily: 'JetBrains Mono',
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  item.description,
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.5),
-                    fontSize: 10,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DocsItem {
-  final String title;
-  final String description;
-  final String? shortcut;
-  final bool isNew;
-
-  const _DocsItem({
-    required this.title,
-    required this.description,
-    this.shortcut,
-    this.isNew = false,
-  });
-}
