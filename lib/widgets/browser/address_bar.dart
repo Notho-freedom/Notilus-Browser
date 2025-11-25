@@ -15,22 +15,18 @@ import 'address_suggestions.dart';
 
 class AddressBar extends StatefulWidget {
   final VoidCallback? onDevToolsToggle;
-  final VoidCallback? onSplitScreenToggle;
   final VoidCallback? onGroupsToggle;
   final VoidCallback? onExtensionsToggle;
   final bool isDevToolsVisible;
-  final bool isSplitScreenMode;
   final bool isGroupsVisible;
   final bool isExtensionsVisible;
 
   const AddressBar({
     super.key,
     this.onDevToolsToggle,
-    this.onSplitScreenToggle,
     this.onGroupsToggle,
     this.onExtensionsToggle,
     this.isDevToolsVisible = false,
-    this.isSplitScreenMode = false,
     this.isGroupsVisible = false,
     this.isExtensionsVisible = false,
   });
@@ -391,19 +387,6 @@ class AddressBarState extends State<AddressBar> {
                     : NeonButtonVariant.secondary,
                 icon: Icons.extension,
                 onPressed: widget.onExtensionsToggle,
-                height: 32,
-              ),
-              
-              const SizedBox(width: 4),
-              
-              // SplitScreen toggle
-              NeonButton(
-                text: 'Split',
-                variant: widget.isSplitScreenMode
-                    ? NeonButtonVariant.primary
-                    : NeonButtonVariant.secondary,
-                icon: Icons.splitscreen,
-                onPressed: widget.onSplitScreenToggle,
                 height: 32,
               ),
               
