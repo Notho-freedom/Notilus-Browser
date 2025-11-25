@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:webview_windows/webview_windows.dart';
 import 'browser_engine.dart';
 import '../models/tab_model.dart';
-import 'notilus_devtools_service.dart';
 
 /// Implémentation réelle du moteur de rendu avec WebView2 (Option #1 - Production-ready)
 /// WebView2 est le moteur moderne de Microsoft basé sur Chromium
@@ -42,13 +41,9 @@ class WebView2BrowserEngine extends BrowserEngine {
   
   /// ID du tab associé (pour DevTools)
   String? tabId;
-  
-  /// Service DevTools pour l'injection
-  NotilusDevToolsService? _devToolsService;
 
   bool _isInitialized = false;
   Timer? _newWindowPollingTimer;
-  bool _devToolsInjected = false;
 
   @override
   Future<void> initialize() async {
@@ -64,9 +59,6 @@ class WebView2BrowserEngine extends BrowserEngine {
         _currentUrl = url;
         onStateChanged?.call(TabState.loaded);
         onUrlChanged?.call(url);
-        
-        // Reset le flag d'injection DevTools pour la nouvelle page
-        _devToolsInjected = false;
         
         // Injecter les handlers après chaque navigation
         if (url.isNotEmpty && url != 'about:blank') {
@@ -103,11 +95,6 @@ class WebView2BrowserEngine extends BrowserEngine {
                 
                 // Démarrer le polling pour détecter les nouvelles fenêtres
                 _startNewWindowPolling();
-              }
-              
-              // Injecter le script DevTools si configuré
-              if (_devToolsService != null && tabId != null && !_devToolsInjected) {
-                await injectDevToolsScript();
               }
             } catch (e) {
               debugPrint('Error injecting handlers: $e');
@@ -376,27 +363,6 @@ class WebView2BrowserEngine extends BrowserEngine {
     }
   }
   
-  /// Configure le service DevTools pour l'injection
-  void setDevToolsService(NotilusDevToolsService service, String id) {
-    _devToolsService = service;
-    tabId = id;
-  }
-  
-  /// Injecte le script DevTools dans le WebView
-  Future<void> injectDevToolsScript() async {
-    if (_webView == null || tabId == null || _devToolsService == null) return;
-    if (_devToolsInjected) return;
-    
-    try {
-      final script = _devToolsService!.getWebViewInjectionScript(tabId!);
-      await _webView!.executeScript(script);
-      _devToolsInjected = true;
-      debugPrint('✅ DevTools script injecté pour tab: $tabId');
-    } catch (e) {
-      debugPrint('❌ Erreur injection DevTools: $e');
-    }
-  }
-  
   /// Configure le listener pour les messages WebView (DevTools)
   void setupWebMessageListener() {
     if (_webView == null) return;
@@ -407,11 +373,6 @@ class WebView2BrowserEngine extends BrowserEngine {
         if (message != null && message.isNotEmpty) {
           // Transmettre au callback
           onWebMessage?.call(message);
-          
-          // Aussi transmettre au service DevTools si configuré
-          if (_devToolsService != null && tabId != null) {
-            _devToolsService!.handleWebViewMessage(tabId!, message);
-          }
         }
       });
     } catch (e) {

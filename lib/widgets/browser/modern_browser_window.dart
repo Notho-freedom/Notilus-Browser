@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../services/tab_manager.dart';
 import '../../services/tab_webview_manager.dart' show TabWebViewManager;
-import '../../services/notilus_devtools_service.dart';
+import '../../services/devtools_service.dart';
 import '../../core/animations/notilus_animations.dart';
 import 'gx_address_bar.dart';
 import 'gx_tab_bar.dart';
@@ -21,7 +21,7 @@ import '../../core/services/color_theme_manager.dart';
 import '../../services/split_screen_service.dart';
 import '../../widgets/splitscreen/advanced_split_view.dart';
 import '../../widgets/terminal/native_terminal_panel.dart';
-import '../../widgets/dev_tools/notilus_devtools_panel.dart';
+import '../../widgets/dev_tools/notilus_devtools.dart';
 import '../../widgets/documentation/documentation_panel.dart';
 
 // Intent pour les raccourcis clavier
@@ -42,6 +42,7 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
   late Animation<double> _sidebarAnimation;
   double _sideMenuWidth = 380.0;
   bool _isResizing = false;
+  bool _isDevToolsOpen = false; // État du panneau DevTools en bas
 
   @override
   void initState() {
@@ -96,33 +97,41 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
       }
     });
     
-    // Logger l'action dans les DevTools
-    try {
-      final devTools = Provider.of<NotilusDevToolsService>(context, listen: false);
-      devTools.logInfo('DevTools ${_currentSection == SidebarSection.devtools ? "opened" : "closed"} via F12', source: 'Keyboard');
-    } catch (_) {}
+    // Logger l'action
+    debugPrint('DevTools ${_currentSection == SidebarSection.devtools ? "opened" : "closed"} via F12');
   }
 
   void _openNativeDevTools() {
-    // Ouvrir les DevTools natifs du WebView (Chrome DevTools)
-    try {
-      final tabManager = Provider.of<TabManager>(context, listen: false);
-      final tabWebviewManager = Provider.of<TabWebViewManager>(context, listen: false);
-      final activeTab = tabManager.activeTab;
-      
-      if (activeTab != null) {
-        final engine = tabWebviewManager.getEngineForTab(activeTab.id);
-        if (engine != null) {
-          engine.openDevTools();
-          
-          // Logger l'action
-          final devTools = Provider.of<NotilusDevToolsService>(context, listen: false);
-          devTools.logInfo('Native DevTools opened for tab: ${activeTab.title ?? activeTab.url}', source: 'Sidebar');
+    // Toggle le panneau DevTools Notilus en bas de l'écran
+    setState(() {
+      _isDevToolsOpen = !_isDevToolsOpen;
+    });
+    
+    // Attacher le moteur au DevToolsService si ouvert
+    if (_isDevToolsOpen) {
+      try {
+        final tabManager = Provider.of<TabManager>(context, listen: false);
+        final tabWebviewManager = Provider.of<TabWebViewManager>(context, listen: false);
+        final devToolsService = Provider.of<DevToolsService>(context, listen: false);
+        final activeTab = tabManager.activeTab;
+        
+        if (activeTab != null) {
+          final engine = tabWebviewManager.getEngineForTab(activeTab.id);
+          if (engine != null) {
+            devToolsService.attachEngine(engine);
+            devToolsService.enable();
+          }
         }
+      } catch (e) {
+        debugPrint('Erreur configuration DevTools: $e');
       }
-    } catch (e) {
-      debugPrint('Erreur ouverture DevTools natifs: $e');
     }
+  }
+
+  void _closeDevTools() {
+    setState(() {
+      _isDevToolsOpen = false;
+    });
   }
 
   @override
@@ -242,6 +251,22 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                         },
                       ),
                     ),
+                    // DevTools Panel en bas
+                    if (_isDevToolsOpen)
+                      Consumer<TabWebViewManager>(
+                        builder: (context, tabWebViewManager, _) {
+                          final tabManager = context.read<TabManager>();
+                          final activeTab = tabManager.activeTab;
+                          final engine = activeTab != null 
+                              ? tabWebViewManager.getEngineForTab(activeTab.id)
+                              : null;
+                          return NotilusDevTools(
+                            engine: engine,
+                            onClose: _closeDevTools,
+                            initialHeight: 300,
+                          );
+                        },
+                      ),
                   ],
                 ),
                 // Menu latéral en position absolue à droite de la sidebar
@@ -445,11 +470,9 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
           child: const NativeTerminalPanel(),
         );
       case SidebarSection.devtools:
-        return _SidebarPanelConfig(
-          title: 'DevTools',
-          icon: CupertinoIcons.wrench_fill,
-          child: const NotilusDevToolsPanel(),
-        );
+        // DevTools s'ouvre en bas de l'écran, pas dans un panel
+        _openNativeDevTools();
+        return null;
       case SidebarSection.youtubeMusic:
         return _SidebarPanelConfig(
           title: 'YouTube Music',
