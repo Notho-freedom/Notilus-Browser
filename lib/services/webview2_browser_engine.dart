@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:webview_windows/webview_windows.dart';
 import 'browser_engine.dart';
@@ -44,6 +45,7 @@ class WebView2BrowserEngine extends BrowserEngine {
 
   bool _isInitialized = false;
   Timer? _newWindowPollingTimer;
+  Timer? _downloadPollingTimer;
 
   @override
   Future<void> initialize() async {
@@ -382,117 +384,204 @@ class WebView2BrowserEngine extends BrowserEngine {
 
   /// Configure l'interception des téléchargements
   void _setupDownloadInterceptor() {
-    // Injecter un script pour intercepter les téléchargements
-    Timer.periodic(const Duration(seconds: 2), (timer) async {
+    // Annuler le timer précédent s'il existe
+    _downloadPollingTimer?.cancel();
+    
+    // Démarrer le polling pour les téléchargements
+    _downloadPollingTimer = Timer.periodic(const Duration(milliseconds: 500), (timer) async {
       if (_webView == null || !_isInitialized) {
-        timer.cancel();
-        return;
+        return; // Ne pas annuler, juste attendre
       }
       
       try {
-        // Injecter un handler pour intercepter les clics sur les liens de téléchargement
-        await _webView!.executeScript('''
-          (function() {
-            if (window._flutterDownloadHandlerInstalled) return;
-            window._flutterDownloadHandlerInstalled = true;
-            
-            // Intercepter les clics sur les liens de téléchargement
-            document.addEventListener('click', function(e) {
-              var target = e.target;
-              while (target && target.tagName !== 'A') {
-                target = target.parentElement;
-              }
-              if (target && target.tagName === 'A') {
-                var href = target.getAttribute('href');
-                var download = target.getAttribute('download');
-                
-                // Détecter les liens de téléchargement
-                var isDownload = false;
-                if (download) {
-                  isDownload = true;
-                } else if (href) {
-                  var lowerHref = href.toLowerCase();
-                  var extensions = ['.zip', '.rar', '.7z', '.tar', '.gz', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.exe', '.msi', '.dmg', '.deb', '.rpm', '.apk', '.ipa', '.mp3', '.mp4', '.avi', '.mkv', '.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp'];
-                  for (var i = 0; i < extensions.length; i++) {
-                    if (lowerHref.indexOf(extensions[i]) !== -1) {
-                      isDownload = true;
-                      break;
-                    }
-                  }
-                  if (!isDownload && (lowerHref.indexOf('download') !== -1 || lowerHref.indexOf('file') !== -1 || lowerHref.indexOf('attachment') !== -1)) {
-                    isDownload = true;
-                  }
-                }
-                if (isDownload) {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  
-                  // Stocker l'URL et le nom de fichier pour récupération
-                  if (document.body) {
-                    document.body.setAttribute('data-download-url', href);
-                    if (download) {
-                      document.body.setAttribute('data-download-name', download);
-                    }
-                  }
-                  
-                  return false;
-                }
-              }
-            }, true);
-          })();
-        ''');
-        
-        // Vérifier périodiquement si un téléchargement a été déclenché
+        // Injecter le handler une seule fois et vérifier les téléchargements
         final result = await _webView!.executeScript('''
           (function() {
-            if (document.body) {
-              var url = document.body.getAttribute('data-download-url');
-              var name = document.body.getAttribute('data-download-name');
-              if (url) {
-                document.body.removeAttribute('data-download-url');
-                document.body.removeAttribute('data-download-name');
-                return JSON.stringify({url: url, fileName: name || null});
+            // Installer le handler s'il n'est pas déjà installé
+            if (!window._flutterDownloadHandlerInstalled) {
+              window._flutterDownloadHandlerInstalled = true;
+              window._pendingDownloads = [];
+              
+              // Extensions de fichiers téléchargeables
+              var downloadExtensions = [
+                '.zip', '.rar', '.7z', '.tar', '.gz', '.bz2', '.xz',
+                '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.odt', '.ods', '.odp',
+                '.exe', '.msi', '.dmg', '.deb', '.rpm', '.apk', '.ipa', '.app',
+                '.mp3', '.wav', '.flac', '.aac', '.ogg', '.wma',
+                '.mp4', '.avi', '.mkv', '.mov', '.wmv', '.flv', '.webm',
+                '.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp', '.bmp', '.ico', '.tiff',
+                '.iso', '.img', '.bin', '.torrent',
+                '.csv', '.json', '.xml', '.sql', '.db',
+                '.ttf', '.otf', '.woff', '.woff2'
+              ];
+              
+              // Fonction pour vérifier si c'est un téléchargement
+              function isDownloadUrl(href) {
+                if (!href) return false;
+                var lowerHref = href.toLowerCase();
+                
+                // Vérifier les extensions
+                for (var i = 0; i < downloadExtensions.length; i++) {
+                  // Vérifier si l'extension est à la fin ou suivie de paramètres
+                  var ext = downloadExtensions[i];
+                  var idx = lowerHref.lastIndexOf(ext);
+                  if (idx !== -1) {
+                    var afterExt = lowerHref.substring(idx + ext.length);
+                    if (afterExt === '' || afterExt.charAt(0) === '?' || afterExt.charAt(0) === '#') {
+                      return true;
+                    }
+                  }
+                }
+                
+                // Vérifier les patterns de téléchargement
+                if (lowerHref.indexOf('/download/') !== -1 || 
+                    lowerHref.indexOf('/downloads/') !== -1 ||
+                    lowerHref.indexOf('action=download') !== -1 ||
+                    lowerHref.indexOf('download=') !== -1 ||
+                    lowerHref.indexOf('/attachment') !== -1 ||
+                    lowerHref.indexOf('?file=') !== -1 ||
+                    lowerHref.indexOf('&file=') !== -1) {
+                  return true;
+                }
+                
+                return false;
               }
+              
+              // Extraire le nom de fichier depuis l'URL
+              function extractFileName(href, downloadAttr) {
+                if (downloadAttr) return downloadAttr;
+                try {
+                  var url = new URL(href, window.location.href);
+                  var path = url.pathname;
+                  var fileName = path.substring(path.lastIndexOf('/') + 1);
+                  if (fileName && fileName.indexOf('.') !== -1) {
+                    return decodeURIComponent(fileName.split('?')[0]);
+                  }
+                } catch(e) {}
+                return null;
+              }
+              
+              // Intercepter les clics
+              document.addEventListener('click', function(e) {
+                var target = e.target;
+                while (target && target.tagName !== 'A') {
+                  target = target.parentElement;
+                }
+                
+                if (target && target.tagName === 'A') {
+                  var href = target.getAttribute('href');
+                  var download = target.getAttribute('download');
+                  
+                  // Forcer le téléchargement si attribut download présent ou URL de téléchargement détectée
+                  if (download !== null || isDownloadUrl(href)) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    try {
+                      var fullUrl = new URL(href, window.location.href).href;
+                      var fileName = extractFileName(href, download);
+                      
+                      window._pendingDownloads.push({
+                        url: fullUrl,
+                        fileName: fileName
+                      });
+                    } catch(err) {
+                      // URL invalide, utiliser tel quel
+                      window._pendingDownloads.push({
+                        url: href,
+                        fileName: download || null
+                      });
+                    }
+                    
+                    return false;
+                  }
+                }
+              }, true);
+              
+              // Intercepter aussi les formulaires de téléchargement
+              document.addEventListener('submit', function(e) {
+                var form = e.target;
+                if (form && form.tagName === 'FORM') {
+                  var action = form.getAttribute('action') || '';
+                  if (isDownloadUrl(action)) {
+                    // Ne pas empêcher le submit mais marquer comme téléchargement
+                    try {
+                      var fullUrl = new URL(action, window.location.href).href;
+                      window._pendingDownloads.push({
+                        url: fullUrl,
+                        fileName: extractFileName(action, null)
+                      });
+                    } catch(e) {}
+                  }
+                }
+              }, true);
             }
+            
+            // Récupérer et vider les téléchargements en attente
+            if (window._pendingDownloads && window._pendingDownloads.length > 0) {
+              var downloads = JSON.stringify(window._pendingDownloads);
+              window._pendingDownloads = [];
+              return downloads;
+            }
+            
             return null;
           })();
         ''');
         
-        if (result != null && result != 'null' && result.toString().isNotEmpty) {
-          try {
-            // Parser le JSON retourné
-            final jsonStr = result.toString();
-            if (jsonStr.startsWith('{')) {
-              // Extraire l'URL et le nom de fichier
-              final urlMatch = RegExp(r'"url"\s*:\s*"([^"]+)"').firstMatch(jsonStr);
-              final nameMatch = RegExp(r'"fileName"\s*:\s*"([^"]+)"').firstMatch(jsonStr);
-              
-              final url = urlMatch?.group(1);
-              final fileName = nameMatch?.group(1);
-              
-              if (url != null && onDownloadRequested != null) {
-                // Construire l'URL complète si relative
-                final fullUrl = url.startsWith('http') 
-                    ? url 
-                    : (_currentUrl != null 
-                        ? Uri.parse(_currentUrl!).resolve(url).toString()
-                        : url);
-                
-                onDownloadRequested?.call(fullUrl, fileName);
-              }
-            }
-          } catch (e) {
-            debugPrint('Error parsing download data: $e');
-          }
+        // Traiter les téléchargements détectés
+        if (result != null && result != 'null' && result.toString().isNotEmpty && result.toString() != 'undefined') {
+          await _processDownloadResult(result.toString());
         }
       } catch (e) {
-        // Ignorer les erreurs silencieusement
+        // Ignorer les erreurs silencieusement (page en cours de chargement, etc.)
       }
     });
+  }
+  
+  /// Traite le résultat du script de détection des téléchargements
+  Future<void> _processDownloadResult(String jsonStr) async {
+    try {
+      // Le résultat est un tableau JSON de téléchargements
+      if (!jsonStr.startsWith('[')) return;
+      
+      // Parser le JSON avec dart:convert
+      final List<dynamic> downloads = jsonDecode(jsonStr);
+      
+      for (final download in downloads) {
+        if (download is Map) {
+          final url = download['url'] as String?;
+          final fileName = download['fileName'] as String?;
+          
+          if (url != null && url.isNotEmpty && onDownloadRequested != null) {
+            debugPrint('📥 Téléchargement intercepté: $url');
+            onDownloadRequested?.call(url, fileName);
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Erreur lors du parsing des téléchargements: $e');
+      
+      // Fallback: essayer de parser comme un objet unique
+      try {
+        if (jsonStr.startsWith('{')) {
+          final download = jsonDecode(jsonStr) as Map<String, dynamic>;
+          final url = download['url'] as String?;
+          final fileName = download['fileName'] as String?;
+          
+          if (url != null && url.isNotEmpty && onDownloadRequested != null) {
+            onDownloadRequested?.call(url, fileName);
+          }
+        }
+      } catch (e2) {
+        debugPrint('Erreur fallback parsing: $e2');
+      }
+    }
   }
 
   void dispose() {
     _stopNewWindowPolling();
+    _downloadPollingTimer?.cancel();
+    _downloadPollingTimer = null;
     _webView?.dispose();
     _webView = null;
   }
