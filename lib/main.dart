@@ -69,11 +69,14 @@ class NotilusApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => WallpaperManager()),
         ChangeNotifierProvider(create: (_) => DownloadService()),
         ChangeNotifierProvider(create: (_) => TabManager()),
+        ChangeNotifierProvider(create: (_) => NotilusDevToolsService()..initialize()),
         ChangeNotifierProvider(
           create: (context) {
             final tabWebViewManager = TabWebViewManager();
             final downloadService = context.read<DownloadService>();
+            final devToolsService = context.read<NotilusDevToolsService>();
             tabWebViewManager.setDownloadService(downloadService);
+            tabWebViewManager.setDevToolsService(devToolsService);
             return tabWebViewManager;
           },
         ),
@@ -83,7 +86,6 @@ class NotilusApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => TerminalService()..initialize()),
         ChangeNotifierProvider(create: (_) => TerminalManager()),
         ChangeNotifierProvider(create: (_) => NativeTerminalService()),
-        ChangeNotifierProvider(create: (_) => NotilusDevToolsService()),
       ],
       child: Consumer<ThemeModeNotifier>(
         builder: (context, themeModeNotifier, _) {

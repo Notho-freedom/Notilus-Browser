@@ -1,19 +1,24 @@
 import 'package:flutter/foundation.dart';
 import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart';
 import 'browser_engine.dart';
 import 'webview2_browser_engine.dart';
 import 'windows_browser_engine.dart';
 import '../models/tab_model.dart';
 import 'download_service.dart';
+import 'notilus_devtools_service.dart';
 
 /// Gestionnaire qui associe chaque onglet à son moteur de rendu
 /// Optimisé pour conserver les sessions et éviter les rechargements
 class TabWebViewManager extends ChangeNotifier {
   DownloadService? _downloadService;
+  NotilusDevToolsService? _devToolsService;
   
   void setDownloadService(DownloadService service) {
     _downloadService = service;
+  }
+  
+  void setDevToolsService(NotilusDevToolsService service) {
+    _devToolsService = service;
   }
   // Engines actifs (associés à des onglets ouverts)
   final Map<String, BrowserEngine> _activeEngines = {};
@@ -89,12 +94,20 @@ class TabWebViewManager extends ChangeNotifier {
       notifyListeners();
     };
     
-    // Configurer l'interception des téléchargements
-    if (engine is WebView2BrowserEngine && _downloadService != null) {
-      engine.onDownloadRequested = (url, fileName) {
-        debugPrint('📥 Téléchargement détecté: $url (${fileName ?? "sans nom"})');
-        _downloadService!.addDownload(url, fileName: fileName);
-      };
+    // Configurer l'interception des téléchargements et DevTools
+    if (engine is WebView2BrowserEngine) {
+      if (_downloadService != null) {
+        engine.onDownloadRequested = (url, fileName) {
+          debugPrint('📥 Téléchargement détecté: $url (${fileName ?? "sans nom"})');
+          _downloadService!.addDownload(url, fileName: fileName);
+        };
+      }
+      
+      // Configurer DevTools pour capturer les logs/requêtes du WebView
+      if (_devToolsService != null) {
+        engine.setDevToolsService(_devToolsService!, tabId);
+        debugPrint('🔧 DevTools configuré pour tab: $tabId');
+      }
     }
     
     return engine;

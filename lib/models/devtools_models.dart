@@ -116,6 +116,7 @@ class NetworkRequest {
   final Duration? duration;
   final RequestStatus status;
   final String? error;
+  final String? source; // Flutter, WebView:tabId, etc.
 
   NetworkRequest({
     required this.id,
@@ -131,6 +132,7 @@ class NetworkRequest {
     this.duration,
     this.status = RequestStatus.pending,
     this.error,
+    this.source,
   });
 
   String get methodLabel => method.name.toUpperCase();
@@ -196,6 +198,7 @@ class NetworkRequest {
     Duration? duration,
     RequestStatus? status,
     String? error,
+    String? source,
   }) {
     return NetworkRequest(
       id: id,
@@ -211,8 +214,15 @@ class NetworkRequest {
       duration: duration ?? this.duration,
       status: status ?? this.status,
       error: error ?? this.error,
+      source: source ?? this.source,
     );
   }
+  
+  /// Indique si c'est une requête WebView
+  bool get isFromWebView => source?.startsWith('WebView:') ?? false;
+  
+  /// Indique si c'est une requête Flutter native
+  bool get isFromFlutter => source == null || source == 'Flutter';
 }
 
 /// Métrique de performance

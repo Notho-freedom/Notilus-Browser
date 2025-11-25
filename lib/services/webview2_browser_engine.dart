@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:webview_windows/webview_windows.dart';
 import 'browser_engine.dart';
 import '../models/tab_model.dart';
+import 'notilus_devtools_service.dart';
 
 /// Implémentation réelle du moteur de rendu avec WebView2 (Option #1 - Production-ready)
 /// WebView2 est le moteur moderne de Microsoft basé sur Chromium
@@ -35,9 +36,19 @@ class WebView2BrowserEngine extends BrowserEngine {
   
   /// Callback pour les téléchargements
   Function(String url, String? fileName)? onDownloadRequested;
+  
+  /// Callback pour les messages WebView (DevTools)
+  Function(String message)? onWebMessage;
+  
+  /// ID du tab associé (pour DevTools)
+  String? tabId;
+  
+  /// Service DevTools pour l'injection
+  NotilusDevToolsService? _devToolsService;
 
   bool _isInitialized = false;
   Timer? _newWindowPollingTimer;
+  bool _devToolsInjected = false;
 
   @override
   Future<void> initialize() async {
@@ -54,45 +65,59 @@ class WebView2BrowserEngine extends BrowserEngine {
         onStateChanged?.call(TabState.loaded);
         onUrlChanged?.call(url);
         
-        // Injecter le handler pour les nouvelles fenêtres après chaque navigation
-        if (onNewWindowRequest != null && url.isNotEmpty && url != 'about:blank') {
+        // Reset le flag d'injection DevTools pour la nouvelle page
+        _devToolsInjected = false;
+        
+        // Injecter les handlers après chaque navigation
+        if (url.isNotEmpty && url != 'about:blank') {
           Future.delayed(const Duration(milliseconds: 1500), () async {
             try {
-              await _webView!.executeScript('''
-                (function() {
-                  // Intercepter les clics sur les liens target="_blank"
-                  var handler = function(e) {
-                    var target = e.target;
-                    while (target && target.tagName !== 'A') {
-                      target = target.parentElement;
-                    }
-                    if (target && (target.target === '_blank' || target.getAttribute('target') === '_blank')) {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      // Stocker l'URL dans un attribut data pour récupération
-                      if (document.body) {
-                        document.body.setAttribute('data-new-window-url', target.href);
+              // Injecter le handler pour les nouvelles fenêtres
+              if (onNewWindowRequest != null) {
+                await _webView!.executeScript('''
+                  (function() {
+                    // Intercepter les clics sur les liens target="_blank"
+                    var handler = function(e) {
+                      var target = e.target;
+                      while (target && target.tagName !== 'A') {
+                        target = target.parentElement;
                       }
-                      return false;
+                      if (target && (target.target === '_blank' || target.getAttribute('target') === '_blank')) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        // Stocker l'URL dans un attribut data pour récupération
+                        if (document.body) {
+                          document.body.setAttribute('data-new-window-url', target.href);
+                        }
+                        return false;
+                      }
+                    };
+                    // Supprimer l'ancien handler s'il existe
+                    if (window._flutterNewWindowHandler) {
+                      document.removeEventListener('click', window._flutterNewWindowHandler, true);
                     }
-                  };
-                  // Supprimer l'ancien handler s'il existe
-                  if (window._flutterNewWindowHandler) {
-                    document.removeEventListener('click', window._flutterNewWindowHandler, true);
-                  }
-                  window._flutterNewWindowHandler = handler;
-                  document.addEventListener('click', handler, true);
-                })();
-              ''');
+                    window._flutterNewWindowHandler = handler;
+                    document.addEventListener('click', handler, true);
+                  })();
+                ''');
+                
+                // Démarrer le polling pour détecter les nouvelles fenêtres
+                _startNewWindowPolling();
+              }
               
-              // Démarrer le polling pour détecter les nouvelles fenêtres
-              _startNewWindowPolling();
+              // Injecter le script DevTools si configuré
+              if (_devToolsService != null && tabId != null && !_devToolsInjected) {
+                await injectDevToolsScript();
+              }
             } catch (e) {
-              debugPrint('Error injecting new window handler: $e');
+              debugPrint('Error injecting handlers: $e');
             }
           });
         }
       });
+      
+      // Configurer le listener pour les messages WebView (DevTools)
+      setupWebMessageListener();
       
       _webView!.title.listen((title) {
         if (title.isNotEmpty) {
@@ -348,6 +373,49 @@ class WebView2BrowserEngine extends BrowserEngine {
       ''');
     } catch (e) {
       debugPrint('Erreur lors de la tentative d\'ouverture des DevTools: $e');
+    }
+  }
+  
+  /// Configure le service DevTools pour l'injection
+  void setDevToolsService(NotilusDevToolsService service, String id) {
+    _devToolsService = service;
+    tabId = id;
+  }
+  
+  /// Injecte le script DevTools dans le WebView
+  Future<void> injectDevToolsScript() async {
+    if (_webView == null || tabId == null || _devToolsService == null) return;
+    if (_devToolsInjected) return;
+    
+    try {
+      final script = _devToolsService!.getWebViewInjectionScript(tabId!);
+      await _webView!.executeScript(script);
+      _devToolsInjected = true;
+      debugPrint('✅ DevTools script injecté pour tab: $tabId');
+    } catch (e) {
+      debugPrint('❌ Erreur injection DevTools: $e');
+    }
+  }
+  
+  /// Configure le listener pour les messages WebView (DevTools)
+  void setupWebMessageListener() {
+    if (_webView == null) return;
+    
+    // Note: webview_windows utilise webMessage stream pour les messages postMessage
+    try {
+      _webView!.webMessage.listen((message) {
+        if (message != null && message.isNotEmpty) {
+          // Transmettre au callback
+          onWebMessage?.call(message);
+          
+          // Aussi transmettre au service DevTools si configuré
+          if (_devToolsService != null && tabId != null) {
+            _devToolsService!.handleWebViewMessage(tabId!, message);
+          }
+        }
+      });
+    } catch (e) {
+      debugPrint('Erreur setup webMessage listener: $e');
     }
   }
 
