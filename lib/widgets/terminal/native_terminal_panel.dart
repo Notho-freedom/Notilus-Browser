@@ -424,6 +424,7 @@ class _NativeTerminalPanelState extends State<NativeTerminalPanel> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Scrollbar(
+        controller: _scrollController,
         thickness: 1,
         radius: const Radius.circular(0),
         thumbVisibility: true,
