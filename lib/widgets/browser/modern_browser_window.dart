@@ -21,8 +21,11 @@ import '../../core/services/color_theme_manager.dart';
 import '../../widgets/terminal/native_terminal_panel.dart';
 import '../../widgets/dev_tools/notilus_devtools.dart';
 import '../../widgets/documentation/documentation_panel.dart';
+import '../../widgets/mosaic/mosaic_container.dart';
+import '../../services/mosaic_service.dart';
 
 // Intent pour les raccourcis clavier
+class _ToggleMosaicIntent extends Intent {}
 class _OpenDevToolsIntent extends Intent {}
 
 class ModernBrowserWindow extends StatefulWidget {
@@ -129,12 +132,21 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
       shortcuts: {
         LogicalKeySet(LogicalKeyboardKey.f12): _OpenDevToolsIntent(),
         LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.shift, LogicalKeyboardKey.keyI): _OpenDevToolsIntent(),
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.shift, LogicalKeyboardKey.keyM): _ToggleMosaicIntent(),
       },
       child: Actions(
         actions: {
           _OpenDevToolsIntent: CallbackAction<_OpenDevToolsIntent>(
             onInvoke: (_) {
               _handleOpenDevTools();
+              return null;
+            },
+          ),
+          _ToggleMosaicIntent: CallbackAction<_ToggleMosaicIntent>(
+            onInvoke: (_) {
+              final mosaicService = Provider.of<NotilusMosaicService>(context, listen: false);
+              final tabManager = Provider.of<TabManager>(context, listen: false);
+              mosaicService.toggle(activeTabId: tabManager.activeTab?.id);
               return null;
             },
           ),
@@ -203,8 +215,14 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                     ),
                     const GXAddressBar(),
                     Expanded(
-                      child: Consumer<TabManager>(
-                        builder: (context, tabManager, _) {
+                      child: Consumer2<NotilusMosaicService, TabManager>(
+                        builder: (context, mosaicService, tabManager, _) {
+                          // Priorité 1: Mosaïque si active
+                          if (mosaicService.isMosaicActive) {
+                            return const MosaicContainer();
+                          }
+                          
+                          // Priorité 2: Contenu normal
                           final activeTab = tabManager.activeTab;
                           if (activeTab == null) {
                             return ModernHomePage(
