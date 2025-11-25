@@ -7,7 +7,7 @@ import '../../services/tab_manager.dart';
 import '../common/notilus_monogram.dart';
 import '../common/notilus_tooltip.dart';
 
-const Color _gxRed = NotilusColors.neonRed;
+// La couleur rouge est maintenant gérée par ColorThemeManager
 
 enum SidebarSection {
   home,
@@ -88,48 +88,49 @@ class _GXSidebarState extends State<GXSidebar> {
   ];
 
   // Services web avec webview - tous en rouge GX
-  final List<_WebServiceDestination> _webServices = const [
+  List<_WebServiceDestination> _getWebServices(Color gxRed) => [
     _WebServiceDestination(
       url: 'https://music.youtube.com',
       icon: CupertinoIcons.music_note,
       label: 'YouTube Music',
-      color: _gxRed,
+      color: gxRed,
     ),
     _WebServiceDestination(
       url: 'https://www.youtube.com',
       icon: CupertinoIcons.play_circle,
       label: 'YouTube',
-      color: _gxRed,
+      color: gxRed,
     ),
     _WebServiceDestination(
       url: 'https://chat.openai.com',
       icon: CupertinoIcons.chat_bubble_2,
       label: 'ChatGPT',
-      color: _gxRed,
+      color: gxRed,
     ),
     _WebServiceDestination(
       url: 'https://chat.deepseek.com',
       icon: CupertinoIcons.sparkles,
       label: 'DeepSeek',
-      color: _gxRed,
+      color: gxRed,
     ),
     _WebServiceDestination(
       url: 'https://web.whatsapp.com',
       icon: CupertinoIcons.chat_bubble_text,
       label: 'WhatsApp',
-      color: _gxRed,
+      color: gxRed,
     ),
     _WebServiceDestination(
       url: 'https://web.telegram.org',
       icon: CupertinoIcons.paperplane,
       label: 'Telegram',
-      color: _gxRed,
+      color: gxRed,
     ),
   ];
 
   @override
   Widget build(BuildContext context) {
     final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: true);
+    final gxRed = colorThemeManager.nativeSecondaryColor;
     return Container(
       width: 50,
       color: colorThemeManager.nativeBackgroundColor,
@@ -168,16 +169,16 @@ class _GXSidebarState extends State<GXSidebar> {
           Container(
             width: 40,
             height: 1,
-            color: _gxRed.withOpacity(0.3),
+            color: gxRed.withValues(alpha: 0.3),
           ),
           const SizedBox(height: 12),
           // Services web
-          for (int i = 0; i < _webServices.length; i++) ...[
+          for (int i = 0; i < _getWebServices(gxRed).length; i++) ...[
             NotilusTooltip(
-              message: _webServices[i].label,
+              message: _getWebServices(gxRed)[i].label,
               child: _GXSidebarWebServiceIcon(
-                icon: _webServices[i].icon,
-                color: _webServices[i].color,
+                icon: _getWebServices(gxRed)[i].icon,
+                color: _getWebServices(gxRed)[i].color,
                 isHovered: _hoveredIndex == _destinations.length + i,
                 onTap: () {
                   setState(() {
@@ -209,7 +210,7 @@ class _GXSidebarState extends State<GXSidebar> {
                     widget.onSectionSelected?.call(section);
                   } else {
                     Provider.of<TabManager>(context, listen: false)
-                        .addTab(url: _webServices[i].url);
+                        .addTab(url: _getWebServices(gxRed)[i].url);
                   }
                 },
                 onHover: (hover) => setState(() => _hoveredIndex = hover ? _destinations.length + i : -1),
@@ -245,6 +246,8 @@ class _GXSidebarIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: true);
+    final gxRed = colorThemeManager.nativeSecondaryColor;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => onHover(true),
@@ -265,14 +268,14 @@ class _GXSidebarIcon extends StatelessWidget {
                   child: Container(
                     width: 3,
                     decoration: BoxDecoration(
-                      color: _gxRed,
+                      color: gxRed,
                       borderRadius: const BorderRadius.only(
                         topRight: Radius.circular(2),
                         bottomRight: Radius.circular(2),
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: _gxRed.withOpacity(0.8),
+                          color: gxRed.withValues(alpha: 0.8),
                           blurRadius: 4,
                           spreadRadius: 0,
                         ),
@@ -289,17 +292,17 @@ class _GXSidebarIcon extends StatelessWidget {
                   height: 36,
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? _gxRed.withOpacity(0.18)
+                        ? gxRed.withValues(alpha: 0.18)
                         : (isHovered
-                            ? _gxRed.withOpacity(0.08)
+                            ? gxRed.withValues(alpha: 0.08)
                             : Colors.transparent),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
                     icon,
                     size: 20,
-                    color: _gxRed.withOpacity(isSelected
-                        ? 1
+                    color: gxRed.withValues(alpha: isSelected
+                        ? 1.0
                         : (isHovered ? 0.9 : 0.65)),
                   ),
                 ),
@@ -317,12 +320,14 @@ class _SidebarSignature extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: true);
+    final gxRed = colorThemeManager.nativeSecondaryColor;
     return Container(
       width: 32,
       padding: const EdgeInsets.symmetric(vertical: 10),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _gxRed.withOpacity(0.5), width: 1),
+        border: Border.all(color: gxRed.withValues(alpha: 0.5), width: 1),
       ),
       child: Column(
         children: [
@@ -330,11 +335,11 @@ class _SidebarSignature extends StatelessWidget {
             width: 6,
             height: 6,
             decoration: BoxDecoration(
-              color: _gxRed,
+              color: gxRed,
               borderRadius: BorderRadius.circular(3),
               boxShadow: [
                 BoxShadow(
-                  color: _gxRed.withOpacity(0.6),
+                  color: gxRed.withValues(alpha: 0.6),
                   blurRadius: 8,
                 ),
               ],
@@ -344,7 +349,7 @@ class _SidebarSignature extends StatelessWidget {
           Text(
             'NX',
             style: TextStyle(
-              color: _gxRed.withOpacity(0.9),
+              color: gxRed.withValues(alpha: 0.9),
               fontSize: 10,
               fontWeight: FontWeight.bold,
             ),
@@ -448,12 +453,14 @@ class _SidebarVerticalLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: true);
+    final gxRed = colorThemeManager.nativeSecondaryColor;
     return RotatedBox(
       quarterTurns: 3,
       child: Text(
         'NOTILUS BETA',
         style: TextStyle(
-          color: _gxRed.withOpacity(0.7),
+          color: gxRed.withValues(alpha: 0.7),
           fontSize: 10,
           letterSpacing: 3,
           fontWeight: FontWeight.w600,

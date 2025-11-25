@@ -32,6 +32,9 @@ class WebView2BrowserEngine extends BrowserEngine {
   
   @override
   Function(String)? onNewWindowRequest;
+  
+  /// Callback pour les téléchargements
+  Function(String url, String? fileName)? onDownloadRequested;
 
   bool _isInitialized = false;
   Timer? _newWindowPollingTimer;
@@ -97,6 +100,9 @@ class WebView2BrowserEngine extends BrowserEngine {
           onTitleChanged?.call(title);
         }
       });
+      
+      // Configurer l'interception des téléchargements
+      _setupDownloadInterceptor();
       
       // Gérer les états de chargement
       _webView!.loadingState.listen((state) {
@@ -343,6 +349,117 @@ class WebView2BrowserEngine extends BrowserEngine {
     } catch (e) {
       debugPrint('Erreur lors de la tentative d\'ouverture des DevTools: $e');
     }
+  }
+
+  /// Configure l'interception des téléchargements
+  void _setupDownloadInterceptor() {
+    // Injecter un script pour intercepter les téléchargements
+    Timer.periodic(const Duration(seconds: 2), (timer) async {
+      if (_webView == null || !_isInitialized) {
+        timer.cancel();
+        return;
+      }
+      
+      try {
+        // Injecter un handler pour intercepter les clics sur les liens de téléchargement
+        await _webView!.executeScript('''
+          (function() {
+            if (window._flutterDownloadHandlerInstalled) return;
+            window._flutterDownloadHandlerInstalled = true;
+            
+            // Intercepter les clics sur les liens de téléchargement
+            document.addEventListener('click', function(e) {
+              var target = e.target;
+              while (target && target.tagName !== 'A') {
+                target = target.parentElement;
+              }
+              if (target && target.tagName === 'A') {
+                var href = target.getAttribute('href');
+                var download = target.getAttribute('download');
+                
+                // Détecter les liens de téléchargement
+                var isDownload = false;
+                if (download) {
+                  isDownload = true;
+                } else if (href) {
+                  var lowerHref = href.toLowerCase();
+                  var extensions = ['.zip', '.rar', '.7z', '.tar', '.gz', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.exe', '.msi', '.dmg', '.deb', '.rpm', '.apk', '.ipa', '.mp3', '.mp4', '.avi', '.mkv', '.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp'];
+                  for (var i = 0; i < extensions.length; i++) {
+                    if (lowerHref.indexOf(extensions[i]) !== -1) {
+                      isDownload = true;
+                      break;
+                    }
+                  }
+                  if (!isDownload && (lowerHref.indexOf('download') !== -1 || lowerHref.indexOf('file') !== -1 || lowerHref.indexOf('attachment') !== -1)) {
+                    isDownload = true;
+                  }
+                }
+                if (isDownload) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  
+                  // Stocker l'URL et le nom de fichier pour récupération
+                  if (document.body) {
+                    document.body.setAttribute('data-download-url', href);
+                    if (download) {
+                      document.body.setAttribute('data-download-name', download);
+                    }
+                  }
+                  
+                  return false;
+                }
+              }
+            }, true);
+          })();
+        ''');
+        
+        // Vérifier périodiquement si un téléchargement a été déclenché
+        final result = await _webView!.executeScript('''
+          (function() {
+            if (document.body) {
+              var url = document.body.getAttribute('data-download-url');
+              var name = document.body.getAttribute('data-download-name');
+              if (url) {
+                document.body.removeAttribute('data-download-url');
+                document.body.removeAttribute('data-download-name');
+                return JSON.stringify({url: url, fileName: name || null});
+              }
+            }
+            return null;
+          })();
+        ''');
+        
+        if (result != null && result != 'null' && result.toString().isNotEmpty) {
+          try {
+            // Parser le JSON retourné
+            final jsonStr = result.toString();
+            if (jsonStr.startsWith('{')) {
+              // Extraire l'URL et le nom de fichier
+              final urlMatch = RegExp(r'"url"\s*:\s*"([^"]+)"').firstMatch(jsonStr);
+              final nameMatch = RegExp(r'"fileName"\s*:\s*"([^"]+)"').firstMatch(jsonStr);
+              
+              final url = urlMatch?.group(1);
+              final fileName = nameMatch?.group(1);
+              
+              if (url != null && onDownloadRequested != null) {
+                // Construire l'URL complète si relative
+                final fullUrl = url.startsWith('http') 
+                    ? url 
+                    : (_currentUrl != null 
+                        ? Uri.parse(_currentUrl!).resolve(url).toString()
+                        : url);
+                
+                onDownloadRequested?.call(fullUrl, fileName);
+              }
+            }
+          } catch (e) {
+            debugPrint('Error parsing download data: $e');
+          }
+        }
+      } catch (e) {
+        // Ignorer les erreurs silencieusement
+      }
+    });
   }
 
   void dispose() {

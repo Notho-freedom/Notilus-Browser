@@ -121,10 +121,18 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Thème de couleur',
+                            'Thème de couleur (Couleur secondaire)',
                             style: theme.textTheme.bodySmall?.copyWith(
                               fontSize: 11,
                               fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Change la couleur principale (rouge Notilus)',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontSize: 10,
+                              color: Colors.white60,
                             ),
                           ),
                           const SizedBox(height: 8),
@@ -276,13 +284,13 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                           
                           const SizedBox(height: 12),
                           
-                          // Couleur secondaire native
+                          // Couleur secondaire native (rouge Notilus)
                           GestureDetector(
                             onTap: () async {
                               final color = await ColorPickerDialog.show(
                                 context,
                                 initialColor: colorThemeManager.nativeSecondaryColor,
-                                title: 'Couleur secondaire native',
+                                title: 'Couleur secondaire (Rouge Notilus)',
                               );
                               if (color != null) {
                                 await colorThemeManager.setNativeSecondaryColor(color);
@@ -318,7 +326,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          'Secondaire native',
+                                          'Couleur secondaire',
                                           style: theme.textTheme.bodyMedium?.copyWith(
                                             fontSize: 12,
                                             fontWeight: FontWeight.w500,
@@ -326,7 +334,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                                         ),
                                         const SizedBox(height: 2),
                                         Text(
-                                          'Éléments secondaires',
+                                          'Rouge Notilus (principale)',
                                           style: theme.textTheme.bodySmall?.copyWith(
                                             fontSize: 10,
                                             color: Colors.white60,

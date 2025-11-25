@@ -15,6 +15,7 @@ import 'services/split_screen_service.dart';
 import 'services/terminal_service.dart';
 import 'services/terminal_manager.dart';
 import 'services/native_terminal_service.dart';
+import 'services/download_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -65,8 +66,16 @@ class NotilusApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ThemeModeNotifier()),
         ChangeNotifierProvider(create: (_) => ColorThemeManager()),
         ChangeNotifierProvider(create: (_) => WallpaperManager()),
+        ChangeNotifierProvider(create: (_) => DownloadService()),
         ChangeNotifierProvider(create: (_) => TabManager()),
-        ChangeNotifierProvider(create: (_) => TabWebViewManager()),
+        ChangeNotifierProvider(
+          create: (context) {
+            final tabWebViewManager = TabWebViewManager();
+            final downloadService = context.read<DownloadService>();
+            tabWebViewManager.setDownloadService(downloadService);
+            return tabWebViewManager;
+          },
+        ),
         ChangeNotifierProvider(create: (_) => SideWebViewManager()),
         ChangeNotifierProvider(create: (_) => SystemMetricsService()),
         ChangeNotifierProvider(create: (_) => SplitScreenService()),

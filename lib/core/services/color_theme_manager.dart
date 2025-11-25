@@ -55,7 +55,8 @@ class ColorThemeManager extends ChangeNotifier {
   
   // Couleurs personnalisées
   Color _nativeBackgroundColor = NotilusColors.nativeBackground;
-  Color _nativeSecondaryColor = NotilusColors.chrome;
+  // La secondary color = le rouge natif de Notilus (couleur principale)
+  Color _nativeSecondaryColor = NotilusColors.neonRed;
   
   Color get nativeBackgroundColor => _nativeBackgroundColor;
   Color get nativeSecondaryColor => _nativeSecondaryColor;
@@ -82,9 +83,13 @@ class ColorThemeManager extends ChangeNotifier {
         _nativeBackgroundColor = Color(nativeBgValue);
       }
       
+      // Charger la couleur secondaire (rouge) personnalisée, sinon utiliser celle du thème
       final nativeSecondaryValue = prefs.getInt(_prefsKeyNativeSecondary);
       if (nativeSecondaryValue != null) {
         _nativeSecondaryColor = Color(nativeSecondaryValue);
+      } else {
+        // Si pas de couleur personnalisée, utiliser la couleur du thème sélectionné
+        _nativeSecondaryColor = theme.primary;
       }
       
       notifyListeners();
@@ -99,11 +104,17 @@ class ColorThemeManager extends ChangeNotifier {
       orElse: () => availableThemes.first,
     );
     _currentTheme = theme;
+    
+    // Appliquer la couleur du thème à la secondary color (rouge Notilus)
+    _nativeSecondaryColor = theme.primary;
+    
     notifyListeners();
     
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_prefsKey, themeId);
+      // Sauvegarder aussi la couleur secondaire pour persistance
+      await prefs.setInt(_prefsKeyNativeSecondary, theme.primary.value);
     } catch (_) {
       // Ignorer les erreurs d'écriture
     }
@@ -141,13 +152,15 @@ class ColorThemeManager extends ChangeNotifier {
   /// Réinitialise les couleurs personnalisées aux valeurs par défaut
   Future<void> resetCustomColors() async {
     _nativeBackgroundColor = NotilusColors.nativeBackground;
-    _nativeSecondaryColor = NotilusColors.chrome;
+    // Réinitialiser la secondary color à la couleur du thème actuel
+    _nativeSecondaryColor = _currentTheme.primary;
     notifyListeners();
     
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_prefsKeyNativeBg);
       await prefs.remove(_prefsKeyNativeSecondary);
+      // Ne pas réinitialiser le thème, seulement les couleurs personnalisées
     } catch (_) {
       // Ignorer les erreurs
     }

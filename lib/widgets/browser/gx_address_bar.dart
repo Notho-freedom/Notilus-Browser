@@ -13,7 +13,7 @@ import '../../models/bookmark.dart';
 import '../../models/tab_model.dart';
 import '../common/notilus_tooltip.dart';
 
-const Color _gxRed = NotilusColors.neonRed;
+// La couleur rouge est maintenant gérée par ColorThemeManager
 
 class GXAddressBar extends StatefulWidget {
   const GXAddressBar({super.key});
@@ -107,6 +107,7 @@ class _GXAddressBarState extends State<GXAddressBar> {
         }
 
         final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: true);
+        final gxRed = colorThemeManager.nativeSecondaryColor;
         return Container(
           height: 34,
           color: colorThemeManager.nativeBackgroundColor,
@@ -178,8 +179,8 @@ class _GXAddressBarState extends State<GXAddressBar> {
                       begin: Alignment.centerLeft,
                       end: Alignment.centerRight,
                       colors: [
-                        NotilusColors.neonRed.withValues(alpha: 0.9),
-                        NotilusColors.neonRed.withValues(alpha: 0.0),
+                        gxRed.withValues(alpha: 0.9),
+                        gxRed.withValues(alpha: 0.0),
                       ],
                     ),
                   ),
@@ -200,7 +201,7 @@ class _GXAddressBarState extends State<GXAddressBar> {
                                   ? CupertinoIcons.search
                                   : (_isSecure ? CupertinoIcons.lock : CupertinoIcons.info),
                               size: 16,
-                              color: _gxRed,
+                              color: gxRed,
                             ),
                           ),
                         ),
@@ -210,7 +211,7 @@ class _GXAddressBarState extends State<GXAddressBar> {
                           child: TextField(
                             controller: _controller,
                             focusNode: _focusNode,
-                            cursorColor: _gxRed,
+                            cursorColor: gxRed,
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 12,
@@ -219,7 +220,7 @@ class _GXAddressBarState extends State<GXAddressBar> {
                             decoration: InputDecoration(
                               hintText: 'Enter search or web address',
                               hintStyle: TextStyle(
-                                color: Colors.white.withOpacity(0.35),
+                                color: Colors.white.withValues(alpha:0.35),
                                 fontSize: 12,
                               ),
                               border: InputBorder.none,
@@ -267,7 +268,7 @@ class _GXAddressBarState extends State<GXAddressBar> {
                             margin: const EdgeInsets.only(right: 2),
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(14),
-                              color: _gxRed.withOpacity(0.15),
+                              color: gxRed.withValues(alpha:0.15),
                             ),
                             child: IconButton(
                               padding: EdgeInsets.zero,
@@ -275,7 +276,7 @@ class _GXAddressBarState extends State<GXAddressBar> {
                               icon: Icon(
                                 CupertinoIcons.arrow_right,
                                 size: 16,
-                                color: _gxRed,
+                                color: gxRed,
                               ),
                               onPressed: () => _navigateToUrl(_controller.text),
                             ),
@@ -347,6 +348,8 @@ class _GXNavButtonState extends State<_GXNavButton> {
 
   @override
   Widget build(BuildContext context) {
+    final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: true);
+    final gxRed = colorThemeManager.nativeSecondaryColor;
     final isEnabled = widget.onPressed != null;
     
     final button = GestureDetector(
@@ -356,7 +359,7 @@ class _GXNavButtonState extends State<_GXNavButton> {
         height: 26,
         decoration: BoxDecoration(
           color: _isHovered && isEnabled
-              ? _gxRed.withOpacity(0.14)
+              ? gxRed.withValues(alpha: 0.14)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(6),
         ),
@@ -364,8 +367,8 @@ class _GXNavButtonState extends State<_GXNavButton> {
           widget.icon,
           size: widget.size,
           color: isEnabled
-              ? (_isHovered ? _gxRed : _gxRed.withOpacity(0.8))
-              : _gxRed.withOpacity(0.3),
+              ? (_isHovered ? gxRed : gxRed.withValues(alpha: 0.8))
+              : gxRed.withValues(alpha: 0.3),
         ),
       ),
     );
@@ -402,6 +405,8 @@ class _GXActionButtonState extends State<_GXActionButton> {
 
   @override
   Widget build(BuildContext context) {
+    final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: true);
+    final gxRed = colorThemeManager.nativeSecondaryColor;
     final isEnabled = widget.onPressed != null;
     
     final button = GestureDetector(
@@ -411,7 +416,7 @@ class _GXActionButtonState extends State<_GXActionButton> {
         height: 26,
         decoration: BoxDecoration(
           color: _isHovered && isEnabled
-              ? _gxRed.withOpacity(0.14)
+              ? gxRed.withValues(alpha: 0.14)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(6),
         ),
@@ -419,8 +424,8 @@ class _GXActionButtonState extends State<_GXActionButton> {
           widget.icon,
           size: 18,
           color: isEnabled
-              ? (_isHovered ? _gxRed : _gxRed.withOpacity(0.8))
-              : _gxRed.withOpacity(0.3),
+              ? (_isHovered ? gxRed : gxRed.withValues(alpha: 0.8))
+              : gxRed.withValues(alpha: 0.3),
         ),
       ),
     );

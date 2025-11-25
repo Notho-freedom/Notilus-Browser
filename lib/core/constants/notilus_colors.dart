@@ -14,12 +14,13 @@ class NotilusColors {
   /// Background color pour les zones natives (sidebar, topbars, etc.)
   static const Color nativeBackground = Color(0xFF09080D);
   
-  /// Obtient la couleur primaire du thème actuel (si ColorThemeManager est disponible)
-  static Color getPrimaryColor(BuildContext? context) {
+  /// Obtient la couleur secondaire (rouge Notilus) du thème actuel
+  /// C'est la couleur principale qui remplace le rouge natif
+  static Color getSecondaryColor(BuildContext? context) {
     if (context != null) {
       try {
         final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: false);
-        return colorThemeManager.primaryColor;
+        return colorThemeManager.nativeSecondaryColor;
       } catch (_) {
         // Si ColorThemeManager n'est pas disponible, utiliser la couleur par défaut
       }
@@ -27,12 +28,17 @@ class NotilusColors {
     return neonRed;
   }
   
-  /// Obtient la couleur primaire sombre du thème actuel (si ColorThemeManager est disponible)
+  /// Obtient la couleur primaire du thème actuel (alias pour secondary)
+  static Color getPrimaryColor(BuildContext? context) {
+    return getSecondaryColor(context);
+  }
+  
+  /// Obtient la couleur primaire sombre du thème actuel
   static Color getPrimaryDarkColor(BuildContext? context) {
     if (context != null) {
       try {
         final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: false);
-        return colorThemeManager.primaryDarkColor;
+        return colorThemeManager.currentTheme.primaryDark;
       } catch (_) {
         // Si ColorThemeManager n'est pas disponible, utiliser la couleur par défaut
       }

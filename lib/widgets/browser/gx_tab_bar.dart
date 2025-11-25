@@ -18,7 +18,7 @@ import '../common/notilus_monogram.dart';
 import '../common/notilus_tooltip.dart';
 import '../common/context_menu.dart';
 
-const Color _gxRed = NotilusColors.neonRed;
+// La couleur rouge est maintenant gérée par ColorThemeManager
 
 class GXTabBar extends StatelessWidget {
   final VoidCallback? onMenuTap;
@@ -33,13 +33,14 @@ class GXTabBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: true);
+    final gxRed = colorThemeManager.nativeSecondaryColor;
     return Container(
       height: 36,
       decoration: BoxDecoration(
         color: colorThemeManager.nativeBackgroundColor,
         border: Border(
           bottom: BorderSide(
-            color: _gxRed.withOpacity(0.2),
+            color: gxRed.withValues(alpha: 0.2),
             width: 1,
           ),
         ),
@@ -161,12 +162,12 @@ class GXTabBar extends StatelessWidget {
                                         color: colorThemeManager.nativeBackgroundColor,
                                         borderRadius: BorderRadius.circular(8),
                                         border: Border.all(
-                                          color: _gxRed,
+                                          color: gxRed,
                                           width: 2.5,
                                         ),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: _gxRed.withOpacity(0.5),
+                                            color: gxRed.withValues(alpha:0.5),
                                             blurRadius: 12,
                                             spreadRadius: 2,
                                           ),
@@ -206,13 +207,13 @@ class GXTabBar extends StatelessWidget {
                                   decoration: candidateData.isNotEmpty
                                       ? BoxDecoration(
                                           border: Border.all(
-                                            color: _gxRed,
+                                            color: gxRed,
                                             width: 2.5,
                                           ),
                                           borderRadius: BorderRadius.circular(6),
                                           boxShadow: [
                                             BoxShadow(
-                                              color: _gxRed.withOpacity(0.3),
+                                              color: gxRed.withValues(alpha:0.3),
                                               blurRadius: 8,
                                               spreadRadius: 1,
                                             ),
@@ -318,6 +319,8 @@ class GXTabBar extends StatelessWidget {
     await showDialog(
       context: context,
       builder: (dialogContext) {
+        final colorThemeManager = Provider.of<ColorThemeManager>(dialogContext, listen: true);
+        final gxRed = colorThemeManager.nativeSecondaryColor;
         return StatefulBuilder(
           builder: (context, setState) {
             final filteredTabs = tabManager.tabs.where((tab) {
@@ -331,19 +334,19 @@ class GXTabBar extends StatelessWidget {
               backgroundColor: const Color(0xFF15151A),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
-                side: BorderSide(color: _gxRed.withOpacity(0.6), width: 1),
+                side: BorderSide(color: gxRed.withValues(alpha: 0.6), width: 1),
               ),
               titlePadding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
               contentPadding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
               title: Row(
                 children: [
-                  const Icon(CupertinoIcons.search, size: 16, color: _gxRed),
+                  Icon(CupertinoIcons.search, size: 16, color: gxRed),
                   const SizedBox(width: 10),
                   Expanded(
                     child: TextField(
                       controller: controller,
                       autofocus: true,
-                      cursorColor: _gxRed,
+                      cursorColor: gxRed,
                       style: const TextStyle(color: Colors.white),
                       decoration: const InputDecoration(
                         hintText: 'Rechercher un onglet...',
@@ -372,7 +375,7 @@ class GXTabBar extends StatelessWidget {
                     : ListView.separated(
                         itemCount: filteredTabs.length,
                         separatorBuilder: (_, __) => Divider(
-                          color: Colors.white.withOpacity(0.08),
+                          color: Colors.white.withValues(alpha:0.08),
                           height: 16,
                         ),
                         itemBuilder: (context, index) {
@@ -383,16 +386,26 @@ class GXTabBar extends StatelessWidget {
                                     tab.favicon!,
                                     width: 18,
                                     height: 18,
-                                    errorBuilder: (_, __, ___) => Icon(
-                                      CupertinoIcons.globe,
-                                      size: 18,
-                                      color: _gxRed.withOpacity(0.85),
-                                    ),
+                                    errorBuilder: (_, __, ___) {
+                                      final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: false);
+                                      final gxRed = colorThemeManager.nativeSecondaryColor;
+                                      return Icon(
+                                        CupertinoIcons.globe,
+                                        size: 18,
+                                        color: gxRed.withValues(alpha: 0.85),
+                                      );
+                                    },
                                   )
-                                : Icon(
-                                    CupertinoIcons.globe,
-                                    size: 18,
-                                    color: _gxRed.withOpacity(0.85),
+                                : Builder(
+                                    builder: (context) {
+                                      final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: false);
+                                      final gxRed = colorThemeManager.nativeSecondaryColor;
+                                      return Icon(
+                                        CupertinoIcons.globe,
+                                        size: 18,
+                                        color: gxRed.withValues(alpha: 0.85),
+                                      );
+                                    },
                                   ),
                             title: Text(
                               tab.title ?? 'Sans titre',
@@ -450,6 +463,10 @@ class _GXTabItem extends StatefulWidget {
 }
 
 class _GXTabItemState extends State<_GXTabItem> {
+  Color get _gxRed {
+    final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: false);
+    return colorThemeManager.nativeSecondaryColor;
+  }
   bool _isHovered = false;
   bool _closeHovered = false;
 
@@ -577,7 +594,7 @@ class _GXTabItemState extends State<_GXTabItem> {
                                             child: CircularProgressIndicator(
                                               strokeWidth: 1.5,
                                               valueColor: AlwaysStoppedAnimation<Color>(
-                                                _gxRed.withOpacity(0.6),
+                                                _gxRed.withValues(alpha: 0.6),
                                               ),
                                             ),
                                           ),
@@ -595,7 +612,7 @@ class _GXTabItemState extends State<_GXTabItem> {
                           child: Text(
                             displayTitle,
                             style: TextStyle(
-                              color: Colors.white.withOpacity(widget.isActive ? 0.95 : 0.8),
+                              color: Colors.white.withValues(alpha:widget.isActive ? 0.95 : 0.8),
                               fontSize: 12,
                               fontWeight: widget.isActive ? FontWeight.w600 : FontWeight.w400,
                             ),
@@ -617,7 +634,7 @@ class _GXTabItemState extends State<_GXTabItem> {
                                 height: 22,
                                 decoration: BoxDecoration(
                                   color: _closeHovered
-                                      ? Colors.white.withOpacity(0.12)
+                                      ? Colors.white.withValues(alpha:0.12)
                                       : Colors.transparent,
                                   borderRadius: BorderRadius.circular(4),
                                 ),
@@ -626,7 +643,7 @@ class _GXTabItemState extends State<_GXTabItem> {
                                   size: 12,
                                   color: widget.isActive || _isHovered
                                       ? Colors.white
-                                      : Colors.white.withOpacity(0.6),
+                                      : Colors.white.withValues(alpha:0.6),
                                 ),
                               ),
                             ),
@@ -678,6 +695,8 @@ class _GXTabBarIconButtonState extends State<_GXTabBarIconButton> {
 
   @override
   Widget build(BuildContext context) {
+    final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: true);
+    final gxRed = colorThemeManager.nativeSecondaryColor;
     final button = GestureDetector(
       onTap: widget.onPressed,
       onLongPress: widget.onLongPress,
@@ -687,7 +706,7 @@ class _GXTabBarIconButtonState extends State<_GXTabBarIconButton> {
         height: 28,
         decoration: BoxDecoration(
           color: _isHovered && widget.onPressed != null
-              ? _gxRed.withOpacity(0.12)
+              ? gxRed.withValues(alpha:0.12)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(4),
         ),
@@ -695,8 +714,8 @@ class _GXTabBarIconButtonState extends State<_GXTabBarIconButton> {
           widget.icon,
           size: widget.compact ? 16 : 18,
           color: widget.onPressed != null
-              ? (_isHovered ? _gxRed : _gxRed.withOpacity(0.8))
-              : _gxRed.withOpacity(0.35),
+              ? (_isHovered ? gxRed : gxRed.withValues(alpha:0.8))
+              : gxRed.withValues(alpha:0.35),
         ),
       ),
     );
@@ -774,20 +793,22 @@ class _GXWindowControlsState extends State<GXWindowControls>
       return const SizedBox.shrink();
     }
 
+    final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: true);
+    final gxRed = colorThemeManager.nativeSecondaryColor;
     return Row(
       children: [
         _WindowButton(
           icon: CupertinoIcons.minus,
           iconSize: 13,
           tooltip: 'Minimiser',
-          iconColor: _gxRed,
+          iconColor: gxRed,
           onTap: () => windowManager.minimize(),
         ),
         _WindowButton(
           icon: _isMaximized ? CupertinoIcons.rectangle : CupertinoIcons.square,
           iconSize: 13,
           tooltip: _isMaximized ? 'Restaurer' : 'Agrandir',
-          iconColor: _gxRed,
+          iconColor: gxRed,
           onTap: () async {
             if (_isMaximized) {
               await windowManager.restore();
@@ -800,8 +821,8 @@ class _GXWindowControlsState extends State<GXWindowControls>
           icon: CupertinoIcons.xmark,
           iconSize: 13,
           tooltip: 'Fermer',
-          hoverColor: _gxRed.withOpacity(0.2),
-          iconColor: _gxRed,
+          hoverColor: gxRed.withValues(alpha:0.2),
+          iconColor: gxRed,
           onTap: () => windowManager.close(),
         ),
       ],
@@ -835,13 +856,15 @@ class _WindowButtonState extends State<_WindowButton> {
 
   @override
   Widget build(BuildContext context) {
+    final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: true);
+    final gxRed = colorThemeManager.nativeSecondaryColor;
     final button = GestureDetector(
       onTap: widget.onTap,
       child: Container(
         width: 44,
         height: 32,
         color: _hovered
-            ? (widget.hoverColor ?? Colors.white.withOpacity(0.08))
+            ? (widget.hoverColor ?? Colors.white.withValues(alpha:0.08))
             : Colors.transparent,
         child: Center(
           child: Icon(
@@ -849,7 +872,7 @@ class _WindowButtonState extends State<_WindowButton> {
             size: widget.iconSize,
             color: _hovered
                 ? (widget.iconColor ?? Colors.white)
-                : (widget.iconColor ?? Colors.white.withOpacity(0.8)),
+                : (widget.iconColor ?? Colors.white.withValues(alpha:0.8)),
           ),
         ),
       ),
