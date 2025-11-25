@@ -5,6 +5,7 @@ import '../../core/constants/notilus_colors.dart';
 import '../../core/services/color_theme_manager.dart';
 import '../../core/animations/notilus_animations.dart';
 import '../../services/tab_manager.dart';
+import '../../services/settings_service.dart';
 import '../common/notilus_monogram.dart';
 import '../common/notilus_tooltip.dart';
 
@@ -47,6 +48,7 @@ class GXSidebar extends StatefulWidget {
 class _GXSidebarState extends State<GXSidebar> {
   int _selectedIndex = 0;
   int _hoveredIndex = -1;
+  final SettingsService _settings = SettingsService();
   final List<_SidebarDestination> _destinations = const [
     _SidebarDestination(
       section: SidebarSection.home,
@@ -100,45 +102,65 @@ class _GXSidebarState extends State<GXSidebar> {
     ),
   ];
 
-  // Services web avec webview - tous en rouge GX
-  List<_WebServiceDestination> _getWebServices(Color gxRed) => [
-    _WebServiceDestination(
+  // Tous les services web disponibles
+  static const List<_WebServiceConfig> _allWebServices = [
+    _WebServiceConfig(
+      id: 'youtubeMusic',
       url: 'https://music.youtube.com',
       icon: CupertinoIcons.music_note,
       label: 'YouTube Music',
-      color: gxRed,
+      section: SidebarSection.youtubeMusic,
     ),
-    _WebServiceDestination(
+    _WebServiceConfig(
+      id: 'youtube',
       url: 'https://www.youtube.com',
       icon: CupertinoIcons.play_circle,
       label: 'YouTube',
-      color: gxRed,
+      section: SidebarSection.youtube,
     ),
-    _WebServiceDestination(
+    _WebServiceConfig(
+      id: 'chatgpt',
       url: 'https://chat.openai.com',
       icon: CupertinoIcons.chat_bubble_2,
       label: 'ChatGPT',
-      color: gxRed,
+      section: SidebarSection.chatgpt,
     ),
-    _WebServiceDestination(
+    _WebServiceConfig(
+      id: 'deepseek',
       url: 'https://chat.deepseek.com',
       icon: CupertinoIcons.sparkles,
       label: 'DeepSeek',
-      color: gxRed,
+      section: SidebarSection.deepseek,
     ),
-    _WebServiceDestination(
+    _WebServiceConfig(
+      id: 'whatsapp',
       url: 'https://web.whatsapp.com',
       icon: CupertinoIcons.chat_bubble_text,
       label: 'WhatsApp',
-      color: gxRed,
+      section: SidebarSection.whatsapp,
     ),
-    _WebServiceDestination(
+    _WebServiceConfig(
+      id: 'telegram',
       url: 'https://web.telegram.org',
       icon: CupertinoIcons.paperplane,
       label: 'Telegram',
-      color: gxRed,
+      section: SidebarSection.telegram,
     ),
   ];
+  
+  // Services web filtrés par les paramètres
+  List<_WebServiceDestination> _getWebServices(Color gxRed) {
+    return _allWebServices
+        .where((config) => _settings.isWebServiceEnabled(config.id))
+        .map((config) => _WebServiceDestination(
+              url: config.url,
+              icon: config.icon,
+              label: config.label,
+              color: gxRed,
+              section: config.section,
+            ))
+        .toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -185,52 +207,31 @@ class _GXSidebarState extends State<GXSidebar> {
             color: gxRed.withValues(alpha: 0.3),
           ),
           const SizedBox(height: 12),
-          // Services web
-          for (int i = 0; i < _getWebServices(gxRed).length; i++) ...[
-            NotilusTooltip(
-              message: _getWebServices(gxRed)[i].label,
-              child: _GXSidebarWebServiceIcon(
-                icon: _getWebServices(gxRed)[i].icon,
-                color: _getWebServices(gxRed)[i].color,
-                isHovered: _hoveredIndex == _destinations.length + i,
-                onTap: () {
-                  setState(() {
-                    _selectedIndex = -1; // Désélectionner les destinations principales
-                  });
-                  // Déterminer la section correspondante
-                  SidebarSection? section;
-                  switch (i) {
-                    case 0:
-                      section = SidebarSection.youtubeMusic;
-                      break;
-                    case 1:
-                      section = SidebarSection.youtube;
-                      break;
-                    case 2:
-                      section = SidebarSection.chatgpt;
-                      break;
-                    case 3:
-                      section = SidebarSection.deepseek;
-                      break;
-                    case 4:
-                      section = SidebarSection.whatsapp;
-                      break;
-                    case 5:
-                      section = SidebarSection.telegram;
-                      break;
-                  }
-                  if (section != null) {
-                    widget.onSectionSelected?.call(section);
-                  } else {
-                    Provider.of<TabManager>(context, listen: false)
-                        .addTab(url: _getWebServices(gxRed)[i].url);
-                  }
-                },
-                onHover: (hover) => setState(() => _hoveredIndex = hover ? _destinations.length + i : -1),
-              ),
-            ),
-            const SizedBox(height: 4),
-          ],
+          // Services web - filtrés par les paramètres
+          ...() {
+            final webServices = _getWebServices(gxRed);
+            return [
+              for (int i = 0; i < webServices.length; i++) ...[
+                NotilusTooltip(
+                  message: webServices[i].label,
+                  child: _GXSidebarWebServiceIcon(
+                    icon: webServices[i].icon,
+                    color: webServices[i].color,
+                    isHovered: _hoveredIndex == _destinations.length + i,
+                    onTap: () {
+                      setState(() {
+                        _selectedIndex = -1; // Désélectionner les destinations principales
+                      });
+                      // Utiliser directement la section du service
+                      widget.onSectionSelected?.call(webServices[i].section);
+                    },
+                    onHover: (hover) => setState(() => _hoveredIndex = hover ? _destinations.length + i : -1),
+                  ),
+                ),
+                const SizedBox(height: 4),
+              ],
+            ];
+          }(),
           const SizedBox(height: 20),
           const _SidebarSignature(),
           const Spacer(),
@@ -490,12 +491,30 @@ class _WebServiceDestination {
   final IconData icon;
   final String label;
   final Color color;
+  final SidebarSection section;
 
   const _WebServiceDestination({
     required this.url,
     required this.icon,
     required this.label,
     required this.color,
+    required this.section,
+  });
+}
+
+class _WebServiceConfig {
+  final String id;
+  final String url;
+  final IconData icon;
+  final String label;
+  final SidebarSection section;
+
+  const _WebServiceConfig({
+    required this.id,
+    required this.url,
+    required this.icon,
+    required this.label,
+    required this.section,
   });
 }
 
