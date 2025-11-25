@@ -17,12 +17,17 @@ import 'services/terminal_manager.dart';
 import 'services/native_terminal_service.dart';
 import 'services/download_service.dart';
 import 'services/devtools_service.dart';
+import 'services/settings_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Supprime le halo bleu Windows autour des champs focus
   FocusManager.instance.highlightStrategy = FocusHighlightStrategy.alwaysTouch;
+  
+  // Initialisation du service de paramètres centralisé
+  final settingsService = SettingsService();
+  await settingsService.initialize();
   
   // Initialisation de window_manager AVANT runApp
   await windowManager.ensureInitialized();
@@ -64,6 +69,7 @@ class NotilusApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider.value(value: SettingsService()),
         ChangeNotifierProvider(create: (_) => ThemeModeNotifier()),
         ChangeNotifierProvider(create: (_) => ColorThemeManager()),
         ChangeNotifierProvider(create: (_) => WallpaperManager()),
