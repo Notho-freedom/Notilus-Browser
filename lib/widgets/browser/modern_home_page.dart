@@ -14,7 +14,7 @@ import '../../models/history_item.dart';
 import '../../models/bookmark.dart';
 import '../../services/favicon_service.dart';
 import '../../core/utils/url_validator.dart';
-import '../../core/constants/notilus_colors.dart';
+import '../../core/services/color_theme_manager.dart';
 import '../common/notilus_monogram.dart';
 import '../common/context_menu.dart';
 
@@ -128,39 +128,42 @@ class _ModernHomePageState extends State<ModernHomePage> {
     final controller = TextEditingController();
     final result = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF15151A),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          side: BorderSide(color: NotilusColors.neonRed.withValues(alpha: 0.6), width: 1),
-        ),
-        title: const Text('Ajouter un site rapide', style: TextStyle(color: Colors.white)),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          cursorColor: NotilusColors.neonRed,
-          style: const TextStyle(color: Colors.white),
-          decoration: InputDecoration(
-            hintText: 'https://example.com',
-            hintStyle: const TextStyle(color: Colors.white54),
-            border: InputBorder.none,
-            focusedBorder: InputBorder.none,
-            enabledBorder: InputBorder.none,
-            fillColor: Colors.transparent,
-            filled: true,
+      builder: (dialogContext) {
+        final gxRed = Provider.of<ColorThemeManager>(dialogContext, listen: true).nativeSecondaryColor;
+        return AlertDialog(
+          backgroundColor: const Color(0xFF15151A),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+            side: BorderSide(color: gxRed.withValues(alpha: 0.6), width: 1),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Annuler', style: TextStyle(color: Colors.white70)),
+          title: const Text('Ajouter un site rapide', style: TextStyle(color: Colors.white)),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            cursorColor: gxRed,
+            style: const TextStyle(color: Colors.white),
+            decoration: const InputDecoration(
+              hintText: 'https://example.com',
+              hintStyle: TextStyle(color: Colors.white54),
+              border: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              fillColor: Colors.transparent,
+              filled: true,
+            ),
           ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(controller.text),
-            child: Text('Ajouter', style: TextStyle(color: NotilusColors.neonRed)),
-          ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Annuler', style: TextStyle(color: Colors.white70)),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(controller.text),
+              child: Text('Ajouter', style: TextStyle(color: gxRed)),
+            ),
+          ],
+        );
+      },
     );
 
     if (result != null && result.isNotEmpty) {
@@ -227,6 +230,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final gxRed = Provider.of<ColorThemeManager>(context, listen: true).nativeSecondaryColor;
     
     final wallpaperManager = context.watch<WallpaperManager>();
     
@@ -255,7 +259,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
             Row(
               children: [
                 // Colonne gauche - Widgets dev
-                _buildLeftColumn(context, theme),
+                _buildLeftColumn(context, theme, gxRed),
                 
                 // Contenu central - recentré sans limiter la largeur
                 Expanded(
@@ -317,7 +321,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: [
-                            NotilusColors.neonRed.withValues(alpha: 0.85),
+                            gxRed.withValues(alpha: 0.85),
                             const Color(0xFF6B2C5F).withValues(alpha:0.65),
                           ],
                         ),
@@ -335,17 +339,17 @@ class _ModernHomePageState extends State<ModernHomePage> {
                         child: Row(
                           children: [
                             const SizedBox(width: 18),
-                            const Icon(
+                            Icon(
                               CupertinoIcons.search,
                               size: 20,
-                              color: NotilusColors.neonRed,
+                              color: gxRed,
                             ),
                             const SizedBox(width: 10),
                             Expanded(
                               child: TextField(
                                 controller: _searchController,
                                 focusNode: _searchFocusNode,
-                                cursorColor: NotilusColors.neonRed,
+                                cursorColor: gxRed,
                                 style: theme.textTheme.bodyMedium?.copyWith(
                                   color: Colors.white,
                                 ),
@@ -367,12 +371,12 @@ class _ModernHomePageState extends State<ModernHomePage> {
                               margin: const EdgeInsets.only(right: 6),
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(20),
-                                color: NotilusColors.neonRed.withValues(alpha: 0.14),
+                                color: gxRed.withValues(alpha: 0.14),
                               ),
                               child: IconButton(
-                                icon: const Icon(
+                                icon: Icon(
                                   CupertinoIcons.arrow_right,
-                                  color: NotilusColors.neonRed,
+                                  color: gxRed,
                                 ),
                                 onPressed: () =>
                                     _handleSearch(_searchController.text),
@@ -466,11 +470,11 @@ class _ModernHomePageState extends State<ModernHomePage> {
                           Container(
                             width: 32,
                             height: 2,
-                            decoration: const BoxDecoration(
+                            decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 colors: [
-                                  NotilusColors.neonRed,
-                                  Color(0xFF5856D6),
+                                  gxRed,
+                                  const Color(0xFF5856D6),
                                 ],
                               ),
                             ),
@@ -485,7 +489,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                           ),
                           const SizedBox(width: 16),
                           IconButton(
-                            icon: const Icon(CupertinoIcons.add_circled, color: NotilusColors.neonRed),
+                            icon: Icon(CupertinoIcons.add_circled, color: gxRed),
                             tooltip: 'Ajouter un site rapide',
                             onPressed: _addQuickAccessSite,
                           ),
@@ -548,11 +552,11 @@ class _ModernHomePageState extends State<ModernHomePage> {
                               Container(
                                 width: 32,
                                 height: 2,
-                                decoration: const BoxDecoration(
+                                decoration: BoxDecoration(
                                   gradient: LinearGradient(
                                     colors: [
-                                      NotilusColors.neonRed,
-                                      Color(0xFF5856D6),
+                                      gxRed,
+                                      const Color(0xFF5856D6),
                                     ],
                                   ),
                                 ),
@@ -571,9 +575,14 @@ class _ModernHomePageState extends State<ModernHomePage> {
                                   // Ouvrir le panel historique
                                   // TODO: Implémenter l'ouverture du panel
                                 },
-                                child: const Text(
-                                  'Voir tout',
-                                  style: TextStyle(color: NotilusColors.neonRed),
+                                child: Builder(
+                                  builder: (context) {
+                                    final gxRed = Provider.of<ColorThemeManager>(context, listen: true).nativeSecondaryColor;
+                                    return Text(
+                                      'Voir tout',
+                                      style: TextStyle(color: gxRed),
+                                    );
+                                  },
                                 ),
                               ),
                           ],
@@ -630,11 +639,11 @@ class _ModernHomePageState extends State<ModernHomePage> {
                             Container(
                               width: 32,
                               height: 2,
-                              decoration: const BoxDecoration(
+                              decoration: BoxDecoration(
                                 gradient: LinearGradient(
                                   colors: [
-                                    NotilusColors.neonRed,
-                                    Color(0xFF5856D6),
+                                    gxRed,
+                                    const Color(0xFF5856D6),
                                   ],
                                 ),
                               ),
@@ -699,7 +708,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
             ),
             
             // Colonne droite - Widgets dev
-            _buildRightColumn(context, theme),
+                _buildRightColumn(context, theme, gxRed),
           ],
             ),
             // Label gauche - toujours visible, collé à la sidebar en collapse
@@ -726,7 +735,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                       color: Colors.black.withValues(alpha:0.3),
                       border: Border(
                         left: BorderSide(
-                          color: NotilusColors.neonRed.withValues(alpha:0.5),
+                          color: gxRed.withValues(alpha:0.5),
                           width: 1,
                         ),
                       ),
@@ -739,7 +748,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                           style: theme.textTheme.labelSmall?.copyWith(
                             letterSpacing: 2,
                             fontWeight: FontWeight.w700,
-                            color: NotilusColors.neonRed,
+                            color: gxRed,
                             fontSize: 10,
                           ),
                         ),
@@ -771,7 +780,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                       color: Colors.black.withValues(alpha:0.3),
                       border: Border(
                         right: BorderSide(
-                          color: NotilusColors.neonRed.withValues(alpha:0.5),
+                          color: gxRed.withValues(alpha:0.5),
                           width: 1,
                         ),
                       ),
@@ -784,7 +793,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                           style: theme.textTheme.labelSmall?.copyWith(
                             letterSpacing: 2,
                             fontWeight: FontWeight.w700,
-                            color: NotilusColors.neonRed,
+                            color: gxRed,
                             fontSize: 10,
                           ),
                         ),
@@ -800,7 +809,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
     );
   }
 
-  Widget _buildLeftColumn(BuildContext context, ThemeData theme) {
+  Widget _buildLeftColumn(BuildContext context, ThemeData theme, Color gxRed) {
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -815,7 +824,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
             border: _leftColumnExpanded
                 ? Border(
                     right: BorderSide(
-                      color: NotilusColors.neonRed.withValues(alpha:0.2),
+                      color: gxRed.withValues(alpha:0.2),
                       width: 1,
                     ),
                   )
@@ -830,7 +839,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                       style: theme.textTheme.labelSmall?.copyWith(
                         letterSpacing: 3,
                         fontWeight: FontWeight.w700,
-                        color: NotilusColors.neonRed,
+                        color: gxRed,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -866,7 +875,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: NotilusColors.neonRed.withValues(alpha:0.3),
+                          color: gxRed.withValues(alpha:0.3),
                           width: 1,
                         ),
                       ),
@@ -922,7 +931,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
     );
   }
 
-  Widget _buildRightColumn(BuildContext context, ThemeData theme) {
+  Widget _buildRightColumn(BuildContext context, ThemeData theme, Color gxRed) {
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -937,7 +946,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
             border: _rightColumnExpanded
                 ? Border(
                     left: BorderSide(
-                      color: NotilusColors.neonRed.withValues(alpha:0.2),
+                      color: gxRed.withValues(alpha:0.2),
                       width: 1,
                     ),
                   )
@@ -952,7 +961,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                       style: theme.textTheme.labelSmall?.copyWith(
                         letterSpacing: 3,
                         fontWeight: FontWeight.w700,
-                        color: NotilusColors.neonRed,
+                        color: gxRed,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -985,7 +994,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: NotilusColors.neonRed.withValues(alpha:0.3),
+                          color: gxRed.withValues(alpha:0.3),
                           width: 1,
                         ),
                       ),
@@ -998,7 +1007,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                                 width: 8,
                                 height: 8,
                                 decoration: BoxDecoration(
-                                  color: NotilusColors.neonRed,
+                                  color: gxRed,
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                               ),
@@ -1049,6 +1058,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
     required VoidCallback onTap,
   }) {
     final theme = Theme.of(context);
+    final gxRed = Provider.of<ColorThemeManager>(context, listen: true).nativeSecondaryColor;
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -1057,7 +1067,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
           borderRadius: BorderRadius.circular(12),
           color: Colors.white.withValues(alpha:0.05),
           border: Border.all(
-            color: NotilusColors.neonRed.withValues(alpha:0.2),
+            color: gxRed.withValues(alpha:0.2),
             width: 1,
           ),
         ),
@@ -1067,13 +1077,13 @@ class _ModernHomePageState extends State<ModernHomePage> {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: NotilusColors.neonRed.withValues(alpha:0.15),
+                color: gxRed.withValues(alpha:0.15),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
                 icon,
                 size: 18,
-                color: NotilusColors.neonRed,
+                color: gxRed,
               ),
             ),
             const SizedBox(width: 12),
@@ -1132,6 +1142,7 @@ class _QuickAccessTileState extends State<_QuickAccessTile> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final gxRed = Provider.of<ColorThemeManager>(context, listen: true).nativeSecondaryColor;
     
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
@@ -1150,7 +1161,7 @@ class _QuickAccessTileState extends State<_QuickAccessTile> {
                 ? LinearGradient(
                     colors: [
                       widget.item.color.withValues(alpha:0.95),
-                      NotilusColors.neonRed.withValues(alpha:0.9),
+                      gxRed.withValues(alpha:0.9),
                     ],
                   )
                 : LinearGradient(
@@ -1299,6 +1310,7 @@ class _MetricWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final gxRed = Provider.of<ColorThemeManager>(context, listen: true).nativeSecondaryColor;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -1315,7 +1327,7 @@ class _MetricWidget extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, size: 16, color: NotilusColors.neonRed),
+              Icon(icon, size: 16, color: gxRed),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
@@ -1349,7 +1361,6 @@ class _StatChip extends StatelessWidget {
   final String value;
 
   const _StatChip({
-    super.key,
     required this.icon,
     required this.label,
     required this.value,
@@ -1358,7 +1369,7 @@ class _StatChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
+    final gxRed = Provider.of<ColorThemeManager>(context, listen: true).nativeSecondaryColor;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
@@ -1370,7 +1381,7 @@ class _StatChip extends StatelessWidget {
           ],
         ),
         border: Border.all(
-          color: NotilusColors.neonRed.withValues(alpha:0.5),
+          color: gxRed.withValues(alpha:0.5),
           width: 0.8,
         ),
       ),
@@ -1380,7 +1391,7 @@ class _StatChip extends StatelessWidget {
           Icon(
             icon,
             size: 14,
-            color: NotilusColors.neonRed,
+            color: gxRed,
           ),
           const SizedBox(width: 6),
           Flexible(
@@ -1397,7 +1408,7 @@ class _StatChip extends StatelessWidget {
               value,
               style: theme.textTheme.labelSmall?.copyWith(
                 fontWeight: FontWeight.w700,
-                color: NotilusColors.neonRed,
+                color: gxRed,
               ),
               overflow: TextOverflow.ellipsis,
             ),

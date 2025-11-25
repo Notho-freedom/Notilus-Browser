@@ -6,7 +6,7 @@ import '../../services/history_service.dart';
 import '../../services/tab_manager.dart';
 import '../../core/services/wallpaper_manager.dart';
 import '../../services/favicon_service.dart';
-import '../../core/constants/notilus_colors.dart';
+import '../../core/services/color_theme_manager.dart';
 
 class ModernHistoryPanel extends StatefulWidget {
   const ModernHistoryPanel({super.key});
@@ -115,22 +115,27 @@ class _ModernHistoryPanelState extends State<ModernHistoryPanel> {
                           return ListTile(
                             dense: true,
                             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                            leading: faviconSnapshot.hasData && faviconSnapshot.data != null
-                                ? Image.network(
-                                    faviconSnapshot.data!,
-                                    width: 18,
-                                    height: 18,
-                                    errorBuilder: (_, __, ___) => Icon(
-                                      CupertinoIcons.globe,
-                                      size: 18,
-                                      color: NotilusColors.neonRed,
-                                    ),
-                                  )
-                                : Icon(
-                                    CupertinoIcons.globe,
-                                    size: 18,
-                                    color: NotilusColors.neonRed,
-                                  ),
+                            leading: Builder(
+                              builder: (context) {
+                                final gxRed = Provider.of<ColorThemeManager>(context, listen: true).nativeSecondaryColor;
+                                return faviconSnapshot.hasData && faviconSnapshot.data != null
+                                    ? Image.network(
+                                        faviconSnapshot.data!,
+                                        width: 18,
+                                        height: 18,
+                                        errorBuilder: (_, __, ___) => Icon(
+                                          CupertinoIcons.globe,
+                                          size: 18,
+                                          color: gxRed,
+                                        ),
+                                      )
+                                    : Icon(
+                                        CupertinoIcons.globe,
+                                        size: 18,
+                                        color: gxRed,
+                                      );
+                              },
+                            ),
                             title: Text(
                               item.title,
                               maxLines: 1,

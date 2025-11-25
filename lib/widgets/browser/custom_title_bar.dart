@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:provider/provider.dart';
 import 'dart:io' show Platform;
+import '../../core/services/color_theme_manager.dart';
 
 /// Titlebar personnalisée style Opera GX
 class CustomTitleBar extends StatelessWidget {
@@ -27,6 +29,7 @@ class CustomTitleBar extends StatelessWidget {
 
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final gxRed = Provider.of<ColorThemeManager>(context, listen: true).nativeSecondaryColor;
     
     return Container(
       height: 32,
@@ -34,7 +37,7 @@ class CustomTitleBar extends StatelessWidget {
         color: const Color(0xFF0B0B0E),
         border: Border(
           bottom: BorderSide(
-            color: const NotilusColors.neonRed.withOpacity(0.3),
+            color: gxRed.withOpacity(0.3),
             width: 1,
           ),
         ),
@@ -57,34 +60,39 @@ class CustomTitleBar extends StatelessWidget {
                     const SizedBox(width: 12),
                     
                     // Logo avec bordure néon rouge
-                    Container(
-                      width: 20,
-                      height: 20,
-                      decoration: BoxDecoration(
-                        color: Colors.transparent,
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                          color: const NotilusColors.neonRed,
-                          width: 1.5,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const NotilusColors.neonRed.withOpacity(0.4),
-                            blurRadius: 4,
-                            spreadRadius: 0,
+                    Builder(
+                      builder: (context) {
+                        final gxRed = Provider.of<ColorThemeManager>(context, listen: true).nativeSecondaryColor;
+                        return Container(
+                          width: 20,
+                          height: 20,
+                          decoration: BoxDecoration(
+                            color: Colors.transparent,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: gxRed,
+                              width: 1.5,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: gxRed.withOpacity(0.4),
+                                blurRadius: 4,
+                                spreadRadius: 0,
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      child: const Center(
-                        child: Text(
-                          'N',
-                          style: TextStyle(
-                            color: NotilusColors.neonRed,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w900,
+                          child: Center(
+                            child: Text(
+                              'N',
+                              style: TextStyle(
+                                color: gxRed,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
+                        );
+                      },
                     ),
                     
                     const SizedBox(width: 12),
