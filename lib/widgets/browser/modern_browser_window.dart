@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../services/tab_manager.dart';
 import '../../services/tab_webview_manager.dart';
+import '../../services/notilus_devtools_service.dart';
 import 'gx_address_bar.dart';
 import 'gx_tab_bar.dart';
 import 'gx_sidebar.dart';
@@ -21,6 +22,7 @@ import '../../services/split_screen_service.dart';
 import '../../widgets/splitscreen/advanced_split_view.dart';
 import '../../widgets/terminal/terminal_panel.dart';
 import '../../widgets/terminal/native_terminal_panel.dart';
+import '../../widgets/dev_tools/notilus_devtools_panel.dart';
 
 // Intent pour les raccourcis clavier
 class _OpenDevToolsIntent extends Intent {}
@@ -82,15 +84,23 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
     }
   }
 
-  void _handleOpenDevTools() async {
-    final tabManager = Provider.of<TabManager>(context, listen: false);
-    final webViewManager = Provider.of<TabWebViewManager>(context, listen: false);
-    final activeTab = tabManager.activeTab;
+  void _handleOpenDevTools() {
+    // Ouvrir les DevTools natifs de Notilus
+    setState(() {
+      if (_currentSection == SidebarSection.devtools) {
+        // Si déjà ouvert, fermer
+        _currentSection = SidebarSection.home;
+      } else {
+        // Ouvrir le panneau DevTools
+        _currentSection = SidebarSection.devtools;
+      }
+    });
     
-    if (activeTab != null && activeTab.url != null && activeTab.url!.isNotEmpty) {
-      final engine = webViewManager.getEngineForTab(activeTab.id, url: activeTab.url);
-      await engine.openDevTools();
-    }
+    // Logger l'action dans les DevTools
+    try {
+      final devTools = Provider.of<NotilusDevToolsService>(context, listen: false);
+      devTools.logInfo('DevTools ${_currentSection == SidebarSection.devtools ? "opened" : "closed"} via F12', source: 'Keyboard');
+    } catch (_) {}
   }
 
   @override
@@ -393,6 +403,12 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
           title: 'Terminal',
           icon: CupertinoIcons.square_list,
           child: const NativeTerminalPanel(),
+        );
+      case SidebarSection.devtools:
+        return _SidebarPanelConfig(
+          title: 'DevTools',
+          icon: CupertinoIcons.wrench_fill,
+          child: const NotilusDevToolsPanel(),
         );
       case SidebarSection.youtubeMusic:
         return _SidebarPanelConfig(

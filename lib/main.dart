@@ -16,6 +16,7 @@ import 'services/terminal_service.dart';
 import 'services/terminal_manager.dart';
 import 'services/native_terminal_service.dart';
 import 'services/download_service.dart';
+import 'services/notilus_devtools_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -82,6 +83,7 @@ class NotilusApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => TerminalService()..initialize()),
         ChangeNotifierProvider(create: (_) => TerminalManager()),
         ChangeNotifierProvider(create: (_) => NativeTerminalService()),
+        ChangeNotifierProvider(create: (_) => NotilusDevToolsService()),
       ],
       child: Consumer<ThemeModeNotifier>(
         builder: (context, themeModeNotifier, _) {
