@@ -513,10 +513,14 @@ class _GXTabItemState extends State<_GXTabItem> {
   @override
   Widget build(BuildContext context) {
     final displayTitle = widget.tab.title ?? 'Speed Dial';
-    const activeGradient = LinearGradient(
+    final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: true);
+    final gxRed = colorThemeManager.nativeSecondaryColor;
+    final gxRedDark = colorThemeManager.primaryDarkColor;
+    
+    final activeGradient = LinearGradient(
       colors: [
-        Color(0xFFFF3B6A),
-        Color(0xFFB1165A),
+        gxRed,
+        gxRedDark,
       ],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
