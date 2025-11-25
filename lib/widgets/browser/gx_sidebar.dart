@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/notilus_colors.dart';
 import '../../core/services/color_theme_manager.dart';
 import '../../core/animations/notilus_animations.dart';
 import '../../services/tab_manager.dart';
 import '../../services/settings_service.dart';
-import '../../services/mosaic_service.dart';
 import '../common/notilus_monogram.dart';
 import '../common/notilus_tooltip.dart';
 
@@ -24,7 +22,6 @@ enum SidebarSection {
   updates,
   terminal,
   nativeDevtools,
-  mosaic,  // Nouveau: Mode mosaïque
   docs,
   youtubeMusic,
   youtube,
@@ -97,11 +94,6 @@ class _GXSidebarState extends State<GXSidebar> {
       section: SidebarSection.nativeDevtools,
       icon: CupertinoIcons.ant,
       label: 'DevTools (F12)',
-    ),
-    _SidebarDestination(
-      section: SidebarSection.mosaic,
-      icon: CupertinoIcons.square_grid_2x2_fill,
-      label: 'Mosaïque',
     ),
     _SidebarDestination(
       section: SidebarSection.docs,
@@ -200,14 +192,6 @@ class _GXSidebarState extends State<GXSidebar> {
                   if (_destinations[i].section == SidebarSection.home) {
                     Provider.of<TabManager>(context, listen: false)
                         .addTab(url: 'about:newtab');
-                  } else if (_destinations[i].section == SidebarSection.mosaic) {
-                    // Activer/toggle le mode mosaïque
-                    final mosaicService = Provider.of<NotilusMosaicService>(context, listen: false);
-                    final tabManager = Provider.of<TabManager>(context, listen: false);
-                    final activeTabId = tabManager.activeTab?.id;
-                    mosaicService.toggle(activeTabId: activeTabId);
-                    HapticFeedback.mediumImpact();
-                    return; // Ne pas appeler onSectionSelected pour la mosaïque
                   }
                   widget.onSectionSelected?.call(_destinations[i].section);
                 },
