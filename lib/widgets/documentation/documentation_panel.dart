@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../core/services/color_theme_manager.dart';
 import '../../core/animations/notilus_animations.dart';
@@ -17,413 +16,198 @@ class _DocumentationPanelState extends State<DocumentationPanel>
   late TabController _tabController;
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
-  int _expandedSection = -1;
 
   final List<_DocCategory> _categories = [
     _DocCategory(
-      title: 'Démarrage Rapide',
-      icon: CupertinoIcons.rocket,
+      title: 'Démarrage',
+      icon: CupertinoIcons.rocket_fill,
       sections: [
         _DocSection(
-          title: 'Introduction',
-          content: '''
-**Notilus Browser** est un navigateur web moderne conçu spécifiquement pour les développeurs.
-
-### Caractéristiques principales
-- 🔧 **DevTools intégrés** - Console, Network, Performance, Security
-- 📊 **Métriques temps réel** - FPS, mémoire, CPU
-- 🔒 **Audit de sécurité** - Détection des vulnérabilités
-- 🌳 **Widget Inspector** - Inspectez l'arbre Flutter
-- 🖥️ **Terminal intégré** - PowerShell/Bash
-
-### Pour qui ?
-Développeurs web, développeurs Flutter, DevOps, et tous ceux qui ont besoin d'outils de développement intégrés à leur navigateur.''',
+          title: 'À propos de Notilus',
+          items: [
+            _DocItem(icon: CupertinoIcons.info_circle, label: 'Navigateur moderne pour développeurs'),
+            _DocItem(icon: CupertinoIcons.wrench, label: 'DevTools intégrés natifs'),
+            _DocItem(icon: CupertinoIcons.shield, label: 'Audit de sécurité automatique'),
+            _DocItem(icon: CupertinoIcons.chart_bar, label: 'Monitoring réseau avancé'),
+            _DocItem(icon: CupertinoIcons.text_cursor, label: 'Terminal intégré'),
+          ],
         ),
         _DocSection(
           title: 'Installation',
-          content: '''
-### Prérequis
-```
-Flutter SDK 3.x+
-Windows 10/11 (WebView2)
-Visual Studio 2022 avec C++ workload
-```
-
-### Lancement
-```bash
-# Mode développement
-flutter run -d windows --hot
-
-# Build release
-flutter build windows --release
-```''',
+          items: [
+            _DocItem(icon: CupertinoIcons.checkmark_circle, label: 'Windows 10/11 requis'),
+            _DocItem(icon: CupertinoIcons.checkmark_circle, label: 'WebView2 Runtime inclus'),
+            _DocItem(icon: CupertinoIcons.arrow_down_circle, label: 'Télécharger depuis GitHub'),
+          ],
         ),
       ],
     ),
     _DocCategory(
-      title: 'Interface Utilisateur',
-      icon: CupertinoIcons.square_grid_2x2,
+      title: 'Interface',
+      icon: CupertinoIcons.square_grid_2x2_fill,
       sections: [
         _DocSection(
-          title: 'Sidebar (Barre latérale)',
-          content: '''
-| Icône | Section | Description |
-|-------|---------|-------------|
-| 🏠 | Accueil | Nouvelle page avec raccourcis |
-| 🔖 | Favoris | Gestionnaire de bookmarks |
-| 🕐 | Historique | Historique de navigation |
-| ⬇️ | Téléchargements | Gestionnaire downloads |
-| 📦 | Widgets | Widgets système |
-| ✨ | AI | Hyper Assistant IA |
-| ⚙️ | Paramètres | Configuration |
-| 📟 | Terminal | Terminal intégré |
-| 🔧 | DevTools | Outils développeur |
-| 🐜 | DevTools Natif | Chrome DevTools (F12) |
-| 📖 | Documentation | Cette doc |''',
+          title: 'Sidebar',
+          items: [
+            _DocItem(icon: CupertinoIcons.house, label: 'Accueil', detail: 'Nouvelle page avec speed dial'),
+            _DocItem(icon: CupertinoIcons.bookmark, label: 'Favoris', detail: 'Gestionnaire de bookmarks'),
+            _DocItem(icon: CupertinoIcons.clock, label: 'Historique', detail: 'Historique de navigation'),
+            _DocItem(icon: CupertinoIcons.arrow_down_to_line, label: 'Téléchargements', detail: 'Gestionnaire de downloads'),
+            _DocItem(icon: CupertinoIcons.wrench_fill, label: 'DevTools', detail: 'Outils développeur'),
+            _DocItem(icon: CupertinoIcons.text_cursor, label: 'Terminal', detail: 'Shell intégré'),
+            _DocItem(icon: CupertinoIcons.book, label: 'Documentation', detail: 'Ce panneau'),
+          ],
         ),
         _DocSection(
-          title: 'Barre d\'onglets',
-          content: '''
-### Interactions
-- **Glisser-déposer** : Réorganiser les onglets
-- **Clic molette** : Fermer un onglet
-- **Double-clic** : Renommer l'onglet
-- **Clic droit** : Menu contextuel
-
-### Groupes d\'onglets
-Les onglets peuvent être groupés par couleur pour une meilleure organisation.''',
-        ),
-        _DocSection(
-          title: 'Barre d\'adresse',
-          content: '''
-### Fonctionnalités
-- Autocomplétion intelligente
-- Suggestions de recherche
-- Indicateurs de sécurité (HTTPS)
-- Actions rapides (reload, favoris)
-
-### Raccourcis
-- `Ctrl+L` : Focus barre d\'adresse
-- `Entrée` : Naviguer/Rechercher
-- `Échap` : Annuler''',
+          title: 'Onglets',
+          items: [
+            _DocItem(icon: CupertinoIcons.hand_draw, label: 'Glisser-déposer pour réorganiser'),
+            _DocItem(icon: CupertinoIcons.xmark_circle, label: 'Clic molette pour fermer'),
+            _DocItem(icon: CupertinoIcons.pencil, label: 'Double-clic pour renommer'),
+            _DocItem(icon: CupertinoIcons.rectangle_split_3x1, label: 'Split-screen disponible'),
+          ],
         ),
       ],
     ),
     _DocCategory(
-      title: 'DevTools Notilus',
+      title: 'DevTools',
       icon: CupertinoIcons.wrench_fill,
       sections: [
         _DocSection(
           title: 'Console',
-          content: '''
-### Types de logs
-| Niveau | Couleur | Usage |
-|--------|---------|-------|
-| INFO | 🔵 | Information générale |
-| WARN | 🟠 | Avertissements |
-| ERROR | 🔴 | Erreurs |
-| DEBUG | 🟢 | Debug only |
-| SYSTEM | 🟣 | Messages système |
-
-### Fonctionnalités
-- Filtrage par niveau
-- Recherche textuelle
-- Export des logs
-- REPL interactif intégré''',
+          items: [
+            _DocItem(icon: CupertinoIcons.text_alignleft, label: 'Logs WebView', detail: 'console.log, warn, error'),
+            _DocItem(icon: CupertinoIcons.line_horizontal_3_decrease, label: 'Filtres par niveau'),
+            _DocItem(icon: CupertinoIcons.search, label: 'Recherche textuelle'),
+            _DocItem(icon: CupertinoIcons.keyboard, label: 'REPL interactif'),
+          ],
         ),
         _DocSection(
           title: 'Network',
-          content: '''
-### Interception des requêtes
-- Requêtes Flutter (http package)
-- Requêtes WebView (fetch, XHR)
-
-### Informations capturées
-- URL, méthode HTTP
-- Headers request/response
-- Body request/response
-- Timing détaillé
-- Status code
-
-### Codes couleur
-| Code | Couleur | Signification |
-|------|---------|---------------|
-| 2xx | 🟢 | Succès |
-| 3xx | 🔵 | Redirection |
-| 4xx | 🟠 | Erreur client |
-| 5xx | 🔴 | Erreur serveur |''',
+          items: [
+            _DocItem(icon: CupertinoIcons.globe, label: 'Capture requêtes HTTP/HTTPS'),
+            _DocItem(icon: CupertinoIcons.doc_text, label: 'Headers request/response'),
+            _DocItem(icon: CupertinoIcons.timer, label: 'Timing détaillé'),
+            _DocItem(icon: CupertinoIcons.exclamationmark_triangle, label: 'Détection erreurs'),
+          ],
         ),
         _DocSection(
           title: 'Performance',
-          content: '''
-### Métriques temps réel
-- **FPS** : Frames par seconde (target: 60)
-- **Memory** : Mémoire utilisée (MB)
-- **CPU** : Estimation basée sur frame time
-- **Render** : Temps de rendu par frame
-- **Widgets** : Nombre de widgets actifs
-- **GC** : Détection garbage collection
-
-### Sources des données
-```dart
-// Memory via ProcessInfo
-ProcessInfo.currentRss
-
-// FPS via SchedulerBinding
-SchedulerBinding.instance.addPostFrameCallback
-```''',
+          items: [
+            _DocItem(icon: CupertinoIcons.gauge, label: 'Métriques temps réel'),
+            _DocItem(icon: CupertinoIcons.memories, label: 'Usage mémoire'),
+            _DocItem(icon: CupertinoIcons.chart_bar, label: 'Graphiques FPS'),
+          ],
         ),
         _DocSection(
-          title: 'Alerts (Smart Monitoring)',
-          content: '''
-### Types d\'alertes
-- **FPS Drop** : Chute sous 30 FPS
-- **Memory Spike** : Dépassement 500 MB
-- **Slow Request** : Requête > 3000ms
-- **Error Burst** : 5+ erreurs en 60s
-
-### Sévérités
-| Niveau | Icône | Action |
-|--------|-------|--------|
-| INFO | ℹ️ | Information |
-| WARNING | ⚠️ | Attention requise |
-| CRITICAL | 🚨 | Action immédiate |''',
+          title: 'Alerts',
+          items: [
+            _DocItem(icon: CupertinoIcons.bell_fill, label: 'Alertes automatiques'),
+            _DocItem(icon: CupertinoIcons.speedometer, label: 'Requêtes lentes', detail: '> 3000ms'),
+            _DocItem(icon: CupertinoIcons.exclamationmark_bubble, label: 'Rafales d\'erreurs', detail: '5+ en 60s'),
+          ],
         ),
         _DocSection(
-          title: 'Security Audit',
-          content: '''
-### Détections automatiques
-- Connexions HTTP (non HTTPS)
-- Clés API exposées dans URLs
-- Données sensibles dans réponses
-- Contenu mixte (HTTP dans HTTPS)
-
-### Score de sécurité
-Score 0-100 basé sur les problèmes détectés.
-
-### Recommandations
-Chaque problème inclut une recommandation de correction.''',
-        ),
-        _DocSection(
-          title: 'Widget Inspector',
-          content: '''
-### Fonctionnalités
-- Capture de l\'arbre Flutter complet
-- Hiérarchie navigable
-- Propriétés des widgets
-- Bounds de rendu (x, y, width, height)
-
-### Navigation
-- Clic pour sélectionner
-- Chevron pour expand/collapse
-- Panneau propriétés à droite''',
+          title: 'Security',
+          items: [
+            _DocItem(icon: CupertinoIcons.lock_open, label: 'Connexions HTTP non sécurisées'),
+            _DocItem(icon: CupertinoIcons.lock, label: 'Clés API exposées dans URLs'),
+            _DocItem(icon: CupertinoIcons.eye_slash, label: 'Données sensibles détectées'),
+            _DocItem(icon: CupertinoIcons.chart_pie, label: 'Score de sécurité 0-100'),
+          ],
         ),
         _DocSection(
           title: 'Analytics',
-          content: '''
-### Statistiques par onglet
-- Nombre de requêtes
-- Données transférées
-- Taux d\'erreur
-
-### Session Recording
-Enregistrez et rejouez vos sessions de développement.
-
-```bash
-record start [name]  # Démarrer
-record stop          # Arrêter
-sessions             # Lister
-```
-
-### Export
-Générez des rapports JSON complets avec toutes les métriques.''',
+          items: [
+            _DocItem(icon: CupertinoIcons.graph_square, label: 'Stats par onglet'),
+            _DocItem(icon: CupertinoIcons.videocam, label: 'Session Recording'),
+            _DocItem(icon: CupertinoIcons.bookmark, label: 'Bookmarks & annotations'),
+            _DocItem(icon: CupertinoIcons.square_arrow_up, label: 'Export rapport JSON'),
+          ],
         ),
       ],
     ),
     _DocCategory(
-      title: 'Commandes REPL',
+      title: 'Commandes',
       icon: CupertinoIcons.command,
       sections: [
         _DocSection(
-          title: 'Commandes de base',
-          content: '''
-```bash
-help              # Affiche l'aide
-clear             # Vide la console
-logs              # Nombre de logs
-echo <message>    # Affiche message
-version           # Version DevTools
-```''',
+          title: 'Console',
+          items: [
+            _DocItem(icon: CupertinoIcons.question_circle, label: 'help', detail: 'Affiche l\'aide'),
+            _DocItem(icon: CupertinoIcons.trash, label: 'clear', detail: 'Vide la console'),
+            _DocItem(icon: CupertinoIcons.text_bubble, label: 'echo <msg>', detail: 'Affiche un message'),
+          ],
         ),
         _DocSection(
-          title: 'Commandes réseau',
-          content: '''
-```bash
-requests          # Nombre de requêtes
-fetch <url>       # Requête GET
-```''',
+          title: 'Réseau',
+          items: [
+            _DocItem(icon: CupertinoIcons.list_number, label: 'requests', detail: 'Nombre de requêtes'),
+            _DocItem(icon: CupertinoIcons.cloud_download, label: 'fetch <url>', detail: 'Requête GET'),
+          ],
         ),
         _DocSection(
-          title: 'Commandes performance',
-          content: '''
-```bash
-perf              # Métriques actuelles
-widgets           # Capture arbre widgets
-```''',
+          title: 'Session',
+          items: [
+            _DocItem(icon: CupertinoIcons.circle_fill, label: 'record start', detail: 'Démarrer enregistrement'),
+            _DocItem(icon: CupertinoIcons.stop_fill, label: 'record stop', detail: 'Arrêter enregistrement'),
+            _DocItem(icon: CupertinoIcons.list_bullet, label: 'sessions', detail: 'Lister les sessions'),
+          ],
         ),
         _DocSection(
-          title: 'Commandes analytics',
-          content: '''
-```bash
-analytics         # Stats globales
-alerts            # Alertes actives
-security          # Problèmes sécurité
-```''',
-        ),
-        _DocSection(
-          title: 'Commandes session',
-          content: '''
-```bash
-record            # Toggle enregistrement
-record start      # Démarrer (nom auto)
-record start Test # Démarrer avec nom
-record stop       # Arrêter
-sessions          # Lister sessions
-```''',
-        ),
-        _DocSection(
-          title: 'Commandes storage',
-          content: '''
-```bash
-storage           # Nombre d'entrées
-get <key>         # Lire valeur
-set <key> <value> # Définir valeur
-del <key>         # Supprimer clé
-```''',
-        ),
-        _DocSection(
-          title: 'Commandes utilitaires',
-          content: '''
-```bash
-bookmark <titre>  # Ajouter bookmark
-export            # Rapport JSON
-monitor on/off    # Toggle monitoring
-env               # Info environnement
-time              # Heure ISO
-json <string>     # Formatter JSON
-```''',
+          title: 'Utilitaires',
+          items: [
+            _DocItem(icon: CupertinoIcons.bookmark, label: 'bookmark <t>', detail: 'Créer bookmark'),
+            _DocItem(icon: CupertinoIcons.square_arrow_up, label: 'export', detail: 'Export JSON'),
+            _DocItem(icon: CupertinoIcons.bell, label: 'monitor on/off', detail: 'Toggle monitoring'),
+            _DocItem(icon: CupertinoIcons.doc_text, label: 'json <str>', detail: 'Formater JSON'),
+          ],
         ),
       ],
     ),
     _DocCategory(
-      title: 'Raccourcis Clavier',
+      title: 'Raccourcis',
       icon: CupertinoIcons.keyboard,
       sections: [
         _DocSection(
           title: 'Navigation',
-          content: '''
-| Raccourci | Action |
-|-----------|--------|
-| `Ctrl+T` | Nouvel onglet |
-| `Ctrl+W` | Fermer onglet |
-| `Ctrl+Tab` | Onglet suivant |
-| `Ctrl+Shift+Tab` | Onglet précédent |
-| `Ctrl+1-9` | Aller à l\'onglet N |
-| `Alt+←` | Page précédente |
-| `Alt+→` | Page suivante |
-| `Ctrl+R` | Recharger |''',
+          items: [
+            _DocItem(icon: CupertinoIcons.add, label: 'Ctrl+T', detail: 'Nouvel onglet'),
+            _DocItem(icon: CupertinoIcons.xmark, label: 'Ctrl+W', detail: 'Fermer onglet'),
+            _DocItem(icon: CupertinoIcons.arrow_right, label: 'Ctrl+Tab', detail: 'Onglet suivant'),
+            _DocItem(icon: CupertinoIcons.arrow_counterclockwise, label: 'Ctrl+R', detail: 'Recharger'),
+          ],
         ),
         _DocSection(
           title: 'DevTools',
-          content: '''
-| Raccourci | Action |
-|-----------|--------|
-| `F12` | Toggle DevTools |
-| `Ctrl+Shift+I` | Toggle DevTools |
-| `Ctrl+Shift+C` | Inspecter élément |
-| `Ctrl+Shift+J` | Ouvrir Console |''',
+          items: [
+            _DocItem(icon: CupertinoIcons.wrench, label: 'F12', detail: 'Toggle DevTools'),
+            _DocItem(icon: CupertinoIcons.wrench, label: 'Ctrl+Shift+I', detail: 'Toggle DevTools'),
+          ],
         ),
         _DocSection(
           title: 'Édition',
-          content: '''
-| Raccourci | Action |
-|-----------|--------|
-| `Ctrl+L` | Focus adresse |
-| `Ctrl+K` | Recherche rapide |
-| `Ctrl+D` | Ajouter favoris |''',
+          items: [
+            _DocItem(icon: CupertinoIcons.link, label: 'Ctrl+L', detail: 'Focus barre d\'adresse'),
+            _DocItem(icon: CupertinoIcons.bookmark, label: 'Ctrl+D', detail: 'Ajouter aux favoris'),
+          ],
         ),
       ],
     ),
     _DocCategory(
-      title: 'Architecture',
-      icon: CupertinoIcons.layers,
+      title: 'Services',
+      icon: CupertinoIcons.globe,
       sections: [
         _DocSection(
-          title: 'Stack technique',
-          content: '''
-```
-┌─────────────────────────────────┐
-│         Notilus Browser         │
-├─────────────────────────────────┤
-│  UI Layer (Flutter Widgets)     │
-│  - GXSidebar, GXTabBar          │
-│  - DevTools Panels              │
-├─────────────────────────────────┤
-│  Service Layer                  │
-│  - TabManager                   │
-│  - NotilusDevToolsService       │
-│  - DownloadService              │
-├─────────────────────────────────┤
-│  Engine Layer                   │
-│  - WebView2BrowserEngine        │
-│  - JavaScript Bridge            │
-├─────────────────────────────────┤
-│  Platform Layer                 │
-│  - webview_windows              │
-│  - window_manager               │
-└─────────────────────────────────┘
-```''',
-        ),
-        _DocSection(
-          title: 'Structure des fichiers',
-          content: '''
-```
-lib/
-├── core/
-│   ├── constants/    # Couleurs
-│   ├── services/     # ColorTheme
-│   ├── theme/        # ModernTheme
-│   └── animations/   # Animations
-├── models/
-│   ├── tab_model.dart
-│   └── devtools_models.dart
-├── services/
-│   ├── tab_manager.dart
-│   ├── notilus_devtools_service.dart
-│   └── webview2_browser_engine.dart
-├── widgets/
-│   ├── browser/      # UI principale
-│   ├── dev_tools/    # Onglets DevTools
-│   └── terminal/     # Terminal
-└── main.dart
-```''',
-        ),
-        _DocSection(
-          title: 'Services principaux',
-          content: '''
-### TabManager
-Gestion des onglets (création, fermeture, réorganisation).
-
-### TabWebViewManager
-Association onglets ↔ moteurs WebView.
-
-### NotilusDevToolsService
-Service singleton pour tous les DevTools:
-- Logging
-- Network interception
-- Performance monitoring
-- Smart alerts
-- Security audit''',
+          title: 'Intégrés',
+          items: [
+            _DocItem(icon: CupertinoIcons.music_note, label: 'YouTube Music', detail: 'Musique en sidebar'),
+            _DocItem(icon: CupertinoIcons.play_circle, label: 'YouTube', detail: 'Vidéos en panneau'),
+            _DocItem(icon: CupertinoIcons.chat_bubble_2, label: 'ChatGPT', detail: 'Assistant IA'),
+            _DocItem(icon: CupertinoIcons.sparkles, label: 'DeepSeek', detail: 'IA alternative'),
+            _DocItem(icon: CupertinoIcons.chat_bubble_text, label: 'WhatsApp', detail: 'Messagerie'),
+            _DocItem(icon: CupertinoIcons.paperplane, label: 'Telegram', detail: 'Messagerie'),
+          ],
         ),
       ],
     ),
@@ -442,23 +226,6 @@ Service singleton pour tous les DevTools:
     super.dispose();
   }
 
-  List<_DocCategory> get _filteredCategories {
-    if (_searchQuery.isEmpty) return _categories;
-    
-    return _categories.map((cat) {
-      final filteredSections = cat.sections.where((section) {
-        return section.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-               section.content.toLowerCase().contains(_searchQuery.toLowerCase());
-      }).toList();
-      
-      return _DocCategory(
-        title: cat.title,
-        icon: cat.icon,
-        sections: filteredSections,
-      );
-    }).where((cat) => cat.sections.isNotEmpty).toList();
-  }
-
   @override
   Widget build(BuildContext context) {
     final colorThemeManager = Provider.of<ColorThemeManager>(context);
@@ -468,13 +235,8 @@ Service singleton pour tous les DevTools:
       color: const Color(0xFF0D0D10),
       child: Column(
         children: [
-          // Header avec recherche
           _buildHeader(accentColor),
-          
-          // Navigation par catégories
           _buildCategoryTabs(accentColor),
-          
-          // Contenu
           Expanded(
             child: TabBarView(
               controller: _tabController,
@@ -516,38 +278,40 @@ Service singleton pour tous les DevTools:
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     color: accentColor.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
                         color: accentColor.withOpacity(0.3),
-                        blurRadius: 10,
+                        blurRadius: 12,
                       ),
                     ],
                   ),
                   child: Icon(
                     CupertinoIcons.book_fill,
                     color: accentColor,
-                    size: 20,
+                    size: 22,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Documentation Notilus',
+                        'Notilus Browser',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 16,
+                          fontSize: 17,
                           fontWeight: FontWeight.bold,
+                          letterSpacing: -0.3,
                         ),
                       ),
+                      const SizedBox(height: 2),
                       Text(
-                        'Guide complet pour développeurs',
+                        'Documentation pour développeurs',
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.5),
                           fontSize: 11,
@@ -559,15 +323,14 @@ Service singleton pour tous les DevTools:
                 _buildVersionBadge(accentColor),
               ],
             ),
-            const SizedBox(height: 12),
-            // Barre de recherche
+            const SizedBox(height: 14),
             Container(
-              height: 36,
+              height: 38,
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: Colors.white.withOpacity(0.1),
+                  color: Colors.white.withOpacity(0.08),
                 ),
               ),
               child: TextField(
@@ -578,7 +341,7 @@ Service singleton pour tous les DevTools:
                   fontSize: 13,
                 ),
                 decoration: InputDecoration(
-                  hintText: 'Rechercher dans la documentation...',
+                  hintText: 'Rechercher...',
                   hintStyle: TextStyle(
                     color: Colors.white.withOpacity(0.3),
                     fontSize: 13,
@@ -604,10 +367,10 @@ Service singleton pour tous les DevTools:
 
   Widget _buildVersionBadge(Color accentColor) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: accentColor.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(12),
+        color: accentColor.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: accentColor.withOpacity(0.3),
         ),
@@ -631,10 +394,10 @@ Service singleton pour tous les DevTools:
           ),
           const SizedBox(width: 6),
           Text(
-            'v3.0.0',
+            'v3.0',
             style: TextStyle(
               color: accentColor,
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -645,7 +408,7 @@ Service singleton pour tous les DevTools:
 
   Widget _buildCategoryTabs(Color accentColor) {
     return Container(
-      height: 48,
+      height: 44,
       decoration: BoxDecoration(
         color: const Color(0xFF121218),
         border: Border(
@@ -659,12 +422,14 @@ Service singleton pour tous les DevTools:
         isScrollable: true,
         indicatorColor: accentColor,
         indicatorWeight: 2,
+        indicatorSize: TabBarIndicatorSize.label,
         labelColor: accentColor,
-        unselectedLabelColor: Colors.white.withOpacity(0.5),
+        unselectedLabelColor: Colors.white.withOpacity(0.4),
         labelStyle: const TextStyle(
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: FontWeight.w600,
         ),
+        labelPadding: const EdgeInsets.symmetric(horizontal: 12),
         tabs: _categories.map((cat) {
           return Tab(
             child: Row(
@@ -689,17 +454,11 @@ Service singleton pour tous les DevTools:
         final section = category.sections[index];
         return StaggeredListItem(
           index: index,
-          baseDelay: const Duration(milliseconds: 100),
-          itemDelay: const Duration(milliseconds: 50),
-          child: _DocSectionCard(
+          baseDelay: const Duration(milliseconds: 50),
+          itemDelay: const Duration(milliseconds: 30),
+          child: _DocSectionWidget(
             section: section,
             accentColor: accentColor,
-            isExpanded: _expandedSection == index,
-            onToggle: () {
-              setState(() {
-                _expandedSection = _expandedSection == index ? -1 : index;
-              });
-            },
           ),
         );
       },
@@ -707,266 +466,164 @@ Service singleton pour tous les DevTools:
   }
 }
 
-class _DocSectionCard extends StatelessWidget {
+class _DocSectionWidget extends StatelessWidget {
   final _DocSection section;
   final Color accentColor;
-  final bool isExpanded;
-  final VoidCallback onToggle;
 
-  const _DocSectionCard({
+  const _DocSectionWidget({
     required this.section,
     required this.accentColor,
-    required this.isExpanded,
-    required this.onToggle,
   });
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 250),
-      curve: Curves.easeOutCubic,
-      margin: const EdgeInsets.only(bottom: 8),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: isExpanded
-            ? accentColor.withOpacity(0.08)
-            : Colors.white.withOpacity(0.03),
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.white.withOpacity(0.02),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: isExpanded
-              ? accentColor.withOpacity(0.3)
-              : Colors.white.withOpacity(0.05),
-          width: isExpanded ? 1.5 : 1,
+          color: Colors.white.withOpacity(0.06),
         ),
-        boxShadow: isExpanded
-            ? [
-                BoxShadow(
-                  color: accentColor.withOpacity(0.1),
-                  blurRadius: 15,
-                  spreadRadius: 0,
-                ),
-              ]
-            : [],
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onToggle,
-          borderRadius: BorderRadius.circular(12),
-          hoverColor: accentColor.withOpacity(0.05),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(14),
-                child: Row(
-                  children: [
-                    AnimatedRotation(
-                      duration: const Duration(milliseconds: 200),
-                      turns: isExpanded ? 0.25 : 0,
-                      child: Icon(
-                        CupertinoIcons.chevron_right,
-                        color: accentColor,
-                        size: 14,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        section.title,
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(isExpanded ? 1 : 0.85),
-                          fontSize: 14,
-                          fontWeight: isExpanded ? FontWeight.w600 : FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                    AnimatedOpacity(
-                      duration: const Duration(milliseconds: 200),
-                      opacity: isExpanded ? 1 : 0,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: accentColor.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          'Ouvert',
-                          style: TextStyle(
-                            color: accentColor,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              AnimatedCrossFade(
-                duration: const Duration(milliseconds: 250),
-                crossFadeState: isExpanded
-                    ? CrossFadeState.showSecond
-                    : CrossFadeState.showFirst,
-                firstChild: const SizedBox.shrink(),
-                secondChild: Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-                  child: _MarkdownContent(
-                    content: section.content,
-                    accentColor: accentColor,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header de section
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: accentColor.withOpacity(0.08),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(13)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 4,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    color: accentColor,
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 10),
+                Text(
+                  section.title,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.9),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
+          // Items
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: Column(
+              children: section.items.map((item) {
+                return _DocItemWidget(item: item, accentColor: accentColor);
+              }).toList(),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _MarkdownContent extends StatelessWidget {
-  final String content;
+class _DocItemWidget extends StatefulWidget {
+  final _DocItem item;
   final Color accentColor;
 
-  const _MarkdownContent({
-    required this.content,
+  const _DocItemWidget({
+    required this.item,
     required this.accentColor,
   });
 
   @override
+  State<_DocItemWidget> createState() => _DocItemWidgetState();
+}
+
+class _DocItemWidgetState extends State<_DocItemWidget> {
+  bool _isHovered = false;
+
+  @override
   Widget build(BuildContext context) {
-    return SelectableText.rich(
-      _parseMarkdown(content),
-      style: TextStyle(
-        color: Colors.white.withOpacity(0.8),
-        fontSize: 12,
-        height: 1.6,
-        fontFamily: 'JetBrains Mono',
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        margin: const EdgeInsets.symmetric(vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: _isHovered 
+              ? widget.accentColor.withOpacity(0.08) 
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: _isHovered 
+                    ? widget.accentColor.withOpacity(0.2)
+                    : Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                widget.item.icon,
+                size: 14,
+                color: _isHovered 
+                    ? widget.accentColor 
+                    : Colors.white.withOpacity(0.5),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.item.label,
+                    style: TextStyle(
+                      color: _isHovered 
+                          ? Colors.white 
+                          : Colors.white.withOpacity(0.8),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  if (widget.item.detail != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      widget.item.detail!,
+                      style: TextStyle(
+                        color: _isHovered
+                            ? widget.accentColor.withOpacity(0.8)
+                            : Colors.white.withOpacity(0.4),
+                        fontSize: 10,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (_isHovered)
+              Icon(
+                CupertinoIcons.chevron_right,
+                size: 12,
+                color: widget.accentColor.withOpacity(0.5),
+              ),
+          ],
+        ),
       ),
     );
-  }
-
-  TextSpan _parseMarkdown(String text) {
-    final List<InlineSpan> spans = [];
-    final lines = text.split('\n');
-    
-    for (int i = 0; i < lines.length; i++) {
-      var line = lines[i];
-      
-      // Headers
-      if (line.startsWith('### ')) {
-        spans.add(TextSpan(
-          text: '${line.substring(4)}\n',
-          style: TextStyle(
-            color: accentColor,
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-            fontFamily: 'Inter',
-          ),
-        ));
-        continue;
-      }
-      
-      // Code blocks
-      if (line.startsWith('```')) {
-        // Find end of code block
-        int endIndex = i + 1;
-        while (endIndex < lines.length && !lines[endIndex].startsWith('```')) {
-          endIndex++;
-        }
-        
-        // Get code content
-        final codeLines = lines.sublist(i + 1, endIndex);
-        final codeContent = codeLines.join('\n');
-        
-        spans.add(WidgetSpan(
-          child: Container(
-            margin: const EdgeInsets.symmetric(vertical: 8),
-            padding: const EdgeInsets.all(12),
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.3),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: accentColor.withOpacity(0.2),
-              ),
-            ),
-            child: Text(
-              codeContent,
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.9),
-                fontSize: 11,
-                fontFamily: 'JetBrains Mono',
-              ),
-            ),
-          ),
-        ));
-        
-        i = endIndex;
-        continue;
-      }
-      
-      // Tables
-      if (line.startsWith('|')) {
-        // Skip table for now, show as text
-        spans.add(TextSpan(
-          text: '$line\n',
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.7),
-            fontSize: 11,
-            fontFamily: 'JetBrains Mono',
-          ),
-        ));
-        continue;
-      }
-      
-      // Bold text
-      line = line.replaceAllMapped(
-        RegExp(r'\*\*(.+?)\*\*'),
-        (match) => '【${match.group(1)}】',
-      );
-      
-      // Inline code
-      line = line.replaceAllMapped(
-        RegExp(r'`(.+?)`'),
-        (match) => '⌜${match.group(1)}⌝',
-      );
-      
-      // Process styled text
-      final processedSpans = <InlineSpan>[];
-      final parts = line.split(RegExp(r'(【.+?】|⌜.+?⌝)'));
-      
-      for (final part in parts) {
-        if (part.startsWith('【') && part.endsWith('】')) {
-          processedSpans.add(TextSpan(
-            text: part.substring(1, part.length - 1),
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
-          ));
-        } else if (part.startsWith('⌜') && part.endsWith('⌝')) {
-          processedSpans.add(TextSpan(
-            text: part.substring(1, part.length - 1),
-            style: TextStyle(
-              color: accentColor,
-              backgroundColor: accentColor.withOpacity(0.1),
-              fontFamily: 'JetBrains Mono',
-              fontSize: 11,
-            ),
-          ));
-        } else {
-          processedSpans.add(TextSpan(text: part));
-        }
-      }
-      
-      spans.addAll(processedSpans);
-      if (i < lines.length - 1) {
-        spans.add(const TextSpan(text: '\n'));
-      }
-    }
-    
-    return TextSpan(children: spans);
   }
 }
 
@@ -984,11 +641,22 @@ class _DocCategory {
 
 class _DocSection {
   final String title;
-  final String content;
+  final List<_DocItem> items;
 
   const _DocSection({
     required this.title,
-    required this.content,
+    required this.items,
   });
 }
 
+class _DocItem {
+  final IconData icon;
+  final String label;
+  final String? detail;
+
+  const _DocItem({
+    required this.icon,
+    required this.label,
+    this.detail,
+  });
+}

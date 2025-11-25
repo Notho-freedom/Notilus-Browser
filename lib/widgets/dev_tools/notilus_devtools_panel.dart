@@ -11,7 +11,6 @@ import 'devtools_performance_tab.dart';
 import 'devtools_storage_tab.dart';
 import 'devtools_alerts_tab.dart';
 import 'devtools_security_tab.dart';
-import 'devtools_widgets_tab.dart';
 import 'devtools_analytics_tab.dart';
 
 /// Onglet actif dans les DevTools
@@ -22,7 +21,6 @@ enum DevToolsTab {
   storage,
   alerts,
   security,
-  widgets,
   analytics,
 }
 
@@ -71,22 +69,16 @@ class _NotilusDevToolsPanelState extends State<NotilusDevToolsPanel>
       shortcut: '5',
     ),
     _TabInfo(
-      tab: DevToolsTab.widgets,
-      label: 'Widgets',
-      icon: CupertinoIcons.rectangle_3_offgrid,
-      shortcut: '6',
-    ),
-    _TabInfo(
       tab: DevToolsTab.analytics,
       label: 'Analytics',
       icon: CupertinoIcons.chart_bar,
-      shortcut: '7',
+      shortcut: '6',
     ),
     _TabInfo(
       tab: DevToolsTab.storage,
       label: 'Storage',
       icon: CupertinoIcons.archivebox,
-      shortcut: '8',
+      shortcut: '7',
     ),
   ];
 
@@ -147,7 +139,6 @@ class _NotilusDevToolsPanelState extends State<NotilusDevToolsPanel>
                 DevToolsPerformanceTab(),
                 DevToolsAlertsTab(),
                 DevToolsSecurityTab(),
-                DevToolsWidgetsTab(),
                 DevToolsAnalyticsTab(),
                 DevToolsStorageTab(),
               ],

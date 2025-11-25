@@ -702,23 +702,10 @@ class NotilusDevToolsService extends ChangeNotifier {
     }
   }
   
-  /// Compte le nombre réel de widgets dans l'arbre
+  /// Placeholder - les métriques widgets Flutter ne sont pas utilisées
+  /// car Notilus est un navigateur web, pas un outil de debug Flutter
   int _countRealActiveWidgets() {
-    try {
-      int count = 0;
-      void countWidgets(Element element) {
-        count++;
-        element.visitChildren(countWidgets);
-      }
-      
-      // Obtenir le root element
-      final binding = WidgetsBinding.instance;
-      binding.rootElement?.visitChildren(countWidgets);
-      
-      return count;
-    } catch (e) {
-      return 0;
-    }
+    return 0; // Non applicable pour un navigateur
   }
   
   /// Obtient le temps de rendu réel en millisecondes
@@ -927,7 +914,6 @@ Performance actuelle:
   FPS: ${last.fps.toStringAsFixed(1)}
   CPU: ${last.cpuUsage.toStringAsFixed(1)}%
   Memory: ${last.memoryUsedMB} MB / ${last.memoryTotalMB} MB
-  Widgets: ${last.activeWidgets}
   Render: ${last.renderTime}ms
 ''';
       
@@ -1056,8 +1042,7 @@ ${_sessions.map((s) => '  ${s.name} - ${s.formattedDuration} (${s.events.length}
 ''';
       
       case 'widgets':
-        captureWidgetTree();
-        return '🌳 Widget tree capturé: ${_countNodes(_widgetTree)} widgets';
+        return '⚠️ Commande obsolète - utilisez les DevTools natifs (F12 → DevTools Natif)';
       
       case 'bookmark':
         if (args.isEmpty) return 'Usage: bookmark <titre>';
@@ -1105,7 +1090,6 @@ ${_sessions.map((s) => '  ${s.name} - ${s.formattedDuration} (${s.events.length}
 ║                                               ║
 ║  📊 PERFORMANCE                               ║
 ║    perf          Métriques actuelles          ║
-║    widgets       Capturer l'arbre widgets     ║
 ║                                               ║
 ║  💾 STORAGE                                   ║
 ║    storage       Nombre d'entrées             ║
@@ -1605,66 +1589,11 @@ ${_sessions.map((s) => '  ${s.name} - ${s.formattedDuration} (${s.events.length}
   
   // === WIDGET TREE INSPECTOR ===
   
-  /// Capture l'arbre des widgets Flutter
+  /// Obsolète - Notilus est un navigateur web, pas un outil de debug Flutter
   void captureWidgetTree() {
-    try {
-      _widgetTree = [];
-      final binding = WidgetsBinding.instance;
-      final rootElement = binding.rootElement;
-      
-      if (rootElement != null) {
-        _widgetTree = [_buildWidgetTreeNode(rootElement, 0)];
-      }
-      
-      _logSystem('🌳 Arbre des widgets capturé (${_countNodes(_widgetTree)} widgets)');
-      notifyListeners();
-    } catch (e) {
-      logError('Erreur capture widget tree: $e');
-    }
-  }
-  
-  WidgetTreeNode _buildWidgetTreeNode(Element element, int depth, {int maxDepth = 15}) {
-    final widget = element.widget;
-    final List<WidgetTreeNode> children = [];
-    
-    if (depth < maxDepth) {
-      element.visitChildren((child) {
-        children.add(_buildWidgetTreeNode(child, depth + 1, maxDepth: maxDepth));
-      });
-    }
-    
-    // Get render bounds if available
-    Rect? bounds;
-    if (element.renderObject is RenderBox) {
-      try {
-        final box = element.renderObject as RenderBox;
-        if (box.hasSize) {
-          final offset = box.localToGlobal(Offset.zero);
-          bounds = Rect.fromLTWH(offset.dx, offset.dy, box.size.width, box.size.height);
-        }
-      } catch (_) {}
-    }
-    
-    return WidgetTreeNode(
-      id: element.hashCode.toString(),
-      widgetType: widget.runtimeType.toString(),
-      key: widget.key?.toString(),
-      depth: depth,
-      hasChildren: children.isNotEmpty,
-      children: children,
-      renderBounds: bounds,
-      properties: {
-        if (widget.toString().length < 200) 'widget': widget.toString(),
-      },
-    );
-  }
-  
-  int _countNodes(List<WidgetTreeNode> nodes) {
-    int count = nodes.length;
-    for (final node in nodes) {
-      count += _countNodes(node.children);
-    }
-    return count;
+    _widgetTree = [];
+    _logSystem('Widget tree non disponible - fonctionnalité web uniquement');
+    notifyListeners();
   }
   
   // === EXPORT REPORTS ===

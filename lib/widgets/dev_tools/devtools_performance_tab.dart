@@ -101,17 +101,31 @@ class _DevToolsPerformanceTabState extends State<DevToolsPerformanceTab> {
                     ),
                     const SizedBox(height: 12),
 
-                    // Widgets count
-                    _MetricCard(
-                      title: 'Active Widgets',
-                      value: devTools.performanceHistory.isEmpty
-                          ? '--'
-                          : devTools.performanceHistory.last.activeWidgets.toString(),
-                      unit: 'widgets in tree',
-                      icon: CupertinoIcons.square_stack_3d_up,
-                      color: const Color(0xFF81C784),
-                      accentColor: accentColor,
-                      isWide: true,
+                    // Network requests summary
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _MetricCard(
+                            title: 'Requests',
+                            value: devTools.requests.length.toString(),
+                            unit: 'total',
+                            icon: CupertinoIcons.globe,
+                            color: const Color(0xFF81C784),
+                            accentColor: accentColor,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _MetricCard(
+                            title: 'Errors',
+                            value: devTools.requests.where((r) => r.statusCode != null && r.statusCode! >= 400).length.toString(),
+                            unit: 'failed',
+                            icon: CupertinoIcons.exclamationmark_triangle,
+                            color: const Color(0xFFEF5350),
+                            accentColor: accentColor,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 16),
 
