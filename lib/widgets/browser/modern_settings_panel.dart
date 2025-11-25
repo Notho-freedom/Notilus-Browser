@@ -4,6 +4,7 @@ import '../../core/services/wallpaper_manager.dart';
 import '../../core/services/theme_mode_notifier.dart';
 import '../../core/services/color_theme_manager.dart';
 import '../../core/constants/notilus_colors.dart';
+import '../common/color_picker_dialog.dart';
 
 class ModernSettingsPanel extends StatefulWidget {
   const ModernSettingsPanel({super.key});
@@ -184,6 +185,178 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                                 ),
                               );
                             }).toList(),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 32),
+                  Consumer<ColorThemeManager>(
+                    builder: (context, colorThemeManager, _) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Couleurs personnalisées',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          
+                          // Couleur de fond native
+                          GestureDetector(
+                            onTap: () async {
+                              final color = await ColorPickerDialog.show(
+                                context,
+                                initialColor: colorThemeManager.nativeBackgroundColor,
+                                title: 'Couleur de fond native',
+                              );
+                              if (color != null) {
+                                await colorThemeManager.setNativeBackgroundColor(color);
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.05),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.1),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: BoxDecoration(
+                                      color: colorThemeManager.nativeBackgroundColor,
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(
+                                        color: Colors.white.withValues(alpha: 0.2),
+                                        width: 1,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Fond natif',
+                                          style: theme.textTheme.bodyMedium?.copyWith(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          'Sidebar, topbars, etc.',
+                                          style: theme.textTheme.bodySmall?.copyWith(
+                                            fontSize: 10,
+                                            color: Colors.white60,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Icon(
+                                    Icons.chevron_right,
+                                    color: Colors.white.withValues(alpha: 0.5),
+                                    size: 20,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          
+                          const SizedBox(height: 12),
+                          
+                          // Couleur secondaire native
+                          GestureDetector(
+                            onTap: () async {
+                              final color = await ColorPickerDialog.show(
+                                context,
+                                initialColor: colorThemeManager.nativeSecondaryColor,
+                                title: 'Couleur secondaire native',
+                              );
+                              if (color != null) {
+                                await colorThemeManager.setNativeSecondaryColor(color);
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.05),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.1),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: BoxDecoration(
+                                      color: colorThemeManager.nativeSecondaryColor,
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(
+                                        color: Colors.white.withValues(alpha: 0.2),
+                                        width: 1,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Secondaire native',
+                                          style: theme.textTheme.bodyMedium?.copyWith(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          'Éléments secondaires',
+                                          style: theme.textTheme.bodySmall?.copyWith(
+                                            fontSize: 10,
+                                            color: Colors.white60,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Icon(
+                                    Icons.chevron_right,
+                                    color: Colors.white.withValues(alpha: 0.5),
+                                    size: 20,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          
+                          const SizedBox(height: 12),
+                          
+                          // Bouton réinitialiser
+                          TextButton.icon(
+                            onPressed: () async {
+                              await colorThemeManager.resetCustomColors();
+                            },
+                            icon: const Icon(Icons.refresh, size: 16),
+                            label: const Text('Réinitialiser les couleurs'),
+                            style: TextButton.styleFrom(
+                              foregroundColor: NotilusColors.neonRed,
+                            ),
                           ),
                         ],
                       );

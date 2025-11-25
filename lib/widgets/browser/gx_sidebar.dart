@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/notilus_colors.dart';
+import '../../core/services/color_theme_manager.dart';
 import '../../services/tab_manager.dart';
 import '../common/notilus_monogram.dart';
 import '../common/notilus_tooltip.dart';
@@ -128,9 +129,10 @@ class _GXSidebarState extends State<GXSidebar> {
 
   @override
   Widget build(BuildContext context) {
+    final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: true);
     return Container(
       width: 50,
-      color: NotilusColors.nativeBackground,
+      color: colorThemeManager.nativeBackgroundColor,
       child: Column(
         children: [
           const SizedBox(height: 10),

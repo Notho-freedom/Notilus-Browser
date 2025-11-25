@@ -16,6 +16,7 @@ import 'modern_settings_panel.dart';
 import 'webview_service_panel.dart';
 import '../../core/constants/notilus_colors.dart';
 import '../../core/services/wallpaper_manager.dart';
+import '../../core/services/color_theme_manager.dart';
 import '../../services/split_screen_service.dart';
 import '../../widgets/splitscreen/advanced_split_view.dart';
 import '../../widgets/terminal/terminal_panel.dart';
@@ -276,10 +277,11 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
   Widget _buildSideMenu(BuildContext context) {
     final config = _panelConfigForSection();
     if (config == null) return const SizedBox.shrink();
+    final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: true);
 
     return Container(
       decoration: BoxDecoration(
-        color: NotilusColors.nativeBackground,
+        color: colorThemeManager.nativeBackgroundColor,
         border: Border(
           right: BorderSide(
             color: NotilusColors.neonRed.withOpacity(0.3),
@@ -294,7 +296,7 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
             height: 36,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
-              color: NotilusColors.nativeBackground,
+              color: colorThemeManager.nativeBackgroundColor,
               border: Border(
                 bottom: BorderSide(
                   color: NotilusColors.neonRed.withOpacity(0.2),

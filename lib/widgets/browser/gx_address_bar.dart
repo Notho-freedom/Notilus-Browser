@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/notilus_colors.dart';
+import '../../core/services/color_theme_manager.dart';
 import '../../services/tab_manager.dart';
 import '../../services/tab_webview_manager.dart';
 import '../../core/utils/url_validator.dart';
@@ -13,7 +14,6 @@ import '../../models/tab_model.dart';
 import '../common/notilus_tooltip.dart';
 
 const Color _gxRed = NotilusColors.neonRed;
-const Color _chromeColor = NotilusColors.nativeBackground;
 
 class GXAddressBar extends StatefulWidget {
   const GXAddressBar({super.key});
@@ -106,9 +106,10 @@ class _GXAddressBarState extends State<GXAddressBar> {
           }
         }
 
+        final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: true);
         return Container(
           height: 34,
-          color: _chromeColor,
+          color: colorThemeManager.nativeBackgroundColor,
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           child: Row(
             children: [
@@ -186,7 +187,7 @@ class _GXAddressBarState extends State<GXAddressBar> {
                     margin: const EdgeInsets.all(1.2),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(17),
-                      color: _chromeColor.withOpacity(0.88),
+                      color: colorThemeManager.nativeBackgroundColor.withValues(alpha: 0.88),
                     ),
                     child: Row(
                       children: [

@@ -39,5 +39,31 @@ class NotilusColors {
     }
     return neonRedDark;
   }
+  
+  /// Obtient la couleur de fond native personnalisée (si ColorThemeManager est disponible)
+  static Color getNativeBackgroundColor(BuildContext? context) {
+    if (context != null) {
+      try {
+        final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: false);
+        return colorThemeManager.nativeBackgroundColor;
+      } catch (_) {
+        // Si ColorThemeManager n'est pas disponible, utiliser la couleur par défaut
+      }
+    }
+    return nativeBackground;
+  }
+  
+  /// Obtient la couleur secondaire native personnalisée (si ColorThemeManager est disponible)
+  static Color getNativeSecondaryColor(BuildContext? context) {
+    if (context != null) {
+      try {
+        final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: false);
+        return colorThemeManager.nativeSecondaryColor;
+      } catch (_) {
+        // Si ColorThemeManager n'est pas disponible, utiliser la couleur par défaut
+      }
+    }
+    return chrome;
+  }
 }
 

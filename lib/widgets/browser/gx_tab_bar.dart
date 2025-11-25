@@ -13,12 +13,12 @@ import '../../services/bookmark_service.dart';
 import '../../models/tab_model.dart';
 import '../../services/terminal_manager.dart';
 import '../../models/bookmark.dart';
+import '../../core/services/color_theme_manager.dart';
 import '../common/notilus_monogram.dart';
 import '../common/notilus_tooltip.dart';
 import '../common/context_menu.dart';
 
 const Color _gxRed = NotilusColors.neonRed;
-const Color _chromeColor = NotilusColors.nativeBackground;
 
 class GXTabBar extends StatelessWidget {
   final VoidCallback? onMenuTap;
@@ -32,10 +32,11 @@ class GXTabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: true);
     return Container(
       height: 36,
       decoration: BoxDecoration(
-        color: _chromeColor,
+        color: colorThemeManager.nativeBackgroundColor,
         border: Border(
           bottom: BorderSide(
             color: _gxRed.withOpacity(0.2),
@@ -157,7 +158,7 @@ class GXTabBar extends StatelessWidget {
                                       width: tabWidth,
                                       height: 32,
                                       decoration: BoxDecoration(
-                                        color: _chromeColor,
+                                        color: colorThemeManager.nativeBackgroundColor,
                                         borderRadius: BorderRadius.circular(8),
                                         border: Border.all(
                                           color: _gxRed,
