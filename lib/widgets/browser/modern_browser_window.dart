@@ -86,19 +86,9 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
   }
 
   void _handleOpenDevTools() {
-    // Ouvrir les DevTools natifs de Notilus
-    setState(() {
-      if (_currentSection == SidebarSection.devtools) {
-        // Si déjà ouvert, fermer
-        _currentSection = SidebarSection.home;
-      } else {
-        // Ouvrir le panneau DevTools
-        _currentSection = SidebarSection.devtools;
-      }
-    });
-    
-    // Logger l'action
-    debugPrint('DevTools ${_currentSection == SidebarSection.devtools ? "opened" : "closed"} via F12');
+    // Ouvrir les DevTools en bas de l'écran (via F12)
+    _openNativeDevTools();
+    debugPrint('DevTools ${_isDevToolsOpen ? "opened" : "closed"} via F12');
   }
 
   void _openNativeDevTools() {
@@ -469,10 +459,6 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
           icon: CupertinoIcons.square_list,
           child: const NativeTerminalPanel(),
         );
-      case SidebarSection.devtools:
-        // DevTools s'ouvre en bas de l'écran, pas dans un panel
-        _openNativeDevTools();
-        return null;
       case SidebarSection.youtubeMusic:
         return _SidebarPanelConfig(
           title: 'YouTube Music',

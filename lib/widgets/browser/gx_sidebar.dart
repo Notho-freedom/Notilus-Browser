@@ -20,7 +20,6 @@ enum SidebarSection {
   settings,
   updates,
   terminal,
-  devtools,
   nativeDevtools,
   docs,
   youtubeMusic,
@@ -90,14 +89,9 @@ class _GXSidebarState extends State<GXSidebar> {
       label: 'Terminal',
     ),
     _SidebarDestination(
-      section: SidebarSection.devtools,
-      icon: CupertinoIcons.wrench_fill,
-      label: 'DevTools',
-    ),
-    _SidebarDestination(
       section: SidebarSection.nativeDevtools,
       icon: CupertinoIcons.ant,
-      label: 'DevTools Natif (F12)',
+      label: 'DevTools (F12)',
     ),
     _SidebarDestination(
       section: SidebarSection.docs,
