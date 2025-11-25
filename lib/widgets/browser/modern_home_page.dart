@@ -3,13 +3,13 @@ import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/tab_manager.dart';
 import '../../core/services/wallpaper_manager.dart';
 import '../../services/quick_access_service.dart';
 import '../../services/history_service.dart';
 import '../../services/bookmark_service.dart';
 import '../../services/system_metrics_service.dart';
+import '../../services/settings_service.dart';
 import '../../models/history_item.dart';
 import '../../models/bookmark.dart';
 import '../../services/favicon_service.dart';
@@ -36,13 +36,11 @@ class _ModernHomePageState extends State<ModernHomePage> {
   final QuickAccessService _quickAccessService = QuickAccessService();
   final HistoryService _historyService = HistoryService();
   final SystemMetricsService _metricsService = SystemMetricsService();
+  final SettingsService _settings = SettingsService();
   List<QuickAccessItem> _quickAccessItems = [];
   List<HistoryItem> _recentHistory = [];
-  bool _leftColumnExpanded = false; // Collapsed par défaut
-  bool _rightColumnExpanded = false; // Collapsed par défaut
-  
-  static const String _prefsKeyLeftColumn = 'notilus_left_column_expanded';
-  static const String _prefsKeyRightColumn = 'notilus_right_column_expanded';
+  bool _leftColumnExpanded = false;
+  bool _rightColumnExpanded = false;
 
   @override
   void initState() {
@@ -51,6 +49,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
     _loadQuickAccessItems();
     _loadRecentHistory();
     _metricsService.addListener(_onMetricsUpdate);
+    _settings.addListener(_onSettingsChanged);
     // Mettre à jour le nombre d'onglets
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final tabManager = Provider.of<TabManager>(context, listen: false);
@@ -58,26 +57,23 @@ class _ModernHomePageState extends State<ModernHomePage> {
     });
   }
   
-  Future<void> _loadColumnStates() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
+  void _onSettingsChanged() {
+    if (mounted) {
       setState(() {
-        _leftColumnExpanded = prefs.getBool(_prefsKeyLeftColumn) ?? false;
-        _rightColumnExpanded = prefs.getBool(_prefsKeyRightColumn) ?? false;
+        _leftColumnExpanded = _settings.leftColumnExpanded;
+        _rightColumnExpanded = _settings.rightColumnExpanded;
       });
-    } catch (e) {
-      // Ignorer les erreurs, garder les valeurs par défaut
     }
   }
   
-  Future<void> _saveColumnStates() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(_prefsKeyLeftColumn, _leftColumnExpanded);
-      await prefs.setBool(_prefsKeyRightColumn, _rightColumnExpanded);
-    } catch (e) {
-      // Ignorer les erreurs de sauvegarde
-    }
+  void _loadColumnStates() {
+    _leftColumnExpanded = _settings.leftColumnExpanded;
+    _rightColumnExpanded = _settings.rightColumnExpanded;
+  }
+  
+  void _saveColumnStates() {
+    _settings.setLeftColumnExpanded(_leftColumnExpanded);
+    _settings.setRightColumnExpanded(_rightColumnExpanded);
   }
 
   void _onMetricsUpdate() {
@@ -89,6 +85,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
   @override
   void dispose() {
     _metricsService.removeListener(_onMetricsUpdate);
+    _settings.removeListener(_onSettingsChanged);
     _searchController.dispose();
     _searchFocusNode.dispose();
     super.dispose();
@@ -393,9 +390,9 @@ class _ModernHomePageState extends State<ModernHomePage> {
                           end: const Offset(1, 1),
                         ),
 
+                      // Widgets système - visible selon les paramètres
+                    if (_settings.showSystemWidgets) ...[
                       const SizedBox(height: 24),
-
-                    // Widgets système - Grille de 6 widgets
                       LayoutBuilder(
                         builder: (context, constraints) {
                           return Center(
@@ -460,10 +457,11 @@ class _ModernHomePageState extends State<ModernHomePage> {
                           );
                         },
                       ),
+                    ],
 
+                      // Sites rapides - visible selon les paramètres
+                    if (_settings.showQuickAccess) ...[
                       const SizedBox(height: 48),
-
-                    // Titre de section Speed Dial
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -495,10 +493,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                           ),
                         ],
                       ),
-
-                    const SizedBox(height: 18),
-
-                    // Grille Speed Dial - 5 éléments max par ligne, 2 colonnes
+                      const SizedBox(height: 18),
                       LayoutBuilder(
                         builder: (context, constraints) {
                           final rows = (_quickAccessItems.length / 5).ceil();
@@ -541,11 +536,11 @@ class _ModernHomePageState extends State<ModernHomePage> {
                           );
                         },
                       ),
-
                       const SizedBox(height: 32),
+                    ],
 
-                      // Section Accès rapide (Historique récent)
-                      if (_recentHistory.isNotEmpty) ...[
+                      // Section Accès rapide (Historique récent) - visible selon les paramètres
+                      if (_settings.showRecentHistory && _recentHistory.isNotEmpty) ...[
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
