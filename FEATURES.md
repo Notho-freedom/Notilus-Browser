@@ -37,6 +37,21 @@
 - ✅ Layout horizontal/vertical
 - ✅ Sélection d'onglets par panneau
 
+### Mosaïque (Nouveau!)
+- ✅ Système de workspace dynamique avancé
+- ✅ 9 layouts prédéfinis (colonnes, grilles, sidebar, développeur, productivité, focus)
+- ✅ Tiles personnalisables (Web, Terminal, DevTools, AI, Favoris, Historique, etc.)
+- ✅ Drag & Drop des onglets vers les tiles
+- ✅ Drag & Drop des tiles entre elles
+- ✅ Zones de drop intelligentes (gauche, droite, haut, bas, centre)
+- ✅ Split horizontal/vertical dynamique
+- ✅ Redimensionnement fluide des tiles
+- ✅ Maximisation/minimisation des tiles
+- ✅ Workspaces multiples sauvegardés
+- ✅ Raccourci clavier Ctrl+Shift+M
+- ✅ Bouton dans la sidebar pour activer
+- ✅ Animations et effets visuels fluides
+
 ### DevTools
 - ✅ Panneau développeur avec 6 onglets
 - ✅ Console, Network, Performance, Elements, Sources, Application
@@ -72,6 +87,7 @@
 - ✅ Alt+→ : Avant
 - ✅ Ctrl+L : Focus barre d'adresse
 - ✅ F12 / Ctrl+Shift+I : Toggle DevTools
+- ✅ Ctrl+Shift+M : Toggle Mode Mosaïque
 
 ### Favicons
 - ✅ Récupération automatique des favicons

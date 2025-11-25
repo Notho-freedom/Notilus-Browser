@@ -18,6 +18,7 @@ import 'services/native_terminal_service.dart';
 import 'services/download_service.dart';
 import 'services/devtools_service.dart';
 import 'services/settings_service.dart';
+import 'services/mosaic_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -87,6 +88,7 @@ class NotilusApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => SideWebViewManager()),
         ChangeNotifierProvider(create: (_) => SystemMetricsService()),
         ChangeNotifierProvider(create: (_) => SplitScreenService()),
+        ChangeNotifierProvider(create: (_) => NotilusMosaicService()),
         ChangeNotifierProvider(create: (_) => TerminalService()..initialize()),
         ChangeNotifierProvider(create: (_) => TerminalManager()),
         ChangeNotifierProvider(create: (_) => NativeTerminalService()),
