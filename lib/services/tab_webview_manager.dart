@@ -102,19 +102,8 @@ class TabWebViewManager extends ChangeNotifier {
       _tabUrlMap[tabId] = url;
     }
     
-    // Attacher les services Studio et Lighthouse au moteur
-    if (_studioService != null) {
-      _studioService!.attachEngine(engine);
-      if (url != null) {
-        _studioService!.updateUrl(url);
-      }
-    }
-    if (_lighthouseService != null) {
-      _lighthouseService!.attachEngine(engine);
-      if (url != null) {
-        _lighthouseService!.updateUrl(url);
-      }
-    }
+    // Les services Studio et Lighthouse seront attachés depuis le widget
+    // pour éviter les appels setState pendant le build
     
     // Configurer les callbacks
     engine.onUrlChanged = (newUrl) {

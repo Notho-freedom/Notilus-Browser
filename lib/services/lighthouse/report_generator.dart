@@ -427,8 +427,9 @@ class ReportGenerator {
       }
 
       final timestamp = result.timestamp.toIso8601String().replaceAll(':', '-').split('.').first;
-      final sanitizedUrl = result.url.replaceAll(RegExp(r'[^\w\-]'), '_').substring(0, 50);
-      final baseName = 'lighthouse_${sanitizedUrl}_$timestamp';
+      final sanitizedUrl = result.url.replaceAll(RegExp(r'[^\w\-]'), '_');
+      final truncatedUrl = sanitizedUrl.length > 50 ? sanitizedUrl.substring(0, 50) : sanitizedUrl;
+      final baseName = 'lighthouse_${truncatedUrl}_$timestamp';
 
       String content;
       String extension;
