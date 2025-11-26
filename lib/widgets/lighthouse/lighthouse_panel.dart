@@ -14,6 +14,7 @@ import '../../core/services/color_theme_manager.dart';
 import 'package:flutter/services.dart';
 import 'history_trends_panel.dart';
 import 'ai_advisor_panel.dart';
+import '../../core/animations/lighthouse_animations.dart';
 
 /// Panneau principal Lighthouse
 class LighthousePanel extends StatefulWidget {
@@ -216,53 +217,77 @@ class _LighthousePanelState extends State<LighthousePanel>
   }
 
   Widget _buildEmptyState(LighthouseService lighthouse, Color accentColor) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 100,
-            height: 100,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: accentColor.withOpacity(0.1),
+    return LighthouseSlideUp(
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            LighthousePulse(
+              child: Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: accentColor.withOpacity(0.1),
+                ),
+                child: Icon(
+                  CupertinoIcons.gauge,
+                  size: 48,
+                  color: accentColor.withOpacity(0.5),
+                ),
+              ),
             ),
-            child: Icon(
-              CupertinoIcons.gauge,
-              size: 48,
-              color: accentColor.withOpacity(0.5),
+            const SizedBox(height: 24),
+            LighthouseFadeIn(
+              delay: const Duration(milliseconds: 200),
+              child: Text(
+                'Analysez votre page',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'Analysez votre page',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
+            const SizedBox(height: 8),
+            LighthouseFadeIn(
+              delay: const Duration(milliseconds: 300),
+              child: Text(
+                'Lancez un audit complet pour obtenir un rapport détaillé\ndes performances, accessibilité, SEO et sécurité',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.5),
+                  fontSize: 13,
+                ),
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Lancez un audit complet pour obtenir un rapport détaillé\ndes performances, accessibilité, SEO et sécurité',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.5),
-              fontSize: 13,
+            const SizedBox(height: 32),
+            LighthouseFadeIn(
+              delay: const Duration(milliseconds: 400),
+              child: ElevatedButton.icon(
+                onPressed: lighthouse.runFullAudit,
+                icon: const Icon(CupertinoIcons.play_fill),
+                label: const Text('Lancer l\'analyse'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: accentColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                ),
+              ),
             ),
-          ),
-          const SizedBox(height: 32),
-          ElevatedButton.icon(
-            onPressed: lighthouse.runFullAudit,
-            icon: const Icon(CupertinoIcons.play_fill),
-            label: const Text('Lancer l\'analyse'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: accentColor,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+            const SizedBox(height: 16),
+            LighthouseFadeIn(
+              delay: const Duration(milliseconds: 500),
+              child: Text(
+                'Raccourci: Ctrl+Shift+R',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.3),
+                  fontSize: 11,
+                ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -273,34 +298,54 @@ class _LighthousePanelState extends State<LighthousePanel>
         mainAxisSize: MainAxisSize.min,
         children: [
           // Animated gauge
-          _AnimatedGauge(
-            progress: lighthouse.progress,
-            accentColor: accentColor,
+          LighthouseFadeIn(
+            child: _AnimatedGauge(
+              progress: lighthouse.progress,
+              accentColor: accentColor,
+            ),
           ),
           const SizedBox(height: 32),
-          Text(
-            lighthouse.currentStep ?? 'Initialisation...',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
+          LighthouseFadeIn(
+            delay: const Duration(milliseconds: 100),
+            child: LighthouseRotatingIcon(
+              icon: CupertinoIcons.arrow_2_circlepath,
+              color: accentColor,
+              size: 20,
             ),
           ),
           const SizedBox(height: 8),
-          Text(
-            '${(lighthouse.progress * 100).round()}% complété',
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.5),
-              fontSize: 12,
+          LighthouseFadeIn(
+            delay: const Duration(milliseconds: 200),
+            child: Text(
+              lighthouse.currentStep ?? 'Initialisation...',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          LighthouseFadeIn(
+            delay: const Duration(milliseconds: 300),
+            child: Text(
+              '${(lighthouse.progress * 100).round()}% complété',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.5),
+                fontSize: 12,
+              ),
             ),
           ),
           const SizedBox(height: 24),
-          TextButton.icon(
-            onPressed: lighthouse.cancelAudit,
-            icon: const Icon(CupertinoIcons.xmark, size: 14),
-            label: const Text('Annuler'),
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.white.withOpacity(0.5),
+          LighthouseFadeIn(
+            delay: const Duration(milliseconds: 400),
+            child: TextButton.icon(
+              onPressed: lighthouse.cancelAudit,
+              icon: const Icon(CupertinoIcons.xmark, size: 14),
+              label: const Text('Annuler'),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.white.withOpacity(0.5),
+              ),
             ),
           ),
         ],
