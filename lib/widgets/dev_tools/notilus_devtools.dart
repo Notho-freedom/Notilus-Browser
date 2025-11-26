@@ -16,6 +16,7 @@ import 'devtools_elements_panel.dart';
 import 'devtools_performance_panel.dart';
 import 'devtools_application_panel.dart';
 import 'devtools_resources_panel.dart';
+import 'backend_lab_panel.dart';
 
 /// Onglets disponibles dans le DevTools
 enum NotilusDevToolsTab {
@@ -25,6 +26,7 @@ enum NotilusDevToolsTab {
   resources,
   performance,
   application,
+  backendLab,
 }
 
 extension NotilusDevToolsTabExtension on NotilusDevToolsTab {
@@ -36,6 +38,7 @@ extension NotilusDevToolsTabExtension on NotilusDevToolsTab {
       case NotilusDevToolsTab.resources: return 'Resources';
       case NotilusDevToolsTab.performance: return 'Performance';
       case NotilusDevToolsTab.application: return 'Application';
+      case NotilusDevToolsTab.backendLab: return 'Backend Lab';
     }
   }
 
@@ -47,6 +50,7 @@ extension NotilusDevToolsTabExtension on NotilusDevToolsTab {
       case NotilusDevToolsTab.resources: return Icons.folder_rounded;
       case NotilusDevToolsTab.performance: return Icons.speed_rounded;
       case NotilusDevToolsTab.application: return Icons.storage_rounded;
+      case NotilusDevToolsTab.backendLab: return Icons.science_rounded;
     }
   }
 
@@ -58,6 +62,7 @@ extension NotilusDevToolsTabExtension on NotilusDevToolsTab {
       case NotilusDevToolsTab.resources: return 'Ctrl+Shift+R';
       case NotilusDevToolsTab.performance: return 'Ctrl+Shift+P';
       case NotilusDevToolsTab.application: return 'Ctrl+Shift+A';
+      case NotilusDevToolsTab.backendLab: return 'Ctrl+Shift+B';
     }
   }
 }
@@ -598,6 +603,7 @@ class _NotilusDevToolsState extends State<NotilusDevTools>
       case NotilusDevToolsTab.resources: return const DevToolsResourcesPanel();
       case NotilusDevToolsTab.performance: return const DevToolsPerformancePanel();
       case NotilusDevToolsTab.application: return const DevToolsApplicationPanel();
+      case NotilusDevToolsTab.backendLab: return const BackendLabPanel();
     }
   }
   
