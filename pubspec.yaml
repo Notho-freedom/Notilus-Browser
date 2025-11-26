@@ -39,6 +39,9 @@ dependencies:
   
   # Window Management
   window_manager: ^0.3.7
+  
+  # File Picker
+  file_picker: ^6.1.1
 
 dev_dependencies:
   flutter_test:

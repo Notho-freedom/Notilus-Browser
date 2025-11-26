@@ -578,6 +578,44 @@ class WebView2BrowserEngine extends BrowserEngine {
     }
   }
 
+  /// Efface tous les cookies
+  Future<void> clearCookies() async {
+    if (_webView == null) return;
+    
+    try {
+      await executeScript('''
+        document.cookie.split(";").forEach(function(c) { 
+          document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+        });
+      ''');
+      debugPrint('🍪 Cookies effacés pour le WebView');
+    } catch (e) {
+      debugPrint('Erreur lors de l\'effacement des cookies: $e');
+    }
+  }
+
+  /// Efface le cache
+  Future<void> clearCache() async {
+    if (_webView == null) return;
+    
+    try {
+      await executeScript('''
+        if ('caches' in window) {
+          caches.keys().then(function(names) {
+            for (let name of names)
+              caches.delete(name);
+          });
+        }
+        // Clear localStorage and sessionStorage
+        localStorage.clear();
+        sessionStorage.clear();
+      ''');
+      debugPrint('💾 Cache effacé pour le WebView');
+    } catch (e) {
+      debugPrint('Erreur lors de l\'effacement du cache: $e');
+    }
+  }
+
   void dispose() {
     _stopNewWindowPolling();
     _downloadPollingTimer?.cancel();

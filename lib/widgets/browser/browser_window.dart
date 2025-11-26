@@ -129,19 +129,37 @@ class _BrowserWindowState extends State<BrowserWindow> {
                       ),
                       _ReloadIntent: CallbackAction<_ReloadIntent>(
                         onInvoke: (_) {
-                          // TODO: Implement reload
+                          final tabManager = Provider.of<TabManager>(context, listen: false);
+                          final activeTab = tabManager.activeTab;
+                          if (activeTab != null) {
+                            final webViewManager = Provider.of<TabWebViewManager>(context, listen: false);
+                            final engine = webViewManager.getEngine(activeTab.id);
+                            engine?.reload();
+                          }
                           return null;
                         },
                       ),
                       _GoBackIntent: CallbackAction<_GoBackIntent>(
                         onInvoke: (_) {
-                          // TODO: Implement go back
+                          final tabManager = Provider.of<TabManager>(context, listen: false);
+                          final activeTab = tabManager.activeTab;
+                          if (activeTab != null) {
+                            final webViewManager = Provider.of<TabWebViewManager>(context, listen: false);
+                            final engine = webViewManager.getEngine(activeTab.id);
+                            engine?.goBack();
+                          }
                           return null;
                         },
                       ),
                       _GoForwardIntent: CallbackAction<_GoForwardIntent>(
                         onInvoke: (_) {
-                          // TODO: Implement go forward
+                          final tabManager = Provider.of<TabManager>(context, listen: false);
+                          final activeTab = tabManager.activeTab;
+                          if (activeTab != null) {
+                            final webViewManager = Provider.of<TabWebViewManager>(context, listen: false);
+                            final engine = webViewManager.getEngine(activeTab.id);
+                            engine?.goForward();
+                          }
                           return null;
                         },
                       ),

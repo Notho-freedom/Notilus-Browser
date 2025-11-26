@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/notilus_colors.dart';
 import '../../core/services/color_theme_manager.dart';
@@ -16,7 +17,18 @@ import '../common/notilus_tooltip.dart';
 // La couleur rouge est maintenant gérée par ColorThemeManager
 
 class GXAddressBar extends StatefulWidget {
-  const GXAddressBar({super.key});
+  final VoidCallback? onAccountPressed;
+  final VoidCallback? onWidgetsPressed;
+  final VoidCallback? onDownloadsPressed;
+  final VoidCallback? onMoreToolsPressed;
+  
+  const GXAddressBar({
+    super.key,
+    this.onAccountPressed,
+    this.onWidgetsPressed,
+    this.onDownloadsPressed,
+    this.onMoreToolsPressed,
+  });
 
   @override
   State<GXAddressBar> createState() => _GXAddressBarState();
@@ -83,6 +95,183 @@ class _GXAddressBarState extends State<GXAddressBar> {
         tabManager.updateTab(tabId, favicon: faviconUrl);
       }
     } catch (_) {}
+  }
+
+  void _showAccountDialog(BuildContext context, Color accentColor) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A20),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [accentColor, accentColor.withValues(alpha: 0.7)],
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(CupertinoIcons.person_fill, color: Colors.white, size: 24),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Compte Notilus',
+                    style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                  Text(
+                    'Non connecté',
+                    style: TextStyle(color: Colors.white54, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildAccountOption(CupertinoIcons.cloud_upload, 'Synchroniser les données', accentColor, () {}),
+            _buildAccountOption(CupertinoIcons.bookmark_fill, 'Favoris synchronisés', accentColor, () {}),
+            _buildAccountOption(CupertinoIcons.clock_fill, 'Historique synchronisé', accentColor, () {}),
+            _buildAccountOption(CupertinoIcons.gear, 'Paramètres du compte', accentColor, () {}),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Fermer', style: TextStyle(color: accentColor)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text('Connexion au compte Notilus à venir'),
+                  backgroundColor: accentColor,
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: accentColor),
+            child: const Text('Se connecter', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAccountOption(IconData icon, String label, Color color, VoidCallback onTap) {
+    return ListTile(
+      leading: Icon(icon, color: color, size: 20),
+      title: Text(label, style: const TextStyle(color: Colors.white, fontSize: 13)),
+      onTap: onTap,
+      dense: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+    );
+  }
+
+  void _showMoreToolsMenu(BuildContext context, Color accentColor) {
+    final RenderBox button = context.findRenderObject() as RenderBox;
+    final RenderBox overlay = Navigator.of(context).overlay!.context.findRenderObject() as RenderBox;
+    final Offset position = button.localToGlobal(
+      Offset(button.size.width - 200, button.size.height),
+      ancestor: overlay,
+    );
+
+    showMenu(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        position.dx,
+        position.dy,
+        overlay.size.width - position.dx - 200,
+        overlay.size.height - position.dy,
+      ),
+      color: const Color(0xFF1A1A20),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      items: [
+        _buildMenuItem(CupertinoIcons.camera, 'Capturer la page', accentColor, () {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: const Text('Capture d\'écran à venir'), backgroundColor: accentColor),
+          );
+        }),
+        _buildMenuItem(CupertinoIcons.printer, 'Imprimer', accentColor, () {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: const Text('Impression à venir'), backgroundColor: accentColor),
+          );
+        }),
+        _buildMenuItem(CupertinoIcons.share, 'Partager', accentColor, () {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: const Text('Partage à venir'), backgroundColor: accentColor),
+          );
+        }),
+        _buildMenuItem(CupertinoIcons.doc_on_clipboard, 'Copier l\'URL', accentColor, () async {
+          Navigator.pop(context);
+          final tabManager = Provider.of<TabManager>(context, listen: false);
+          final url = tabManager.activeTab?.url;
+          if (url != null && url.isNotEmpty) {
+            await Clipboard.setData(ClipboardData(text: url));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: const Text('URL copiée'), backgroundColor: accentColor),
+            );
+          }
+        }),
+        const PopupMenuDivider(),
+        _buildMenuItem(CupertinoIcons.textformat, 'Mode lecture', accentColor, () {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: const Text('Mode lecture à venir'), backgroundColor: accentColor),
+          );
+        }),
+        _buildMenuItem(CupertinoIcons.moon, 'Mode sombre forcé', accentColor, () {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: const Text('Mode sombre forcé à venir'), backgroundColor: accentColor),
+          );
+        }),
+        const PopupMenuDivider(),
+        _buildMenuItem(CupertinoIcons.ant, 'DevTools (F12)', accentColor, () {
+          Navigator.pop(context);
+          // Simuler la touche F12
+          final tabManager = Provider.of<TabManager>(context, listen: false);
+          final activeTab = tabManager.activeTab;
+          if (activeTab != null) {
+            final webViewManager = Provider.of<TabWebViewManager>(context, listen: false);
+            final engine = webViewManager.getEngineForTab(activeTab.id);
+            engine.openDevTools();
+          }
+        }),
+        _buildMenuItem(CupertinoIcons.doc_text, 'Code source', accentColor, () {
+          Navigator.pop(context);
+          final tabManager = Provider.of<TabManager>(context, listen: false);
+          final url = tabManager.activeTab?.url;
+          if (url != null && url.isNotEmpty && !url.startsWith('view-source:')) {
+            tabManager.addTab(url: 'view-source:$url');
+          }
+        }),
+      ],
+    );
+  }
+
+  PopupMenuItem _buildMenuItem(IconData icon, String label, Color color, VoidCallback onTap) {
+    return PopupMenuItem(
+      onTap: onTap,
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 18),
+          const SizedBox(width: 12),
+          Text(label, style: const TextStyle(color: Colors.white, fontSize: 12)),
+        ],
+      ),
+    );
   }
 
   @override
@@ -296,25 +485,25 @@ class _GXAddressBarState extends State<GXAddressBar> {
                   _GXActionButton(
                     icon: CupertinoIcons.person_crop_circle,
                     tooltip: 'Compte Notilus',
-                    onPressed: () {},
+                    onPressed: widget.onAccountPressed ?? () => _showAccountDialog(context, gxRed),
                   ),
                   const SizedBox(width: 4),
                   _GXActionButton(
                     icon: CupertinoIcons.layers_alt,
                     tooltip: 'Panneau widgets',
-                    onPressed: () {},
+                    onPressed: widget.onWidgetsPressed,
                   ),
                   const SizedBox(width: 4),
                   _GXActionButton(
                     icon: CupertinoIcons.tray_arrow_down,
                     tooltip: 'Téléchargements',
-                    onPressed: () {},
+                    onPressed: widget.onDownloadsPressed,
                   ),
                   const SizedBox(width: 4),
                   _GXActionButton(
                     icon: CupertinoIcons.ellipsis_vertical,
-                    tooltip: 'Plus d’outils',
-                    onPressed: () {},
+                    tooltip: 'Plus d\'outils',
+                    onPressed: widget.onMoreToolsPressed ?? () => _showMoreToolsMenu(context, gxRed),
                   ),
                 ],
               ),

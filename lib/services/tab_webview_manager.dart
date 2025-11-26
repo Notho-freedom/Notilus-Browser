@@ -152,4 +152,33 @@ class TabWebViewManager extends ChangeNotifier {
   
   /// Retourne le nombre d'engines actifs
   int get activeEnginesCount => _activeEngines.length;
+
+  /// Efface tous les cookies de tous les engines
+  Future<void> clearAllCookies() async {
+    for (final engine in _activeEngines.values) {
+      if (engine is WebView2BrowserEngine) {
+        await engine.clearCookies();
+      }
+    }
+    for (final engine in _cachedEngines.values) {
+      if (engine is WebView2BrowserEngine) {
+        await engine.clearCookies();
+      }
+    }
+  }
+
+  /// Efface le cache de tous les engines
+  Future<void> clearAllCache() async {
+    for (final engine in _activeEngines.values) {
+      if (engine is WebView2BrowserEngine) {
+        await engine.clearCache();
+      }
+    }
+    for (final engine in _cachedEngines.values) {
+      if (engine is WebView2BrowserEngine) {
+        await engine.clearCache();
+      }
+    }
+    clearCache();
+  }
 }
