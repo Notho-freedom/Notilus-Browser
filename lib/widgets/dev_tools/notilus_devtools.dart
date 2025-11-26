@@ -154,7 +154,7 @@ class _NotilusDevToolsState extends State<NotilusDevTools>
         if (_inspectMode) {
           _toggleInspectMode();
         } else {
-          widget.onClose?.call();
+        widget.onClose?.call();
         }
       }
     }
@@ -440,11 +440,11 @@ class _NotilusDevToolsState extends State<NotilusDevTools>
               child: Row(
                 children: [
                   // Main content
-                  Expanded(
-                    child: TabBarView(
-                      controller: _tabController,
-                      physics: const NeverScrollableScrollPhysics(),
-                      children: _tabs.map((tab) => _buildTabContent(tab)).toList(),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                physics: const NeverScrollableScrollPhysics(),
+                children: _tabs.map((tab) => _buildTabContent(tab)).toList(),
                     ),
                   ),
                   
@@ -842,11 +842,11 @@ class _NotilusDevToolsState extends State<NotilusDevTools>
           ],
         ),
         content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
+        children: [
+          Text(
                 'Les paramètres DevTools sont disponibles dans le panneau Paramètres de l\'application.',
                 style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13),
               ),
@@ -920,9 +920,9 @@ class _ActionButton extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.all(8),
             child: Icon(icon, size: 16, color: isActive ? accentColor : Colors.white.withOpacity(0.6)),
+            ),
           ),
         ),
-      ),
     );
   }
 }

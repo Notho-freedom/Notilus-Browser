@@ -154,14 +154,18 @@ class NotilusApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => StudioService()),
         ChangeNotifierProvider(create: (_) => LighthouseService()),
         ChangeNotifierProvider.value(value: mosaicService),
-        ChangeNotifierProvider(
-          create: (context) {
-            final tabWebViewManager = TabWebViewManager();
-            final downloadService = context.read<DownloadService>();
-            tabWebViewManager.setDownloadService(downloadService);
-            return tabWebViewManager;
-          },
-        ),
+            ChangeNotifierProvider(
+              create: (context) {
+                final tabWebViewManager = TabWebViewManager();
+                final downloadService = context.read<DownloadService>();
+                final studioService = context.read<StudioService>();
+                final lighthouseService = context.read<LighthouseService>();
+                tabWebViewManager.setDownloadService(downloadService);
+                tabWebViewManager.setStudioService(studioService);
+                tabWebViewManager.setLighthouseService(lighthouseService);
+                return tabWebViewManager;
+              },
+            ),
         ChangeNotifierProvider(create: (_) => SideWebViewManager()),
         ChangeNotifierProvider(create: (_) => SystemMetricsService()),
         ChangeNotifierProvider(create: (_) => TerminalService()..initialize()),
