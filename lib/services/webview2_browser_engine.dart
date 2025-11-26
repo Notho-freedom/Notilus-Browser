@@ -583,7 +583,7 @@ class WebView2BrowserEngine extends BrowserEngine {
     if (_webView == null) return;
     
     try {
-      await executeScript('''
+      await executeJavaScript('''
         document.cookie.split(";").forEach(function(c) { 
           document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
         });
@@ -599,7 +599,7 @@ class WebView2BrowserEngine extends BrowserEngine {
     if (_webView == null) return;
     
     try {
-      await executeScript('''
+      await executeJavaScript('''
         if ('caches' in window) {
           caches.keys().then(function(names) {
             for (let name of names)

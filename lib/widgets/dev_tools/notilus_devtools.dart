@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../services/devtools_service.dart';
 import '../../services/browser_engine.dart';
+import '../../services/settings_service.dart';
 import '../../core/services/color_theme_manager.dart';
 import 'devtools_console_panel.dart';
 import 'devtools_network_panel.dart';
@@ -523,10 +524,9 @@ class _NotilusDevToolsState extends State<NotilusDevTools>
           _ActionButton(
             icon: Icons.devices,
             tooltip: 'Mode responsive',
+            isActive: _responsiveMode,
             accentColor: accentColor,
-            onPressed: () {
-              // TODO: Implémenter le mode responsive
-            },
+            onPressed: () => _showResponsiveMenu(context, accentColor),
           ),
 
           Container(width: 1, height: 20, color: Colors.white.withOpacity(0.1)),
@@ -579,7 +579,7 @@ class _NotilusDevToolsState extends State<NotilusDevTools>
 
           _ActionButton(icon: Icons.cleaning_services_outlined, tooltip: 'Tout effacer', accentColor: accentColor, onPressed: () => context.read<DevToolsService>().clearAll()),
           _ActionButton(icon: Icons.settings_outlined, tooltip: 'Paramètres DevTools', accentColor: accentColor, onPressed: () {
-            // TODO: Ouvrir les paramètres DevTools
+            _showDevToolsSettings(context, accentColor);
           }),
           _ActionButton(icon: _isDocked ? Icons.open_in_new : Icons.dock, tooltip: _isDocked ? 'Détacher' : 'Docker', accentColor: accentColor, onPressed: () => setState(() => _isDocked = !_isDocked)),
           _ActionButton(icon: Icons.close, tooltip: 'Fermer (Echap)', accentColor: accentColor, onPressed: widget.onClose),
@@ -672,6 +672,194 @@ class _NotilusDevToolsState extends State<NotilusDevTools>
                 ],
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showResponsiveMenu(BuildContext context, Color accentColor) {
+    final RenderBox? button = context.findRenderObject() as RenderBox?;
+    if (button == null) return;
+    
+    final RenderBox overlay = Navigator.of(context).overlay!.context.findRenderObject() as RenderBox;
+    final Offset position = button.localToGlobal(
+      Offset(button.size.width - 250, button.size.height),
+      ancestor: overlay,
+    );
+
+    showMenu(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        position.dx,
+        position.dy,
+        overlay.size.width - position.dx - 250,
+        overlay.size.height - position.dy,
+      ),
+      color: const Color(0xFF1A1A20),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      items: <PopupMenuEntry<void>>[
+        PopupMenuItem<void>(
+          child: Row(
+            children: [
+              Icon(Icons.desktop_windows, color: accentColor, size: 18),
+              const SizedBox(width: 12),
+              const Text('Desktop', style: TextStyle(color: Colors.white, fontSize: 12)),
+              const Spacer(),
+              if (_responsiveDevice == 'desktop')
+                Icon(Icons.check, color: accentColor, size: 16),
+            ],
+          ),
+          onTap: () {
+            setState(() {
+              _responsiveMode = true;
+              _responsiveDevice = 'desktop';
+            });
+            _applyResponsiveMode();
+          },
+        ),
+        PopupMenuItem<void>(
+          child: Row(
+            children: [
+              Icon(Icons.tablet_android, color: accentColor, size: 18),
+              const SizedBox(width: 12),
+              const Text('Tablet', style: TextStyle(color: Colors.white, fontSize: 12)),
+              const Spacer(),
+              if (_responsiveDevice == 'tablet')
+                Icon(Icons.check, color: accentColor, size: 16),
+            ],
+          ),
+          onTap: () {
+            setState(() {
+              _responsiveMode = true;
+              _responsiveDevice = 'tablet';
+            });
+            _applyResponsiveMode();
+          },
+        ),
+        PopupMenuItem<void>(
+          child: Row(
+            children: [
+              Icon(Icons.phone_android, color: accentColor, size: 18),
+              const SizedBox(width: 12),
+              const Text('Mobile', style: TextStyle(color: Colors.white, fontSize: 12)),
+              const Spacer(),
+              if (_responsiveDevice == 'mobile')
+                Icon(Icons.check, color: accentColor, size: 16),
+            ],
+          ),
+          onTap: () {
+            setState(() {
+              _responsiveMode = true;
+              _responsiveDevice = 'mobile';
+            });
+            _applyResponsiveMode();
+          },
+        ),
+        const PopupMenuDivider(),
+        PopupMenuItem<void>(
+          child: Row(
+            children: [
+              Icon(Icons.close, color: Colors.white.withOpacity(0.5), size: 18),
+              const SizedBox(width: 12),
+              const Text('Désactiver', style: TextStyle(color: Colors.white70, fontSize: 12)),
+            ],
+          ),
+          onTap: () {
+            setState(() {
+              _responsiveMode = false;
+            });
+            _removeResponsiveMode();
+          },
+        ),
+      ],
+    );
+  }
+
+  void _applyResponsiveMode() {
+    final devTools = context.read<DevToolsService>();
+    final device = _responsiveDevices[_responsiveDevice]!;
+    final width = device['width'] as int;
+    final height = device['height'] as int;
+    
+    devTools.executeScript('''
+      (function() {
+        const viewport = document.querySelector('meta[name="viewport"]');
+        if (!viewport) {
+          const meta = document.createElement('meta');
+          meta.name = 'viewport';
+          meta.content = 'width=$width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+          document.head.appendChild(meta);
+        } else {
+          viewport.content = 'width=$width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+        }
+        
+        // Appliquer la taille au body
+        document.body.style.maxWidth = '${width}px';
+        document.body.style.margin = '0 auto';
+        document.body.style.border = '2px solid #FF6B6B';
+        document.body.style.boxShadow = '0 0 20px rgba(255, 107, 107, 0.3)';
+      })();
+    ''');
+  }
+
+  void _removeResponsiveMode() {
+    final devTools = context.read<DevToolsService>();
+    devTools.executeScript('''
+      (function() {
+        const viewport = document.querySelector('meta[name="viewport"]');
+        if (viewport) {
+          viewport.content = 'width=device-width, initial-scale=1.0';
+        }
+        document.body.style.maxWidth = '';
+        document.body.style.margin = '';
+        document.body.style.border = '';
+        document.body.style.boxShadow = '';
+      })();
+    ''');
+  }
+
+  void _showDevToolsSettings(BuildContext context, Color accentColor) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A20),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.settings, color: accentColor, size: 24),
+            const SizedBox(width: 12),
+            const Text(
+              'Paramètres DevTools',
+              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Les paramètres DevTools sont disponibles dans le panneau Paramètres de l\'application.',
+                style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  // Ouvrir le panneau settings (sera géré par le parent)
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: accentColor),
+                child: const Text('Ouvrir les paramètres', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Fermer', style: TextStyle(color: accentColor)),
           ),
         ],
       ),

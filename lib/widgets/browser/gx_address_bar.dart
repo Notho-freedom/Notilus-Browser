@@ -194,7 +194,7 @@ class _GXAddressBarState extends State<GXAddressBar> {
       ),
       color: const Color(0xFF1A1A20),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      items: [
+      items: <PopupMenuEntry<void>>[
         _buildMenuItem(CupertinoIcons.camera, 'Capturer la page', accentColor, () {
           Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
@@ -261,8 +261,8 @@ class _GXAddressBarState extends State<GXAddressBar> {
     );
   }
 
-  PopupMenuItem _buildMenuItem(IconData icon, String label, Color color, VoidCallback onTap) {
-    return PopupMenuItem(
+  PopupMenuItem<void> _buildMenuItem(IconData icon, String label, Color color, VoidCallback onTap) {
+    return PopupMenuItem<void>(
       onTap: onTap,
       child: Row(
         children: [

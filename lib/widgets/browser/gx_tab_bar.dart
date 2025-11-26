@@ -21,11 +21,13 @@ import '../common/context_menu.dart';
 
 class GXTabBar extends StatefulWidget {
   final VoidCallback? onMenuTap;
+  final VoidCallback? onGroupsPressed;
   final bool isSidebarVisible;
 
   const GXTabBar({
     super.key,
     this.onMenuTap,
+    this.onGroupsPressed,
     this.isSidebarVisible = true,
   });
 
@@ -273,9 +275,9 @@ class _GXTabBarState extends State<GXTabBar> {
                 onPressed: () => _openTabSearch(context),
               ),
               _GXTabBarIconButton(
-                icon: CupertinoIcons.square_grid_2x2,
-                tooltip: 'Groupes (bientôt)',
-                onPressed: () {},
+                icon: CupertinoIcons.rectangle_stack,
+                tooltip: 'Groupes d\'onglets',
+                onPressed: widget.onGroupsPressed,
               ),
             ],
           ),
@@ -489,10 +491,28 @@ class _GXTabItemState extends State<_GXTabItem>
     final quickAccessService = QuickAccessService();
     final bookmarkService = BookmarkService();
     
+    final webViewManager = Provider.of<TabWebViewManager>(context, listen: false);
+    
     ContextMenu.show(
       context: context,
       position: position,
       actions: [
+        ContextMenuAction(
+          label: 'Recharger',
+          icon: CupertinoIcons.arrow_clockwise,
+          onTap: () {
+            final engine = webViewManager.getEngine(widget.tab.id);
+            engine?.reload();
+          },
+        ),
+        ContextMenuAction(
+          label: 'Dupliquer',
+          icon: CupertinoIcons.doc_on_doc,
+          onTap: () {
+            final tabManager = Provider.of<TabManager>(context, listen: false);
+            tabManager.addTab(url: widget.tab.url);
+          },
+        ),
         ContextMenuAction(
           label: 'Ajouter aux sites rapides',
           icon: CupertinoIcons.add_circled,
