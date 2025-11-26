@@ -45,87 +45,178 @@ class _ResponsiveTesterPanelState extends State<ResponsiveTesterPanel> {
   }
 
   Widget _buildToolbar(ResponsiveTesterService tester, Color accentColor) {
-    return Container(
-      height: 40,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF18181E),
-        border: Border(
-          bottom: BorderSide(color: Colors.white.withOpacity(0.05)),
-        ),
-      ),
-      child: Row(
-        children: [
-          // Boutons de presets
-          _ToolbarButton(
-            icon: CupertinoIcons.device_phone_portrait,
-            label: 'Défauts',
-            accentColor: accentColor,
-            onPressed: tester.addDefaultViewports,
-          ),
-          const SizedBox(width: 8),
-          _ToolbarButton(
-            icon: CupertinoIcons.slider_horizontal_3,
-            label: 'Breakpoints',
-            accentColor: accentColor,
-            onPressed: tester.addBreakpointViewports,
-          ),
-          const SizedBox(width: 8),
-          _ToolbarButton(
-            icon: CupertinoIcons.add,
-            label: 'Ajouter',
-            accentColor: accentColor,
-            onPressed: () => _showDeviceSelector(context, tester, accentColor),
-          ),
+    return Consumer<StudioService>(
+      builder: (context, studioService, _) {
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final isCompact = constraints.maxWidth < 600;
+            
+            return Container(
+              height: isCompact ? 60 : 40,
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: isCompact ? 4 : 0),
+              decoration: BoxDecoration(
+                color: const Color(0xFF18181E),
+                border: Border(
+                  bottom: BorderSide(color: Colors.white.withOpacity(0.05)),
+                ),
+              ),
+              child: isCompact
+                  ? Column(
+                      children: [
+                        Row(
+                          children: [
+                            _ToolbarButton(
+                              icon: CupertinoIcons.device_phone_portrait,
+                              label: 'Défauts',
+                              accentColor: accentColor,
+                              onPressed: tester.addDefaultViewports,
+                              compact: true,
+                            ),
+                            const SizedBox(width: 8),
+                            _ToolbarButton(
+                              icon: CupertinoIcons.add,
+                              label: 'Ajouter',
+                              accentColor: accentColor,
+                              onPressed: () => _showDeviceSelector(context, tester, accentColor),
+                              compact: true,
+                            ),
+                            const Spacer(),
+                            _ToolbarButton(
+                              icon: CupertinoIcons.arrow_clockwise,
+                              label: 'Analyser',
+                              accentColor: accentColor,
+                              onPressed: studioService.engine == null
+                                  ? null
+                                  : () async {
+                                      await tester.analyzeBreakpoints();
+                                      await tester.analyzeResponsiveIssues();
+                                    },
+                              compact: true,
+                            ),
+                            const SizedBox(width: 8),
+                            _ToolbarButton(
+                              icon: CupertinoIcons.trash,
+                              label: 'Vider',
+                              accentColor: accentColor,
+                              onPressed: tester.clearViewports,
+                              compact: true,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            _ToolbarToggle(
+                              icon: CupertinoIcons.arrow_up_arrow_down,
+                              label: 'Sync',
+                              isActive: tester.syncScroll,
+                              accentColor: accentColor,
+                              onToggle: () => tester.setSyncScroll(!tester.syncScroll),
+                              compact: true,
+                            ),
+                            const SizedBox(width: 8),
+                            _ToolbarToggle(
+                              icon: CupertinoIcons.chart_bar,
+                              label: 'BP',
+                              isActive: tester.showBreakpoints,
+                              accentColor: accentColor,
+                              onToggle: () => tester.setShowBreakpoints(!tester.showBreakpoints),
+                              compact: true,
+                            ),
+                            const SizedBox(width: 8),
+                            _ToolbarToggle(
+                              icon: CupertinoIcons.exclamationmark_triangle,
+                              label: 'Issues',
+                              isActive: tester.highlightIssues,
+                              accentColor: accentColor,
+                              onToggle: () => tester.setHighlightIssues(!tester.highlightIssues),
+                              compact: true,
+                            ),
+                          ],
+                        ),
+                      ],
+                    )
+                  : SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          // Boutons de presets
+                          _ToolbarButton(
+                            icon: CupertinoIcons.device_phone_portrait,
+                            label: 'Défauts',
+                            accentColor: accentColor,
+                            onPressed: tester.addDefaultViewports,
+                          ),
+                          const SizedBox(width: 8),
+                          _ToolbarButton(
+                            icon: CupertinoIcons.slider_horizontal_3,
+                            label: 'Breakpoints',
+                            accentColor: accentColor,
+                            onPressed: tester.addBreakpointViewports,
+                          ),
+                          const SizedBox(width: 8),
+                          _ToolbarButton(
+                            icon: CupertinoIcons.add,
+                            label: 'Ajouter',
+                            accentColor: accentColor,
+                            onPressed: () => _showDeviceSelector(context, tester, accentColor),
+                          ),
 
-          const Spacer(),
+                          const SizedBox(width: 16),
 
-          // Options
-          _ToolbarToggle(
-            icon: CupertinoIcons.arrow_up_arrow_down,
-            label: 'Sync Scroll',
-            isActive: tester.syncScroll,
-            accentColor: accentColor,
-            onToggle: () => tester.setSyncScroll(!tester.syncScroll),
-          ),
-          const SizedBox(width: 8),
-          _ToolbarToggle(
-            icon: CupertinoIcons.chart_bar,
-            label: 'Breakpoints',
-            isActive: tester.showBreakpoints,
-            accentColor: accentColor,
-            onToggle: () => tester.setShowBreakpoints(!tester.showBreakpoints),
-          ),
-          const SizedBox(width: 8),
-          _ToolbarToggle(
-            icon: CupertinoIcons.exclamationmark_triangle,
-            label: 'Issues',
-            isActive: tester.highlightIssues,
-            accentColor: accentColor,
-            onToggle: () => tester.setHighlightIssues(!tester.highlightIssues),
-          ),
+                          // Options
+                          _ToolbarToggle(
+                            icon: CupertinoIcons.arrow_up_arrow_down,
+                            label: 'Sync Scroll',
+                            isActive: tester.syncScroll,
+                            accentColor: accentColor,
+                            onToggle: () => tester.setSyncScroll(!tester.syncScroll),
+                          ),
+                          const SizedBox(width: 8),
+                          _ToolbarToggle(
+                            icon: CupertinoIcons.chart_bar,
+                            label: 'Breakpoints',
+                            isActive: tester.showBreakpoints,
+                            accentColor: accentColor,
+                            onToggle: () => tester.setShowBreakpoints(!tester.showBreakpoints),
+                          ),
+                          const SizedBox(width: 8),
+                          _ToolbarToggle(
+                            icon: CupertinoIcons.exclamationmark_triangle,
+                            label: 'Issues',
+                            isActive: tester.highlightIssues,
+                            accentColor: accentColor,
+                            onToggle: () => tester.setHighlightIssues(!tester.highlightIssues),
+                          ),
 
-          const SizedBox(width: 16),
+                          const SizedBox(width: 16),
 
-          // Actions
-          _ToolbarButton(
-            icon: CupertinoIcons.arrow_clockwise,
-            label: 'Analyser',
-            accentColor: accentColor,
-            onPressed: () async {
-              await tester.analyzeBreakpoints();
-              await tester.analyzeResponsiveIssues();
-            },
-          ),
-          const SizedBox(width: 8),
-          _ToolbarButton(
-            icon: CupertinoIcons.trash,
-            label: 'Vider',
-            accentColor: accentColor,
-            onPressed: tester.clearViewports,
-          ),
-        ],
-      ),
+                          // Actions
+                          _ToolbarButton(
+                            icon: CupertinoIcons.arrow_clockwise,
+                            label: 'Analyser',
+                            accentColor: accentColor,
+                            onPressed: studioService.engine == null
+                                ? null
+                                : () async {
+                                    await tester.analyzeBreakpoints();
+                                    await tester.analyzeResponsiveIssues();
+                                  },
+                          ),
+                          const SizedBox(width: 8),
+                          _ToolbarButton(
+                            icon: CupertinoIcons.trash,
+                            label: 'Vider',
+                            accentColor: accentColor,
+                            onPressed: tester.clearViewports,
+                          ),
+                        ],
+                      ),
+                    ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -188,24 +279,37 @@ class _ResponsiveTesterPanelState extends State<ResponsiveTesterPanel> {
 
   Widget _buildViewportGrid(ResponsiveTesterService tester, Color accentColor) {
     final viewports = tester.activeViewports;
-    final crossAxisCount = viewports.length <= 2 ? viewports.length : (viewports.length <= 4 ? 2 : 3);
-
-    return GridView.builder(
-      padding: const EdgeInsets.all(16),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        childAspectRatio: 0.7,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-      ),
-      itemCount: viewports.length,
-      itemBuilder: (context, index) {
-        final viewport = viewports[index];
-        return _ViewportCard(
-          preset: viewport,
-          accentColor: accentColor,
-          onRotate: () => tester.rotateViewport(viewport.id),
-          onRemove: () => tester.removeViewport(viewport.id),
+    
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        int crossAxisCount;
+        if (width < 600) {
+          crossAxisCount = 1;
+        } else if (width < 1000) {
+          crossAxisCount = viewports.length <= 2 ? viewports.length : 2;
+        } else {
+          crossAxisCount = viewports.length <= 2 ? viewports.length : (viewports.length <= 4 ? 2 : 3);
+        }
+        
+        return GridView.builder(
+          padding: const EdgeInsets.all(16),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            childAspectRatio: 0.7,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+          ),
+          itemCount: viewports.length,
+          itemBuilder: (context, index) {
+            final viewport = viewports[index];
+            return _ViewportCard(
+              preset: viewport,
+              accentColor: accentColor,
+              onRotate: () => tester.rotateViewport(viewport.id),
+              onRemove: () => tester.removeViewport(viewport.id),
+            );
+          },
         );
       },
     );
@@ -298,24 +402,26 @@ class _ToolbarButton extends StatelessWidget {
   final String label;
   final Color accentColor;
   final VoidCallback? onPressed;
+  final bool compact;
 
   const _ToolbarButton({
     required this.icon,
     required this.label,
     required this.accentColor,
     this.onPressed,
+    this.compact = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return TextButton.icon(
       onPressed: onPressed,
-      icon: Icon(icon, size: 14),
+      icon: Icon(icon, size: compact ? 12 : 14),
       label: Text(label),
       style: TextButton.styleFrom(
         foregroundColor: Colors.white.withOpacity(0.7),
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        textStyle: const TextStyle(fontSize: 11),
+        padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 12),
+        textStyle: TextStyle(fontSize: compact ? 10 : 11),
       ),
     );
   }
@@ -327,6 +433,7 @@ class _ToolbarToggle extends StatelessWidget {
   final bool isActive;
   final Color accentColor;
   final VoidCallback? onToggle;
+  final bool compact;
 
   const _ToolbarToggle({
     required this.icon,
@@ -334,19 +441,20 @@ class _ToolbarToggle extends StatelessWidget {
     required this.isActive,
     required this.accentColor,
     this.onToggle,
+    this.compact = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return TextButton.icon(
       onPressed: onToggle,
-      icon: Icon(icon, size: 14),
+      icon: Icon(icon, size: compact ? 12 : 14),
       label: Text(label),
       style: TextButton.styleFrom(
         foregroundColor: isActive ? accentColor : Colors.white.withOpacity(0.5),
         backgroundColor: isActive ? accentColor.withOpacity(0.1) : null,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        textStyle: const TextStyle(fontSize: 11),
+        padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 12),
+        textStyle: TextStyle(fontSize: compact ? 10 : 11),
       ),
     );
   }

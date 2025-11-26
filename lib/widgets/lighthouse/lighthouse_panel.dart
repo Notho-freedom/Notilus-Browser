@@ -70,149 +70,144 @@ class _LighthousePanelState extends State<LighthousePanel>
   }
 
   Widget _buildHeader(LighthouseService lighthouse, Color accentColor) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: Colors.white.withOpacity(0.05)),
-        ),
-      ),
-      child: Row(
-        children: [
-          // Title with icon
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: accentColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              CupertinoIcons.gauge,
-              color: accentColor,
-              size: 20,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompact = constraints.maxWidth < 800;
+        
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: Colors.white.withOpacity(0.05)),
             ),
           ),
-          const SizedBox(width: 12),
-          Text(
-            'Notilus Lighthouse',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const Spacer(),
-          // Tab selector
-          if (lighthouse.lastResult != null) ...[
-            _TabButton(
-              label: 'Vue d\'ensemble',
-              isSelected: _selectedTab == 0,
-              onTap: () => setState(() => _selectedTab = 0),
-              accentColor: accentColor,
-            ),
-            const SizedBox(width: 8),
-            _TabButton(
-              label: 'Problèmes',
-              isSelected: _selectedTab == 1,
-              count: lighthouse.lastResult?.issueCount ?? 0,
-              onTap: () => setState(() => _selectedTab = 1),
-              accentColor: accentColor,
-            ),
-            const SizedBox(width: 8),
-            _TabButton(
-              label: 'Recommandations',
-              isSelected: _selectedTab == 2,
-              onTap: () => setState(() => _selectedTab = 2),
-              accentColor: accentColor,
-            ),
-            const SizedBox(width: 8),
-            _TabButton(
-              label: 'Historique',
-              isSelected: _selectedTab == 3,
-              onTap: () => setState(() => _selectedTab = 3),
-              accentColor: accentColor,
-            ),
-            const SizedBox(width: 8),
-            _TabButton(
-              label: 'AI Advisor',
-              isSelected: _selectedTab == 4,
-              onTap: () => setState(() => _selectedTab = 4),
-              accentColor: accentColor,
-            ),
-            const SizedBox(width: 16),
-          ],
-          // Export button
-          if (lighthouse.lastResult != null) ...[
-            PopupMenuButton<ReportFormat>(
-              icon: Icon(CupertinoIcons.arrow_up_doc, size: 18, color: accentColor),
-              tooltip: 'Exporter le rapport',
-              onSelected: (format) => _exportReport(context, lighthouse.lastResult!, format, accentColor),
-              itemBuilder: (context) => [
-                PopupMenuItem(
-                  value: ReportFormat.html,
-                  child: Row(
-                    children: [
-                      Icon(CupertinoIcons.doc_text, size: 16, color: accentColor),
-                      const SizedBox(width: 8),
-                      const Text('HTML'),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Tab selector
+                if (lighthouse.lastResult != null) ...[
+                  if (!isCompact) ...[
+                    _TabButton(
+                      label: 'Vue d\'ensemble',
+                      isSelected: _selectedTab == 0,
+                      onTap: () => setState(() => _selectedTab = 0),
+                      accentColor: accentColor,
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  _TabButton(
+                    label: isCompact ? 'Problèmes' : 'Problèmes',
+                    isSelected: _selectedTab == 1,
+                    count: lighthouse.lastResult?.issueCount ?? 0,
+                    onTap: () => setState(() => _selectedTab = 1),
+                    accentColor: accentColor,
+                    compact: isCompact,
+                  ),
+                  const SizedBox(width: 8),
+                  if (!isCompact) ...[
+                    _TabButton(
+                      label: 'Recommandations',
+                      isSelected: _selectedTab == 2,
+                      onTap: () => setState(() => _selectedTab = 2),
+                      accentColor: accentColor,
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  _TabButton(
+                    label: isCompact ? 'Hist.' : 'Historique',
+                    isSelected: _selectedTab == 3,
+                    onTap: () => setState(() => _selectedTab = 3),
+                    accentColor: accentColor,
+                    compact: isCompact,
+                  ),
+                  const SizedBox(width: 8),
+                  _TabButton(
+                    label: isCompact ? 'AI' : 'AI Advisor',
+                    isSelected: _selectedTab == 4,
+                    onTap: () => setState(() => _selectedTab = 4),
+                    accentColor: accentColor,
+                    compact: isCompact,
+                  ),
+                  const SizedBox(width: 12),
+                ],
+                // Export button
+                if (lighthouse.lastResult != null) ...[
+                  PopupMenuButton<ReportFormat>(
+                    icon: Icon(CupertinoIcons.arrow_up_doc, size: 18, color: accentColor),
+                    tooltip: 'Exporter le rapport',
+                    onSelected: (format) => _exportReport(context, lighthouse.lastResult!, format, accentColor),
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        value: ReportFormat.html,
+                        child: Row(
+                          children: [
+                            Icon(CupertinoIcons.doc_text, size: 16, color: accentColor),
+                            const SizedBox(width: 8),
+                            const Text('HTML'),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: ReportFormat.json,
+                        child: Row(
+                          children: [
+                            Icon(CupertinoIcons.doc, size: 16, color: accentColor),
+                            const SizedBox(width: 8),
+                            const Text('JSON'),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: ReportFormat.csv,
+                        child: Row(
+                          children: [
+                            Icon(CupertinoIcons.table, size: 16, color: accentColor),
+                            const SizedBox(width: 8),
+                            const Text('CSV'),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: ReportFormat.markdown,
+                        child: Row(
+                          children: [
+                            Icon(CupertinoIcons.textformat, size: 16, color: accentColor),
+                            const SizedBox(width: 8),
+                            const Text('Markdown'),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
-                ),
-                PopupMenuItem(
-                  value: ReportFormat.json,
-                  child: Row(
-                    children: [
-                      Icon(CupertinoIcons.doc, size: 16, color: accentColor),
-                      const SizedBox(width: 8),
-                      const Text('JSON'),
-                    ],
-                  ),
-                ),
-                PopupMenuItem(
-                  value: ReportFormat.csv,
-                  child: Row(
-                    children: [
-                      Icon(CupertinoIcons.table, size: 16, color: accentColor),
-                      const SizedBox(width: 8),
-                      const Text('CSV'),
-                    ],
-                  ),
-                ),
-                PopupMenuItem(
-                  value: ReportFormat.markdown,
-                  child: Row(
-                    children: [
-                      Icon(CupertinoIcons.textformat, size: 16, color: accentColor),
-                      const SizedBox(width: 8),
-                      const Text('Markdown'),
-                    ],
+                  const SizedBox(width: 8),
+                ],
+                // Run button
+                ElevatedButton.icon(
+                  onPressed: lighthouse.isRunning ? null : lighthouse.runFullAudit,
+                  icon: lighthouse.isRunning
+                      ? SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white.withOpacity(0.5),
+                          ),
+                        )
+                      : const Icon(CupertinoIcons.play_fill, size: 14),
+                  label: Text(lighthouse.isRunning ? 'Analyse...' : isCompact ? 'Analyser' : 'Analyser'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: accentColor,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(horizontal: isCompact ? 12 : 16, vertical: 10),
                   ),
                 ),
               ],
             ),
-            const SizedBox(width: 8),
-          ],
-          // Run button
-          ElevatedButton.icon(
-            onPressed: lighthouse.isRunning ? null : lighthouse.runFullAudit,
-            icon: lighthouse.isRunning
-                ? SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white.withOpacity(0.5),
-                    ),
-                  )
-                : const Icon(CupertinoIcons.play_fill, size: 14),
-            label: Text(lighthouse.isRunning ? 'Analyse...' : 'Analyser'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: accentColor,
-              foregroundColor: Colors.white,
-            ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -427,6 +422,7 @@ class _TabButton extends StatelessWidget {
   final int? count;
   final VoidCallback? onTap;
   final Color accentColor;
+  final bool compact;
 
   const _TabButton({
     required this.label,
@@ -434,6 +430,7 @@ class _TabButton extends StatelessWidget {
     this.count,
     this.onTap,
     required this.accentColor,
+    this.compact = false,
   });
 
   @override
@@ -441,7 +438,7 @@ class _TabButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 12, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected ? accentColor.withOpacity(0.1) : Colors.transparent,
           borderRadius: BorderRadius.circular(6),
@@ -450,12 +447,13 @@ class _TabButton extends StatelessWidget {
           ),
         ),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               label,
               style: TextStyle(
                 color: isSelected ? accentColor : Colors.white.withOpacity(0.6),
-                fontSize: 12,
+                fontSize: compact ? 11 : 12,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               ),
             ),
@@ -571,154 +569,350 @@ class _OverviewTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Score cards
-          Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompact = constraints.maxWidth < 600;
+        final isVeryCompact = constraints.maxWidth < 400;
+        
+        return SingleChildScrollView(
+          padding: EdgeInsets.all(isCompact ? 16 : 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: _ScoreCard(
-                  label: 'Performance',
-                  score: result.performanceScore,
-                  icon: CupertinoIcons.speedometer,
-                  accentColor: accentColor,
+              // Score cards
+              isVeryCompact
+                  ? Column(
+                      children: [
+                        _ScoreCard(
+                          label: 'Performance',
+                          score: result.performanceScore,
+                          icon: CupertinoIcons.speedometer,
+                          accentColor: accentColor,
+                        ),
+                        const SizedBox(height: 12),
+                        _ScoreCard(
+                          label: 'Accessibilité',
+                          score: result.accessibilityScore,
+                          icon: CupertinoIcons.person_2,
+                          accentColor: accentColor,
+                        ),
+                        const SizedBox(height: 12),
+                        _ScoreCard(
+                          label: 'SEO',
+                          score: result.seoScore,
+                          icon: CupertinoIcons.search,
+                          accentColor: accentColor,
+                        ),
+                        const SizedBox(height: 12),
+                        _ScoreCard(
+                          label: 'Sécurité',
+                          score: result.securityScore,
+                          icon: CupertinoIcons.shield,
+                          accentColor: accentColor,
+                        ),
+                      ],
+                    )
+                  : isCompact
+                      ? Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          children: [
+                            SizedBox(
+                              width: (constraints.maxWidth - 12) / 2,
+                              child: _ScoreCard(
+                                label: 'Performance',
+                                score: result.performanceScore,
+                                icon: CupertinoIcons.speedometer,
+                                accentColor: accentColor,
+                              ),
+                            ),
+                            SizedBox(
+                              width: (constraints.maxWidth - 12) / 2,
+                              child: _ScoreCard(
+                                label: 'Accessibilité',
+                                score: result.accessibilityScore,
+                                icon: CupertinoIcons.person_2,
+                                accentColor: accentColor,
+                              ),
+                            ),
+                            SizedBox(
+                              width: (constraints.maxWidth - 12) / 2,
+                              child: _ScoreCard(
+                                label: 'SEO',
+                                score: result.seoScore,
+                                icon: CupertinoIcons.search,
+                                accentColor: accentColor,
+                              ),
+                            ),
+                            SizedBox(
+                              width: (constraints.maxWidth - 12) / 2,
+                              child: _ScoreCard(
+                                label: 'Sécurité',
+                                score: result.securityScore,
+                                icon: CupertinoIcons.shield,
+                                accentColor: accentColor,
+                              ),
+                            ),
+                          ],
+                        )
+                      : Row(
+                          children: [
+                            Expanded(
+                              child: _ScoreCard(
+                                label: 'Performance',
+                                score: result.performanceScore,
+                                icon: CupertinoIcons.speedometer,
+                                accentColor: accentColor,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: _ScoreCard(
+                                label: 'Accessibilité',
+                                score: result.accessibilityScore,
+                                icon: CupertinoIcons.person_2,
+                                accentColor: accentColor,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: _ScoreCard(
+                                label: 'SEO',
+                                score: result.seoScore,
+                                icon: CupertinoIcons.search,
+                                accentColor: accentColor,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: _ScoreCard(
+                                label: 'Sécurité',
+                                score: result.securityScore,
+                                icon: CupertinoIcons.shield,
+                                accentColor: accentColor,
+                              ),
+                            ),
+                          ],
+                        ),
+              const SizedBox(height: 32),
+              // Core Web Vitals
+              Text(
+                'CORE WEB VITALS',
+                style: TextStyle(
+                  color: accentColor.withOpacity(0.7),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 1,
                 ),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _ScoreCard(
-                  label: 'Accessibilité',
-                  score: result.accessibilityScore,
-                  icon: CupertinoIcons.person_2,
-                  accentColor: accentColor,
+              const SizedBox(height: 16),
+              if (result.metrics != null) _buildWebVitals(result.metrics!, constraints.maxWidth),
+              const SizedBox(height: 32),
+              // Quick stats
+              Text(
+                'RÉSUMÉ',
+                style: TextStyle(
+                  color: accentColor.withOpacity(0.7),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 1,
                 ),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _ScoreCard(
-                  label: 'SEO',
-                  score: result.seoScore,
-                  icon: CupertinoIcons.search,
-                  accentColor: accentColor,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _ScoreCard(
-                  label: 'Sécurité',
-                  score: result.securityScore,
-                  icon: CupertinoIcons.shield,
-                  accentColor: accentColor,
-                ),
-              ),
+              const SizedBox(height: 16),
+              isCompact
+                  ? Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [
+                        _QuickStat(
+                          icon: CupertinoIcons.exclamationmark_triangle,
+                          label: 'Problèmes',
+                          value: result.issueCount.toString(),
+                          color: result.issueCount > 0 ? Colors.red : Colors.green,
+                        ),
+                        _QuickStat(
+                          icon: CupertinoIcons.lightbulb,
+                          label: 'Recommandations',
+                          value: result.recommendationCount.toString(),
+                          color: accentColor,
+                        ),
+                        _QuickStat(
+                          icon: CupertinoIcons.clock,
+                          label: 'Durée',
+                          value: '${result.duration.inSeconds}s',
+                          color: Colors.white.withOpacity(0.6),
+                        ),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        _QuickStat(
+                          icon: CupertinoIcons.exclamationmark_triangle,
+                          label: 'Problèmes',
+                          value: result.issueCount.toString(),
+                          color: result.issueCount > 0 ? Colors.red : Colors.green,
+                        ),
+                        const SizedBox(width: 24),
+                        _QuickStat(
+                          icon: CupertinoIcons.lightbulb,
+                          label: 'Recommandations',
+                          value: result.recommendationCount.toString(),
+                          color: accentColor,
+                        ),
+                        const SizedBox(width: 24),
+                        _QuickStat(
+                          icon: CupertinoIcons.clock,
+                          label: 'Durée d\'analyse',
+                          value: '${result.duration.inSeconds}s',
+                          color: Colors.white.withOpacity(0.6),
+                        ),
+                      ],
+                    ),
             ],
           ),
-          const SizedBox(height: 32),
-          // Core Web Vitals
-          Text(
-            'CORE WEB VITALS',
-            style: TextStyle(
-              color: accentColor.withOpacity(0.7),
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 1,
-            ),
-          ),
-          const SizedBox(height: 16),
-          if (result.metrics != null) _buildWebVitals(result.metrics!),
-          const SizedBox(height: 32),
-          // Quick stats
-          Text(
-            'RÉSUMÉ',
-            style: TextStyle(
-              color: accentColor.withOpacity(0.7),
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 1,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              _QuickStat(
-                icon: CupertinoIcons.exclamationmark_triangle,
-                label: 'Problèmes',
-                value: result.issueCount.toString(),
-                color: result.issueCount > 0 ? Colors.red : Colors.green,
-              ),
-              const SizedBox(width: 24),
-              _QuickStat(
-                icon: CupertinoIcons.lightbulb,
-                label: 'Recommandations',
-                value: result.recommendationCount.toString(),
-                color: accentColor,
-              ),
-              const SizedBox(width: 24),
-              _QuickStat(
-                icon: CupertinoIcons.clock,
-                label: 'Durée d\'analyse',
-                value: '${result.duration.inSeconds}s',
-                color: Colors.white.withOpacity(0.6),
-              ),
-            ],
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildWebVitals(PerformanceMetrics metrics) {
-    return Row(
-      children: [
-        Expanded(
-          child: _WebVitalCard(
+  Widget _buildWebVitals(PerformanceMetrics metrics, double maxWidth) {
+    final isCompact = maxWidth < 600;
+    final isVeryCompact = maxWidth < 400;
+    
+    if (isVeryCompact) {
+      return Column(
+        children: [
+          _WebVitalCard(
             label: 'LCP',
             fullName: 'Largest Contentful Paint',
             value: metrics.formattedLCP,
             status: metrics.lcpStatus,
           ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _WebVitalCard(
+          const SizedBox(height: 12),
+          _WebVitalCard(
             label: 'FID',
             fullName: 'First Input Delay',
             value: metrics.formattedFID,
             status: metrics.fidStatus,
           ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _WebVitalCard(
+          const SizedBox(height: 12),
+          _WebVitalCard(
             label: 'CLS',
             fullName: 'Cumulative Layout Shift',
             value: metrics.formattedCLS,
             status: metrics.clsStatus,
           ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _WebVitalCard(
+          const SizedBox(height: 12),
+          _WebVitalCard(
             label: 'TTFB',
             fullName: 'Time to First Byte',
             value: metrics.formattedTTFB,
             status: metrics.ttfbStatus,
           ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _WebVitalCard(
+          const SizedBox(height: 12),
+          _WebVitalCard(
             label: 'TTI',
             fullName: 'Time to Interactive',
             value: metrics.formattedTTI,
             status: metrics.ttiStatus,
           ),
+        ],
+      );
+    } else if (isCompact) {
+      return Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        children: [
+          SizedBox(
+            width: (maxWidth - 12) / 2,
+            child: _WebVitalCard(
+              label: 'LCP',
+              fullName: 'Largest Contentful Paint',
+              value: metrics.formattedLCP,
+              status: metrics.lcpStatus,
+            ),
+          ),
+          SizedBox(
+            width: (maxWidth - 12) / 2,
+            child: _WebVitalCard(
+              label: 'FID',
+              fullName: 'First Input Delay',
+              value: metrics.formattedFID,
+              status: metrics.fidStatus,
+            ),
+          ),
+          SizedBox(
+            width: (maxWidth - 12) / 2,
+            child: _WebVitalCard(
+              label: 'CLS',
+              fullName: 'Cumulative Layout Shift',
+              value: metrics.formattedCLS,
+              status: metrics.clsStatus,
+            ),
+          ),
+          SizedBox(
+            width: (maxWidth - 12) / 2,
+            child: _WebVitalCard(
+              label: 'TTFB',
+              fullName: 'Time to First Byte',
+              value: metrics.formattedTTFB,
+              status: metrics.ttfbStatus,
+            ),
+          ),
+          SizedBox(
+            width: (maxWidth - 12) / 2,
+            child: _WebVitalCard(
+              label: 'TTI',
+              fullName: 'Time to Interactive',
+              value: metrics.formattedTTI,
+              status: metrics.ttiStatus,
+            ),
+          ),
+        ],
+      );
+    } else {
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            _WebVitalCard(
+              label: 'LCP',
+              fullName: 'Largest Contentful Paint',
+              value: metrics.formattedLCP,
+              status: metrics.lcpStatus,
+            ),
+            const SizedBox(width: 12),
+            _WebVitalCard(
+              label: 'FID',
+              fullName: 'First Input Delay',
+              value: metrics.formattedFID,
+              status: metrics.fidStatus,
+            ),
+            const SizedBox(width: 12),
+            _WebVitalCard(
+              label: 'CLS',
+              fullName: 'Cumulative Layout Shift',
+              value: metrics.formattedCLS,
+              status: metrics.clsStatus,
+            ),
+            const SizedBox(width: 12),
+            _WebVitalCard(
+              label: 'TTFB',
+              fullName: 'Time to First Byte',
+              value: metrics.formattedTTFB,
+              status: metrics.ttfbStatus,
+            ),
+            const SizedBox(width: 12),
+            _WebVitalCard(
+              label: 'TTI',
+              fullName: 'Time to Interactive',
+              value: metrics.formattedTTI,
+              status: metrics.ttiStatus,
+            ),
+          ],
         ),
-      ],
-    );
+      );
+    }
   }
 }
 
@@ -1090,6 +1284,8 @@ class _IssueCardState extends State<_IssueCard> {
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                           ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 2,
                         ),
                         const SizedBox(height: 2),
                         Text(
@@ -1306,6 +1502,8 @@ class _RecommendationCardState extends State<_RecommendationCard> {
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                           ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 2,
                         ),
                         if (widget.recommendation.estimatedSavings != null) ...[
                           const SizedBox(height: 2),
