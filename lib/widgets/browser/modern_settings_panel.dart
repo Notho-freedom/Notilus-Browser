@@ -852,12 +852,132 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
             _buildSubsectionTitle('Style de page d\'accueil', gxRed),
             const SizedBox(height: 4),
             Text(
-              'Choisissez l\'apparence de votre page d\'accueil',
+              'Choisissez l\'apparence adaptée à votre profil de développeur',
               style: TextStyle(color: Colors.white60, fontSize: 10),
             ),
             const SizedBox(height: 16),
             _buildHomePageStyleSelector(gxRed),
+            
             const SizedBox(height: 28),
+            
+            // === TRANSPARENCE DES WIDGETS ===
+            _buildSubsectionTitle('Transparence des widgets', gxRed),
+            const SizedBox(height: 4),
+            Text(
+              'Réglez la transparence pour voir le fond d\'écran à travers les éléments',
+              style: TextStyle(color: Colors.white60, fontSize: 10),
+            ),
+            const SizedBox(height: 16),
+            _buildTransparencySlider(
+              label: 'Widgets',
+              value: _settings.widgetTransparency,
+              onChanged: (v) => _settings.setWidgetTransparency(v),
+              gxRed: gxRed,
+            ),
+            const SizedBox(height: 12),
+            _buildTransparencySlider(
+              label: 'Panneaux latéraux',
+              value: _settings.panelTransparency,
+              onChanged: (v) => _settings.setPanelTransparency(v),
+              gxRed: gxRed,
+            ),
+            const SizedBox(height: 12),
+            _buildTransparencySlider(
+              label: 'Overlays',
+              value: _settings.overlayTransparency,
+              onChanged: (v) => _settings.setOverlayTransparency(v),
+              gxRed: gxRed,
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Text('Intensité du flou', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    '${_settings.glassBlurIntensity.toInt()}',
+                    style: TextStyle(color: gxRed, fontSize: 11, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Slider(
+              value: _settings.glassBlurIntensity,
+              min: 0,
+              max: 30,
+              divisions: 30,
+              activeColor: gxRed,
+              inactiveColor: Colors.white24,
+              onChanged: (v) => _settings.setGlassBlurIntensity(v),
+            ),
+            
+            const SizedBox(height: 28),
+            
+            // === PERSONNALISATION AVANCÉE ===
+            _buildSubsectionTitle('Personnalisation avancée', gxRed),
+            const SizedBox(height: 12),
+            _buildSettingSwitch(
+              title: 'Afficher l\'horloge',
+              subtitle: 'Heure et date sur la page d\'accueil',
+              value: _settings.showClock,
+              onChanged: (v) => _settings.setShowClock(v),
+              gxRed: gxRed,
+            ),
+            const SizedBox(height: 12),
+            _buildSettingSwitch(
+              title: 'Afficher les citations',
+              subtitle: 'Citations inspirantes pour développeurs',
+              value: _settings.showQuotes,
+              onChanged: (v) => _settings.setShowQuotes(v),
+              gxRed: gxRed,
+            ),
+            const SizedBox(height: 12),
+            _buildSettingSwitch(
+              title: 'Animations',
+              subtitle: 'Effets visuels et transitions',
+              value: _settings.showAnimations,
+              onChanged: (v) => _settings.setShowAnimations(v),
+              gxRed: gxRed,
+            ),
+            const SizedBox(height: 16),
+            
+            // Message de bienvenue personnalisé
+            Text('Message de bienvenue', style: TextStyle(color: Colors.white70, fontSize: 12)),
+            const SizedBox(height: 8),
+            TextField(
+              controller: TextEditingController(text: _settings.customGreeting),
+              onChanged: (v) => _settings.setCustomGreeting(v),
+              style: const TextStyle(color: Colors.white, fontSize: 12),
+              decoration: InputDecoration(
+                hintText: 'Ex: Bonjour, [Votre nom]!',
+                hintStyle: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 12),
+                filled: true,
+                fillColor: Colors.white.withOpacity(0.05),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Colors.white24),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Colors.white24),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: gxRed),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              ),
+            ),
+            
+            const SizedBox(height: 28),
+            
+            // === PANNEAUX LATÉRAUX (Modern uniquement) ===
             _buildSubsectionTitle('Panneaux latéraux', gxRed),
             const SizedBox(height: 4),
             Text(
@@ -922,25 +1042,118 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
     );
   }
   
+  Widget _buildTransparencySlider({
+    required String label,
+    required double value,
+    required ValueChanged<double> onChanged,
+    required Color gxRed,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(label, style: TextStyle(color: Colors.white70, fontSize: 12)),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                '${(value * 100).toInt()}%',
+                style: TextStyle(color: gxRed, fontSize: 11, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        SliderTheme(
+          data: SliderThemeData(
+            trackHeight: 4,
+            activeTrackColor: gxRed,
+            inactiveTrackColor: Colors.white.withOpacity(0.1),
+            thumbColor: gxRed,
+            overlayColor: gxRed.withOpacity(0.2),
+          ),
+          child: Slider(
+            value: value,
+            min: 0.0,
+            max: 0.8,
+            divisions: 16,
+            onChanged: onChanged,
+          ),
+        ),
+      ],
+    );
+  }
+  
   Widget _buildHomePageStyleSelector(Color gxRed) {
+    // Tous les styles de pages d'accueil disponibles
     final styles = [
       (
         'modern',
         'Modern',
-        'Style classique avec Speed Dial et widgets latéraux',
+        'Style classique avec Speed Dial et widgets système',
         CupertinoIcons.square_grid_2x2,
+        '🌟',
+        const Color(0xFFFF4444),
       ),
       (
         'notilus_dev',
         'Notilus Dev',
-        'Style développeur avec command bar et liens rapides',
+        'Command bar style IDE avec catégories de liens',
         CupertinoIcons.chevron_left_slash_chevron_right,
+        '💻',
+        const Color(0xFFFF4444),
+      ),
+      (
+        'frontend',
+        'Frontend',
+        'Optimisé pour React, Vue, Angular et le web',
+        CupertinoIcons.paintbrush,
+        '⚛️',
+        const Color(0xFF61DAFB),
+      ),
+      (
+        'backend',
+        'Backend',
+        'Terminal-style avec métriques système et APIs',
+        CupertinoIcons.square_list,
+        '🖥️',
+        const Color(0xFF339933),
+      ),
+      (
+        'devops',
+        'DevOps',
+        'Dashboard monitoring et statut des services',
+        CupertinoIcons.cloud,
+        '☁️',
+        const Color(0xFF00FF88),
+      ),
+      (
+        'data_science',
+        'Data Science',
+        'Visualisations et outils ML/AI',
+        CupertinoIcons.chart_bar,
+        '📊',
+        const Color(0xFF8B5CF6),
+      ),
+      (
+        'minimal',
+        'Minimal',
+        'Interface épurée, focus sur l\'essentiel',
+        CupertinoIcons.sparkles,
+        '✨',
+        Colors.white,
       ),
     ];
     
     return Column(
       children: styles.map((style) {
         final isSelected = _settings.homePageStyle == style.$1;
+        final accentColor = style.$6;
         return Padding(
           padding: const EdgeInsets.only(bottom: 10),
           child: GestureDetector(
@@ -948,10 +1161,10 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
             child: Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: isSelected ? gxRed.withOpacity(0.1) : Colors.white.withOpacity(0.03),
+                color: isSelected ? accentColor.withOpacity(0.1) : Colors.white.withOpacity(0.03),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: isSelected ? gxRed : Colors.white.withOpacity(0.1),
+                  color: isSelected ? accentColor : Colors.white.withOpacity(0.1),
                   width: isSelected ? 2 : 1,
                 ),
               ),
@@ -961,13 +1174,14 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      color: isSelected ? gxRed.withOpacity(0.2) : Colors.white.withOpacity(0.05),
+                      color: isSelected ? accentColor.withOpacity(0.2) : Colors.white.withOpacity(0.05),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(
-                      style.$4,
-                      color: isSelected ? gxRed : Colors.white.withOpacity(0.5),
-                      size: 22,
+                    child: Center(
+                      child: Text(
+                        style.$5,
+                        style: const TextStyle(fontSize: 20),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -978,7 +1192,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                         Text(
                           style.$2,
                           style: TextStyle(
-                            color: isSelected ? gxRed : Colors.white,
+                            color: isSelected ? accentColor : Colors.white,
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                           ),
@@ -997,7 +1211,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                   if (isSelected)
                     Icon(
                       CupertinoIcons.checkmark_circle_fill,
-                      color: gxRed,
+                      color: accentColor,
                       size: 20,
                     ),
                 ],
