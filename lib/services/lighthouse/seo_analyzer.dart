@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import '../../models/lighthouse/audit_models.dart';
 import 'lighthouse_service.dart';
+import 'extended_audit_rules.dart';
 
 /// Analyseur SEO
 class SEOAnalyzer {
@@ -111,6 +112,13 @@ class SEOAnalyzer {
       } else {
         issues.addAll(ogResult['issues'] as List<Issue>);
       }
+
+      // Règles SEO étendues (11-30)
+      final extendedRules = ExtendedSEORules(_lighthouseService);
+      final extendedIssues = await extendedRules.runExtendedRules();
+      issues.addAll(extendedIssues);
+      total += extendedIssues.length;
+      passed += extendedIssues.where((i) => i.severity == IssueSeverity.passed).length;
 
       final score = total > 0 ? ((passed / total) * 100).round() : 0;
 

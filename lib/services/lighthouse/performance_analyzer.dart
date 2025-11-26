@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import '../../models/lighthouse/audit_models.dart';
 import 'lighthouse_service.dart';
+import 'extended_audit_rules.dart';
 
 /// Analyseur de performance
 class PerformanceAnalyzer {
@@ -101,6 +102,13 @@ class PerformanceAnalyzer {
         passed += cacheResult['passed'] as int;
         issues.addAll(cacheResult['issues'] as List<Issue>);
       }
+
+      // Règles de performance étendues (7-26)
+      final extendedRules = ExtendedPerformanceRules(_lighthouseService);
+      final extendedIssues = await extendedRules.runExtendedRules();
+      issues.addAll(extendedIssues);
+      total += extendedIssues.length;
+      passed += extendedIssues.where((i) => i.severity == IssueSeverity.passed).length;
 
       final score = total > 0 ? ((passed / total) * 100).round() : 0;
 

@@ -13,6 +13,7 @@ import '../../models/lighthouse/audit_models.dart';
 import '../../core/services/color_theme_manager.dart';
 import 'package:flutter/services.dart';
 import 'history_trends_panel.dart';
+import 'ai_advisor_panel.dart';
 
 /// Panneau principal Lighthouse
 class LighthousePanel extends StatefulWidget {
@@ -128,6 +129,13 @@ class _LighthousePanelState extends State<LighthousePanel>
               label: 'Historique',
               isSelected: _selectedTab == 3,
               onTap: () => setState(() => _selectedTab = 3),
+              accentColor: accentColor,
+            ),
+            const SizedBox(width: 8),
+            _TabButton(
+              label: 'AI Advisor',
+              isSelected: _selectedTab == 4,
+              onTap: () => setState(() => _selectedTab = 4),
               accentColor: accentColor,
             ),
             const SizedBox(width: 16),
@@ -312,6 +320,8 @@ class _LighthousePanelState extends State<LighthousePanel>
         return _RecommendationsTab(result: result, accentColor: accentColor);
       case 3:
         return const HistoryTrendsPanel();
+      case 4:
+        return const AIAdvisorPanel();
       default:
         return const SizedBox();
     }

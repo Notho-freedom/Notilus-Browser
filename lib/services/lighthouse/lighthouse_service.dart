@@ -13,6 +13,7 @@ import 'seo_analyzer.dart';
 import 'security_scanner.dart';
 import 'issue_detector.dart';
 import 'audit_history_service.dart';
+import 'ai_advisor_service.dart';
 
 /// Service principal de Notilus Lighthouse
 class LighthouseService extends ChangeNotifier {
@@ -27,6 +28,7 @@ class LighthouseService extends ChangeNotifier {
   late final SecurityScanner securityScanner;
   late final IssueDetector issueDetector;
   late final AuditHistoryService _historyService;
+  late final AIAdvisorService _aiAdvisor;
 
   // État
   bool _isAnalyzing = false;
@@ -55,6 +57,7 @@ class LighthouseService extends ChangeNotifier {
     securityScanner = SecurityScanner(this);
     issueDetector = IssueDetector(this);
     _historyService = AuditHistoryService();
+    _aiAdvisor = AIAdvisorService(this);
   }
 
   // Getters
@@ -68,6 +71,7 @@ class LighthouseService extends ChangeNotifier {
   String? get lastError => _lastError;
   List<AuditHistoryEntry> get history => List.unmodifiable(_history);
   AuditHistoryService get historyService => _historyService;
+  AIAdvisorService get aiAdvisorService => _aiAdvisor;
   
   /// Alias pour isAnalyzing (compatibilité UI)
   bool get isRunning => _isAnalyzing;
@@ -258,6 +262,9 @@ class LighthouseService extends ChangeNotifier {
       // Ajouter à l'historique
       _addToHistory(_lastResult!);
       await _historyService.addEntry(AuditHistoryEntry.fromAuditResult(_lastResult!));
+
+      // Analyser avec l'AI Advisor
+      await _aiAdvisor.analyzeAuditResult(_lastResult!);
 
       _updateProgress(1.0, 'Audit terminé');
 
@@ -540,6 +547,7 @@ class LighthouseService extends ChangeNotifier {
   @override
   void dispose() {
     _historyService.dispose();
+    _aiAdvisor.dispose();
     super.dispose();
   }
 }
