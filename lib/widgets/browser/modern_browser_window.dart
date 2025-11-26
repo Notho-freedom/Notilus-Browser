@@ -26,6 +26,8 @@ import '../../widgets/dev_tools/notilus_devtools.dart';
 import '../../widgets/documentation/documentation_panel.dart';
 import '../../widgets/mosaic/mosaic_container.dart';
 import '../../services/mosaic_service.dart';
+import '../../widgets/studio/studio_panel.dart';
+import '../../widgets/lighthouse/lighthouse_panel.dart';
 
 // Intent pour les raccourcis clavier
 class _ToggleMosaicIntent extends Intent {}
@@ -575,6 +577,18 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
       case SidebarSection.nativeDevtools:
       case SidebarSection.mosaic:
         return null;
+      case SidebarSection.studio:
+        return _SidebarPanelConfig(
+          title: 'Notilus Studio',
+          icon: CupertinoIcons.paintbrush,
+          child: const StudioPanel(),
+        );
+      case SidebarSection.lighthouse:
+        return _SidebarPanelConfig(
+          title: 'Notilus Lighthouse',
+          icon: CupertinoIcons.gauge,
+          child: const LighthousePanel(),
+        );
       case SidebarSection.docs:
         return _SidebarPanelConfig(
           title: 'Documentation',
