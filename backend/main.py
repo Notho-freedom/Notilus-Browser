@@ -27,6 +27,7 @@ from backend_lab.security_scanner import router as security_scanner_router
 from backend_lab.performance_lab import router as performance_lab_router
 from backend_lab.mock_server import router as mock_server_router
 from backend_lab.analytics import router as analytics_router
+from backend_lab.auto_config import router as auto_config_router
 
 # Charger les variables d'environnement
 load_dotenv()
@@ -114,6 +115,11 @@ app.include_router(
     prefix="/api/backend-lab/analytics", 
     tags=["📊 Analytics"]
 )
+app.include_router(
+    auto_config_router, 
+    prefix="/api/backend-lab/auto-config", 
+    tags=["⚙️ Auto Configuration"]
+)
 
 
 @app.get("/")
@@ -139,7 +145,7 @@ if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
     uvicorn.run(
         "main:app",
-        host="0.0.0.0",
+        host="127.0.0.1",
         port=port,
         reload=True
     )
