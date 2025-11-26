@@ -37,67 +37,135 @@ class _ScreenshotPanelState extends State<ScreenshotPanel> {
       builder: (context, studioService, _) {
         final screenshot = studioService.screenshot;
 
-        return Row(
-          children: [
-            // Options panel
-            Container(
-              width: 280,
-              decoration: BoxDecoration(
-                border: Border(
-                  right: BorderSide(color: Colors.white.withOpacity(0.05)),
-                ),
-              ),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final isCompact = constraints.maxWidth < 800;
+            
+            if (isCompact) {
+              return SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildSection(
-                      'Type de capture',
-                      _buildCaptureTypeSelector(accentColor),
-                      accentColor,
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(color: Colors.white.withOpacity(0.05)),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildSection(
+                            'Type de capture',
+                            _buildCaptureTypeSelector(accentColor),
+                            accentColor,
+                          ),
+                          const SizedBox(height: 20),
+                          _buildSection(
+                            'Format',
+                            _buildFormatSelector(accentColor),
+                            accentColor,
+                          ),
+                          const SizedBox(height: 20),
+                          _buildSection(
+                            'Qualité',
+                            _buildQualitySelector(accentColor),
+                            accentColor,
+                          ),
+                          const SizedBox(height: 20),
+                          _buildSection(
+                            'Échelle',
+                            _buildScaleSelector(accentColor),
+                            accentColor,
+                          ),
+                          const SizedBox(height: 20),
+                          _buildSection(
+                            'Options',
+                            _buildOptionsToggle(accentColor),
+                            accentColor,
+                          ),
+                          const SizedBox(height: 20),
+                          _buildSection(
+                            'Template Mockup',
+                            _buildMockupSelector(accentColor),
+                            accentColor,
+                          ),
+                          const SizedBox(height: 24),
+                          _buildCaptureButton(screenshot, accentColor),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 20),
-                    _buildSection(
-                      'Format',
-                      _buildFormatSelector(accentColor),
-                      accentColor,
-                    ),
-                    const SizedBox(height: 20),
-                    _buildSection(
-                      'Qualité',
-                      _buildQualitySelector(accentColor),
-                      accentColor,
-                    ),
-                    const SizedBox(height: 20),
-                    _buildSection(
-                      'Échelle',
-                      _buildScaleSelector(accentColor),
-                      accentColor,
-                    ),
-                    const SizedBox(height: 20),
-                    _buildSection(
-                      'Options',
-                      _buildOptionsToggle(accentColor),
-                      accentColor,
-                    ),
-                    const SizedBox(height: 20),
-                    _buildSection(
-                      'Template Mockup',
-                      _buildMockupSelector(accentColor),
-                      accentColor,
-                    ),
-                    const SizedBox(height: 24),
-                    _buildCaptureButton(screenshot, accentColor),
+                    const SizedBox(height: 16),
+                    _buildHistoryPanel(screenshot, accentColor),
                   ],
                 ),
-              ),
-            ),
-            // Preview / History
-            Expanded(
-              child: _buildHistoryPanel(screenshot, accentColor),
-            ),
-          ],
+              );
+            }
+            
+            return Row(
+              children: [
+                // Options panel
+                Container(
+                  width: 280,
+                  decoration: BoxDecoration(
+                    border: Border(
+                      right: BorderSide(color: Colors.white.withOpacity(0.05)),
+                    ),
+                  ),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildSection(
+                          'Type de capture',
+                          _buildCaptureTypeSelector(accentColor),
+                          accentColor,
+                        ),
+                        const SizedBox(height: 20),
+                        _buildSection(
+                          'Format',
+                          _buildFormatSelector(accentColor),
+                          accentColor,
+                        ),
+                        const SizedBox(height: 20),
+                        _buildSection(
+                          'Qualité',
+                          _buildQualitySelector(accentColor),
+                          accentColor,
+                        ),
+                        const SizedBox(height: 20),
+                        _buildSection(
+                          'Échelle',
+                          _buildScaleSelector(accentColor),
+                          accentColor,
+                        ),
+                        const SizedBox(height: 20),
+                        _buildSection(
+                          'Options',
+                          _buildOptionsToggle(accentColor),
+                          accentColor,
+                        ),
+                        const SizedBox(height: 20),
+                        _buildSection(
+                          'Template Mockup',
+                          _buildMockupSelector(accentColor),
+                          accentColor,
+                        ),
+                        const SizedBox(height: 24),
+                        _buildCaptureButton(screenshot, accentColor),
+                      ],
+                    ),
+                  ),
+                ),
+                // Preview / History
+                Expanded(
+                  child: _buildHistoryPanel(screenshot, accentColor),
+                ),
+              ],
+            );
+          },
         );
       },
     );
