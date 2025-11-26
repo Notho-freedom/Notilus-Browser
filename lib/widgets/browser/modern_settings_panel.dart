@@ -832,22 +832,46 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            _buildSubsectionTitle('Style de page d\'accueil', gxRed),
+            const SizedBox(height: 4),
+            Text(
+              'Choisissez l\'apparence de votre page d\'accueil',
+              style: TextStyle(color: Colors.white60, fontSize: 10),
+            ),
+            const SizedBox(height: 16),
+            _buildHomePageStyleSelector(gxRed),
+            const SizedBox(height: 28),
             _buildSubsectionTitle('Panneaux latéraux', gxRed),
-            const SizedBox(height: 12),
-            _buildSettingSwitch(
-              title: 'Panneau Dev Tools (gauche)',
-              subtitle: 'Affiche le panneau d\'outils de développement',
-              value: _settings.leftColumnExpanded,
-              onChanged: (v) => _settings.setLeftColumnExpanded(v),
-              gxRed: gxRed,
+            const SizedBox(height: 4),
+            Text(
+              'Disponible uniquement pour le style Modern',
+              style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 10, fontStyle: FontStyle.italic),
             ),
             const SizedBox(height: 12),
-            _buildSettingSwitch(
-              title: 'Panneau Quick Actions (droite)',
-              subtitle: 'Affiche les raccourcis rapides',
-              value: _settings.rightColumnExpanded,
-              onChanged: (v) => _settings.setRightColumnExpanded(v),
-              gxRed: gxRed,
+            Opacity(
+              opacity: _settings.homePageStyle == 'modern' ? 1.0 : 0.5,
+              child: IgnorePointer(
+                ignoring: _settings.homePageStyle != 'modern',
+                child: Column(
+                  children: [
+                    _buildSettingSwitch(
+                      title: 'Panneau Dev Tools (gauche)',
+                      subtitle: 'Affiche le panneau d\'outils de développement',
+                      value: _settings.leftColumnExpanded,
+                      onChanged: (v) => _settings.setLeftColumnExpanded(v),
+                      gxRed: gxRed,
+                    ),
+                    const SizedBox(height: 12),
+                    _buildSettingSwitch(
+                      title: 'Panneau Quick Actions (droite)',
+                      subtitle: 'Affiche les raccourcis rapides',
+                      value: _settings.rightColumnExpanded,
+                      onChanged: (v) => _settings.setRightColumnExpanded(v),
+                      gxRed: gxRed,
+                    ),
+                  ],
+                ),
+              ),
             ),
             const SizedBox(height: 24),
             _buildSubsectionTitle('Sections visibles', gxRed),
@@ -878,6 +902,93 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
           ],
         );
       },
+    );
+  }
+  
+  Widget _buildHomePageStyleSelector(Color gxRed) {
+    final styles = [
+      (
+        'modern',
+        'Modern',
+        'Style classique avec Speed Dial et widgets latéraux',
+        CupertinoIcons.square_grid_2x2,
+      ),
+      (
+        'notilus_dev',
+        'Notilus Dev',
+        'Style développeur avec command bar et liens rapides',
+        CupertinoIcons.chevron_left_slash_chevron_right,
+      ),
+    ];
+    
+    return Column(
+      children: styles.map((style) {
+        final isSelected = _settings.homePageStyle == style.$1;
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: GestureDetector(
+            onTap: () => _settings.setHomePageStyle(style.$1),
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: isSelected ? gxRed.withOpacity(0.1) : Colors.white.withOpacity(0.03),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: isSelected ? gxRed : Colors.white.withOpacity(0.1),
+                  width: isSelected ? 2 : 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: isSelected ? gxRed.withOpacity(0.2) : Colors.white.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      style.$4,
+                      color: isSelected ? gxRed : Colors.white.withOpacity(0.5),
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          style.$2,
+                          style: TextStyle(
+                            color: isSelected ? gxRed : Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          style.$3,
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.5),
+                            fontSize: 10,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (isSelected)
+                    Icon(
+                      CupertinoIcons.checkmark_circle_fill,
+                      color: gxRed,
+                      size: 20,
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 

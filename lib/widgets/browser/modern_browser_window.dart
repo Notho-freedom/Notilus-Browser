@@ -11,6 +11,7 @@ import 'gx_tab_bar.dart';
 import 'gx_sidebar.dart';
 import 'web_content_view.dart';
 import 'modern_home_page.dart';
+import 'notilus_dev_home_page.dart';
 import 'modern_history_panel.dart';
 import 'modern_bookmarks_panel.dart';
 import 'modern_downloads_panel.dart';
@@ -18,6 +19,7 @@ import 'modern_settings_panel.dart';
 import 'webview_service_panel.dart';
 import '../../core/services/wallpaper_manager.dart';
 import '../../core/services/color_theme_manager.dart';
+import '../../services/settings_service.dart';
 import '../../widgets/terminal/native_terminal_panel.dart';
 import '../../widgets/dev_tools/notilus_devtools.dart';
 import '../../widgets/documentation/documentation_panel.dart';
@@ -123,6 +125,31 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
     setState(() {
       _isDevToolsOpen = false;
     });
+  }
+  
+  /// Construit le widget de page d'accueil en fonction du paramètre choisi
+  Widget _buildHomePageWidget() {
+    final settings = SettingsService();
+    
+    if (settings.homePageStyle == 'notilus_dev') {
+      return NotilusDevHomePage(
+        onTerminalSelected: () {
+          setState(() {
+            _currentSection = SidebarSection.terminal;
+          });
+        },
+        onDevToolsSelected: _openNativeDevTools,
+      );
+    }
+    
+    // Par défaut: Modern Home Page
+    return ModernHomePage(
+      onTerminalSelected: () {
+        setState(() {
+          _currentSection = SidebarSection.terminal;
+        });
+      },
+    );
   }
 
   @override
@@ -232,13 +259,7 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                             final tabManager = context.read<TabManager>();
                             final activeTab = tabManager.activeTab;
                             if (activeTab == null) {
-                              return ModernHomePage(
-                                onTerminalSelected: () {
-                                  setState(() {
-                                    _currentSection = SidebarSection.terminal;
-                                  });
-                                },
-                              );
+                              return _buildHomePageWidget();
                             }
                             
                             // Onglets web uniquement (terminal géré via sidebar)
@@ -246,13 +267,7 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                                 activeTab.url!.isEmpty ||
                                 activeTab.url == 'about:blank' ||
                                 activeTab.url == 'about:newtab') {
-                              return ModernHomePage(
-                                onTerminalSelected: () {
-                                  setState(() {
-                                    _currentSection = SidebarSection.terminal;
-                                  });
-                                },
-                              );
+                              return _buildHomePageWidget();
                             }
                             return WebContentView(tab: activeTab);
                           },

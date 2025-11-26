@@ -26,9 +26,12 @@ void main() async {
   // Supprime le halo bleu Windows autour des champs focus
   FocusManager.instance.highlightStrategy = FocusHighlightStrategy.alwaysTouch;
   
-  // Initialisation du service de paramètres centralisé
+  // Initialisation des services centralisés
   final settingsService = SettingsService();
   await settingsService.initialize();
+  
+  final mosaicService = NotilusMosaicService();
+  await mosaicService.initialize();
   
   // Initialisation de window_manager AVANT runApp
   await windowManager.ensureInitialized();
@@ -60,7 +63,10 @@ void main() async {
     DeviceOrientation.portraitUp,
   ]);
 
-  runApp(const NotilusApp());
+  runApp(NotilusApp(
+    settingsService: settingsService,
+    mosaicService: mosaicService,
+  ));
 }
 
 /// Widget wrapper pour gérer l'affichage de la splash screen
@@ -103,20 +109,27 @@ class _SplashWrapperState extends State<_SplashWrapper> {
 }
 
 class NotilusApp extends StatelessWidget {
-  const NotilusApp({super.key});
+  final SettingsService settingsService;
+  final NotilusMosaicService mosaicService;
+  
+  const NotilusApp({
+    super.key,
+    required this.settingsService,
+    required this.mosaicService,
+  });
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider.value(value: SettingsService()),
+        ChangeNotifierProvider.value(value: settingsService),
         ChangeNotifierProvider(create: (_) => ThemeModeNotifier()),
         ChangeNotifierProvider(create: (_) => ColorThemeManager()),
         ChangeNotifierProvider(create: (_) => WallpaperManager()),
         ChangeNotifierProvider(create: (_) => DownloadService()),
         ChangeNotifierProvider(create: (_) => TabManager()),
         ChangeNotifierProvider(create: (_) => DevToolsService()),
-        ChangeNotifierProvider(create: (_) => NotilusMosaicService()),
+        ChangeNotifierProvider.value(value: mosaicService),
         ChangeNotifierProvider(
           create: (context) {
             final tabWebViewManager = TabWebViewManager();

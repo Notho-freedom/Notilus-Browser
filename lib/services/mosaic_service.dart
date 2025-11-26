@@ -33,8 +33,16 @@ class NotilusMosaicService extends ChangeNotifier {
   DropZone? get dragOverZone => _dragOverZone;
   MosaicTile? get rootTile => _activeWorkspace?.rootTile;
 
-  NotilusMosaicService() {
-    _loadWorkspaces();
+  bool _isInitialized = false;
+  bool get isInitialized => _isInitialized;
+
+  NotilusMosaicService();
+
+  /// Initialiser le service (doit être appelé avant utilisation)
+  Future<void> initialize() async {
+    if (_isInitialized) return;
+    await _loadWorkspaces();
+    _isInitialized = true;
   }
 
   /// Charger les workspaces depuis le stockage
