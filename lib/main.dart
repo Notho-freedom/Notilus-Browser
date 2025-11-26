@@ -108,6 +108,26 @@ class _SplashWrapperState extends State<_SplashWrapper> {
   }
 }
 
+/// ScrollBehavior personnalisé pour cacher toutes les scrollbars de l'application
+class _InvisibleScrollBehavior extends ScrollBehavior {
+  const _InvisibleScrollBehavior();
+  
+  @override
+  Widget buildScrollbar(BuildContext context, Widget child, ScrollableDetails details) {
+    // Ne pas afficher de scrollbar
+    return child;
+  }
+  
+  @override
+  ScrollbarThemeData? getScrollbarTheme(BuildContext context) {
+    return const ScrollbarThemeData(
+      thumbVisibility: WidgetStatePropertyAll<bool>(false),
+      trackVisibility: WidgetStatePropertyAll<bool>(false),
+      thickness: WidgetStatePropertyAll<double>(0),
+    );
+  }
+}
+
 class NotilusApp extends StatelessWidget {
   final SettingsService settingsService;
   final NotilusMosaicService mosaicService;
@@ -146,26 +166,28 @@ class NotilusApp extends StatelessWidget {
       ],
       child: Consumer<ThemeModeNotifier>(
         builder: (context, themeModeNotifier, _) {
+          // Configuration pour rendre les scrollbars invisibles
+          const invisibleScrollbarTheme = ScrollbarThemeData(
+            thumbVisibility: WidgetStatePropertyAll<bool>(false),
+            trackVisibility: WidgetStatePropertyAll<bool>(false),
+            thickness: WidgetStatePropertyAll<double>(0),
+            thumbColor: WidgetStatePropertyAll<Color>(Colors.transparent),
+            trackColor: WidgetStatePropertyAll<Color>(Colors.transparent),
+            radius: Radius.zero,
+            minThumbLength: 0,
+            interactive: false,
+          );
+          
           return MaterialApp(
             title: 'Notilus Browser',
             debugShowCheckedModeBanner: false,
+            // ScrollBehavior personnalisé pour cacher toutes les scrollbars
+            scrollBehavior: const _InvisibleScrollBehavior(),
             theme: ModernTheme.lightTheme.copyWith(
-              scrollbarTheme: const ScrollbarThemeData(
-                thumbVisibility: MaterialStatePropertyAll<bool>(true),
-                trackVisibility: MaterialStatePropertyAll<bool>(false),
-                thickness: MaterialStatePropertyAll<double>(2),
-                radius: Radius.circular(1),
-                minThumbLength: 20,
-              ),
+              scrollbarTheme: invisibleScrollbarTheme,
             ),
             darkTheme: ModernDarkTheme.darkTheme.copyWith(
-              scrollbarTheme: const ScrollbarThemeData(
-                thumbVisibility: MaterialStatePropertyAll<bool>(true),
-                trackVisibility: MaterialStatePropertyAll<bool>(false),
-                thickness: MaterialStatePropertyAll<double>(2),
-                radius: Radius.circular(1),
-                minThumbLength: 20,
-              ),
+              scrollbarTheme: invisibleScrollbarTheme,
             ),
             themeMode: themeModeNotifier.mode,
             home: const _SplashWrapper(),
