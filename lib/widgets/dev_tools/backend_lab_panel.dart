@@ -82,6 +82,16 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
   
   // Auto-config state
   final Map<String, bool> _configuringServers = {};
+  
+  // Selected items for details panel
+  DiscoveredServer? _selectedServer;
+  DiscoveredRoute? _selectedRoute;
+  
+  // Filter for routes tab
+  String? _filteredServerId;
+  
+  // Loading states
+  final Map<String, bool> _loadingStates = {};
 
   @override
   void initState() {
@@ -94,7 +104,17 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
 
   void _onTabChanged() {
     if (!_tabController.indexIsChanging) {
-      setState(() => _activeTab = BackendLabTab.values[_tabController.index]);
+      final newTab = BackendLabTab.values[_tabController.index];
+      setState(() {
+        _activeTab = newTab;
+        // Réinitialiser les sélections si on change d'onglet
+        if (newTab != BackendLabTab.servers) {
+          _selectedServer = null;
+        }
+        if (newTab != BackendLabTab.routes) {
+          _selectedRoute = null;
+        }
+      });
     }
   }
 
@@ -226,51 +246,51 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
     return ListenableBuilder(
       listenable: _labService,
       builder: (context, _) {
-        final connected = _labService.isConnected;
+    final connected = _labService.isConnected;
         return AnimatedContainer(
           duration: const Duration(milliseconds: 300),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
             color: connected 
                 ? const Color(0xFF22C55E).withOpacity(0.15) 
                 : const Color(0xFFEF4444).withOpacity(0.15),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
               color: connected 
                   ? const Color(0xFF22C55E).withOpacity(0.3) 
                   : const Color(0xFFEF4444).withOpacity(0.3),
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
               AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: connected ? const Color(0xFF22C55E) : const Color(0xFFEF4444),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              color: connected ? const Color(0xFF22C55E) : const Color(0xFFEF4444),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
                       color: (connected ? const Color(0xFF22C55E) : const Color(0xFFEF4444))
                           .withOpacity(0.5),
-                      blurRadius: 4,
-                    ),
-                  ],
+                  blurRadius: 4,
                 ),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                connected ? 'Connecté' : 'Déconnecté',
-                style: NotilusFonts.rajdhani(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: connected ? const Color(0xFF22C55E) : const Color(0xFFEF4444),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
+          const SizedBox(width: 6),
+          Text(
+            connected ? 'Connecté' : 'Déconnecté',
+                style: NotilusFonts.rajdhani(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: connected ? const Color(0xFF22C55E) : const Color(0xFFEF4444),
+            ),
+          ),
+        ],
+      ),
         );
       },
     );
@@ -381,29 +401,29 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
     return ListenableBuilder(
       listenable: _labService,
       builder: (context, _) {
-        final stats = _labService.stats;
+    final stats = _labService.stats;
         final accent = NotilusColors.getSecondaryColor(context);
-        
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+    
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
               // Stats cards avec style GX
               _buildStatsRow(stats, accent),
-              const SizedBox(height: 24),
-              
-              // Quick actions
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+          const SizedBox(height: 24),
+          
+          // Quick actions
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
                   Expanded(child: _buildQuickTestCard(accent)),
-                  const SizedBox(width: 16),
+              const SizedBox(width: 16),
                   Expanded(child: _buildRecentActivityCard(accent)),
-                ],
-              ),
             ],
           ),
+        ],
+      ),
         );
       },
     );
@@ -572,38 +592,38 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
       listenable: _labService,
       builder: (context, _) {
         return _GxCard(
-          title: 'Activité Récente',
-          icon: Icons.history_rounded,
-          color: const Color(0xFF6366F1),
+      title: 'Activité Récente',
+      icon: Icons.history_rounded,
+      color: const Color(0xFF6366F1),
           accent: accent,
-          child: _labService.testResults.isEmpty
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      children: [
-                        Icon(Icons.inbox_rounded, size: 32, color: Colors.white.withOpacity(0.2)),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Aucune activité',
+      child: _labService.testResults.isEmpty
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    Icon(Icons.inbox_rounded, size: 32, color: Colors.white.withOpacity(0.2)),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Aucune activité',
                           style: NotilusFonts.rajdhani(
                             fontSize: 12,
                             color: Colors.white.withOpacity(0.4),
                           ),
-                        ),
-                      ],
                     ),
-                  ),
-                )
-              : ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _labService.testResults.take(5).length,
-                  itemBuilder: (context, index) {
-                    final result = _labService.testResults[index];
-                    return _GxActivityItem(result: result);
-                  },
+                  ],
                 ),
+              ),
+            )
+          : ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _labService.testResults.take(5).length,
+              itemBuilder: (context, index) {
+                final result = _labService.testResults[index];
+                    return _GxActivityItem(result: result);
+              },
+            ),
         );
       },
     );
@@ -621,7 +641,7 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
   }
 
   // ============================================================================
-  // Servers Tab - Avec configuration automatique
+  // Servers Tab - Style DevTools avec split view
   // ============================================================================
 
   Widget _buildServersTab() {
@@ -630,78 +650,343 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
       builder: (context, _) {
         final accent = NotilusColors.getSecondaryColor(context);
         
-        return Column(
+        return Row(
           children: [
-            // Toolbar avec style GX
-            Container(
-              height: 48,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: NotilusColors.chromeDark,
-                border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
+            // === LISTE GAUCHE: Serveurs style console ===
+            Expanded(
+              flex: 2,
+              child: Column(
+      children: [
+        // Toolbar
+        Container(
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+                      color: NotilusColors.chromeDark,
+            border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
+          ),
+          child: Row(
+            children: [
+                        _GxButton(
+                          onPressed: _labService.isScanning ? null : () => _scanServersWithLoader(),
+                icon: _labService.isScanning
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.radar_rounded, size: 16),
+                label: Text(_labService.isScanning ? 'Scan...' : 'Scanner'),
+                          color: const Color(0xFF22C55E),
+                          accent: accent,
+                          compact: true,
               ),
-              child: Row(
-                children: [
-                  _GxButton(
-                    onPressed: _labService.isScanning ? null : () => _labService.scanServers(),
-                    icon: _labService.isScanning
-                        ? const SizedBox(
-                            width: 14,
-                            height: 14,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                          )
-                        : const Icon(Icons.radar_rounded, size: 16),
-                    label: Text(_labService.isScanning ? 'Scan...' : 'Scanner'),
-                    color: const Color(0xFF22C55E),
-                    accent: accent,
-                    compact: true,
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    '${_labService.servers.length} serveurs découverts',
-                    style: NotilusFonts.rajdhani(
-                      fontSize: 11,
-                      color: Colors.white.withOpacity(0.5),
-                    ),
+              const SizedBox(width: 12),
+              Text(
+                          '${_labService.servers.length} serveurs',
+                          style: NotilusFonts.rajdhani(
+                            fontSize: 11,
+                            color: Colors.white.withOpacity(0.5),
+                          ),
+              ),
+            ],
+          ),
+        ),
+        
+                  // Liste des serveurs style console
+        Expanded(
+          child: _labService.servers.isEmpty
+                        ? _GxEmptyState(
+                  icon: Icons.dns_outlined,
+                  title: 'Aucun serveur découvert',
+                  subtitle: 'Cliquez sur "Scanner" pour détecter les serveurs locaux',
+                )
+              : ListView.builder(
+                            padding: EdgeInsets.zero,
+                  itemCount: _labService.servers.length,
+                  itemBuilder: (context, index) {
+                    final server = _labService.servers[index];
+                              final isSelected = _selectedServer?.id == server.id;
+                              return _DevToolsServerListItem(
+                      server: server,
+                                accent: accent,
+                                isSelected: isSelected,
+                                isLoading: _loadingStates[server.id] ?? false,
+                                onTap: () => setState(() => _selectedServer = server),
+                                onRoutesTap: () => _navigateToRoutesForServer(server.id),
+                    );
+                  },
+                ),
                   ),
                 ],
               ),
             ),
             
-            // Server list avec configuration automatique
-            Expanded(
-              child: _labService.servers.isEmpty
-                  ? _GxEmptyState(
-                      icon: Icons.dns_outlined,
-                      title: 'Aucun serveur découvert',
-                      subtitle: 'Cliquez sur "Scanner" pour détecter les serveurs locaux',
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _labService.servers.length,
-                      itemBuilder: (context, index) {
-                        final server = _labService.servers[index];
-                        final isConfiguring = _configuringServers[server.id] ?? false;
-                        return _GxServerCard(
-                          server: server,
-                          accent: accent,
-                          isConfiguring: isConfiguring,
-                          onAutoConfigure: () => _autoConfigureServer(server.id),
-                          onDiscoverRoutes: () => _labService.discoverRoutes(server.id),
-                          onHealthCheck: () => _labService.healthCheck(server.id),
-                          onRefresh: () => _labService.getServers(),
-                        );
-                      },
-                    ),
-            ),
+            // === PANNEAU DROITE: Détails du serveur ===
+            if (_selectedServer != null)
+              Container(
+                width: 400,
+                decoration: BoxDecoration(
+                  color: NotilusColors.chromeDark,
+                  border: Border(left: BorderSide(color: accent.withOpacity(0.2))),
+                ),
+                child: _buildServerDetailsPanel(_selectedServer!, accent),
+              ),
           ],
         );
       },
     );
   }
   
+  Widget _buildServerDetailsPanel(DiscoveredServer server, Color accent) {
+    return Column(
+      children: [
+        // Header avec bouton fermer
+        Container(
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: NotilusColors.chromeDark,
+            border: Border(bottom: BorderSide(color: accent.withOpacity(0.2))),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.dns_rounded, size: 16, color: accent),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  server.displayName,
+                  style: NotilusFonts.rajdhani(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close, size: 16),
+                color: Colors.white.withOpacity(0.5),
+                onPressed: () => setState(() => _selectedServer = null),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              ),
+            ],
+          ),
+        ),
+        
+        // Contenu scrollable
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Informations générales
+                _DetailSection(
+                  title: 'Informations',
+                  accentColor: accent,
+                  children: [
+                    _DetailRow('Host', server.host),
+                    _DetailRow('Port', '${server.port}'),
+                    _DetailRow('Protocol', server.protocol),
+                    _DetailRow('Base URL', server.baseUrl),
+                    _DetailRow('Framework', server.framework.name),
+                    if (server.language != null) _DetailRow('Language', server.language!),
+                    _DetailRow('Status', server.status.name),
+                  ],
+                ),
+                
+                const SizedBox(height: 16),
+                
+                // Health
+                _DetailSection(
+                  title: 'Health Check',
+                  accentColor: accent,
+                  children: [
+                    _DetailRow('Status', server.health.status.name),
+                    _DetailRow('Response Time', '${server.health.responseTimeMs.toStringAsFixed(0)}ms'),
+                    _DetailRow('Uptime', '${server.health.uptimePercentage.toStringAsFixed(1)}%'),
+                    if (server.health.errorMessage != null)
+                      _DetailRow('Error', server.health.errorMessage!),
+                  ],
+                ),
+                
+                const SizedBox(height: 16),
+                
+                // Statistiques
+                _DetailSection(
+                  title: 'Statistiques',
+                  accentColor: accent,
+                  children: [
+                    _DetailRow('Routes découvertes', '${server.routesCount}'),
+                    _DetailRow('Requêtes totales', '${server.requestCount}'),
+                    _DetailRow('Temps de réponse moyen', '${server.avgResponseTime.toStringAsFixed(0)}ms'),
+                  ],
+                ),
+                
+                const SizedBox(height: 24),
+                
+                // Actions
+                _DetailSection(
+                  title: 'Actions',
+                  accentColor: accent,
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      child: _GxButton(
+                        onPressed: _configuringServers[server.id] == true
+                            ? null
+                            : () => _autoConfigureServer(server.id),
+                        icon: _configuringServers[server.id] == true
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Icon(Icons.auto_awesome_rounded, size: 16),
+                        label: Text(_configuringServers[server.id] == true ? 'Configuration...' : 'Configuration Auto'),
+                        color: accent,
+                        accent: accent,
+                        compact: true,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: _GxButton(
+                        onPressed: _loadingStates['${server.id}_routes'] == true
+                            ? null
+                            : () => _discoverRoutesWithLoader(server.id),
+                        icon: _loadingStates['${server.id}_routes'] == true
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Icon(Icons.alt_route_rounded, size: 16),
+                        label: Text(_loadingStates['${server.id}_routes'] == true ? 'Découverte...' : 'Découvrir Routes'),
+                        color: const Color(0xFF3B82F6),
+                        accent: accent,
+                        compact: true,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: _GxButton(
+                        onPressed: _loadingStates['${server.id}_health'] == true
+                            ? null
+                            : () => _healthCheckWithLoader(server.id),
+                        icon: _loadingStates['${server.id}_health'] == true
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Icon(Icons.favorite_rounded, size: 16),
+                        label: Text(_loadingStates['${server.id}_health'] == true ? 'Vérification...' : 'Health Check'),
+                        color: const Color(0xFF22C55E),
+                        accent: accent,
+                        compact: true,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: _GxButton(
+                        onPressed: () => _navigateToRoutesForServer(server.id),
+                        icon: const Icon(Icons.arrow_forward_rounded, size: 16),
+                        label: const Text('Voir Routes'),
+                        color: const Color(0xFF8B5CF6),
+                        accent: accent,
+                        compact: true,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+  
+  Future<void> _scanServersWithLoader() async {
+    setState(() => _loadingStates['scan'] = true);
+    try {
+      await _labService.scanServers();
+      await _labService.getServers(); // Actualiser
+    } finally {
+      if (mounted) {
+        setState(() => _loadingStates['scan'] = false);
+      }
+    }
+  }
+  
+  Future<void> _discoverRoutesWithLoader(String serverId) async {
+    setState(() => _loadingStates['${serverId}_routes'] = true);
+    try {
+      await _labService.discoverRoutes(serverId);
+      await _labService.getRoutes(serverId); // Actualiser
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Routes découvertes avec succès !',
+              style: NotilusFonts.rajdhani(),
+            ),
+            backgroundColor: const Color(0xFF22C55E),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Erreur: $e',
+              style: NotilusFonts.rajdhani(),
+            ),
+            backgroundColor: const Color(0xFFEF4444),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _loadingStates['${serverId}_routes'] = false);
+      }
+    }
+  }
+  
+  Future<void> _healthCheckWithLoader(String serverId) async {
+    setState(() => _loadingStates['${serverId}_health'] = true);
+    try {
+      await _labService.healthCheck(serverId);
+      await _labService.getServers(); // Actualiser
+    } finally {
+      if (mounted) {
+        setState(() => _loadingStates['${serverId}_health'] = false);
+      }
+    }
+  }
+  
+  void _navigateToRoutesForServer(String serverId) {
+    setState(() {
+      _filteredServerId = serverId;
+      _selectedServer = null; // Fermer le panel de détails
+    });
+    _tabController.animateTo(BackendLabTab.routes.index);
+  }
+  
   Future<void> _autoConfigureServer(String serverId) async {
-    setState(() => _configuringServers[serverId] = true);
+    setState(() {
+      _configuringServers[serverId] = true;
+      _loadingStates['${serverId}_config'] = true;
+    });
     
     try {
       await _labService.configureServer(
@@ -710,6 +995,12 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
         detectParameters: true,
         createTests: true,
       );
+      
+      // Actualiser les données
+      await Future.wait([
+        _labService.getServers(),
+        _labService.getRoutes(serverId),
+      ]);
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -738,87 +1029,285 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
       }
     } finally {
       if (mounted) {
-        setState(() => _configuringServers[serverId] = false);
+        setState(() {
+          _configuringServers[serverId] = false;
+          _loadingStates['${serverId}_config'] = false;
+        });
       }
     }
   }
 
   // ============================================================================
-  // Routes Tab
+  // Routes Tab - Style DevTools avec split view
   // ============================================================================
 
   Widget _buildRoutesTab() {
     return ListenableBuilder(
       listenable: _labService,
       builder: (context, _) {
-        final routes = _labService.routes;
+        final allRoutes = _labService.routes;
+        final filteredRoutes = _filteredServerId != null
+            ? allRoutes.where((r) => r.serverId == _filteredServerId).toList()
+            : allRoutes;
         final accent = NotilusColors.getSecondaryColor(context);
         
-        return Column(
+        return Row(
           children: [
-            // Toolbar
-            Container(
-              height: 48,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: NotilusColors.chromeDark,
-                border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
-              ),
-              child: Row(
+            // === LISTE GAUCHE: Routes style console ===
+            Expanded(
+              flex: 2,
+              child: Column(
                 children: [
-                  Text(
-                    '${routes.length} routes découvertes',
-                    style: NotilusFonts.rajdhani(
-                      fontSize: 11,
-                      color: Colors.white.withOpacity(0.5),
+                  // Toolbar
+                  Container(
+                    height: 48,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: NotilusColors.chromeDark,
+                      border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
+                    ),
+                    child: Row(
+                      children: [
+                        if (_filteredServerId != null) ...[
+                          IconButton(
+                            icon: const Icon(Icons.arrow_back, size: 16),
+                            color: accent,
+                            onPressed: () => setState(() => _filteredServerId = null),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Routes du serveur',
+                            style: NotilusFonts.rajdhani(
+                              fontSize: 11,
+                              color: accent,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                        ],
+                        Text(
+                          '${filteredRoutes.length} routes',
+                          style: NotilusFonts.rajdhani(
+                            fontSize: 11,
+                            color: Colors.white.withOpacity(0.5),
+                          ),
+                        ),
+                        const Spacer(),
+                        // Filter by method
+                        _GxFilterChip(
+                          label: 'Toutes',
+                          isActive: true,
+                          accent: accent,
+                          onTap: () {},
+                        ),
+                        _GxFilterChip(
+                          label: 'GET',
+                          isActive: false,
+                          color: const Color(0xFF22C55E),
+                          accent: accent,
+                          onTap: () {},
+                        ),
+                        _GxFilterChip(
+                          label: 'POST',
+                          isActive: false,
+                          color: const Color(0xFF3B82F6),
+                          accent: accent,
+                          onTap: () {},
+                        ),
+                      ],
                     ),
                   ),
-                  const Spacer(),
-                  // Filter by method
-                  _GxFilterChip(
-                    label: 'Toutes',
-                    isActive: true,
-                    accent: accent,
-                    onTap: () {},
-                  ),
-                  _GxFilterChip(
-                    label: 'GET',
-                    isActive: false,
-                    color: const Color(0xFF22C55E),
-                    accent: accent,
-                    onTap: () {},
-                  ),
-                  _GxFilterChip(
-                    label: 'POST',
-                    isActive: false,
-                    color: const Color(0xFF3B82F6),
-                    accent: accent,
-                    onTap: () {},
+                  
+                  // Liste des routes style console
+                  Expanded(
+                    child: filteredRoutes.isEmpty
+                        ? _GxEmptyState(
+                            icon: Icons.alt_route_outlined,
+                            title: 'Aucune route découverte',
+                            subtitle: _filteredServerId != null
+                                ? 'Aucune route pour ce serveur'
+                                : 'Sélectionnez un serveur et configurez-le automatiquement',
+                          )
+                        : ListView.builder(
+                            padding: EdgeInsets.zero,
+                            itemCount: filteredRoutes.length,
+                            itemBuilder: (context, index) {
+                              final route = filteredRoutes[index];
+                              final isSelected = _selectedRoute?.id == route.id;
+                              return _DevToolsRouteListItem(
+                                route: route,
+                                accent: accent,
+                                isSelected: isSelected,
+                                onTap: () => setState(() => _selectedRoute = route),
+                              );
+                            },
+                          ),
                   ),
                 ],
               ),
             ),
             
-            // Routes list
-            Expanded(
-              child: routes.isEmpty
-                  ? _GxEmptyState(
-                      icon: Icons.alt_route_outlined,
-                      title: 'Aucune route découverte',
-                      subtitle: 'Sélectionnez un serveur et configurez-le automatiquement',
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: routes.length,
-                      itemBuilder: (context, index) {
-                        final route = routes[index];
-                        return _GxRouteCard(route: route, accent: accent);
-                      },
-                    ),
-            ),
+            // === PANNEAU DROITE: Détails de la route ===
+            if (_selectedRoute != null)
+              Container(
+                width: 400,
+                decoration: BoxDecoration(
+                  color: NotilusColors.chromeDark,
+                  border: Border(left: BorderSide(color: accent.withOpacity(0.2))),
+                ),
+                child: _buildRouteDetailsPanel(_selectedRoute!, accent),
+              ),
           ],
         );
       },
+    );
+  }
+  
+  Widget _buildRouteDetailsPanel(DiscoveredRoute route, Color accent) {
+    return Column(
+      children: [
+        // Header avec bouton fermer
+        Container(
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: NotilusColors.chromeDark,
+            border: Border(bottom: BorderSide(color: accent.withOpacity(0.2))),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: route.methodColor.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  route.method.name,
+                  style: NotilusFonts.rajdhani(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: route.methodColor,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  route.path,
+                  style: NotilusFonts.code(
+                    fontSize: 11,
+                    color: Colors.white,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close, size: 16),
+                color: Colors.white.withOpacity(0.5),
+                onPressed: () => setState(() => _selectedRoute = null),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              ),
+            ],
+          ),
+        ),
+        
+        // Contenu scrollable
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Informations générales
+                _DetailSection(
+                  title: 'Informations',
+                  accentColor: accent,
+                  children: [
+                    _DetailRow('Méthode', route.method.name),
+                    _DetailRow('Path', route.path),
+                    if (route.summary != null) _DetailRow('Summary', route.summary!),
+                    if (route.description != null) _DetailRow('Description', route.description!),
+                    _DetailRow('Auth Required', route.authRequired ? 'Oui' : 'Non'),
+                    if (route.authType != null) _DetailRow('Auth Type', route.authType!),
+                    _DetailRow('Deprecated', route.deprecated ? 'Oui' : 'Non'),
+                  ],
+                ),
+                
+                const SizedBox(height: 16),
+                
+                // Paramètres de chemin
+                if (route.pathParams.isNotEmpty)
+                  _DetailSection(
+                    title: 'Path Parameters',
+                    accentColor: accent,
+                    children: route.pathParams.map((param) => _DetailRow(
+                      param.name,
+                      '${param.type}${param.required ? " (required)" : ""}',
+                    )).toList(),
+                  ),
+                
+                if (route.pathParams.isNotEmpty) const SizedBox(height: 16),
+                
+                // Paramètres de query
+                if (route.queryParams.isNotEmpty)
+                  _DetailSection(
+                    title: 'Query Parameters',
+                    accentColor: accent,
+                    children: route.queryParams.map((param) => _DetailRow(
+                      param.name,
+                      '${param.type}${param.required ? " (required)" : ""}',
+                    )).toList(),
+                  ),
+                
+                if (route.queryParams.isNotEmpty) const SizedBox(height: 16),
+                
+                // Statistiques
+                _DetailSection(
+                  title: 'Statistiques',
+                  accentColor: accent,
+                  children: [
+                    _DetailRow('Tests', '${route.testCount}'),
+                    _DetailRow('Appels', '${route.callCount}'),
+                    _DetailRow('Temps de réponse moyen', '${route.avgResponseTime.toStringAsFixed(0)}ms'),
+                    _DetailRow('Vulnérabilités', '${route.vulnerabilityCount}'),
+                  ],
+                ),
+                
+                if (route.tags.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  _DetailSection(
+                    title: 'Tags',
+                    accentColor: accent,
+                    children: [
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: route.tags.map((tag) => Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: accent.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            tag,
+                            style: NotilusFonts.rajdhani(
+                              fontSize: 10,
+                              color: accent,
+                            ),
+                          ),
+                        )).toList(),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -959,21 +1448,21 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
                   builder: (context, _) {
                     return _labService.testResults.isEmpty
                         ? _GxEmptyState(
-                            icon: Icons.science_outlined,
-                            title: 'Aucun résultat',
-                            subtitle: 'Exécutez un test pour voir les résultats',
-                            compact: true,
-                          )
-                        : ListView.builder(
-                            padding: const EdgeInsets.all(12),
-                            itemCount: _labService.testResults.length,
-                            itemBuilder: (context, index) {
-                              final result = _labService.testResults[index];
+                        icon: Icons.science_outlined,
+                        title: 'Aucun résultat',
+                        subtitle: 'Exécutez un test pour voir les résultats',
+                        compact: true,
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(12),
+                        itemCount: _labService.testResults.length,
+                        itemBuilder: (context, index) {
+                          final result = _labService.testResults[index];
                               return _GxTestResultCard(result: result);
                             },
                           );
-                  },
-                ),
+                        },
+                      ),
               ),
             ],
           ),
@@ -992,56 +1481,56 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
       builder: (context, _) {
         final accent = NotilusColors.getSecondaryColor(context);
         
-        return Column(
-          children: [
-            // Toolbar
-            Container(
-              height: 48,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
+    return Column(
+      children: [
+        // Toolbar
+        Container(
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
                 color: NotilusColors.chromeDark,
-                border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
-              ),
-              child: Row(
-                children: [
+            border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
+          ),
+          child: Row(
+            children: [
                   _GxButton(
-                    onPressed: () => _labService.runSecurityScan(),
-                    icon: const Icon(Icons.security_rounded, size: 16),
-                    label: const Text('Lancer Scan'),
+                onPressed: () => _labService.runSecurityScan(),
+                icon: const Icon(Icons.security_rounded, size: 16),
+                label: const Text('Lancer Scan'),
                     color: const Color(0xFFEF4444),
                     accent: accent,
                     compact: true,
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    '${_labService.vulnerabilities.length} vulnérabilités trouvées',
+              ),
+              const SizedBox(width: 12),
+              Text(
+                '${_labService.vulnerabilities.length} vulnérabilités trouvées',
                     style: NotilusFonts.rajdhani(
                       fontSize: 11,
                       color: Colors.white.withOpacity(0.5),
                     ),
-                  ),
-                ],
               ),
-            ),
-            
-            // Vulnerabilities
-            Expanded(
-              child: _labService.vulnerabilities.isEmpty
+            ],
+          ),
+        ),
+        
+        // Vulnerabilities
+        Expanded(
+          child: _labService.vulnerabilities.isEmpty
                   ? _GxEmptyState(
-                      icon: Icons.verified_user_outlined,
-                      title: 'Aucune vulnérabilité',
-                      subtitle: 'Lancez un scan de sécurité pour vérifier vos APIs',
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _labService.vulnerabilities.length,
-                      itemBuilder: (context, index) {
-                        final vuln = _labService.vulnerabilities[index];
+                  icon: Icons.verified_user_outlined,
+                  title: 'Aucune vulnérabilité',
+                  subtitle: 'Lancez un scan de sécurité pour vérifier vos APIs',
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _labService.vulnerabilities.length,
+                  itemBuilder: (context, index) {
+                    final vuln = _labService.vulnerabilities[index];
                         return _GxVulnerabilityCard(vulnerability: vuln);
-                      },
-                    ),
-            ),
-          ],
+                  },
+                ),
+        ),
+      ],
         );
       },
     );
@@ -1098,29 +1587,29 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
     return ListenableBuilder(
       listenable: _labService,
       builder: (context, _) {
-        return Column(
-          children: [
-            // Toolbar
-            Container(
-              height: 48,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
+    return Column(
+      children: [
+        // Toolbar
+        Container(
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
                 color: NotilusColors.chromeDark,
-                border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
-              ),
-              child: Row(
-                children: [
-                  Text(
-                    '${_labService.captures.length} requêtes capturées',
+            border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
+          ),
+          child: Row(
+            children: [
+              Text(
+                '${_labService.captures.length} requêtes capturées',
                     style: NotilusFonts.rajdhani(
                       fontSize: 11,
                       color: Colors.white.withOpacity(0.5),
                     ),
-                  ),
-                  const Spacer(),
-                  TextButton.icon(
-                    onPressed: () => _labService.clearCaptures(),
-                    icon: const Icon(Icons.delete_outline, size: 16),
+              ),
+              const Spacer(),
+              TextButton.icon(
+                onPressed: () => _labService.clearCaptures(),
+                icon: const Icon(Icons.delete_outline, size: 16),
                     label: Text(
                       'Effacer',
                       style: NotilusFonts.rajdhani(fontSize: 11),
@@ -1128,32 +1617,32 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
                     style: TextButton.styleFrom(
                       foregroundColor: Colors.white.withOpacity(0.6),
                     ),
-                  ),
-                ],
               ),
-            ),
-            
-            // Captures list
-            Expanded(
-              child: _labService.captures.isEmpty
+            ],
+          ),
+        ),
+        
+        // Captures list
+        Expanded(
+          child: _labService.captures.isEmpty
                   ? _GxEmptyState(
-                      icon: Icons.videocam_off_outlined,
-                      title: 'Aucune capture',
-                      subtitle: 'Les requêtes interceptées apparaîtront ici',
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _labService.captures.length,
-                      itemBuilder: (context, index) {
-                        final capture = _labService.captures[index];
+                  icon: Icons.videocam_off_outlined,
+                  title: 'Aucune capture',
+                  subtitle: 'Les requêtes interceptées apparaîtront ici',
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _labService.captures.length,
+                  itemBuilder: (context, index) {
+                    final capture = _labService.captures[index];
                         return _GxCaptureCard(
-                          capture: capture,
-                          onReplay: () => _labService.replayCapture(capture.id),
-                        );
-                      },
-                    ),
-            ),
-          ],
+                      capture: capture,
+                      onReplay: () => _labService.replayCapture(capture.id),
+                    );
+                  },
+                ),
+        ),
+      ],
         );
       },
     );
@@ -1926,15 +2415,15 @@ class _GxTestResultCard extends StatelessWidget {
             ],
           ),
           if (result.errorMessage != null) ...[
-            const SizedBox(height: 6),
-            Text(
+          const SizedBox(height: 6),
+          Text(
               result.errorMessage!,
               style: NotilusFonts.code(
                 fontSize: 10,
                 color: Colors.white54,
               ),
-              overflow: TextOverflow.ellipsis,
-            ),
+            overflow: TextOverflow.ellipsis,
+          ),
           ],
         ],
       ),
@@ -1996,7 +2485,7 @@ class _GxVulnerabilityCard extends StatelessWidget {
             style: NotilusFonts.rajdhani(
               fontSize: 11,
               color: Colors.white.withOpacity(0.7),
-            ),
+          ),
           ),
         ],
       ),
@@ -2185,6 +2674,289 @@ class _GxAuthEditor extends StatelessWidget {
                 DropdownMenuItem(value: 'apikey', child: Text('API Key')),
               ],
               onChanged: (v) {},
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// DevTools Style List Items
+// ============================================================================
+
+class _DevToolsServerListItem extends StatelessWidget {
+  final DiscoveredServer server;
+  final Color accent;
+  final bool isSelected;
+  final bool isLoading;
+  final VoidCallback onTap;
+  final VoidCallback onRoutesTap;
+
+  const _DevToolsServerListItem({
+    required this.server,
+    required this.accent,
+    required this.isSelected,
+    required this.isLoading,
+    required this.onTap,
+    required this.onRoutesTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? accent.withOpacity(0.1) : Colors.transparent,
+          border: Border(
+            left: BorderSide(
+              color: isSelected ? accent : Colors.transparent,
+              width: 3,
+            ),
+          ),
+        ),
+        child: Row(
+          children: [
+            // Status indicator
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: server.statusColor,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: server.statusColor.withOpacity(0.5),
+                    blurRadius: 4,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Icon
+            Icon(
+              server.frameworkIcon,
+              size: 16,
+              color: accent.withOpacity(0.7),
+            ),
+            const SizedBox(width: 12),
+            // Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    server.displayName,
+                    style: NotilusFonts.rajdhani(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${server.host}:${server.port} • ${server.framework.name}',
+                    style: NotilusFonts.rajdhani(
+                      fontSize: 10,
+                      color: Colors.white.withOpacity(0.5),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Routes count
+            if (server.routesCount > 0) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: accent.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  '${server.routesCount} routes',
+                  style: NotilusFonts.rajdhani(
+                    fontSize: 9,
+                    color: accent,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
+            // Loading indicator
+            if (isLoading)
+              const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DevToolsRouteListItem extends StatelessWidget {
+  final DiscoveredRoute route;
+  final Color accent;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _DevToolsRouteListItem({
+    required this.route,
+    required this.accent,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? accent.withOpacity(0.1) : Colors.transparent,
+          border: Border(
+            left: BorderSide(
+              color: isSelected ? accent : Colors.transparent,
+              width: 3,
+            ),
+          ),
+        ),
+        child: Row(
+          children: [
+            // Method badge
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: route.methodColor.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                route.method.name,
+                style: NotilusFonts.rajdhani(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  color: route.methodColor,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Path
+            Expanded(
+              child: Text(
+                route.path,
+                style: NotilusFonts.code(
+                  fontSize: 11,
+                  color: Colors.white70,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            // Params count
+            if (route.pathParams.isNotEmpty || route.queryParams.isNotEmpty) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: accent.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  '${route.pathParams.length + route.queryParams.length}',
+                  style: NotilusFonts.rajdhani(
+                    fontSize: 9,
+                    color: accent,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// Detail Panel Widgets
+// ============================================================================
+
+class _DetailSection extends StatelessWidget {
+  final String title;
+  final Color accentColor;
+  final List<Widget> children;
+
+  const _DetailSection({
+    required this.title,
+    required this.accentColor,
+    required this.children,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: NotilusFonts.rajdhani(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: accentColor,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.03),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: children,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _DetailRow(this.label, this.value);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              label,
+              style: NotilusFonts.rajdhani(
+                fontSize: 10,
+                color: Colors.white.withOpacity(0.5),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: NotilusFonts.code(
+                fontSize: 10,
+                color: Colors.white70,
+              ),
             ),
           ),
         ],
