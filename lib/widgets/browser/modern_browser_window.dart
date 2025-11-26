@@ -28,10 +28,14 @@ import '../../widgets/mosaic/mosaic_container.dart';
 import '../../services/mosaic_service.dart';
 import '../../widgets/studio/studio_panel.dart';
 import '../../widgets/lighthouse/lighthouse_panel.dart';
+import '../../services/lighthouse/lighthouse_service.dart';
 
 // Intent pour les raccourcis clavier
 class _ToggleMosaicIntent extends Intent {}
 class _OpenDevToolsIntent extends Intent {}
+class _OpenLighthouseIntent extends Intent {}
+class _OpenStudioIntent extends Intent {}
+class _RunLighthouseAuditIntent extends Intent {}
 
 class ModernBrowserWindow extends StatefulWidget {
   const ModernBrowserWindow({super.key});
@@ -153,6 +157,9 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
         LogicalKeySet(LogicalKeyboardKey.f12): _OpenDevToolsIntent(),
         LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.shift, LogicalKeyboardKey.keyI): _OpenDevToolsIntent(),
         LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.shift, LogicalKeyboardKey.keyM): _ToggleMosaicIntent(),
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.shift, LogicalKeyboardKey.keyL): _OpenLighthouseIntent(),
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.shift, LogicalKeyboardKey.keyS): _OpenStudioIntent(),
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.shift, LogicalKeyboardKey.keyR): _RunLighthouseAuditIntent(),
       },
       child: Actions(
         actions: {
@@ -167,6 +174,35 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
               final mosaicService = Provider.of<NotilusMosaicService>(context, listen: false);
               final tabManager = Provider.of<TabManager>(context, listen: false);
               mosaicService.toggle(activeTabId: tabManager.activeTab?.id);
+              return null;
+            },
+          ),
+          _OpenLighthouseIntent: CallbackAction<_OpenLighthouseIntent>(
+            onInvoke: (_) {
+              setState(() {
+                _currentSection = SidebarSection.lighthouse;
+              });
+              return null;
+            },
+          ),
+          _OpenStudioIntent: CallbackAction<_OpenStudioIntent>(
+            onInvoke: (_) {
+              setState(() {
+                _currentSection = SidebarSection.studio;
+              });
+              return null;
+            },
+          ),
+          _RunLighthouseAuditIntent: CallbackAction<_RunLighthouseAuditIntent>(
+            onInvoke: (_) {
+              if (_currentSection == SidebarSection.lighthouse) {
+                final lighthouseService = Provider.of<LighthouseService>(context, listen: false);
+                final tabManager = Provider.of<TabManager>(context, listen: false);
+                final activeTab = tabManager.activeTab;
+                if (activeTab != null && !lighthouseService.isRunning) {
+                  lighthouseService.runFullAudit();
+                }
+              }
               return null;
             },
           ),
