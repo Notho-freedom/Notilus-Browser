@@ -31,33 +31,106 @@ class _InteractionRecorderPanelState extends State<InteractionRecorderPanel> {
       builder: (context, studioService, _) {
         final recorder = studioService.interactionRecorder;
 
-        return Row(
-          children: [
-            // Controls panel
-            Container(
-              width: 280,
-              decoration: BoxDecoration(
-                border: Border(
-                  right: BorderSide(color: Colors.white.withOpacity(0.05)),
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final isCompact = constraints.maxWidth < 1000;
+            final isVeryCompact = constraints.maxWidth < 600;
+            
+            if (isVeryCompact) {
+              return SingleChildScrollView(
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(color: Colors.white.withOpacity(0.05)),
+                        ),
+                      ),
+                      child: _buildControlsPanel(recorder, accentColor),
+                    ),
+                    Container(
+                      height: 300,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(color: Colors.white.withOpacity(0.05)),
+                        ),
+                      ),
+                      child: _buildTimelinePanel(recorder, accentColor),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      child: _buildExportPanel(recorder, accentColor),
+                    ),
+                  ],
                 ),
-              ),
-              child: _buildControlsPanel(recorder, accentColor),
-            ),
-            // Timeline
-            Expanded(
-              child: _buildTimelinePanel(recorder, accentColor),
-            ),
-            // Export panel
-            Container(
-              width: 300,
-              decoration: BoxDecoration(
-                border: Border(
-                  left: BorderSide(color: Colors.white.withOpacity(0.05)),
+              );
+            }
+            
+            if (isCompact) {
+              return Row(
+                children: [
+                  Container(
+                    width: 280,
+                    decoration: BoxDecoration(
+                      border: Border(
+                        right: BorderSide(color: Colors.white.withOpacity(0.05)),
+                      ),
+                    ),
+                    child: _buildControlsPanel(recorder, accentColor),
+                  ),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Expanded(
+                          child: _buildTimelinePanel(recorder, accentColor),
+                        ),
+                        Container(
+                          height: 200,
+                          decoration: BoxDecoration(
+                            border: Border(
+                              top: BorderSide(color: Colors.white.withOpacity(0.05)),
+                            ),
+                          ),
+                          child: _buildExportPanel(recorder, accentColor),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            }
+            
+            return Row(
+              children: [
+                // Controls panel
+                Container(
+                  width: 280,
+                  decoration: BoxDecoration(
+                    border: Border(
+                      right: BorderSide(color: Colors.white.withOpacity(0.05)),
+                    ),
+                  ),
+                  child: _buildControlsPanel(recorder, accentColor),
                 ),
-              ),
-              child: _buildExportPanel(recorder, accentColor),
-            ),
-          ],
+                // Timeline
+                Expanded(
+                  child: _buildTimelinePanel(recorder, accentColor),
+                ),
+                // Export panel
+                Container(
+                  width: 300,
+                  decoration: BoxDecoration(
+                    border: Border(
+                      left: BorderSide(color: Colors.white.withOpacity(0.05)),
+                    ),
+                  ),
+                  child: _buildExportPanel(recorder, accentColor),
+                ),
+              ],
+            );
+          },
         );
       },
     );

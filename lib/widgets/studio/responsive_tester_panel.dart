@@ -52,7 +52,10 @@ class _ResponsiveTesterPanelState extends State<ResponsiveTesterPanel> {
             final isCompact = constraints.maxWidth < 600;
             
             return Container(
-              height: isCompact ? 60 : 40,
+              constraints: BoxConstraints(
+                minHeight: isCompact ? 60 : 40,
+                maxHeight: isCompact ? 80 : 40,
+              ),
               padding: EdgeInsets.symmetric(horizontal: 12, vertical: isCompact ? 4 : 0),
               decoration: BoxDecoration(
                 color: const Color(0xFF18181E),
@@ -61,80 +64,92 @@ class _ResponsiveTesterPanelState extends State<ResponsiveTesterPanel> {
                 ),
               ),
               child: isCompact
-                  ? Column(
-                      children: [
-                        Row(
-                          children: [
-                            _ToolbarButton(
-                              icon: CupertinoIcons.device_phone_portrait,
-                              label: 'Défauts',
-                              accentColor: accentColor,
-                              onPressed: tester.addDefaultViewports,
-                              compact: true,
+                  ? SingleChildScrollView(
+                      scrollDirection: Axis.vertical,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _ToolbarButton(
+                                  icon: CupertinoIcons.device_phone_portrait,
+                                  label: 'Défauts',
+                                  accentColor: accentColor,
+                                  onPressed: tester.addDefaultViewports,
+                                  compact: true,
+                                ),
+                                const SizedBox(width: 8),
+                                _ToolbarButton(
+                                  icon: CupertinoIcons.add,
+                                  label: 'Ajouter',
+                                  accentColor: accentColor,
+                                  onPressed: () => _showDeviceSelector(context, tester, accentColor),
+                                  compact: true,
+                                ),
+                                const SizedBox(width: 8),
+                                _ToolbarButton(
+                                  icon: CupertinoIcons.arrow_clockwise,
+                                  label: 'Analyser',
+                                  accentColor: accentColor,
+                                  onPressed: studioService.engine == null
+                                      ? null
+                                      : () async {
+                                          await tester.analyzeBreakpoints();
+                                          await tester.analyzeResponsiveIssues();
+                                        },
+                                  compact: true,
+                                ),
+                                const SizedBox(width: 8),
+                                _ToolbarButton(
+                                  icon: CupertinoIcons.trash,
+                                  label: 'Vider',
+                                  accentColor: accentColor,
+                                  onPressed: tester.clearViewports,
+                                  compact: true,
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 8),
-                            _ToolbarButton(
-                              icon: CupertinoIcons.add,
-                              label: 'Ajouter',
-                              accentColor: accentColor,
-                              onPressed: () => _showDeviceSelector(context, tester, accentColor),
-                              compact: true,
+                          ),
+                          const SizedBox(height: 4),
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _ToolbarToggle(
+                                  icon: CupertinoIcons.arrow_up_arrow_down,
+                                  label: 'Sync',
+                                  isActive: tester.syncScroll,
+                                  accentColor: accentColor,
+                                  onToggle: () => tester.setSyncScroll(!tester.syncScroll),
+                                  compact: true,
+                                ),
+                                const SizedBox(width: 8),
+                                _ToolbarToggle(
+                                  icon: CupertinoIcons.chart_bar,
+                                  label: 'BP',
+                                  isActive: tester.showBreakpoints,
+                                  accentColor: accentColor,
+                                  onToggle: () => tester.setShowBreakpoints(!tester.showBreakpoints),
+                                  compact: true,
+                                ),
+                                const SizedBox(width: 8),
+                                _ToolbarToggle(
+                                  icon: CupertinoIcons.exclamationmark_triangle,
+                                  label: 'Issues',
+                                  isActive: tester.highlightIssues,
+                                  accentColor: accentColor,
+                                  onToggle: () => tester.setHighlightIssues(!tester.highlightIssues),
+                                  compact: true,
+                                ),
+                              ],
                             ),
-                            const Spacer(),
-                            _ToolbarButton(
-                              icon: CupertinoIcons.arrow_clockwise,
-                              label: 'Analyser',
-                              accentColor: accentColor,
-                              onPressed: studioService.engine == null
-                                  ? null
-                                  : () async {
-                                      await tester.analyzeBreakpoints();
-                                      await tester.analyzeResponsiveIssues();
-                                    },
-                              compact: true,
-                            ),
-                            const SizedBox(width: 8),
-                            _ToolbarButton(
-                              icon: CupertinoIcons.trash,
-                              label: 'Vider',
-                              accentColor: accentColor,
-                              onPressed: tester.clearViewports,
-                              compact: true,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            _ToolbarToggle(
-                              icon: CupertinoIcons.arrow_up_arrow_down,
-                              label: 'Sync',
-                              isActive: tester.syncScroll,
-                              accentColor: accentColor,
-                              onToggle: () => tester.setSyncScroll(!tester.syncScroll),
-                              compact: true,
-                            ),
-                            const SizedBox(width: 8),
-                            _ToolbarToggle(
-                              icon: CupertinoIcons.chart_bar,
-                              label: 'BP',
-                              isActive: tester.showBreakpoints,
-                              accentColor: accentColor,
-                              onToggle: () => tester.setShowBreakpoints(!tester.showBreakpoints),
-                              compact: true,
-                            ),
-                            const SizedBox(width: 8),
-                            _ToolbarToggle(
-                              icon: CupertinoIcons.exclamationmark_triangle,
-                              label: 'Issues',
-                              isActive: tester.highlightIssues,
-                              accentColor: accentColor,
-                              onToggle: () => tester.setHighlightIssues(!tester.highlightIssues),
-                              compact: true,
-                            ),
-                          ],
-                        ),
-                      ],
+                          ),
+                        ],
+                      ),
                     )
                   : SingleChildScrollView(
                       scrollDirection: Axis.horizontal,

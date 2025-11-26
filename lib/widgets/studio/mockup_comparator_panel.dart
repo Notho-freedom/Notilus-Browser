@@ -31,34 +31,107 @@ class _MockupComparatorPanelState extends State<MockupComparatorPanel> {
       builder: (context, studioService, _) {
         final comparator = studioService.mockupComparator;
 
-        return Row(
-          children: [
-            // Controls panel
-            Container(
-              width: 280,
-              decoration: BoxDecoration(
-                border: Border(
-                  right: BorderSide(color: Colors.white.withOpacity(0.05)),
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final isCompact = constraints.maxWidth < 1000;
+            final isVeryCompact = constraints.maxWidth < 600;
+            
+            if (isVeryCompact) {
+              return SingleChildScrollView(
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(color: Colors.white.withOpacity(0.05)),
+                        ),
+                      ),
+                      child: _buildControlsPanel(comparator, accentColor),
+                    ),
+                    Container(
+                      height: 300,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(color: Colors.white.withOpacity(0.05)),
+                        ),
+                      ),
+                      child: _buildComparisonView(comparator, accentColor),
+                    ),
+                    if (comparator.lastResult != null)
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        child: _buildResultsPanel(comparator, accentColor),
+                      ),
+                  ],
                 ),
-              ),
-              child: _buildControlsPanel(comparator, accentColor),
-            ),
-            // Comparison view
-            Expanded(
-              child: _buildComparisonView(comparator, accentColor),
-            ),
-            // Results panel
-            if (comparator.lastResult != null)
-              Container(
-                width: 300,
-                decoration: BoxDecoration(
-                  border: Border(
-                    left: BorderSide(color: Colors.white.withOpacity(0.05)),
+              );
+            }
+            
+            if (isCompact) {
+              return Column(
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 280,
+                        decoration: BoxDecoration(
+                          border: Border(
+                            right: BorderSide(color: Colors.white.withOpacity(0.05)),
+                          ),
+                        ),
+                        child: _buildControlsPanel(comparator, accentColor),
+                      ),
+                      Expanded(
+                        child: _buildComparisonView(comparator, accentColor),
+                      ),
+                    ],
                   ),
+                  if (comparator.lastResult != null)
+                    Container(
+                      height: 200,
+                      decoration: BoxDecoration(
+                        border: Border(
+                          top: BorderSide(color: Colors.white.withOpacity(0.05)),
+                        ),
+                      ),
+                      child: _buildResultsPanel(comparator, accentColor),
+                    ),
+                ],
+              );
+            }
+            
+            return Row(
+              children: [
+                // Controls panel
+                Container(
+                  width: 280,
+                  decoration: BoxDecoration(
+                    border: Border(
+                      right: BorderSide(color: Colors.white.withOpacity(0.05)),
+                    ),
+                  ),
+                  child: _buildControlsPanel(comparator, accentColor),
                 ),
-                child: _buildResultsPanel(comparator, accentColor),
-              ),
-          ],
+                // Comparison view
+                Expanded(
+                  child: _buildComparisonView(comparator, accentColor),
+                ),
+                // Results panel
+                if (comparator.lastResult != null)
+                  Container(
+                    width: 300,
+                    decoration: BoxDecoration(
+                      border: Border(
+                        left: BorderSide(color: Colors.white.withOpacity(0.05)),
+                      ),
+                    ),
+                    child: _buildResultsPanel(comparator, accentColor),
+                  ),
+              ],
+            );
+          },
         );
       },
     );
