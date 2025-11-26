@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import '../../services/tab_manager.dart';
 import '../../services/tab_webview_manager.dart' show TabWebViewManager;
 import '../../services/devtools_service.dart';
+import '../../services/system_metrics_service.dart';
+import '../../services/update_service.dart';
 import '../../core/animations/notilus_animations.dart';
 import 'gx_address_bar.dart';
 import 'gx_tab_bar.dart';
@@ -240,7 +242,20 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                       onMenuTap: _toggleSidebar,
                       isSidebarVisible: _isSidebarVisible,
                     ),
-                    const GXAddressBar(),
+                    GXAddressBar(
+                      onWidgetsPressed: () {
+                        setState(() {
+                          _currentSection = SidebarSection.widgets;
+                          _isSidebarVisible = true;
+                        });
+                      },
+                      onDownloadsPressed: () {
+                        setState(() {
+                          _currentSection = SidebarSection.downloads;
+                          _isSidebarVisible = true;
+                        });
+                      },
+                    ),
                     Expanded(
                       child: RepaintBoundary(
                         child: Selector2<NotilusMosaicService, TabManager, ({bool isMosaicActive, String? activeTabId, String? activeTabUrl})>(
@@ -593,6 +608,8 @@ class _NotilusWidgetsPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final gxRed = Provider.of<ColorThemeManager>(context).nativeSecondaryColor;
+    
     return Container(
       decoration: BoxDecoration(
         image: DecorationImage(
@@ -611,72 +628,68 @@ class _NotilusWidgetsPanel extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Text(
-                'Widgets système',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
+              child: Row(
+                children: [
+                  Text(
+                    'Widgets système',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const Spacer(),
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: Colors.green,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.green.withValues(alpha: 0.5),
+                          blurRadius: 4,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Live',
+                    style: TextStyle(
+                      color: Colors.green,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
             ),
             Expanded(
-              child: ListView.builder(
-                shrinkWrap: true,
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                itemCount: _widgets.length,
-                itemBuilder: (context, index) {
-                  final widget = _widgets[index];
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      color: Colors.white.withValues(alpha: 0.05),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-                    ),
-                    child: Builder(
-                      builder: (context) {
-                        final gxRed = Provider.of<ColorThemeManager>(context, listen: true).nativeSecondaryColor;
-                        return Row(
-                          children: [
-                            Icon(widget.icon, color: gxRed, size: 18),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    widget.title,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    widget.subtitle,
-                                    style: TextStyle(
-                                      color: Colors.white.withValues(alpha: 0.5),
-                                      fontSize: 10,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Text(
-                              widget.value,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
+              child: Consumer<SystemMetricsService>(
+                builder: (context, metrics, _) {
+                  final tabManager = Provider.of<TabManager>(context);
+                  metrics.updateTabCount(tabManager.tabs.length);
+                  
+                  final widgets = [
+                    _WidgetData('CPU', '${metrics.cpuUsage.toStringAsFixed(0)}%', 'Utilisation processeur', CupertinoIcons.gauge, _getUsageColor(metrics.cpuUsage)),
+                    _WidgetData('RAM', '${metrics.ramUsage.toStringAsFixed(0)}%', 'Mémoire utilisée', Icons.memory, _getUsageColor(metrics.ramUsage)),
+                    _WidgetData('GPU', '${metrics.gpuTemp.toStringAsFixed(0)}°C', 'Température graphique', CupertinoIcons.speedometer, _getTempColor(metrics.gpuTemp)),
+                    _WidgetData('Réseau', metrics.networkStatus, 'État connexion', CupertinoIcons.waveform_path, Colors.green),
+                    _WidgetData('Onglets', '${metrics.tabCount}', 'Onglets actifs', CupertinoIcons.square_grid_2x2, gxRed),
+                    _WidgetData('Session', metrics.formatActiveTime(), 'Temps actif', CupertinoIcons.time, gxRed),
+                    _WidgetData('Pages', '${metrics.pagesVisited}', 'Pages visitées', CupertinoIcons.doc_text, gxRed),
+                    _WidgetData('Données', '${metrics.dataUsed.toStringAsFixed(2)} GB', 'Données transférées', CupertinoIcons.arrow_up_arrow_down, gxRed),
+                  ];
+                  
+                  return ListView.builder(
+                    shrinkWrap: true,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                    itemCount: widgets.length,
+                    itemBuilder: (context, index) {
+                      final widget = widgets[index];
+                      return _SystemWidgetTile(widget: widget, accentColor: gxRed);
+                    },
                   );
                 },
               ),
@@ -687,14 +700,89 @@ class _NotilusWidgetsPanel extends StatelessWidget {
     );
   }
 
-  static const _widgets = [
-    _WidgetData('CPU', '32%', 'Utilisation processeur', CupertinoIcons.gauge),
-    _WidgetData('RAM', '45%', 'Mémoire utilisée', Icons.memory),
-    _WidgetData('GPU', '58°C', 'Température graphique', CupertinoIcons.speedometer),
-    _WidgetData('Réseau', '1.1 Gbps', 'Bande passante', CupertinoIcons.waveform_path),
-    _WidgetData('Onglets', '12', 'Onglets actifs', CupertinoIcons.square_grid_2x2),
-    _WidgetData('Veille', 'Auto', 'Mode économie', CupertinoIcons.moon),
-  ];
+  static Color _getUsageColor(double usage) {
+    if (usage < 50) return Colors.green;
+    if (usage < 80) return Colors.orange;
+    return Colors.red;
+  }
+
+  static Color _getTempColor(double temp) {
+    if (temp < 60) return Colors.green;
+    if (temp < 80) return Colors.orange;
+    return Colors.red;
+  }
+}
+
+class _SystemWidgetTile extends StatelessWidget {
+  final _WidgetData widget;
+  final Color accentColor;
+
+  const _SystemWidgetTile({required this.widget, required this.accentColor});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: Colors.white.withValues(alpha: 0.05),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: widget.valueColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(widget.icon, color: widget.valueColor, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  widget.subtitle,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.5),
+                    fontSize: 10,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: widget.valueColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              widget.value,
+              style: TextStyle(
+                color: widget.valueColor,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _WidgetData {
@@ -702,16 +790,34 @@ class _WidgetData {
   final String value;
   final String subtitle;
   final IconData icon;
+  final Color valueColor;
 
-  const _WidgetData(this.title, this.value, this.subtitle, this.icon);
+  const _WidgetData(this.title, this.value, this.subtitle, this.icon, [this.valueColor = Colors.white]);
 }
 
-class _NotilusAiPanel extends StatelessWidget {
+class _NotilusAiPanel extends StatefulWidget {
   const _NotilusAiPanel();
+
+  @override
+  State<_NotilusAiPanel> createState() => _NotilusAiPanelState();
+}
+
+class _NotilusAiPanelState extends State<_NotilusAiPanel> {
+  final TextEditingController _promptController = TextEditingController();
+  final SettingsService _settings = SettingsService();
+
+  @override
+  void dispose() {
+    _promptController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final gxRed = Provider.of<ColorThemeManager>(context).nativeSecondaryColor;
+    final gxRedDark = Provider.of<ColorThemeManager>(context).primaryDarkColor;
+    
     return Container(
       decoration: BoxDecoration(
         image: DecorationImage(
@@ -730,43 +836,71 @@ class _NotilusAiPanel extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Text(
-                'Hyper Assistant',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
+              child: Row(
+                children: [
+                  Icon(CupertinoIcons.sparkles, color: gxRed, size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Hyper Assistant',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: gxRed.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      'BETA',
+                      style: TextStyle(
+                        color: gxRed,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
             Expanded(
-              child: ListView(
-                shrinkWrap: true,
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                children: [
-                  const _AiToggleTile(
-                    title: 'Assistant contextuel',
-                    subtitle: 'Analyse la page et propose des actions rapides',
-                    value: true,
-                  ),
-                  const SizedBox(height: 8),
-                  const _AiToggleTile(
-                    title: 'Résumé instantané',
-                    subtitle: 'Synthétise les articles longs en un clic',
-                    value: false,
-                  ),
-                  const SizedBox(height: 8),
-                  const _AiToggleTile(
-                    title: 'Protection intelligente',
-                    subtitle: 'Bloque les scripts suspects en arrière plan',
-                    value: true,
-                  ),
-                  const SizedBox(height: 16),
-                  Builder(
-                    builder: (context) {
-                      final gxRed = Provider.of<ColorThemeManager>(context, listen: true).nativeSecondaryColor;
-                      final gxRedDark = Provider.of<ColorThemeManager>(context, listen: true).primaryDarkColor;
-                      return Container(
+              child: ListenableBuilder(
+                listenable: _settings,
+                builder: (context, _) {
+                  return ListView(
+                    shrinkWrap: true,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                    children: [
+                      _AiToggleTile(
+                        title: 'Assistant contextuel',
+                        subtitle: 'Analyse la page et propose des actions rapides',
+                        value: _settings.aiContextualEnabled,
+                        icon: CupertinoIcons.lightbulb,
+                        onChanged: (v) => _settings.setAiContextualEnabled(v),
+                      ),
+                      const SizedBox(height: 8),
+                      _AiToggleTile(
+                        title: 'Résumé instantané',
+                        subtitle: 'Synthétise les articles longs en un clic',
+                        value: _settings.aiSummaryEnabled,
+                        icon: CupertinoIcons.doc_text,
+                        onChanged: (v) => _settings.setAiSummaryEnabled(v),
+                      ),
+                      const SizedBox(height: 8),
+                      _AiToggleTile(
+                        title: 'Protection intelligente',
+                        subtitle: 'Bloque les scripts suspects en arrière plan',
+                        value: _settings.aiProtectionEnabled,
+                        icon: CupertinoIcons.shield,
+                        onChanged: (v) => _settings.setAiProtectionEnabled(v),
+                      ),
+                      const SizedBox(height: 16),
+                      // Zone de prompt
+                      Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(12),
@@ -781,31 +915,168 @@ class _NotilusAiPanel extends StatelessWidget {
                             width: 1,
                           ),
                         ),
-                        child: const Column(
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'Hyper prompts',
-                              style: TextStyle(
+                            Row(
+                              children: [
+                                Icon(CupertinoIcons.text_cursor, color: gxRed, size: 14),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Hyper Prompt',
+                                  style: TextStyle(
+                                    color: gxRed,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            TextField(
+                              controller: _promptController,
+                              maxLines: 3,
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 12,
-                                fontWeight: FontWeight.w600,
+                              ),
+                              decoration: InputDecoration(
+                                hintText: 'Décrivez ce que vous voulez faire...',
+                                hintStyle: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.3),
+                                  fontSize: 12,
+                                ),
+                                filled: true,
+                                fillColor: Colors.black.withValues(alpha: 0.3),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide.none,
+                                ),
+                                contentPadding: const EdgeInsets.all(12),
                               ),
                             ),
-                            SizedBox(height: 6),
-                            Text(
-                              'Glissez-déposez une URL ou un texte ici pour générer des commandes Notilus.',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 10,
-                              ),
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    'Ex: "Résume cette page", "Trouve des alternatives"',
+                                    style: TextStyle(
+                                      color: Colors.white.withValues(alpha: 0.4),
+                                      fontSize: 9,
+                                    ),
+                                  ),
+                                ),
+                                InkWell(
+                                  onTap: () {
+                                    if (_promptController.text.isNotEmpty) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Fonctionnalité AI en développement'),
+                                          backgroundColor: gxRed,
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: gxRed,
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: const Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(CupertinoIcons.paperplane_fill, color: Colors.white, size: 12),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          'Envoyer',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                      );
-                    },
-                  ),
-                ],
+                      ),
+                      const SizedBox(height: 16),
+                      // Quick actions
+                      Text(
+                        'Actions rapides',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.5),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _QuickActionChip(label: 'Résumer', icon: CupertinoIcons.doc_text, color: gxRed),
+                          _QuickActionChip(label: 'Traduire', icon: CupertinoIcons.globe, color: gxRed),
+                          _QuickActionChip(label: 'Expliquer', icon: CupertinoIcons.question_circle, color: gxRed),
+                          _QuickActionChip(label: 'Simplifier', icon: CupertinoIcons.wand_stars, color: gxRed),
+                        ],
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickActionChip extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color color;
+
+  const _QuickActionChip({required this.label, required this.icon, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$label: fonctionnalité AI en développement'),
+            backgroundColor: color,
+          ),
+        );
+      },
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 12, color: color),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ],
@@ -819,32 +1090,60 @@ class _AiToggleTile extends StatelessWidget {
   final String title;
   final String subtitle;
   final bool value;
+  final IconData icon;
+  final ValueChanged<bool> onChanged;
 
   const _AiToggleTile({
     required this.title,
     required this.subtitle,
     required this.value,
+    required this.icon,
+    required this.onChanged,
   });
 
   @override
   Widget build(BuildContext context) {
+    final gxRed = Provider.of<ColorThemeManager>(context).nativeSecondaryColor;
+    
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        color: Colors.white.withValues(alpha: 0.05),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        color: value 
+            ? gxRed.withValues(alpha: 0.08)
+            : Colors.white.withValues(alpha: 0.05),
+        border: Border.all(
+          color: value 
+              ? gxRed.withValues(alpha: 0.3)
+              : Colors.white.withValues(alpha: 0.1),
+        ),
       ),
       child: Row(
         children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: value 
+                  ? gxRed.withValues(alpha: 0.2)
+                  : Colors.white.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              icon,
+              size: 16,
+              color: value ? gxRed : Colors.white.withValues(alpha: 0.5),
+            ),
+          ),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: value ? Colors.white : Colors.white.withValues(alpha: 0.8),
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
@@ -852,24 +1151,19 @@ class _AiToggleTile extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   subtitle,
-                  style: const TextStyle(
-                    color: Colors.white60,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.5),
                     fontSize: 10,
                   ),
                 ),
               ],
             ),
           ),
-          Builder(
-            builder: (context) {
-              final gxRed = Provider.of<ColorThemeManager>(context, listen: true).nativeSecondaryColor;
-              return Switch(
-                value: value,
-                onChanged: (_) {},
-                activeTrackColor: gxRed.withValues(alpha: 0.5),
-                activeThumbColor: gxRed,
-              );
-            },
+          Switch(
+            value: value,
+            onChanged: onChanged,
+            activeTrackColor: gxRed.withValues(alpha: 0.5),
+            activeColor: gxRed,
           ),
         ],
       ),
@@ -877,12 +1171,32 @@ class _AiToggleTile extends StatelessWidget {
   }
 }
 
-class _NotilusUpdatesPanel extends StatelessWidget {
+class _NotilusUpdatesPanel extends StatefulWidget {
   const _NotilusUpdatesPanel();
+
+  @override
+  State<_NotilusUpdatesPanel> createState() => _NotilusUpdatesPanelState();
+}
+
+class _NotilusUpdatesPanelState extends State<_NotilusUpdatesPanel> {
+  final UpdateService _updateService = UpdateService();
+
+  @override
+  void initState() {
+    super.initState();
+    // Charger les mises à jour au démarrage
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_updateService.recentUpdates.isEmpty) {
+        _updateService.checkForUpdates();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final gxRed = Provider.of<ColorThemeManager>(context).nativeSecondaryColor;
+    
     return Container(
       decoration: BoxDecoration(
         image: DecorationImage(
@@ -901,41 +1215,163 @@ class _NotilusUpdatesPanel extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Row(
+                children: [
+                  Icon(CupertinoIcons.arrow_up_circle, color: gxRed, size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Mises à jour',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    'v${_updateService.version}',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.5),
+                      fontSize: 10,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Bouton vérifier les mises à jour
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: ListenableBuilder(
+                listenable: _updateService,
+                builder: (context, _) {
+                  return InkWell(
+                    onTap: _updateService.isChecking ? null : () => _updateService.checkForUpdates(),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            gxRed.withValues(alpha: 0.2),
+                            gxRed.withValues(alpha: 0.1),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: gxRed.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          if (_updateService.isChecking)
+                            SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation(gxRed),
+                              ),
+                            )
+                          else
+                            Icon(CupertinoIcons.arrow_clockwise, color: gxRed, size: 14),
+                          const SizedBox(width: 8),
+                          Text(
+                            _updateService.isChecking 
+                                ? 'Vérification en cours...' 
+                                : 'Vérifier les mises à jour',
+                            style: TextStyle(
+                              color: gxRed,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            if (_updateService.lastCheck != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: Text(
+                  'Dernière vérification: ${_updateService.formatRelativeDate(_updateService.lastCheck!)}',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.4),
+                    fontSize: 9,
+                  ),
+                ),
+              ),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(
-                'Mises à jour',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontSize: 13,
+                'Changements récents',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.6),
+                  fontSize: 10,
                   fontWeight: FontWeight.w600,
                 ),
               ),
             ),
+            const SizedBox(height: 8),
             Expanded(
-              child: ListView(
-                shrinkWrap: true,
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                children: const [
-                  _UpdateCard(
-                    title: 'Nouvelle intégration: Speed Dial',
-                    description: 'Ajout de la section Speed Dial avec grilles personnalisables',
-                    date: 'Aujourd\'hui',
-                    isNew: true,
-                  ),
-                  SizedBox(height: 8),
-                  _UpdateCard(
-                    title: 'Amélioration: Sidemenus',
-                    description: 'Nouveaux menus latéraux avec animations fluides',
-                    date: 'Hier',
-                    isNew: false,
-                  ),
-                  SizedBox(height: 8),
-                  _UpdateCard(
-                    title: 'Optimisation: Performance',
-                    description: 'Réduction de la consommation mémoire de 15%',
-                    date: 'Il y a 3 jours',
-                    isNew: false,
-                  ),
-                ],
+              child: ListenableBuilder(
+                listenable: _updateService,
+                builder: (context, _) {
+                  final updates = _updateService.recentUpdates;
+                  
+                  if (updates.isEmpty && !_updateService.isChecking) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            CupertinoIcons.checkmark_circle,
+                            color: Colors.green,
+                            size: 48,
+                          ),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'Vous êtes à jour!',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Notilus v${_updateService.version}',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.5),
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  
+                  return ListView.builder(
+                    shrinkWrap: true,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    itemCount: updates.length,
+                    itemBuilder: (context, index) {
+                      final update = updates[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _UpdateCard(
+                          title: update.title,
+                          description: update.description,
+                          date: _updateService.formatRelativeDate(update.date),
+                          isNew: update.isNew,
+                          category: update.category,
+                        ),
+                      );
+                    },
+                  );
+                },
               ),
             ),
           ],
@@ -950,17 +1386,20 @@ class _UpdateCard extends StatelessWidget {
   final String description;
   final String date;
   final bool isNew;
+  final UpdateCategory category;
 
   const _UpdateCard({
     required this.title,
     required this.description,
     required this.date,
     required this.isNew,
+    this.category = UpdateCategory.feature,
   });
 
   @override
   Widget build(BuildContext context) {
-    final gxRed = Provider.of<ColorThemeManager>(context, listen: true).nativeSecondaryColor;
+    final gxRed = Provider.of<ColorThemeManager>(context).nativeSecondaryColor;
+    
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -978,28 +1417,29 @@ class _UpdateCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              if (isNew)
-                Builder(
-                  builder: (context) {
-                    final gxRed = Provider.of<ColorThemeManager>(context, listen: true).nativeSecondaryColor;
-                    return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: gxRed.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        'NOUVEAU',
-                        style: TextStyle(
-                          color: gxRed,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    );
-                  },
+              Text(
+                category.icon,
+                style: const TextStyle(fontSize: 12),
+              ),
+              const SizedBox(width: 6),
+              if (isNew) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: gxRed.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    'NOUVEAU',
+                    style: TextStyle(
+                      color: gxRed,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
-              if (isNew) const SizedBox(width: 8),
+                const SizedBox(width: 8),
+              ],
               Expanded(
                 child: Text(
                   title,
@@ -1015,18 +1455,38 @@ class _UpdateCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             description,
-            style: const TextStyle(
-              color: Colors.white60,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.6),
               fontSize: 10,
             ),
           ),
           const SizedBox(height: 6),
-          Text(
-            date,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.4),
-              fontSize: 9,
-            ),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  category.label,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.5),
+                    fontSize: 8,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              Text(
+                date,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.4),
+                  fontSize: 9,
+                ),
+              ),
+            ],
           ),
         ],
       ),

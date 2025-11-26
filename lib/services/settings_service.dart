@@ -57,6 +57,11 @@ class SettingsService extends ChangeNotifier {
   static const String _keySaveCookies = 'notilus_save_cookies';
   static const String _keyBlockTrackers = 'notilus_block_trackers';
   
+  // AI Assistant
+  static const String _keyAiContextual = 'notilus_ai_contextual';
+  static const String _keyAiSummary = 'notilus_ai_summary';
+  static const String _keyAiProtection = 'notilus_ai_protection';
+  
   // DevTools
   static const String _keyDevToolsPosition = 'notilus_devtools_position'; // 'bottom', 'right', 'detached'
   static const String _keyDevToolsHeight = 'notilus_devtools_height';
@@ -344,6 +349,31 @@ class SettingsService extends ChangeNotifier {
   
   Future<void> setBlockTrackers(bool value) async {
     await _prefs?.setBool(_keyBlockTrackers, value);
+    notifyListeners();
+  }
+
+  // ============================================
+  // AI ASSISTANT
+  // ============================================
+  
+  bool get aiContextualEnabled => _prefs?.getBool(_keyAiContextual) ?? true;
+  
+  Future<void> setAiContextualEnabled(bool value) async {
+    await _prefs?.setBool(_keyAiContextual, value);
+    notifyListeners();
+  }
+  
+  bool get aiSummaryEnabled => _prefs?.getBool(_keyAiSummary) ?? false;
+  
+  Future<void> setAiSummaryEnabled(bool value) async {
+    await _prefs?.setBool(_keyAiSummary, value);
+    notifyListeners();
+  }
+  
+  bool get aiProtectionEnabled => _prefs?.getBool(_keyAiProtection) ?? true;
+  
+  Future<void> setAiProtectionEnabled(bool value) async {
+    await _prefs?.setBool(_keyAiProtection, value);
     notifyListeners();
   }
 

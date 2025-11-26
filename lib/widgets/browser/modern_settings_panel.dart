@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../core/services/wallpaper_manager.dart';
 import '../../core/services/theme_mode_notifier.dart';
 import '../../core/services/color_theme_manager.dart';
 import '../../core/constants/notilus_colors.dart';
 import '../../services/settings_service.dart';
 import '../../services/terminal_service.dart';
+import '../../services/history_service.dart';
+import '../../services/tab_webview_manager.dart';
 import '../common/color_picker_dialog.dart';
 
 class ModernSettingsPanel extends StatefulWidget {
@@ -662,8 +666,21 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                     ),
                   ),
                   TextButton(
-                    onPressed: () {
-                      // TODO: Ouvrir sélecteur de dossier
+                    onPressed: () async {
+                      String? selectedDirectory = await FilePicker.platform.getDirectoryPath(
+                        dialogTitle: 'Sélectionnez le dossier de téléchargement',
+                      );
+                      if (selectedDirectory != null) {
+                        await _settings.setDownloadFolder(selectedDirectory);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Dossier défini: $selectedDirectory'),
+                              backgroundColor: gxRed,
+                            ),
+                          );
+                        }
+                      }
                     },
                     child: Text('Changer', style: TextStyle(color: gxRed, fontSize: 11)),
                   ),
@@ -1104,17 +1121,109 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
               spacing: 12,
               runSpacing: 8,
               children: [
-                _buildClearButton('Historique', CupertinoIcons.time, gxRed, () {
-                  // TODO: Effacer l'historique
+                _buildClearButton('Historique', CupertinoIcons.time, gxRed, () async {
+                  final confirm = await _showClearConfirmDialog(
+                    context, 
+                    'Effacer l\'historique', 
+                    'Voulez-vous vraiment effacer tout l\'historique de navigation ?',
+                    gxRed,
+                  );
+                  if (confirm == true) {
+                    await HistoryService().clearHistory();
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text('Historique effacé'),
+                          backgroundColor: gxRed,
+                        ),
+                      );
+                    }
+                  }
                 }),
-                _buildClearButton('Cookies', CupertinoIcons.lock, gxRed, () {
-                  // TODO: Effacer les cookies
+                _buildClearButton('Cookies', CupertinoIcons.lock, gxRed, () async {
+                  final confirm = await _showClearConfirmDialog(
+                    context, 
+                    'Effacer les cookies', 
+                    'Voulez-vous vraiment effacer tous les cookies ?\nVous serez déconnecté de tous les sites.',
+                    gxRed,
+                  );
+                  if (confirm == true) {
+                    // Appeler clearCookies sur tous les engines actifs
+                    try {
+                      final webViewManager = Provider.of<TabWebViewManager>(context, listen: false);
+                      await webViewManager.clearAllCookies();
+                    } catch (e) {
+                      debugPrint('Erreur clear cookies: $e');
+                    }
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text('Cookies effacés'),
+                          backgroundColor: gxRed,
+                        ),
+                      );
+                    }
+                  }
                 }),
-                _buildClearButton('Cache', CupertinoIcons.trash, gxRed, () {
-                  // TODO: Effacer le cache
+                _buildClearButton('Cache', CupertinoIcons.trash, gxRed, () async {
+                  final confirm = await _showClearConfirmDialog(
+                    context, 
+                    'Effacer le cache', 
+                    'Voulez-vous vraiment effacer le cache de navigation ?',
+                    gxRed,
+                  );
+                  if (confirm == true) {
+                    // Appeler clearCache sur tous les engines actifs
+                    try {
+                      final webViewManager = Provider.of<TabWebViewManager>(context, listen: false);
+                      await webViewManager.clearAllCache();
+                    } catch (e) {
+                      debugPrint('Erreur clear cache: $e');
+                    }
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text('Cache effacé'),
+                          backgroundColor: gxRed,
+                        ),
+                      );
+                    }
+                  }
                 }),
-                _buildClearButton('Tout effacer', CupertinoIcons.delete, gxRed, () {
-                  // TODO: Tout effacer
+                _buildClearButton('Tout effacer', CupertinoIcons.delete, gxRed, () async {
+                  final confirm = await _showClearConfirmDialog(
+                    context, 
+                    'Effacer toutes les données', 
+                    'Voulez-vous vraiment effacer :\n• Historique\n• Cookies\n• Cache\n• Données de navigation\n\nCette action est irréversible.',
+                    gxRed,
+                    isDestructive: true,
+                  );
+                  if (confirm == true) {
+                    // Effacer historique
+                    await HistoryService().clearHistory();
+                    
+                    // Effacer cookies et cache
+                    try {
+                      final webViewManager = Provider.of<TabWebViewManager>(context, listen: false);
+                      await webViewManager.clearAllCookies();
+                      await webViewManager.clearAllCache();
+                    } catch (e) {
+                      debugPrint('Erreur clear all: $e');
+                    }
+                    
+                    // Effacer les données SharedPreferences liées à la navigation
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.remove('notilus_bookmarks');
+                    
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text('Toutes les données effacées'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  }
                 }, destructive: true),
               ],
             ),
@@ -1133,6 +1242,55 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
         foregroundColor: destructive ? Colors.red : gxRed,
         side: BorderSide(color: destructive ? Colors.red.withOpacity(0.5) : gxRed.withOpacity(0.5)),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      ),
+    );
+  }
+
+  Future<bool?> _showClearConfirmDialog(
+    BuildContext context, 
+    String title, 
+    String message, 
+    Color accentColor,
+    {bool isDestructive = false}
+  ) {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A20),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(
+              isDestructive ? CupertinoIcons.exclamationmark_triangle : CupertinoIcons.trash,
+              color: isDestructive ? Colors.red : accentColor,
+              size: 24,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          message,
+          style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Annuler', style: TextStyle(color: Colors.white.withOpacity(0.6))),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isDestructive ? Colors.red : accentColor,
+            ),
+            child: const Text('Confirmer', style: TextStyle(color: Colors.white)),
+          ),
+        ],
       ),
     );
   }

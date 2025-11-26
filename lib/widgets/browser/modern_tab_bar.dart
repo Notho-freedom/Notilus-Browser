@@ -7,11 +7,13 @@ import '../../models/tab_model.dart';
 
 class ModernTabBar extends StatelessWidget {
   final VoidCallback? onMenuTap;
+  final VoidCallback? onGroupsPressed;
   final bool isSidebarVisible;
 
   const ModernTabBar({
     super.key,
     this.onMenuTap,
+    this.onGroupsPressed,
     this.isSidebarVisible = false,
   });
 
@@ -88,9 +90,9 @@ class ModernTabBar extends StatelessWidget {
           Row(
             children: [
               _HoverIconButton(
-                icon: CupertinoIcons.square_grid_2x2,
-                tooltip: 'Groupes (à venir)',
-                onPressed: () {},
+                icon: CupertinoIcons.rectangle_stack,
+                tooltip: 'Groupes d\'onglets',
+                onPressed: onGroupsPressed,
               ),
             ],
           ),

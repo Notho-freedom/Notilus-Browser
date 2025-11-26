@@ -86,12 +86,23 @@ class _NotilusDevToolsState extends State<NotilusDevTools>
   bool _isResizing = false;
   bool _isDocked = true;
   bool _inspectMode = false;
+  bool _responsiveMode = false;
+  String _responsiveDevice = 'desktop'; // 'mobile', 'tablet', 'desktop'
   
   // Inspection avancée
   Map<String, dynamic>? _inspectedElement;
   bool _showInspectorPanel = false;
 
   final List<NotilusDevToolsTab> _tabs = NotilusDevToolsTab.values;
+
+  static const Map<String, Map<String, dynamic>> _responsiveDevices = {
+    'mobile': {'name': 'Mobile', 'width': 375, 'height': 667, 'icon': Icons.phone_android},
+    'tablet': {'name': 'Tablet', 'width': 768, 'height': 1024, 'icon': Icons.tablet_android},
+    'desktop': {'name': 'Desktop', 'width': 1920, 'height': 1080, 'icon': Icons.desktop_windows},
+    'iphone14': {'name': 'iPhone 14', 'width': 390, 'height': 844, 'icon': Icons.phone_iphone},
+    'pixel7': {'name': 'Pixel 7', 'width': 412, 'height': 915, 'icon': Icons.phone_android},
+    'ipadPro': {'name': 'iPad Pro', 'width': 1024, 'height': 1366, 'icon': Icons.tablet_mac},
+  };
 
   @override
   void initState() {
