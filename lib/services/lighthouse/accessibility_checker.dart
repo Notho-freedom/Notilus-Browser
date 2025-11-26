@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import '../../models/lighthouse/audit_models.dart';
 import 'lighthouse_service.dart';
+import 'extended_audit_rules.dart';
 
 /// Vérificateur d'accessibilité WCAG
 class AccessibilityChecker {
@@ -131,6 +132,13 @@ class AccessibilityChecker {
           issues.addAll(focusResult['issues'] as List<Issue>);
         }
       }
+
+      // Règles étendues WCAG (11-30)
+      final extendedRules = ExtendedAccessibilityRules(_lighthouseService);
+      final extendedIssues = await extendedRules.runExtendedRules();
+      issues.addAll(extendedIssues);
+      total += extendedIssues.length;
+      passed += extendedIssues.where((i) => i.severity == IssueSeverity.passed).length;
 
       final score = total > 0 ? ((passed / total) * 100).round() : 0;
 

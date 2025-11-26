@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import '../../models/lighthouse/audit_models.dart';
 import 'lighthouse_service.dart';
+import 'extended_audit_rules.dart';
 
 /// Scanner de sécurité
 class SecurityScanner {
@@ -93,6 +94,13 @@ class SecurityScanner {
       } else {
         issues.addAll(cookiesResult['issues'] as List<Issue>);
       }
+
+      // Règles de sécurité étendues (9-28)
+      final extendedRules = ExtendedSecurityRules(_lighthouseService);
+      final extendedIssues = await extendedRules.runExtendedRules();
+      issues.addAll(extendedIssues);
+      total += extendedIssues.length;
+      passed += extendedIssues.where((i) => i.severity == IssueSeverity.passed).length;
 
       final score = total > 0 ? ((passed / total) * 100).round() : 0;
 
