@@ -29,6 +29,7 @@ import '../../services/mosaic_service.dart';
 import '../../widgets/studio/studio_panel.dart';
 import '../../widgets/lighthouse/lighthouse_panel.dart';
 import '../../services/lighthouse/lighthouse_service.dart';
+import '../../services/studio/studio_service.dart';
 
 // Intent pour les raccourcis clavier
 class _ToggleMosaicIntent extends Intent {}
@@ -298,6 +299,34 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                             activeTabUrl: tabs.activeTab?.url,
                           ),
                           builder: (context, data, _) {
+                            // Attacher automatiquement les services Studio et Lighthouse à l'onglet actif
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              final tabManager = context.read<TabManager>();
+                              final tabWebViewManager = context.read<TabWebViewManager>();
+                              final studioService = context.read<StudioService>();
+                              final lighthouseService = context.read<LighthouseService>();
+                              final activeTab = tabManager.activeTab;
+                              
+                              if (activeTab != null && activeTab.url != null && 
+                                  activeTab.url!.isNotEmpty && 
+                                  activeTab.url != 'about:blank' && 
+                                  activeTab.url != 'about:newtab') {
+                                final engine = tabWebViewManager.getEngineForTab(activeTab.id);
+                                if (engine != null) {
+                                  // Attacher Studio
+                                  if (studioService.engine != engine) {
+                                    studioService.attachEngine(engine);
+                                    studioService.updateUrl(activeTab.url!);
+                                  }
+                                  // Attacher Lighthouse
+                                  if (lighthouseService.engine != engine) {
+                                    lighthouseService.attachEngine(engine);
+                                    lighthouseService.updateUrl(activeTab.url!);
+                                  }
+                                }
+                              }
+                            });
+                            
                             // Priorité 1: Mosaïque si active
                             if (data.isMosaicActive) {
                               return const MosaicContainer();
