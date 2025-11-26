@@ -12,6 +12,7 @@ import 'accessibility_checker.dart';
 import 'seo_analyzer.dart';
 import 'security_scanner.dart';
 import 'issue_detector.dart';
+import 'audit_history_service.dart';
 
 /// Service principal de Notilus Lighthouse
 class LighthouseService extends ChangeNotifier {
@@ -25,6 +26,7 @@ class LighthouseService extends ChangeNotifier {
   late final SEOAnalyzer seoAnalyzer;
   late final SecurityScanner securityScanner;
   late final IssueDetector issueDetector;
+  late final AuditHistoryService _historyService;
 
   // État
   bool _isAnalyzing = false;
@@ -52,6 +54,7 @@ class LighthouseService extends ChangeNotifier {
     seoAnalyzer = SEOAnalyzer(this);
     securityScanner = SecurityScanner(this);
     issueDetector = IssueDetector(this);
+    _historyService = AuditHistoryService();
   }
 
   // Getters
@@ -64,6 +67,7 @@ class LighthouseService extends ChangeNotifier {
   AuditResult? get lastResult => _lastResult;
   String? get lastError => _lastError;
   List<AuditHistoryEntry> get history => List.unmodifiable(_history);
+  AuditHistoryService get historyService => _historyService;
   
   /// Alias pour isAnalyzing (compatibilité UI)
   bool get isRunning => _isAnalyzing;
@@ -253,6 +257,7 @@ class LighthouseService extends ChangeNotifier {
 
       // Ajouter à l'historique
       _addToHistory(_lastResult!);
+      await _historyService.addEntry(AuditHistoryEntry.fromAuditResult(_lastResult!));
 
       _updateProgress(1.0, 'Audit terminé');
 
@@ -299,6 +304,7 @@ class LighthouseService extends ChangeNotifier {
         );
 
         _addToHistory(_lastResult!);
+        await _historyService.addEntry(AuditHistoryEntry.fromAuditResult(_lastResult!));
         return _lastResult;
       }
 
@@ -533,6 +539,7 @@ class LighthouseService extends ChangeNotifier {
 
   @override
   void dispose() {
+    _historyService.dispose();
     super.dispose();
   }
 }
