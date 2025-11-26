@@ -10,8 +10,7 @@ import 'gx_address_bar.dart';
 import 'gx_tab_bar.dart';
 import 'gx_sidebar.dart';
 import 'web_content_view.dart';
-import 'modern_home_page.dart';
-import 'notilus_dev_home_page.dart';
+import 'home_pages/home_page_factory.dart';
 import 'modern_history_panel.dart';
 import 'modern_bookmarks_panel.dart';
 import 'modern_downloads_panel.dart';
@@ -131,24 +130,14 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
   Widget _buildHomePageWidget() {
     final settings = SettingsService();
     
-    if (settings.homePageStyle == 'notilus_dev') {
-      return NotilusDevHomePage(
-        onTerminalSelected: () {
-          setState(() {
-            _currentSection = SidebarSection.terminal;
-          });
-        },
-        onDevToolsSelected: _openNativeDevTools,
-      );
-    }
-    
-    // Par défaut: Modern Home Page
-    return ModernHomePage(
+    return HomePageFactory.create(
+      style: settings.homePageStyle,
       onTerminalSelected: () {
         setState(() {
           _currentSection = SidebarSection.terminal;
         });
       },
+      onDevToolsSelected: _openNativeDevTools,
     );
   }
 

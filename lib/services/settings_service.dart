@@ -47,7 +47,22 @@ class SettingsService extends ChangeNotifier {
   static const String _keyShowSystemWidgets = 'notilus_show_system_widgets';
   static const String _keyShowQuickAccess = 'notilus_show_quick_access';
   static const String _keyShowRecentHistory = 'notilus_show_recent_history';
-  static const String _keyHomePageStyle = 'notilus_home_page_style'; // 'modern', 'notilus_dev'
+  static const String _keyHomePageStyle = 'notilus_home_page_style'; // 'modern', 'notilus_dev', 'frontend', 'backend', 'devops', 'data_science', 'minimal'
+  static const String _keyDevProfile = 'notilus_dev_profile'; // 'frontend', 'backend', 'fullstack', 'devops', 'data_science', 'mobile', 'gamedev', 'security'
+  
+  // Transparence des widgets
+  static const String _keyWidgetTransparency = 'notilus_widget_transparency'; // 0.0 - 1.0
+  static const String _keyPanelTransparency = 'notilus_panel_transparency'; // 0.0 - 1.0
+  static const String _keyOverlayTransparency = 'notilus_overlay_transparency'; // 0.0 - 1.0
+  static const String _keyGlassBlurIntensity = 'notilus_glass_blur_intensity'; // 0 - 30
+  
+  // Personnalisation avancée
+  static const String _keyShowClock = 'notilus_show_clock';
+  static const String _keyShowWeather = 'notilus_show_weather';
+  static const String _keyShowQuotes = 'notilus_show_quotes';
+  static const String _keyCustomGreeting = 'notilus_custom_greeting';
+  static const String _keyShowAnimations = 'notilus_show_animations';
+  static const String _keyAnimationSpeed = 'notilus_animation_speed'; // 'slow', 'normal', 'fast'
   
   // Services Web Sidebar
   static const String _keyEnabledWebServices = 'notilus_enabled_web_services';
@@ -285,11 +300,101 @@ class SettingsService extends ChangeNotifier {
     notifyListeners();
   }
   
-  /// Style de la page d'accueil: 'modern' (classique) ou 'notilus_dev' (développeur)
+  /// Style de la page d'accueil: 'modern', 'notilus_dev', 'frontend', 'backend', 'devops', 'data_science', 'minimal'
   String get homePageStyle => _prefs?.getString(_keyHomePageStyle) ?? 'modern';
   
   Future<void> setHomePageStyle(String style) async {
     await _prefs?.setString(_keyHomePageStyle, style);
+    notifyListeners();
+  }
+  
+  /// Profil développeur: 'frontend', 'backend', 'fullstack', 'devops', 'data_science', 'mobile', 'gamedev', 'security'
+  String get devProfile => _prefs?.getString(_keyDevProfile) ?? 'fullstack';
+  
+  Future<void> setDevProfile(String profile) async {
+    await _prefs?.setString(_keyDevProfile, profile);
+    notifyListeners();
+  }
+
+  // ============================================
+  // TRANSPARENCE DES WIDGETS
+  // ============================================
+  
+  /// Transparence des widgets (0.0 = opaque, 1.0 = transparent)
+  double get widgetTransparency => _prefs?.getDouble(_keyWidgetTransparency) ?? 0.15;
+  
+  Future<void> setWidgetTransparency(double value) async {
+    await _prefs?.setDouble(_keyWidgetTransparency, value.clamp(0.0, 1.0));
+    notifyListeners();
+  }
+  
+  /// Transparence des panneaux latéraux (0.0 = opaque, 1.0 = transparent)
+  double get panelTransparency => _prefs?.getDouble(_keyPanelTransparency) ?? 0.2;
+  
+  Future<void> setPanelTransparency(double value) async {
+    await _prefs?.setDouble(_keyPanelTransparency, value.clamp(0.0, 1.0));
+    notifyListeners();
+  }
+  
+  /// Transparence des overlays (0.0 = opaque, 1.0 = transparent)
+  double get overlayTransparency => _prefs?.getDouble(_keyOverlayTransparency) ?? 0.5;
+  
+  Future<void> setOverlayTransparency(double value) async {
+    await _prefs?.setDouble(_keyOverlayTransparency, value.clamp(0.0, 1.0));
+    notifyListeners();
+  }
+  
+  /// Intensité du flou glassmorphism (0 - 30)
+  double get glassBlurIntensity => _prefs?.getDouble(_keyGlassBlurIntensity) ?? 10.0;
+  
+  Future<void> setGlassBlurIntensity(double value) async {
+    await _prefs?.setDouble(_keyGlassBlurIntensity, value.clamp(0.0, 30.0));
+    notifyListeners();
+  }
+
+  // ============================================
+  // PERSONNALISATION AVANCÉE
+  // ============================================
+  
+  bool get showClock => _prefs?.getBool(_keyShowClock) ?? true;
+  
+  Future<void> setShowClock(bool show) async {
+    await _prefs?.setBool(_keyShowClock, show);
+    notifyListeners();
+  }
+  
+  bool get showWeather => _prefs?.getBool(_keyShowWeather) ?? false;
+  
+  Future<void> setShowWeather(bool show) async {
+    await _prefs?.setBool(_keyShowWeather, show);
+    notifyListeners();
+  }
+  
+  bool get showQuotes => _prefs?.getBool(_keyShowQuotes) ?? true;
+  
+  Future<void> setShowQuotes(bool show) async {
+    await _prefs?.setBool(_keyShowQuotes, show);
+    notifyListeners();
+  }
+  
+  String get customGreeting => _prefs?.getString(_keyCustomGreeting) ?? '';
+  
+  Future<void> setCustomGreeting(String greeting) async {
+    await _prefs?.setString(_keyCustomGreeting, greeting);
+    notifyListeners();
+  }
+  
+  bool get showAnimations => _prefs?.getBool(_keyShowAnimations) ?? true;
+  
+  Future<void> setShowAnimations(bool show) async {
+    await _prefs?.setBool(_keyShowAnimations, show);
+    notifyListeners();
+  }
+  
+  String get animationSpeed => _prefs?.getString(_keyAnimationSpeed) ?? 'normal';
+  
+  Future<void> setAnimationSpeed(String speed) async {
+    await _prefs?.setString(_keyAnimationSpeed, speed);
     notifyListeners();
   }
 
