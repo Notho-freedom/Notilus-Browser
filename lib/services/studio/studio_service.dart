@@ -11,6 +11,7 @@ import 'responsive_tester_service.dart';
 import 'screenshot_service.dart';
 import 'live_editor_service.dart';
 import 'interaction_recorder_service.dart';
+import 'mockup_comparator_service.dart';
 
 /// Service principal de Notilus Studio
 class StudioService extends ChangeNotifier {
@@ -23,6 +24,7 @@ class StudioService extends ChangeNotifier {
   late final StudioScreenshotService screenshot;
   late final LiveEditorService liveEditor;
   late final InteractionRecorderService interactionRecorder;
+  late final MockupComparatorService mockupComparator;
 
   // État actuel
   StudioModule _activeModule = StudioModule.responsive;
@@ -33,6 +35,7 @@ class StudioService extends ChangeNotifier {
     screenshot = StudioScreenshotService(this);
     liveEditor = LiveEditorService(this);
     interactionRecorder = InteractionRecorderService(this);
+    mockupComparator = MockupComparatorService(this);
   }
 
   // Getters
@@ -49,6 +52,7 @@ class StudioService extends ChangeNotifier {
     screenshot.attachEngine(engine);
     liveEditor.attachEngine(engine);
     interactionRecorder.attachEngine(engine);
+    mockupComparator.attachEngine(engine);
     notifyListeners();
   }
 
@@ -59,6 +63,7 @@ class StudioService extends ChangeNotifier {
     screenshot.detachEngine();
     liveEditor.detachEngine();
     interactionRecorder.detachEngine();
+    mockupComparator.detachEngine();
     notifyListeners();
   }
 
@@ -139,6 +144,7 @@ class StudioService extends ChangeNotifier {
     screenshot.dispose();
     liveEditor.dispose();
     interactionRecorder.dispose();
+    mockupComparator.dispose();
     super.dispose();
   }
 }

@@ -11,6 +11,7 @@ import 'responsive_tester_panel.dart';
 import 'screenshot_panel.dart';
 import 'live_editor_panel.dart';
 import 'interaction_recorder_panel.dart';
+import 'mockup_comparator_panel.dart';
 
 /// Panneau principal de Studio
 class StudioPanel extends StatefulWidget {
@@ -46,6 +47,11 @@ class _StudioPanelState extends State<StudioPanel>
       module: StudioModule.interactionRecorder,
       icon: CupertinoIcons.circle_fill,
       label: 'Recorder',
+    ),
+    _StudioTab(
+      module: StudioModule.mockupCompare,
+      icon: CupertinoIcons.doc_on_doc,
+      label: 'Mockup',
     ),
   ];
 
@@ -85,6 +91,7 @@ class _StudioPanelState extends State<StudioPanel>
                 ScreenshotPanel(),
                 LiveEditorPanel(),
                 InteractionRecorderPanel(),
+                MockupComparatorPanel(),
               ],
             ),
           ),

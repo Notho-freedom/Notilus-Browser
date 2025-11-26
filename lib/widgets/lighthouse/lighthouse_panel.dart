@@ -8,9 +8,11 @@ import 'package:provider/provider.dart';
 import 'dart:math' as math;
 import '../../services/lighthouse/lighthouse_service.dart';
 import '../../services/lighthouse/report_generator.dart';
+import '../../services/lighthouse/audit_history_service.dart';
 import '../../models/lighthouse/audit_models.dart';
 import '../../core/services/color_theme_manager.dart';
 import 'package:flutter/services.dart';
+import 'history_trends_panel.dart';
 
 /// Panneau principal Lighthouse
 class LighthousePanel extends StatefulWidget {
@@ -119,6 +121,13 @@ class _LighthousePanelState extends State<LighthousePanel>
               label: 'Recommandations',
               isSelected: _selectedTab == 2,
               onTap: () => setState(() => _selectedTab = 2),
+              accentColor: accentColor,
+            ),
+            const SizedBox(width: 8),
+            _TabButton(
+              label: 'Historique',
+              isSelected: _selectedTab == 3,
+              onTap: () => setState(() => _selectedTab = 3),
               accentColor: accentColor,
             ),
             const SizedBox(width: 16),
@@ -301,6 +310,8 @@ class _LighthousePanelState extends State<LighthousePanel>
         return _IssuesTab(result: result, accentColor: accentColor);
       case 2:
         return _RecommendationsTab(result: result, accentColor: accentColor);
+      case 3:
+        return const HistoryTrendsPanel();
       default:
         return const SizedBox();
     }
