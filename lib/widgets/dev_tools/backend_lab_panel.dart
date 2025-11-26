@@ -378,7 +378,7 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
       children: [
         _StatCard(
           title: 'Serveurs',
-          value: '${stats?.serversDiscovered ?? _labService.servers.length}',
+          value: '${stats?.totalServers ?? _labService.servers.length}',
           subtitle: 'Découverts',
           icon: Icons.dns_rounded,
           color: const Color(0xFF22C55E),
@@ -386,7 +386,7 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
         ),
         _StatCard(
           title: 'Routes',
-          value: '${stats?.routesFound ?? _labService.routes.length}',
+          value: '${stats?.totalRoutes ?? _labService.routes.length}',
           subtitle: 'Mappées',
           icon: Icons.alt_route_rounded,
           color: const Color(0xFF3B82F6),
@@ -394,15 +394,15 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
         ),
         _StatCard(
           title: 'Tests',
-          value: '${stats?.testsRun ?? _labService.testResults.length}',
-          subtitle: '${stats?.testsSuccessRate.toStringAsFixed(0) ?? 0}% succès',
+          value: '${stats?.totalTestsRun ?? _labService.testResults.length}',
+          subtitle: '${stats?.testSuccessRate.toStringAsFixed(0) ?? 0}% succès',
           icon: Icons.science_rounded,
           color: const Color(0xFFF59E0B),
           onTap: () => _tabController.animateTo(3),
         ),
         _StatCard(
           title: 'Vulnérabilités',
-          value: '${stats?.vulnerabilitiesFound ?? _labService.vulnerabilities.length}',
+          value: '${stats?.totalVulnerabilities ?? _labService.vulnerabilities.length}',
           subtitle: _getVulnSummary(),
           icon: Icons.shield_rounded,
           color: _labService.vulnerabilities.any((v) => v.severity == VulnerabilitySeverity.critical)
@@ -1397,7 +1397,7 @@ class _ActivityItem extends StatelessWidget {
             width: 6,
             height: 6,
             decoration: BoxDecoration(
-              color: result.success ? const Color(0xFF22C55E) : const Color(0xFFEF4444),
+              color: result.status == TestResultStatus.passed ? const Color(0xFF22C55E) : const Color(0xFFEF4444),
               shape: BoxShape.circle,
             ),
           ),
@@ -1407,12 +1407,12 @@ class _ActivityItem extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${result.method} ${result.url}',
+                  'Test: ${result.testId}',
                   style: const TextStyle(fontSize: 10, color: Colors.white70),
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  '${result.statusCode} • ${result.responseTimeMs}ms',
+                  '${result.status.name.toUpperCase()} • ${result.durationMs.round()}ms',
                   style: TextStyle(fontSize: 9, color: Colors.white.withOpacity(0.4)),
                 ),
               ],
@@ -1460,14 +1460,14 @@ class _ServerCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              Text(server.frameworkIcon, style: const TextStyle(fontSize: 16)),
+              Icon(server.frameworkIcon, size: 16, color: Colors.white70),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      server.name,
+                      server.name ?? server.host,
                       style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white),
                     ),
                     Text(
@@ -1517,7 +1517,7 @@ class _RouteCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
-              route.method,
+              route.method.name,
               style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: route.methodColor),
             ),
           ),
@@ -1550,12 +1550,12 @@ class _TestResultCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: result.success
+        color: result.status == TestResultStatus.passed
             ? const Color(0xFF22C55E).withOpacity(0.08)
             : const Color(0xFFEF4444).withOpacity(0.08),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: result.success
+          color: result.status == TestResultStatus.passed
               ? const Color(0xFF22C55E).withOpacity(0.2)
               : const Color(0xFFEF4444).withOpacity(0.2),
         ),
@@ -1566,29 +1566,29 @@ class _TestResultCard extends StatelessWidget {
           Row(
             children: [
               Icon(
-                result.success ? Icons.check_circle : Icons.error,
+                result.statusIcon,
                 size: 14,
-                color: result.success ? const Color(0xFF22C55E) : const Color(0xFFEF4444),
+                color: result.statusColor,
               ),
               const SizedBox(width: 8),
               Text(
-                '${result.statusCode}',
+                result.status.name.toUpperCase(),
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  color: result.success ? const Color(0xFF22C55E) : const Color(0xFFEF4444),
+                  color: result.statusColor,
                 ),
               ),
               const SizedBox(width: 8),
               Text(
-                '${result.responseTimeMs}ms',
+                '${result.durationMs.round()}ms',
                 style: TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.5)),
               ),
             ],
           ),
           const SizedBox(height: 6),
           Text(
-            '${result.method} ${result.url}',
+            'Test: ${result.testId}',
             style: const TextStyle(fontSize: 10, color: Colors.white54, fontFamily: 'JetBrains Mono'),
             overflow: TextOverflow.ellipsis,
           ),
@@ -1647,11 +1647,13 @@ class _VulnerabilityCard extends StatelessWidget {
             vulnerability.description,
             style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.7)),
           ),
-          const SizedBox(height: 8),
-          Text(
-            vulnerability.affectedRoute,
-            style: const TextStyle(fontSize: 10, color: Colors.white38, fontFamily: 'JetBrains Mono'),
-          ),
+          if (vulnerability.routeId != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Route: ${vulnerability.routeId}',
+              style: const TextStyle(fontSize: 10, color: Colors.white38, fontFamily: 'JetBrains Mono'),
+            ),
+          ],
         ],
       ),
     );
@@ -1698,7 +1700,7 @@ class _CaptureCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  '${capture.statusCode ?? '?'} • ${capture.responseTimeMs ?? '?'}ms',
+                  '${capture.statusCode ?? '?'} • ${capture.durationMs.round()}ms',
                   style: TextStyle(fontSize: 9, color: Colors.white.withOpacity(0.4)),
                 ),
               ],

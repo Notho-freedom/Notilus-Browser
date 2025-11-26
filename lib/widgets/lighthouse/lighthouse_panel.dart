@@ -7,8 +7,10 @@ import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import 'dart:math' as math;
 import '../../services/lighthouse/lighthouse_service.dart';
+import '../../services/lighthouse/report_generator.dart';
 import '../../models/lighthouse/audit_models.dart';
 import '../../core/services/color_theme_manager.dart';
+import 'package:flutter/services.dart';
 
 /// Panneau principal Lighthouse
 class LighthousePanel extends StatefulWidget {
@@ -120,6 +122,57 @@ class _LighthousePanelState extends State<LighthousePanel>
               accentColor: accentColor,
             ),
             const SizedBox(width: 16),
+          ],
+          // Export button
+          if (lighthouse.lastResult != null) ...[
+            PopupMenuButton<ReportFormat>(
+              icon: Icon(CupertinoIcons.arrow_up_doc, size: 18, color: accentColor),
+              tooltip: 'Exporter le rapport',
+              onSelected: (format) => _exportReport(context, lighthouse.lastResult!, format, accentColor),
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: ReportFormat.html,
+                  child: Row(
+                    children: [
+                      Icon(CupertinoIcons.doc_text, size: 16, color: accentColor),
+                      const SizedBox(width: 8),
+                      const Text('HTML'),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: ReportFormat.json,
+                  child: Row(
+                    children: [
+                      Icon(CupertinoIcons.doc, size: 16, color: accentColor),
+                      const SizedBox(width: 8),
+                      const Text('JSON'),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: ReportFormat.csv,
+                  child: Row(
+                    children: [
+                      Icon(CupertinoIcons.table, size: 16, color: accentColor),
+                      const SizedBox(width: 8),
+                      const Text('CSV'),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: ReportFormat.markdown,
+                  child: Row(
+                    children: [
+                      Icon(CupertinoIcons.textformat, size: 16, color: accentColor),
+                      const SizedBox(width: 8),
+                      const Text('Markdown'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(width: 8),
           ],
           // Run button
           ElevatedButton.icon(
@@ -250,6 +303,50 @@ class _LighthousePanelState extends State<LighthousePanel>
         return _RecommendationsTab(result: result, accentColor: accentColor);
       default:
         return const SizedBox();
+    }
+  }
+
+  Future<void> _exportReport(
+    BuildContext context,
+    AuditResult result,
+    ReportFormat format,
+    Color accentColor,
+  ) async {
+    try {
+      final filePath = await ReportGenerator.saveReport(result, format);
+      if (filePath != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Rapport exporté: ${filePath.split('/').last}'),
+            backgroundColor: accentColor,
+            action: SnackBarAction(
+              label: 'Copier le chemin',
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: filePath));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: const Text('Chemin copié'), backgroundColor: accentColor),
+                );
+              },
+            ),
+          ),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Erreur lors de l\'export'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 }
