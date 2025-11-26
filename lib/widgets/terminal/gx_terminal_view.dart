@@ -4,6 +4,7 @@ import 'package:xterm/xterm.dart';
 import '../../services/terminal_manager.dart';
 import '../../models/tab_model.dart';
 import '../../core/services/wallpaper_manager.dart';
+import '../../core/services/color_theme_manager.dart';
 
 /// Vue terminal intégrée dans Notilus (style VSCode)
 class GXTerminalView extends StatefulWidget {
@@ -124,9 +125,9 @@ class _GXTerminalViewState extends State<GXTerminalView> {
             ),
           ),
         ),
-        child: const Center(
+        child: Center(
           child: CircularProgressIndicator(
-            color: NotilusColors.neonRed,
+            color: Provider.of<ColorThemeManager>(context, listen: false).nativeSecondaryColor,
           ),
         ),
       );

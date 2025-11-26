@@ -229,6 +229,12 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                   children: [
                     GXTabBar(
                       onMenuTap: _toggleSidebar,
+                      onGroupsPressed: () {
+                        setState(() {
+                          _currentSection = SidebarSection.favorites; // Les groupes sont dans favorites pour l'instant
+                          _isSidebarVisible = true;
+                        });
+                      },
                       isSidebarVisible: _isSidebarVisible,
                     ),
                     GXAddressBar(
