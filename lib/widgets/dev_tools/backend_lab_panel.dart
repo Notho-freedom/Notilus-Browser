@@ -1,5 +1,5 @@
-/// Backend Lab Panel
-/// Interface avancée pour les tests backend et la découverte de serveurs
+/// Backend Lab Panel - Version Notilus GX Native
+/// Interface ultra-réactive pour les tests backend avec configuration automatique
 library backend_lab_panel;
 
 import 'dart:async';
@@ -8,6 +8,8 @@ import 'package:provider/provider.dart';
 import '../../services/backend_lab/backend_lab_service.dart';
 import '../../models/backend_lab/backend_lab_models.dart';
 import '../../core/services/color_theme_manager.dart';
+import '../../core/constants/notilus_colors.dart';
+import '../../core/constants/notilus_fonts.dart';
 
 /// Onglets du Backend Lab
 enum BackendLabTab {
@@ -58,7 +60,7 @@ extension BackendLabTabExt on BackendLabTab {
   }
 }
 
-/// Panneau principal Backend Lab
+/// Panneau principal Backend Lab - Style Notilus GX
 class BackendLabPanel extends StatefulWidget {
   const BackendLabPanel({super.key});
 
@@ -77,6 +79,9 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
   final _quickUrlController = TextEditingController();
   final _quickBodyController = TextEditingController();
   bool _isRunningTest = false;
+  
+  // Auto-config state
+  final Map<String, bool> _configuringServers = {};
 
   @override
   void initState() {
@@ -115,12 +120,13 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
   Widget build(BuildContext context) {
     final colorTheme = Provider.of<ColorThemeManager>(context);
     final accent = colorTheme.nativeSecondaryColor;
+    final bgColor = NotilusColors.getNativeBackgroundColor(context);
 
     return Container(
-      color: const Color(0xFF0A0A0F),
+      color: bgColor,
       child: Column(
         children: [
-          _buildHeader(accent),
+          _buildHeader(accent, bgColor),
           _buildTabBar(accent),
           Expanded(
             child: _isInitialized
@@ -132,34 +138,38 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
     );
   }
 
-  Widget _buildHeader(Color accent) {
+  Widget _buildHeader(Color accent, Color bgColor) {
     return Container(
-      height: 44,
+      height: 48,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            accent.withOpacity(0.15),
-            accent.withOpacity(0.05),
+            accent.withOpacity(0.12),
+            accent.withOpacity(0.06),
             Colors.transparent,
           ],
         ),
-        border: Border(bottom: BorderSide(color: accent.withOpacity(0.2))),
+        border: Border(bottom: BorderSide(color: accent.withOpacity(0.15))),
       ),
       child: Row(
         children: [
-          // Logo
+          // Logo avec style GX
           Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [accent, accent.withOpacity(0.6)],
+                colors: [accent, accent.withOpacity(0.7)],
               ),
               borderRadius: BorderRadius.circular(8),
               boxShadow: [
-                BoxShadow(color: accent.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 2)),
+                BoxShadow(
+                  color: accent.withOpacity(0.4),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
               ],
             ),
             child: const Icon(Icons.science_outlined, size: 18, color: Colors.white),
@@ -171,36 +181,40 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
             children: [
               Text(
                 'BACKEND LAB',
-                style: TextStyle(
+                style: NotilusFonts.orbitron(
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
-                  letterSpacing: 1.5,
                   color: accent,
-                ),
+                ).copyWith(letterSpacing: 1.5),
               ),
               Text(
                 'Tests API • Sécurité • Performance',
-                style: TextStyle(fontSize: 9, color: Colors.white.withOpacity(0.5)),
+                style: NotilusFonts.rajdhani(
+                  fontSize: 9,
+                  color: Colors.white.withOpacity(0.5),
+                ),
               ),
             ],
           ),
           
           const Spacer(),
           
-          // Connection status
+          // Connection status avec animation
           _buildConnectionBadge(accent),
           
           const SizedBox(width: 12),
           
           // Actions
-          _IconBtn(
-            icon: Icons.refresh,
+          _GxIconBtn(
+            icon: Icons.refresh_rounded,
             tooltip: 'Rafraîchir',
+            accent: accent,
             onTap: () => _labService.refreshAll(),
           ),
-          _IconBtn(
+          _GxIconBtn(
             icon: Icons.settings_outlined,
             tooltip: 'Paramètres',
+            accent: accent,
             onTap: _showSettings,
           ),
         ],
@@ -209,52 +223,64 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
   }
 
   Widget _buildConnectionBadge(Color accent) {
-    final connected = _labService.isConnected;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: connected ? const Color(0xFF22C55E).withOpacity(0.15) : const Color(0xFFEF4444).withOpacity(0.15),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: connected ? const Color(0xFF22C55E).withOpacity(0.3) : const Color(0xFFEF4444).withOpacity(0.3),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 6,
-            height: 6,
-            decoration: BoxDecoration(
-              color: connected ? const Color(0xFF22C55E) : const Color(0xFFEF4444),
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: (connected ? const Color(0xFF22C55E) : const Color(0xFFEF4444)).withOpacity(0.5),
-                  blurRadius: 4,
+    return ListenableBuilder(
+      listenable: _labService,
+      builder: (context, _) {
+        final connected = _labService.isConnected;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: connected 
+                ? const Color(0xFF22C55E).withOpacity(0.15) 
+                : const Color(0xFFEF4444).withOpacity(0.15),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: connected 
+                  ? const Color(0xFF22C55E).withOpacity(0.3) 
+                  : const Color(0xFFEF4444).withOpacity(0.3),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: connected ? const Color(0xFF22C55E) : const Color(0xFFEF4444),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: (connected ? const Color(0xFF22C55E) : const Color(0xFFEF4444))
+                          .withOpacity(0.5),
+                      blurRadius: 4,
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                connected ? 'Connecté' : 'Déconnecté',
+                style: NotilusFonts.rajdhani(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: connected ? const Color(0xFF22C55E) : const Color(0xFFEF4444),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 6),
-          Text(
-            connected ? 'Connecté' : 'Déconnecté',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: connected ? const Color(0xFF22C55E) : const Color(0xFFEF4444),
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   Widget _buildTabBar(Color accent) {
     return Container(
-      height: 40,
+      height: 42,
       decoration: BoxDecoration(
-        color: const Color(0xFF0D0D14),
+        color: NotilusColors.chromeDark,
         border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
       ),
       child: TabBar(
@@ -267,14 +293,17 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
         tabs: BackendLabTab.values.map((tab) {
           final isActive = _activeTab == tab;
           return Tab(
-            height: 40,
+            height: 42,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 14),
+              curve: Curves.easeOutCubic,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
                 color: isActive ? tab.accentColor.withOpacity(0.15) : Colors.transparent,
                 borderRadius: BorderRadius.circular(8),
-                border: isActive ? Border.all(color: tab.accentColor.withOpacity(0.3)) : null,
+                border: isActive 
+                    ? Border.all(color: tab.accentColor.withOpacity(0.3), width: 1)
+                    : null,
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -287,7 +316,7 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
                   const SizedBox(width: 8),
                   Text(
                     tab.label,
-                    style: TextStyle(
+                    style: NotilusFonts.rajdhani(
                       fontSize: 11,
                       fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
                       color: isActive ? tab.accentColor : Colors.white.withOpacity(0.5),
@@ -318,7 +347,10 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
           const SizedBox(height: 16),
           Text(
             'Connexion au Backend Lab...',
-            style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+            style: NotilusFonts.rajdhani(
+              color: Colors.white.withOpacity(0.5),
+              fontSize: 12,
+            ),
           ),
         ],
       ),
@@ -346,76 +378,87 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
   // ============================================================================
 
   Widget _buildOverviewTab() {
-    final stats = _labService.stats;
-    
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Stats cards
-          _buildStatsRow(stats),
-          const SizedBox(height: 24),
-          
-          // Quick actions
-          Row(
+    return ListenableBuilder(
+      listenable: _labService,
+      builder: (context, _) {
+        final stats = _labService.stats;
+        final accent = NotilusColors.getSecondaryColor(context);
+        
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(child: _buildQuickTestCard()),
-              const SizedBox(width: 16),
-              Expanded(child: _buildRecentActivityCard()),
+              // Stats cards avec style GX
+              _buildStatsRow(stats, accent),
+              const SizedBox(height: 24),
+              
+              // Quick actions
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: _buildQuickTestCard(accent)),
+                  const SizedBox(width: 16),
+                  Expanded(child: _buildRecentActivityCard(accent)),
+                ],
+              ),
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildStatsRow(OverviewStats? stats) {
+  Widget _buildStatsRow(OverviewStats? stats, Color accent) {
     return Wrap(
       spacing: 16,
       runSpacing: 16,
       children: [
-        _StatCard(
+        _GxStatCard(
           title: 'Serveurs',
-          value: '${stats?.serversDiscovered ?? _labService.servers.length}',
+          value: '${stats?.totalServers ?? _labService.servers.length}',
           subtitle: 'Découverts',
           icon: Icons.dns_rounded,
           color: const Color(0xFF22C55E),
+          accent: accent,
           onTap: () => _tabController.animateTo(1),
         ),
-        _StatCard(
+        _GxStatCard(
           title: 'Routes',
-          value: '${stats?.routesFound ?? _labService.routes.length}',
+          value: '${stats?.totalRoutes ?? _labService.routes.length}',
           subtitle: 'Mappées',
           icon: Icons.alt_route_rounded,
           color: const Color(0xFF3B82F6),
+          accent: accent,
           onTap: () => _tabController.animateTo(2),
         ),
-        _StatCard(
+        _GxStatCard(
           title: 'Tests',
-          value: '${stats?.testsRun ?? _labService.testResults.length}',
-          subtitle: '${stats?.testsSuccessRate.toStringAsFixed(0) ?? 0}% succès',
+          value: '${stats?.totalTestsRun ?? _labService.testResults.length}',
+          subtitle: '${stats?.testSuccessRate.toStringAsFixed(0) ?? 0}% succès',
           icon: Icons.science_rounded,
           color: const Color(0xFFF59E0B),
+          accent: accent,
           onTap: () => _tabController.animateTo(3),
         ),
-        _StatCard(
+        _GxStatCard(
           title: 'Vulnérabilités',
-          value: '${stats?.vulnerabilitiesFound ?? _labService.vulnerabilities.length}',
+          value: '${stats?.totalVulnerabilities ?? _labService.vulnerabilities.length}',
           subtitle: _getVulnSummary(),
           icon: Icons.shield_rounded,
           color: _labService.vulnerabilities.any((v) => v.severity == VulnerabilitySeverity.critical)
               ? const Color(0xFFEF4444)
               : const Color(0xFFF59E0B),
+          accent: accent,
           onTap: () => _tabController.animateTo(4),
         ),
-        _StatCard(
+        _GxStatCard(
           title: 'Captures',
           value: '${_labService.captures.length}',
           subtitle: 'Requêtes',
           icon: Icons.videocam_rounded,
           color: const Color(0xFF14B8A6),
+          accent: accent,
           onTap: () => _tabController.animateTo(6),
         ),
       ],
@@ -432,11 +475,12 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
     return '${vulns.length} trouvées';
   }
 
-  Widget _buildQuickTestCard() {
-    return _Card(
+  Widget _buildQuickTestCard(Color accent) {
+    return _GxCard(
       title: 'Test Rapide',
       icon: Icons.bolt_rounded,
       color: const Color(0xFFF59E0B),
+      accent: accent,
       child: Column(
         children: [
           // Method + URL
@@ -450,8 +494,8 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
                     value: _quickMethod,
-                    dropdownColor: const Color(0xFF1A1A24),
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                    dropdownColor: NotilusColors.chromeDark,
+                    style: NotilusFonts.rajdhani(fontSize: 12, fontWeight: FontWeight.w600),
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     items: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'].map((m) {
                       return DropdownMenuItem(
@@ -465,7 +509,7 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _StyledTextField(
+                child: _GxTextField(
                   controller: _quickUrlController,
                   hint: 'https://api.example.com/endpoint',
                 ),
@@ -476,7 +520,7 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
           
           // Body (for POST/PUT/PATCH)
           if (['POST', 'PUT', 'PATCH'].contains(_quickMethod)) ...[
-            _StyledTextField(
+            _GxTextField(
               controller: _quickBodyController,
               hint: '{"key": "value"}',
               maxLines: 3,
@@ -484,10 +528,10 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
             const SizedBox(height: 12),
           ],
           
-          // Run button
+          // Run button avec style GX
           SizedBox(
             width: double.infinity,
-            child: ElevatedButton.icon(
+            child: _GxButton(
               onPressed: _isRunningTest ? null : _runQuickTest,
               icon: _isRunningTest
                   ? const SizedBox(
@@ -497,12 +541,8 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
                     )
                   : const Icon(Icons.play_arrow_rounded, size: 18),
               label: Text(_isRunningTest ? 'Exécution...' : 'Exécuter'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFF59E0B),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
+              color: const Color(0xFFF59E0B),
+              accent: accent,
             ),
           ),
         ],
@@ -527,36 +567,45 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
     }
   }
 
-  Widget _buildRecentActivityCard() {
-    return _Card(
-      title: 'Activité Récente',
-      icon: Icons.history_rounded,
-      color: const Color(0xFF6366F1),
-      child: _labService.testResults.isEmpty
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    Icon(Icons.inbox_rounded, size: 32, color: Colors.white.withOpacity(0.2)),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Aucune activité',
-                      style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.4)),
+  Widget _buildRecentActivityCard(Color accent) {
+    return ListenableBuilder(
+      listenable: _labService,
+      builder: (context, _) {
+        return _GxCard(
+          title: 'Activité Récente',
+          icon: Icons.history_rounded,
+          color: const Color(0xFF6366F1),
+          accent: accent,
+          child: _labService.testResults.isEmpty
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      children: [
+                        Icon(Icons.inbox_rounded, size: 32, color: Colors.white.withOpacity(0.2)),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Aucune activité',
+                          style: NotilusFonts.rajdhani(
+                            fontSize: 12,
+                            color: Colors.white.withOpacity(0.4),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
+                )
+              : ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _labService.testResults.take(5).length,
+                  itemBuilder: (context, index) {
+                    final result = _labService.testResults[index];
+                    return _GxActivityItem(result: result);
+                  },
                 ),
-              ),
-            )
-          : ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _labService.testResults.take(5).length,
-              itemBuilder: (context, index) {
-                final result = _labService.testResults[index];
-                return _ActivityItem(result: result);
-              },
-            ),
+        );
+      },
     );
   }
 
@@ -572,70 +621,126 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
   }
 
   // ============================================================================
-  // Servers Tab
+  // Servers Tab - Avec configuration automatique
   // ============================================================================
 
   Widget _buildServersTab() {
-    return Column(
-      children: [
-        // Toolbar
-        Container(
-          height: 48,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(
-            color: const Color(0xFF0D0D14),
-            border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
-          ),
-          child: Row(
-            children: [
-              ElevatedButton.icon(
-                onPressed: _labService.isScanning ? null : () => _labService.scanServers(),
-                icon: _labService.isScanning
-                    ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                      )
-                    : const Icon(Icons.radar_rounded, size: 16),
-                label: Text(_labService.isScanning ? 'Scan...' : 'Scanner'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF22C55E),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                '${_labService.servers.length} serveurs découverts',
-                style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.5)),
-              ),
-            ],
-          ),
-        ),
+    return ListenableBuilder(
+      listenable: _labService,
+      builder: (context, _) {
+        final accent = NotilusColors.getSecondaryColor(context);
         
-        // Server list
-        Expanded(
-          child: _labService.servers.isEmpty
-              ? _EmptyState(
-                  icon: Icons.dns_outlined,
-                  title: 'Aucun serveur découvert',
-                  subtitle: 'Cliquez sur "Scanner" pour détecter les serveurs locaux',
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _labService.servers.length,
-                  itemBuilder: (context, index) {
-                    final server = _labService.servers[index];
-                    return _ServerCard(
-                      server: server,
-                      onDiscoverRoutes: () => _labService.discoverRoutes(server.id),
-                      onHealthCheck: () => _labService.healthCheck(server.id),
-                    );
-                  },
-                ),
-        ),
-      ],
+        return Column(
+          children: [
+            // Toolbar avec style GX
+            Container(
+              height: 48,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: NotilusColors.chromeDark,
+                border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
+              ),
+              child: Row(
+                children: [
+                  _GxButton(
+                    onPressed: _labService.isScanning ? null : () => _labService.scanServers(),
+                    icon: _labService.isScanning
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Icons.radar_rounded, size: 16),
+                    label: Text(_labService.isScanning ? 'Scan...' : 'Scanner'),
+                    color: const Color(0xFF22C55E),
+                    accent: accent,
+                    compact: true,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    '${_labService.servers.length} serveurs découverts',
+                    style: NotilusFonts.rajdhani(
+                      fontSize: 11,
+                      color: Colors.white.withOpacity(0.5),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Server list avec configuration automatique
+            Expanded(
+              child: _labService.servers.isEmpty
+                  ? _GxEmptyState(
+                      icon: Icons.dns_outlined,
+                      title: 'Aucun serveur découvert',
+                      subtitle: 'Cliquez sur "Scanner" pour détecter les serveurs locaux',
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _labService.servers.length,
+                      itemBuilder: (context, index) {
+                        final server = _labService.servers[index];
+                        final isConfiguring = _configuringServers[server.id] ?? false;
+                        return _GxServerCard(
+                          server: server,
+                          accent: accent,
+                          isConfiguring: isConfiguring,
+                          onAutoConfigure: () => _autoConfigureServer(server.id),
+                          onDiscoverRoutes: () => _labService.discoverRoutes(server.id),
+                          onHealthCheck: () => _labService.healthCheck(server.id),
+                          onRefresh: () => _labService.getServers(),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        );
+      },
     );
+  }
+  
+  Future<void> _autoConfigureServer(String serverId) async {
+    setState(() => _configuringServers[serverId] = true);
+    
+    try {
+      await _labService.configureServer(
+        serverId,
+        discoverRoutes: true,
+        detectParameters: true,
+        createTests: true,
+      );
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Configuration automatique terminée !',
+              style: NotilusFonts.rajdhani(),
+            ),
+            backgroundColor: const Color(0xFF22C55E),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Erreur lors de la configuration: $e',
+              style: NotilusFonts.rajdhani(),
+            ),
+            backgroundColor: const Color(0xFFEF4444),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _configuringServers[serverId] = false);
+      }
+    }
   }
 
   // ============================================================================
@@ -643,51 +748,77 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
   // ============================================================================
 
   Widget _buildRoutesTab() {
-    final routes = _labService.routes;
-    
-    return Column(
-      children: [
-        // Toolbar
-        Container(
-          height: 48,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(
-            color: const Color(0xFF0D0D14),
-            border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
-          ),
-          child: Row(
-            children: [
-              Text(
-                '${routes.length} routes découvertes',
-                style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.5)),
-              ),
-              const Spacer(),
-              // Filter by method
-              _FilterChip(label: 'Toutes', isActive: true, onTap: () {}),
-              _FilterChip(label: 'GET', isActive: false, color: const Color(0xFF22C55E), onTap: () {}),
-              _FilterChip(label: 'POST', isActive: false, color: const Color(0xFF3B82F6), onTap: () {}),
-            ],
-          ),
-        ),
+    return ListenableBuilder(
+      listenable: _labService,
+      builder: (context, _) {
+        final routes = _labService.routes;
+        final accent = NotilusColors.getSecondaryColor(context);
         
-        // Routes list
-        Expanded(
-          child: routes.isEmpty
-              ? _EmptyState(
-                  icon: Icons.alt_route_outlined,
-                  title: 'Aucune route découverte',
-                  subtitle: 'Découvrez d\'abord des serveurs, puis leurs routes',
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: routes.length,
-                  itemBuilder: (context, index) {
-                    final route = routes[index];
-                    return _RouteCard(route: route);
-                  },
-                ),
-        ),
-      ],
+        return Column(
+          children: [
+            // Toolbar
+            Container(
+              height: 48,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: NotilusColors.chromeDark,
+                border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
+              ),
+              child: Row(
+                children: [
+                  Text(
+                    '${routes.length} routes découvertes',
+                    style: NotilusFonts.rajdhani(
+                      fontSize: 11,
+                      color: Colors.white.withOpacity(0.5),
+                    ),
+                  ),
+                  const Spacer(),
+                  // Filter by method
+                  _GxFilterChip(
+                    label: 'Toutes',
+                    isActive: true,
+                    accent: accent,
+                    onTap: () {},
+                  ),
+                  _GxFilterChip(
+                    label: 'GET',
+                    isActive: false,
+                    color: const Color(0xFF22C55E),
+                    accent: accent,
+                    onTap: () {},
+                  ),
+                  _GxFilterChip(
+                    label: 'POST',
+                    isActive: false,
+                    color: const Color(0xFF3B82F6),
+                    accent: accent,
+                    onTap: () {},
+                  ),
+                ],
+              ),
+            ),
+            
+            // Routes list
+            Expanded(
+              child: routes.isEmpty
+                  ? _GxEmptyState(
+                      icon: Icons.alt_route_outlined,
+                      title: 'Aucune route découverte',
+                      subtitle: 'Sélectionnez un serveur et configurez-le automatiquement',
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: routes.length,
+                      itemBuilder: (context, index) {
+                        final route = routes[index];
+                        return _GxRouteCard(route: route, accent: accent);
+                      },
+                    ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -696,6 +827,8 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
   // ============================================================================
 
   Widget _buildTestingTab() {
+    final accent = NotilusColors.getSecondaryColor(context);
+    
     return Row(
       children: [
         // Left: Test builder
@@ -707,7 +840,7 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
             ),
             child: Column(
               children: [
-                _SectionHeader(title: 'Constructeur de Requête', icon: Icons.build_rounded),
+                _GxSectionHeader(title: 'Constructeur de Requête', icon: Icons.build_rounded, accent: accent),
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.all(16),
@@ -725,8 +858,8 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
                               child: DropdownButtonHideUnderline(
                                 child: DropdownButton<String>(
                                   value: _quickMethod,
-                                  dropdownColor: const Color(0xFF1A1A24),
-                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                                  dropdownColor: NotilusColors.chromeDark,
+                                  style: NotilusFonts.rajdhani(fontSize: 12, fontWeight: FontWeight.w600),
                                   padding: const EdgeInsets.symmetric(horizontal: 12),
                                   items: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'].map((m) {
                                     return DropdownMenuItem(
@@ -740,21 +873,19 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
                             ),
                             const SizedBox(width: 8),
                             Expanded(
-                              child: _StyledTextField(
+                              child: _GxTextField(
                                 controller: _quickUrlController,
                                 hint: 'URL de l\'endpoint',
                               ),
                             ),
                             const SizedBox(width: 8),
-                            ElevatedButton.icon(
+                            _GxButton(
                               onPressed: _isRunningTest ? null : _runQuickTest,
                               icon: const Icon(Icons.send_rounded, size: 16),
                               label: const Text('Envoyer'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF3B82F6),
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                              ),
+                              color: const Color(0xFF3B82F6),
+                              accent: accent,
+                              compact: true,
                             ),
                           ],
                         ),
@@ -780,9 +911,9 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
                                   ],
                                   labelColor: Colors.white,
                                   unselectedLabelColor: Colors.white.withOpacity(0.4),
-                                  labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                                  labelStyle: NotilusFonts.rajdhani(fontSize: 11, fontWeight: FontWeight.w600),
                                   indicator: BoxDecoration(
-                                    color: const Color(0xFF3B82F6).withOpacity(0.2),
+                                    color: accent.withOpacity(0.2),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   dividerColor: Colors.transparent,
@@ -793,14 +924,14 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
                                 height: 200,
                                 child: TabBarView(
                                   children: [
-                                    _KeyValueEditor(title: 'Headers'),
-                                    _StyledTextField(
+                                    _GxKeyValueEditor(title: 'Headers', accent: accent),
+                                    _GxTextField(
                                       controller: _quickBodyController,
                                       hint: '{\n  "key": "value"\n}',
                                       maxLines: 8,
                                     ),
-                                    _AuthEditor(),
-                                    _KeyValueEditor(title: 'Query Parameters'),
+                                    _GxAuthEditor(accent: accent),
+                                    _GxKeyValueEditor(title: 'Query Parameters', accent: accent),
                                   ],
                                 ),
                               ),
@@ -821,23 +952,28 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
           flex: 2,
           child: Column(
             children: [
-              _SectionHeader(title: 'Résultats', icon: Icons.article_rounded),
+              _GxSectionHeader(title: 'Résultats', icon: Icons.article_rounded, accent: accent),
               Expanded(
-                child: _labService.testResults.isEmpty
-                    ? _EmptyState(
-                        icon: Icons.science_outlined,
-                        title: 'Aucun résultat',
-                        subtitle: 'Exécutez un test pour voir les résultats',
-                        compact: true,
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(12),
-                        itemCount: _labService.testResults.length,
-                        itemBuilder: (context, index) {
-                          final result = _labService.testResults[index];
-                          return _TestResultCard(result: result);
-                        },
-                      ),
+                child: ListenableBuilder(
+                  listenable: _labService,
+                  builder: (context, _) {
+                    return _labService.testResults.isEmpty
+                        ? _GxEmptyState(
+                            icon: Icons.science_outlined,
+                            title: 'Aucun résultat',
+                            subtitle: 'Exécutez un test pour voir les résultats',
+                            compact: true,
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.all(12),
+                            itemCount: _labService.testResults.length,
+                            itemBuilder: (context, index) {
+                              final result = _labService.testResults[index];
+                              return _GxTestResultCard(result: result);
+                            },
+                          );
+                  },
+                ),
               ),
             ],
           ),
@@ -851,55 +987,63 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
   // ============================================================================
 
   Widget _buildSecurityTab() {
-    return Column(
-      children: [
-        // Toolbar
-        Container(
-          height: 48,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(
-            color: const Color(0xFF0D0D14),
-            border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
-          ),
-          child: Row(
-            children: [
-              ElevatedButton.icon(
-                onPressed: () => _labService.runSecurityScan(),
-                icon: const Icon(Icons.security_rounded, size: 16),
-                label: const Text('Lancer Scan'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFEF4444),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                '${_labService.vulnerabilities.length} vulnérabilités trouvées',
-                style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.5)),
-              ),
-            ],
-          ),
-        ),
+    return ListenableBuilder(
+      listenable: _labService,
+      builder: (context, _) {
+        final accent = NotilusColors.getSecondaryColor(context);
         
-        // Vulnerabilities
-        Expanded(
-          child: _labService.vulnerabilities.isEmpty
-              ? _EmptyState(
-                  icon: Icons.verified_user_outlined,
-                  title: 'Aucune vulnérabilité',
-                  subtitle: 'Lancez un scan de sécurité pour vérifier vos APIs',
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _labService.vulnerabilities.length,
-                  itemBuilder: (context, index) {
-                    final vuln = _labService.vulnerabilities[index];
-                    return _VulnerabilityCard(vulnerability: vuln);
-                  },
-                ),
-        ),
-      ],
+        return Column(
+          children: [
+            // Toolbar
+            Container(
+              height: 48,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: NotilusColors.chromeDark,
+                border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
+              ),
+              child: Row(
+                children: [
+                  _GxButton(
+                    onPressed: () => _labService.runSecurityScan(),
+                    icon: const Icon(Icons.security_rounded, size: 16),
+                    label: const Text('Lancer Scan'),
+                    color: const Color(0xFFEF4444),
+                    accent: accent,
+                    compact: true,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    '${_labService.vulnerabilities.length} vulnérabilités trouvées',
+                    style: NotilusFonts.rajdhani(
+                      fontSize: 11,
+                      color: Colors.white.withOpacity(0.5),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Vulnerabilities
+            Expanded(
+              child: _labService.vulnerabilities.isEmpty
+                  ? _GxEmptyState(
+                      icon: Icons.verified_user_outlined,
+                      title: 'Aucune vulnérabilité',
+                      subtitle: 'Lancez un scan de sécurité pour vérifier vos APIs',
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _labService.vulnerabilities.length,
+                      itemBuilder: (context, index) {
+                        final vuln = _labService.vulnerabilities[index];
+                        return _GxVulnerabilityCard(vulnerability: vuln);
+                      },
+                    ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -908,6 +1052,8 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
   // ============================================================================
 
   Widget _buildPerformanceTab() {
+    final accent = NotilusColors.getSecondaryColor(context);
+    
     return Column(
       children: [
         // Toolbar
@@ -915,20 +1061,18 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
           height: 48,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            color: const Color(0xFF0D0D14),
+            color: NotilusColors.chromeDark,
             border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
           ),
           child: Row(
             children: [
-              ElevatedButton.icon(
+              _GxButton(
                 onPressed: _showLoadTestDialog,
                 icon: const Icon(Icons.speed_rounded, size: 16),
                 label: const Text('Test de Charge'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF8B5CF6),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                ),
+                color: const Color(0xFF8B5CF6),
+                accent: accent,
+                compact: true,
               ),
             ],
           ),
@@ -936,7 +1080,7 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
         
         // Performance results
         Expanded(
-          child: _EmptyState(
+          child: _GxEmptyState(
             icon: Icons.trending_up_rounded,
             title: 'Tests de Performance',
             subtitle: 'Lancez un test de charge pour analyser les performances',
@@ -951,54 +1095,67 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
   // ============================================================================
 
   Widget _buildCaptureTab() {
-    return Column(
-      children: [
-        // Toolbar
-        Container(
-          height: 48,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(
-            color: const Color(0xFF0D0D14),
-            border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
-          ),
-          child: Row(
-            children: [
-              Text(
-                '${_labService.captures.length} requêtes capturées',
-                style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.5)),
+    return ListenableBuilder(
+      listenable: _labService,
+      builder: (context, _) {
+        return Column(
+          children: [
+            // Toolbar
+            Container(
+              height: 48,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: NotilusColors.chromeDark,
+                border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
               ),
-              const Spacer(),
-              TextButton.icon(
-                onPressed: () => _labService.clearCaptures(),
-                icon: const Icon(Icons.delete_outline, size: 16),
-                label: const Text('Effacer'),
-                style: TextButton.styleFrom(foregroundColor: Colors.white.withOpacity(0.6)),
+              child: Row(
+                children: [
+                  Text(
+                    '${_labService.captures.length} requêtes capturées',
+                    style: NotilusFonts.rajdhani(
+                      fontSize: 11,
+                      color: Colors.white.withOpacity(0.5),
+                    ),
+                  ),
+                  const Spacer(),
+                  TextButton.icon(
+                    onPressed: () => _labService.clearCaptures(),
+                    icon: const Icon(Icons.delete_outline, size: 16),
+                    label: Text(
+                      'Effacer',
+                      style: NotilusFonts.rajdhani(fontSize: 11),
+                    ),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.white.withOpacity(0.6),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
-        
-        // Captures list
-        Expanded(
-          child: _labService.captures.isEmpty
-              ? _EmptyState(
-                  icon: Icons.videocam_off_outlined,
-                  title: 'Aucune capture',
-                  subtitle: 'Les requêtes interceptées apparaîtront ici',
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _labService.captures.length,
-                  itemBuilder: (context, index) {
-                    final capture = _labService.captures[index];
-                    return _CaptureCard(
-                      capture: capture,
-                      onReplay: () => _labService.replayCapture(capture.id),
-                    );
-                  },
-                ),
-        ),
-      ],
+            ),
+            
+            // Captures list
+            Expanded(
+              child: _labService.captures.isEmpty
+                  ? _GxEmptyState(
+                      icon: Icons.videocam_off_outlined,
+                      title: 'Aucune capture',
+                      subtitle: 'Les requêtes interceptées apparaîtront ici',
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _labService.captures.length,
+                      itemBuilder: (context, index) {
+                        final capture = _labService.captures[index];
+                        return _GxCaptureCard(
+                          capture: capture,
+                          onReplay: () => _labService.replayCapture(capture.id),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -1007,16 +1164,21 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
   // ============================================================================
 
   void _showSettings() {
+    final urlController = TextEditingController(text: _labService.baseUrl);
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A24),
-        title: const Text('Paramètres Backend Lab', style: TextStyle(color: Colors.white)),
+        backgroundColor: NotilusColors.chromeDark,
+        title: Text(
+          'Paramètres Backend Lab',
+          style: NotilusFonts.orbitron(color: Colors.white),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _StyledTextField(
-              controller: TextEditingController(text: _labService.baseUrl),
+            _GxTextField(
+              controller: urlController,
               hint: 'URL du serveur Backend Lab',
             ),
           ],
@@ -1024,14 +1186,19 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Annuler'),
+            child: Text('Annuler', style: NotilusFonts.rajdhani()),
           ),
-          ElevatedButton(
+          _GxButton(
             onPressed: () {
+              _labService.baseUrl = urlController.text;
               _labService.checkConnection();
               Navigator.pop(context);
             },
-            child: const Text('Sauvegarder'),
+            icon: const Icon(Icons.save_rounded, size: 16),
+            label: const Text('Sauvegarder'),
+            color: NotilusColors.getSecondaryColor(context),
+            accent: NotilusColors.getSecondaryColor(context),
+            compact: true,
           ),
         ],
       ),
@@ -1041,31 +1208,33 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
   void _showLoadTestDialog() {
     final nameController = TextEditingController();
     final urlController = TextEditingController();
+    final accent = NotilusColors.getSecondaryColor(context);
     
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A24),
-        title: const Text('Nouveau Test de Charge', style: TextStyle(color: Colors.white)),
+        backgroundColor: NotilusColors.chromeDark,
+        title: Text(
+          'Nouveau Test de Charge',
+          style: NotilusFonts.orbitron(color: Colors.white),
+        ),
         content: SizedBox(
           width: 400,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _StyledTextField(controller: nameController, hint: 'Nom du test'),
+              _GxTextField(controller: nameController, hint: 'Nom du test'),
               const SizedBox(height: 12),
-              _StyledTextField(controller: urlController, hint: 'URL cible'),
-              const SizedBox(height: 12),
-              // Additional options would go here
+              _GxTextField(controller: urlController, hint: 'URL cible'),
             ],
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Annuler'),
+            child: Text('Annuler', style: NotilusFonts.rajdhani()),
           ),
-          ElevatedButton(
+          _GxButton(
             onPressed: () {
               if (nameController.text.isNotEmpty && urlController.text.isNotEmpty) {
                 _labService.runLoadTest(
@@ -1075,8 +1244,11 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
                 Navigator.pop(context);
               }
             },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF8B5CF6)),
-            child: const Text('Démarrer'),
+            icon: const Icon(Icons.play_arrow_rounded, size: 16),
+            label: const Text('Démarrer'),
+            color: const Color(0xFF8B5CF6),
+            accent: accent,
+            compact: true,
           ),
         ],
       ),
@@ -1085,15 +1257,21 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
 }
 
 // ============================================================================
-// Reusable Widgets
+// Reusable GX Widgets - Style Notilus GX
 // ============================================================================
 
-class _IconBtn extends StatelessWidget {
+class _GxIconBtn extends StatelessWidget {
   final IconData icon;
   final String tooltip;
+  final Color accent;
   final VoidCallback onTap;
 
-  const _IconBtn({required this.icon, required this.tooltip, required this.onTap});
+  const _GxIconBtn({
+    required this.icon,
+    required this.tooltip,
+    required this.accent,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1106,7 +1284,7 @@ class _IconBtn extends StatelessWidget {
           borderRadius: BorderRadius.circular(6),
           child: Padding(
             padding: const EdgeInsets.all(8),
-            child: Icon(icon, size: 16, color: Colors.white.withOpacity(0.6)),
+            child: Icon(icon, size: 16, color: accent.withOpacity(0.7)),
           ),
         ),
       ),
@@ -1114,20 +1292,22 @@ class _IconBtn extends StatelessWidget {
   }
 }
 
-class _StatCard extends StatelessWidget {
+class _GxStatCard extends StatelessWidget {
   final String title;
   final String value;
   final String subtitle;
   final IconData icon;
   final Color color;
+  final Color accent;
   final VoidCallback? onTap;
 
-  const _StatCard({
+  const _GxStatCard({
     required this.title,
     required this.value,
     required this.subtitle,
     required this.icon,
     required this.color,
+    required this.accent,
     this.onTap,
   });
 
@@ -1163,16 +1343,27 @@ class _StatCard extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               value,
-              style: TextStyle(
+              style: NotilusFonts.orbitron(
                 fontSize: 28,
                 fontWeight: FontWeight.w700,
                 color: color,
-                height: 1,
-              ),
+              ).copyWith(height: 1),
             ),
             const SizedBox(height: 4),
-            Text(title, style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.7))),
-            Text(subtitle, style: TextStyle(fontSize: 9, color: Colors.white.withOpacity(0.4))),
+            Text(
+              title,
+              style: NotilusFonts.rajdhani(
+                fontSize: 11,
+                color: Colors.white.withOpacity(0.7),
+              ),
+            ),
+            Text(
+              subtitle,
+              style: NotilusFonts.rajdhani(
+                fontSize: 9,
+                color: Colors.white.withOpacity(0.4),
+              ),
+            ),
           ],
         ),
       ),
@@ -1180,16 +1371,18 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-class _Card extends StatelessWidget {
+class _GxCard extends StatelessWidget {
   final String title;
   final IconData icon;
   final Color color;
+  final Color accent;
   final Widget child;
 
-  const _Card({
+  const _GxCard({
     required this.title,
     required this.icon,
     required this.color,
+    required this.accent,
     required this.child,
   });
 
@@ -1198,7 +1391,7 @@ class _Card extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF12121A),
+        color: NotilusColors.chromeLight,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white.withOpacity(0.05)),
       ),
@@ -1211,7 +1404,7 @@ class _Card extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 title,
-                style: TextStyle(
+                style: NotilusFonts.rajdhani(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: color,
@@ -1227,11 +1420,16 @@ class _Card extends StatelessWidget {
   }
 }
 
-class _SectionHeader extends StatelessWidget {
+class _GxSectionHeader extends StatelessWidget {
   final String title;
   final IconData icon;
+  final Color accent;
 
-  const _SectionHeader({required this.title, required this.icon});
+  const _GxSectionHeader({
+    required this.title,
+    required this.icon,
+    required this.accent,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1239,16 +1437,16 @@ class _SectionHeader extends StatelessWidget {
       height: 40,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFF0D0D14),
+        color: NotilusColors.chromeDark,
         border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 14, color: Colors.white.withOpacity(0.5)),
+          Icon(icon, size: 14, color: accent.withOpacity(0.7)),
           const SizedBox(width: 8),
           Text(
             title,
-            style: TextStyle(
+            style: NotilusFonts.rajdhani(
               fontSize: 11,
               fontWeight: FontWeight.w600,
               color: Colors.white.withOpacity(0.7),
@@ -1260,12 +1458,12 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-class _StyledTextField extends StatelessWidget {
+class _GxTextField extends StatelessWidget {
   final TextEditingController controller;
   final String hint;
   final int maxLines;
 
-  const _StyledTextField({
+  const _GxTextField({
     required this.controller,
     required this.hint,
     this.maxLines = 1,
@@ -1273,13 +1471,18 @@ class _StyledTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final accent = NotilusColors.getSecondaryColor(context);
+    
     return TextField(
       controller: controller,
       maxLines: maxLines,
-      style: const TextStyle(fontSize: 12, color: Colors.white, fontFamily: 'JetBrains Mono'),
+      style: NotilusFonts.code(fontSize: 12, color: Colors.white),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.3)),
+        hintStyle: NotilusFonts.rajdhani(
+          fontSize: 12,
+          color: Colors.white.withOpacity(0.3),
+        ),
         filled: true,
         fillColor: Colors.white.withOpacity(0.05),
         border: OutlineInputBorder(
@@ -1288,7 +1491,7 @@ class _StyledTextField extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0xFF3B82F6), width: 1),
+          borderSide: BorderSide(color: accent, width: 1),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       ),
@@ -1296,22 +1499,63 @@ class _StyledTextField extends StatelessWidget {
   }
 }
 
-class _FilterChip extends StatelessWidget {
+class _GxButton extends StatelessWidget {
+  final VoidCallback? onPressed;
+  final Widget icon;
+  final Widget label;
+  final Color color;
+  final Color accent;
+  final bool compact;
+
+  const _GxButton({
+    required this.onPressed,
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.accent,
+    this.compact = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton.icon(
+      onPressed: onPressed,
+      icon: icon,
+      label: label,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        foregroundColor: Colors.white,
+        padding: EdgeInsets.symmetric(
+          horizontal: compact ? 16 : 20,
+          vertical: compact ? 8 : 14,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        textStyle: NotilusFonts.rajdhani(fontSize: 11, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+}
+
+class _GxFilterChip extends StatelessWidget {
   final String label;
   final bool isActive;
   final Color? color;
+  final Color accent;
   final VoidCallback onTap;
 
-  const _FilterChip({
+  const _GxFilterChip({
     required this.label,
     required this.isActive,
     this.color,
+    required this.accent,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final chipColor = color ?? Colors.white;
+    final chipColor = color ?? accent;
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -1320,11 +1564,13 @@ class _FilterChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: isActive ? chipColor.withOpacity(0.15) : Colors.white.withOpacity(0.05),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: isActive ? chipColor.withOpacity(0.3) : Colors.transparent),
+          border: Border.all(
+            color: isActive ? chipColor.withOpacity(0.3) : Colors.transparent,
+          ),
         ),
         child: Text(
           label,
-          style: TextStyle(
+          style: NotilusFonts.rajdhani(
             fontSize: 10,
             fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
             color: isActive ? chipColor : Colors.white.withOpacity(0.5),
@@ -1335,13 +1581,13 @@ class _FilterChip extends StatelessWidget {
   }
 }
 
-class _EmptyState extends StatelessWidget {
+class _GxEmptyState extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
   final bool compact;
 
-  const _EmptyState({
+  const _GxEmptyState({
     required this.icon,
     required this.title,
     required this.subtitle,
@@ -1360,7 +1606,7 @@ class _EmptyState extends StatelessWidget {
             SizedBox(height: compact ? 8 : 16),
             Text(
               title,
-              style: TextStyle(
+              style: NotilusFonts.rajdhani(
                 fontSize: compact ? 12 : 14,
                 fontWeight: FontWeight.w600,
                 color: Colors.white.withOpacity(0.3),
@@ -1369,7 +1615,10 @@ class _EmptyState extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               subtitle,
-              style: TextStyle(fontSize: compact ? 10 : 11, color: Colors.white.withOpacity(0.2)),
+              style: NotilusFonts.rajdhani(
+                fontSize: compact ? 10 : 11,
+                color: Colors.white.withOpacity(0.2),
+              ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -1379,10 +1628,10 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-class _ActivityItem extends StatelessWidget {
+class _GxActivityItem extends StatelessWidget {
   final TestResult result;
 
-  const _ActivityItem({required this.result});
+  const _GxActivityItem({required this.result});
 
   @override
   Widget build(BuildContext context) {
@@ -1397,7 +1646,9 @@ class _ActivityItem extends StatelessWidget {
             width: 6,
             height: 6,
             decoration: BoxDecoration(
-              color: result.success ? const Color(0xFF22C55E) : const Color(0xFFEF4444),
+              color: result.status == TestResultStatus.passed 
+                  ? const Color(0xFF22C55E) 
+                  : const Color(0xFFEF4444),
               shape: BoxShape.circle,
             ),
           ),
@@ -1407,13 +1658,19 @@ class _ActivityItem extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${result.method} ${result.url}',
-                  style: const TextStyle(fontSize: 10, color: Colors.white70),
+                  '${result.testId}',
+                  style: NotilusFonts.code(
+                    fontSize: 10,
+                    color: Colors.white70,
+                  ),
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  '${result.statusCode} • ${result.responseTimeMs}ms',
-                  style: TextStyle(fontSize: 9, color: Colors.white.withOpacity(0.4)),
+                  '${result.durationMs.toStringAsFixed(0)}ms',
+                  style: NotilusFonts.rajdhani(
+                    fontSize: 9,
+                    color: Colors.white.withOpacity(0.4),
+                  ),
                 ),
               ],
             ),
@@ -1424,15 +1681,23 @@ class _ActivityItem extends StatelessWidget {
   }
 }
 
-class _ServerCard extends StatelessWidget {
+class _GxServerCard extends StatelessWidget {
   final DiscoveredServer server;
+  final Color accent;
+  final bool isConfiguring;
+  final VoidCallback onAutoConfigure;
   final VoidCallback onDiscoverRoutes;
   final VoidCallback onHealthCheck;
+  final VoidCallback onRefresh;
 
-  const _ServerCard({
+  const _GxServerCard({
     required this.server,
+    required this.accent,
+    required this.isConfiguring,
+    required this.onAutoConfigure,
     required this.onDiscoverRoutes,
     required this.onHealthCheck,
+    required this.onRefresh,
   });
 
   @override
@@ -1441,7 +1706,7 @@ class _ServerCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF12121A),
+        color: NotilusColors.chromeLight,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: server.statusColor.withOpacity(0.3)),
       ),
@@ -1456,47 +1721,98 @@ class _ServerCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: server.statusColor,
                   shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: server.statusColor.withOpacity(0.5), blurRadius: 4)],
+                  boxShadow: [
+                    BoxShadow(
+                      color: server.statusColor.withOpacity(0.5),
+                      blurRadius: 4,
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(width: 12),
-              Text(server.frameworkIcon, style: const TextStyle(fontSize: 16)),
+              Icon(server.frameworkIcon, size: 16, color: accent.withOpacity(0.7)),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      server.name,
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white),
+                      server.displayName,
+                      style: NotilusFonts.rajdhani(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
                     ),
                     Text(
-                      '${server.host}:${server.port} • ${server.framework ?? 'Unknown'}',
-                      style: TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.5)),
+                      '${server.host}:${server.port} • ${server.framework.name}',
+                      style: NotilusFonts.rajdhani(
+                        fontSize: 10,
+                        color: Colors.white.withOpacity(0.5),
+                      ),
                     ),
                   ],
                 ),
               ),
+              // Bouton de configuration automatique
+              _GxButton(
+                onPressed: isConfiguring ? null : onAutoConfigure,
+                icon: isConfiguring
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.auto_awesome_rounded, size: 14),
+                label: Text(isConfiguring ? 'Config...' : 'Auto Config'),
+                color: accent,
+                accent: accent,
+                compact: true,
+              ),
+              const SizedBox(width: 8),
               TextButton(
                 onPressed: onDiscoverRoutes,
-                child: const Text('Routes', style: TextStyle(fontSize: 10)),
+                child: Text(
+                  'Routes',
+                  style: NotilusFonts.rajdhani(fontSize: 10),
+                ),
               ),
               TextButton(
                 onPressed: onHealthCheck,
-                child: const Text('Health', style: TextStyle(fontSize: 10)),
+                child: Text(
+                  'Health',
+                  style: NotilusFonts.rajdhani(fontSize: 10),
+                ),
               ),
             ],
           ),
+          if (server.routesCount > 0) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(Icons.alt_route_rounded, size: 12, color: accent.withOpacity(0.7)),
+                const SizedBox(width: 6),
+                Text(
+                  '${server.routesCount} routes découvertes',
+                  style: NotilusFonts.rajdhani(
+                    fontSize: 10,
+                    color: Colors.white.withOpacity(0.5),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
   }
 }
 
-class _RouteCard extends StatelessWidget {
+class _GxRouteCard extends StatelessWidget {
   final DiscoveredRoute route;
+  final Color accent;
 
-  const _RouteCard({required this.route});
+  const _GxRouteCard({required this.route, required this.accent});
 
   @override
   Widget build(BuildContext context) {
@@ -1504,7 +1820,7 @@ class _RouteCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFF12121A),
+        color: NotilusColors.chromeLight,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: Colors.white.withOpacity(0.05)),
       ),
@@ -1517,45 +1833,65 @@ class _RouteCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
-              route.method,
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: route.methodColor),
+              route.method.name,
+              style: NotilusFonts.rajdhani(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: route.methodColor,
+              ),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               route.path,
-              style: const TextStyle(fontSize: 11, color: Colors.white70, fontFamily: 'JetBrains Mono'),
+              style: NotilusFonts.code(
+                fontSize: 11,
+                color: Colors.white70,
+              ),
             ),
           ),
-          if (route.description != null)
-            Text(
-              route.description!,
-              style: TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.4)),
+          if (route.pathParams.isNotEmpty || route.queryParams.isNotEmpty) ...[
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: accent.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                '${route.pathParams.length + route.queryParams.length} params',
+                style: NotilusFonts.rajdhani(
+                  fontSize: 9,
+                  color: accent,
+                ),
+              ),
             ),
+          ],
         ],
       ),
     );
   }
 }
 
-class _TestResultCard extends StatelessWidget {
+class _GxTestResultCard extends StatelessWidget {
   final TestResult result;
 
-  const _TestResultCard({required this.result});
+  const _GxTestResultCard({required this.result});
 
   @override
   Widget build(BuildContext context) {
+    final isSuccess = result.status == TestResultStatus.passed;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: result.success
+        color: isSuccess
             ? const Color(0xFF22C55E).withOpacity(0.08)
             : const Color(0xFFEF4444).withOpacity(0.08),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: result.success
+          color: isSuccess
               ? const Color(0xFF22C55E).withOpacity(0.2)
               : const Color(0xFFEF4444).withOpacity(0.2),
         ),
@@ -1566,42 +1902,50 @@ class _TestResultCard extends StatelessWidget {
           Row(
             children: [
               Icon(
-                result.success ? Icons.check_circle : Icons.error,
+                result.statusIcon,
                 size: 14,
-                color: result.success ? const Color(0xFF22C55E) : const Color(0xFFEF4444),
+                color: result.statusColor,
               ),
               const SizedBox(width: 8),
               Text(
-                '${result.statusCode}',
-                style: TextStyle(
+                '${result.assertionsPassed}/${result.assertionsPassed + result.assertionsFailed} assertions',
+                style: NotilusFonts.rajdhani(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  color: result.success ? const Color(0xFF22C55E) : const Color(0xFFEF4444),
+                  color: result.statusColor,
                 ),
               ),
               const SizedBox(width: 8),
               Text(
-                '${result.responseTimeMs}ms',
-                style: TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.5)),
+                '${result.durationMs.toStringAsFixed(0)}ms',
+                style: NotilusFonts.rajdhani(
+                  fontSize: 10,
+                  color: Colors.white.withOpacity(0.5),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            '${result.method} ${result.url}',
-            style: const TextStyle(fontSize: 10, color: Colors.white54, fontFamily: 'JetBrains Mono'),
-            overflow: TextOverflow.ellipsis,
-          ),
+          if (result.errorMessage != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              result.errorMessage!,
+              style: NotilusFonts.code(
+                fontSize: 10,
+                color: Colors.white54,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ],
       ),
     );
   }
 }
 
-class _VulnerabilityCard extends StatelessWidget {
+class _GxVulnerabilityCard extends StatelessWidget {
   final Vulnerability vulnerability;
 
-  const _VulnerabilityCard({required this.vulnerability});
+  const _GxVulnerabilityCard({required this.vulnerability});
 
   @override
   Widget build(BuildContext context) {
@@ -1626,7 +1970,7 @@ class _VulnerabilityCard extends StatelessWidget {
                 ),
                 child: Text(
                   vulnerability.severity.name.toUpperCase(),
-                  style: TextStyle(
+                  style: NotilusFonts.rajdhani(
                     fontSize: 9,
                     fontWeight: FontWeight.w700,
                     color: vulnerability.severityColor,
@@ -1636,8 +1980,12 @@ class _VulnerabilityCard extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  vulnerability.type.name,
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white),
+                  vulnerability.title,
+                  style: NotilusFonts.rajdhani(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ],
@@ -1645,12 +1993,10 @@ class _VulnerabilityCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             vulnerability.description,
-            style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.7)),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            vulnerability.affectedRoute,
-            style: const TextStyle(fontSize: 10, color: Colors.white38, fontFamily: 'JetBrains Mono'),
+            style: NotilusFonts.rajdhani(
+              fontSize: 11,
+              color: Colors.white.withOpacity(0.7),
+            ),
           ),
         ],
       ),
@@ -1658,11 +2004,11 @@ class _VulnerabilityCard extends StatelessWidget {
   }
 }
 
-class _CaptureCard extends StatelessWidget {
+class _GxCaptureCard extends StatelessWidget {
   final CapturedRequest capture;
   final VoidCallback onReplay;
 
-  const _CaptureCard({required this.capture, required this.onReplay});
+  const _GxCaptureCard({required this.capture, required this.onReplay});
 
   @override
   Widget build(BuildContext context) {
@@ -1670,7 +2016,7 @@ class _CaptureCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFF12121A),
+        color: NotilusColors.chromeLight,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: Colors.white.withOpacity(0.05)),
       ),
@@ -1684,7 +2030,11 @@ class _CaptureCard extends StatelessWidget {
             ),
             child: Text(
               capture.method,
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: capture.methodColor),
+              style: NotilusFonts.rajdhani(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: capture.methodColor,
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -1694,12 +2044,18 @@ class _CaptureCard extends StatelessWidget {
               children: [
                 Text(
                   capture.url,
-                  style: const TextStyle(fontSize: 11, color: Colors.white70, fontFamily: 'JetBrains Mono'),
+                  style: NotilusFonts.code(
+                    fontSize: 11,
+                    color: Colors.white70,
+                  ),
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  '${capture.statusCode ?? '?'} • ${capture.responseTimeMs ?? '?'}ms',
-                  style: TextStyle(fontSize: 9, color: Colors.white.withOpacity(0.4)),
+                  '${capture.statusCode ?? '?'} • ${capture.durationMs.toStringAsFixed(0)}ms',
+                  style: NotilusFonts.rajdhani(
+                    fontSize: 9,
+                    color: Colors.white.withOpacity(0.4),
+                  ),
                 ),
               ],
             ),
@@ -1716,10 +2072,11 @@ class _CaptureCard extends StatelessWidget {
   }
 }
 
-class _KeyValueEditor extends StatelessWidget {
+class _GxKeyValueEditor extends StatelessWidget {
   final String title;
+  final Color accent;
 
-  const _KeyValueEditor({required this.title});
+  const _GxKeyValueEditor({required this.title, required this.accent});
 
   @override
   Widget build(BuildContext context) {
@@ -1734,11 +2091,23 @@ class _KeyValueEditor extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text('Key', style: TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.4))),
+                child: Text(
+                  'Key',
+                  style: NotilusFonts.rajdhani(
+                    fontSize: 10,
+                    color: Colors.white.withOpacity(0.4),
+                  ),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text('Value', style: TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.4))),
+                child: Text(
+                  'Value',
+                  style: NotilusFonts.rajdhani(
+                    fontSize: 10,
+                    color: Colors.white.withOpacity(0.4),
+                  ),
+                ),
               ),
               const SizedBox(width: 32),
             ],
@@ -1748,10 +2117,12 @@ class _KeyValueEditor extends StatelessWidget {
             children: [
               Expanded(
                 child: TextField(
-                  style: const TextStyle(fontSize: 11, color: Colors.white),
+                  style: NotilusFonts.rajdhani(fontSize: 11, color: Colors.white),
                   decoration: InputDecoration(
                     hintText: 'Content-Type',
-                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
+                    hintStyle: NotilusFonts.rajdhani(
+                      color: Colors.white.withOpacity(0.2),
+                    ),
                     isDense: true,
                     border: InputBorder.none,
                   ),
@@ -1760,10 +2131,12 @@ class _KeyValueEditor extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: TextField(
-                  style: const TextStyle(fontSize: 11, color: Colors.white),
+                  style: NotilusFonts.rajdhani(fontSize: 11, color: Colors.white),
                   decoration: InputDecoration(
                     hintText: 'application/json',
-                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
+                    hintStyle: NotilusFonts.rajdhani(
+                      color: Colors.white.withOpacity(0.2),
+                    ),
                     isDense: true,
                     border: InputBorder.none,
                   ),
@@ -1784,7 +2157,11 @@ class _KeyValueEditor extends StatelessWidget {
   }
 }
 
-class _AuthEditor extends StatelessWidget {
+class _GxAuthEditor extends StatelessWidget {
+  final Color accent;
+
+  const _GxAuthEditor({required this.accent});
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -1799,8 +2176,8 @@ class _AuthEditor extends StatelessWidget {
           DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: 'none',
-              dropdownColor: const Color(0xFF1A1A24),
-              style: const TextStyle(fontSize: 12, color: Colors.white),
+              dropdownColor: NotilusColors.chromeDark,
+              style: NotilusFonts.rajdhani(fontSize: 12, color: Colors.white),
               items: const [
                 DropdownMenuItem(value: 'none', child: Text('Aucune')),
                 DropdownMenuItem(value: 'bearer', child: Text('Bearer Token')),

@@ -486,6 +486,79 @@ class BackendLabService extends ChangeNotifier {
   }
   
   // ============================================================================
+  // Auto Configuration
+  // ============================================================================
+  
+  /// Configure automatiquement un serveur (découvre routes, détecte paramètres, crée tests)
+  Future<Map<String, dynamic>?> configureServer(
+    String serverId, {
+    bool discoverRoutes = true,
+    bool detectParameters = true,
+    bool createTests = true,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/backend-lab/auto-config/servers/$serverId/configure'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'discover_routes': discoverRoutes,
+          'detect_parameters': detectParameters,
+          'create_tests': createTests,
+        }),
+      ).timeout(const Duration(minutes: 5));
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        // Rafraîchir les données après configuration
+        await Future.wait([
+          getServers(),
+          getRoutes(serverId),
+        ]);
+        notifyListeners();
+        return data;
+      }
+    } catch (e) {
+      _lastError = e.toString();
+    }
+    return null;
+  }
+  
+  /// Détecte les paramètres d'une route ou de toutes les routes d'un serveur
+  Future<List<DiscoveredRoute>?> detectRouteParameters(
+    String serverId, {
+    String? routeId,
+  }) async {
+    try {
+      final url = routeId != null
+          ? '$_baseUrl/api/backend-lab/auto-config/servers/$serverId/detect-parameters?route_id=$routeId'
+          : '$_baseUrl/api/backend-lab/auto-config/servers/$serverId/detect-parameters';
+      
+      final response = await http.post(
+        Uri.parse(url),
+      ).timeout(const Duration(seconds: 120));
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final routes = (data is List ? data : [data])
+            .map((r) => DiscoveredRoute.fromJson(r))
+            .toList();
+        
+        // Mettre à jour les routes
+        for (final route in routes) {
+          _routes.removeWhere((r) => r.id == route.id);
+          _routes.add(route);
+        }
+        
+        notifyListeners();
+        return routes;
+      }
+    } catch (e) {
+      _lastError = e.toString();
+    }
+    return null;
+  }
+  
+  // ============================================================================
   // Helpers
   // ============================================================================
   
