@@ -108,11 +108,16 @@ class StudioService extends ChangeNotifier {
 
   /// Exécute du JavaScript dans le moteur
   Future<String?> executeScript(String script) async {
-    if (_engine == null) return null;
+    if (_engine == null) {
+      debugPrint('⚠️ StudioService: No engine attached. Current URL: $_currentUrl');
+      return null;
+    }
     try {
-      return await _engine!.evaluateJavaScript(script);
+      final result = await _engine!.evaluateJavaScript(script);
+      debugPrint('✅ StudioService: Script executed successfully');
+      return result;
     } catch (e) {
-      debugPrint('StudioService executeScript error: $e');
+      debugPrint('❌ StudioService executeScript error: $e');
       return null;
     }
   }

@@ -47,34 +47,109 @@ class _LiveEditorPanelState extends State<LiveEditorPanel>
     return Consumer<StudioService>(
       builder: (context, studioService, _) {
         final editor = studioService.liveEditor;
+        
+        // Vérifier que le moteur est attaché
+        if (studioService.engine == null) {
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  CupertinoIcons.exclamationmark_triangle,
+                  size: 48,
+                  color: Colors.white.withOpacity(0.3),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Aucune page chargée',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.7),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Ouvrez une page web pour utiliser l\'éditeur live',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.4),
+                    fontSize: 12,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          );
+        }
 
-        return Row(
-          children: [
-            // Element Inspector
-            Container(
-              width: 300,
-              decoration: BoxDecoration(
-                border: Border(
-                  right: BorderSide(color: Colors.white.withOpacity(0.05)),
-                ),
-              ),
-              child: _buildInspectorPanel(editor, accentColor),
-            ),
-            // Editor Panel
-            Expanded(
-              child: _buildEditorPanel(editor, accentColor),
-            ),
-            // History Panel
-            Container(
-              width: 250,
-              decoration: BoxDecoration(
-                border: Border(
-                  left: BorderSide(color: Colors.white.withOpacity(0.05)),
-                ),
-              ),
-              child: _buildHistoryPanel(editor, accentColor),
-            ),
-          ],
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final isCompact = constraints.maxWidth < 800;
+            final isVeryCompact = constraints.maxWidth < 500;
+            
+            if (isVeryCompact) {
+              return Column(
+                children: [
+                  Expanded(
+                    child: _buildInspectorPanel(editor, accentColor),
+                  ),
+                  Container(
+                    height: 1,
+                    color: Colors.white.withOpacity(0.05),
+                  ),
+                  Expanded(
+                    child: _buildEditorPanel(editor, accentColor),
+                  ),
+                ],
+              );
+            } else if (isCompact) {
+              return Row(
+                children: [
+                  Container(
+                    width: 200,
+                    decoration: BoxDecoration(
+                      border: Border(
+                        right: BorderSide(color: Colors.white.withOpacity(0.05)),
+                      ),
+                    ),
+                    child: _buildInspectorPanel(editor, accentColor),
+                  ),
+                  Expanded(
+                    child: _buildEditorPanel(editor, accentColor),
+                  ),
+                ],
+              );
+            } else {
+              return Row(
+                children: [
+                  // Element Inspector
+                  Container(
+                    width: 300,
+                    decoration: BoxDecoration(
+                      border: Border(
+                        right: BorderSide(color: Colors.white.withOpacity(0.05)),
+                      ),
+                    ),
+                    child: _buildInspectorPanel(editor, accentColor),
+                  ),
+                  // Editor Panel
+                  Expanded(
+                    child: _buildEditorPanel(editor, accentColor),
+                  ),
+                  // History Panel
+                  Container(
+                    width: 250,
+                    decoration: BoxDecoration(
+                      border: Border(
+                        left: BorderSide(color: Colors.white.withOpacity(0.05)),
+                      ),
+                    ),
+                    child: _buildHistoryPanel(editor, accentColor),
+                  ),
+                ],
+              );
+            }
+          },
         );
       },
     );
@@ -360,11 +435,23 @@ class _LiveEditorPanelState extends State<LiveEditorPanel>
               ),
               const SizedBox(width: 8),
               ElevatedButton.icon(
-                onPressed: () {
-                  editor.injectCSS(_cssController.text);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: const Text('CSS injecté'), backgroundColor: accentColor),
-                  );
+                onPressed: () async {
+                  final studioService = Provider.of<StudioService>(context, listen: false);
+                  if (studioService.engine == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text('Aucune page chargée. Ouvrez une page web d\'abord.'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                    return;
+                  }
+                  await editor.injectCSS(_cssController.text);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: const Text('CSS injecté'), backgroundColor: accentColor),
+                    );
+                  }
                 },
                 icon: const Icon(CupertinoIcons.play, size: 14),
                 label: const Text('Appliquer'),
