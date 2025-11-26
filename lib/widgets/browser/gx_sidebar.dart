@@ -26,6 +26,8 @@ enum SidebarSection {
   nativeDevtools,
   mosaic,
   docs,
+  studio,
+  lighthouse,
   youtubeMusic,
   youtube,
   chatgpt,
@@ -102,6 +104,16 @@ class _GXSidebarState extends State<GXSidebar> {
       section: SidebarSection.mosaic,
       icon: CupertinoIcons.square_grid_2x2_fill,
       label: 'Mosaïque',
+    ),
+    _SidebarDestination(
+      section: SidebarSection.studio,
+      icon: CupertinoIcons.paintbrush,
+      label: 'Studio (Tests Front-End)',
+    ),
+    _SidebarDestination(
+      section: SidebarSection.lighthouse,
+      icon: CupertinoIcons.gauge,
+      label: 'Lighthouse (Analyse)',
     ),
     _SidebarDestination(
       section: SidebarSection.docs,

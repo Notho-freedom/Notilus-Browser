@@ -19,6 +19,8 @@ import 'services/download_service.dart';
 import 'services/devtools_service.dart';
 import 'services/settings_service.dart';
 import 'services/mosaic_service.dart';
+import 'services/studio/studio_service.dart';
+import 'services/lighthouse/lighthouse_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -149,6 +151,8 @@ class NotilusApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => DownloadService()),
         ChangeNotifierProvider(create: (_) => TabManager()),
         ChangeNotifierProvider(create: (_) => DevToolsService()),
+        ChangeNotifierProvider(create: (_) => StudioService()),
+        ChangeNotifierProvider(create: (_) => LighthouseService()),
         ChangeNotifierProvider.value(value: mosaicService),
         ChangeNotifierProvider(
           create: (context) {

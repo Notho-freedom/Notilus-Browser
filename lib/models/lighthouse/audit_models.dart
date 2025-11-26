@@ -100,8 +100,11 @@ extension AuditCategoryExtension on AuditCategory {
 /// Sévérité des problèmes
 enum IssueSeverity {
   critical,
-  warning,
+  high,
+  medium,
+  low,
   info,
+  warning,
   passed,
 }
 
@@ -110,6 +113,12 @@ extension IssueSeverityExtension on IssueSeverity {
     switch (this) {
       case IssueSeverity.critical:
         return 'Critique';
+      case IssueSeverity.high:
+        return 'Haute';
+      case IssueSeverity.medium:
+        return 'Moyenne';
+      case IssueSeverity.low:
+        return 'Faible';
       case IssueSeverity.warning:
         return 'Avertissement';
       case IssueSeverity.info:
@@ -123,6 +132,12 @@ extension IssueSeverityExtension on IssueSeverity {
     switch (this) {
       case IssueSeverity.critical:
         return Icons.error;
+      case IssueSeverity.high:
+        return Icons.warning;
+      case IssueSeverity.medium:
+        return Icons.warning_amber;
+      case IssueSeverity.low:
+        return Icons.info;
       case IssueSeverity.warning:
         return Icons.warning_amber;
       case IssueSeverity.info:
@@ -136,6 +151,12 @@ extension IssueSeverityExtension on IssueSeverity {
     switch (this) {
       case IssueSeverity.critical:
         return const Color(0xFFF44336);
+      case IssueSeverity.high:
+        return const Color(0xFFFF5722);
+      case IssueSeverity.medium:
+        return const Color(0xFFFF9800);
+      case IssueSeverity.low:
+        return const Color(0xFF2196F3);
       case IssueSeverity.warning:
         return const Color(0xFFFF9800);
       case IssueSeverity.info:
@@ -149,14 +170,74 @@ extension IssueSeverityExtension on IssueSeverity {
     switch (this) {
       case IssueSeverity.critical:
         return 0;
-      case IssueSeverity.warning:
+      case IssueSeverity.high:
         return 1;
-      case IssueSeverity.info:
+      case IssueSeverity.medium:
         return 2;
-      case IssueSeverity.passed:
+      case IssueSeverity.low:
         return 3;
+      case IssueSeverity.warning:
+        return 4;
+      case IssueSeverity.info:
+        return 5;
+      case IssueSeverity.passed:
+        return 6;
     }
   }
+}
+
+/// Catégorie de problème (pour l'affichage UI)
+enum IssueCategory {
+  performance,
+  accessibility,
+  seo,
+  security,
+  bestPractices,
+}
+
+extension IssueCategoryExtension on IssueCategory {
+  String get displayName {
+    switch (this) {
+      case IssueCategory.performance:
+        return 'Performance';
+      case IssueCategory.accessibility:
+        return 'Accessibilité';
+      case IssueCategory.seo:
+        return 'SEO';
+      case IssueCategory.security:
+        return 'Sécurité';
+      case IssueCategory.bestPractices:
+        return 'Bonnes Pratiques';
+    }
+  }
+}
+
+/// Niveau d'impact pour les recommandations
+enum ImpactLevel {
+  high,
+  medium,
+  low,
+}
+
+extension ImpactLevelExtension on ImpactLevel {
+  String get displayName {
+    switch (this) {
+      case ImpactLevel.high:
+        return 'Impact élevé';
+      case ImpactLevel.medium:
+        return 'Impact moyen';
+      case ImpactLevel.low:
+        return 'Faible impact';
+    }
+  }
+}
+
+/// Statut d'une métrique Core Web Vitals
+enum MetricStatus {
+  good,
+  needsImprovement,
+  poor,
+  unknown,
 }
 
 /// Priorité des recommandations
@@ -365,6 +446,14 @@ class CoreWebVitals {
     return IssueSeverity.critical;
   }
 
+  /// Évalue le TTI (bon < 3.8s, moyen < 7.3s, mauvais >= 7.3s)
+  IssueSeverity get ttiStatus {
+    if (tti == null) return IssueSeverity.info;
+    if (tti! < 3800) return IssueSeverity.passed;
+    if (tti! < 7300) return IssueSeverity.warning;
+    return IssueSeverity.critical;
+  }
+
   String formatMs(double? value) {
     if (value == null) return '-';
     if (value < 1000) return '${value.round()}ms';
@@ -375,6 +464,15 @@ class CoreWebVitals {
     if (value == null) return '-';
     return value.toStringAsFixed(3);
   }
+
+  // Formatted getters pour l'UI
+  String get formattedLCP => formatMs(lcp);
+  String get formattedFID => formatMs(fid);
+  String get formattedCLS => formatCls(cls);
+  String get formattedTTFB => formatMs(ttfb);
+  String get formattedTTI => formatMs(tti);
+  String get formattedTBT => formatMs(tbt);
+  String get formattedFCP => formatMs(fcp);
 
   factory CoreWebVitals.fromJson(Map<String, dynamic> json) {
     return CoreWebVitals(
@@ -461,6 +559,12 @@ class Issue {
   final String? affectedElement;
   final String? documentation;
   final Map<String, dynamic>? metadata;
+  
+  /// Element HTML affecté (alias pour affectedElement)
+  String? get element => affectedElement;
+  
+  /// Suggestion de correction (alias pour premier suggestedFix)
+  String? get suggestion => suggestedFixes?.firstOrNull?.description;
 
   Issue({
     required this.id,
@@ -601,9 +705,15 @@ class Recommendation {
   final RecommendationPriority priority;
   final int estimatedImpact;
   final EffortLevel effort;
-  final List<ActionStep> steps;
+  final List<ActionStep> actionSteps;
   final String? generatedCode;
   final AuditCategory category;
+  final ImpactLevel impact;
+  final String? estimatedSavings;
+  final String? codeExample;
+
+  /// Liste des étapes sous forme de chaînes
+  List<String> get steps => actionSteps.map((s) => s.description).toList();
 
   Recommendation({
     required this.id,
@@ -612,10 +722,25 @@ class Recommendation {
     required this.priority,
     required this.estimatedImpact,
     required this.effort,
-    this.steps = const [],
+    List<ActionStep>? actionSteps,
     this.generatedCode,
     required this.category,
-  });
+    ImpactLevel? impact,
+    this.estimatedSavings,
+    this.codeExample,
+  }) : actionSteps = actionSteps ?? const [],
+       impact = impact ?? _priorityToImpact(priority);
+
+  static ImpactLevel _priorityToImpact(RecommendationPriority p) {
+    switch (p) {
+      case RecommendationPriority.high:
+        return ImpactLevel.high;
+      case RecommendationPriority.medium:
+        return ImpactLevel.medium;
+      case RecommendationPriority.low:
+        return ImpactLevel.low;
+    }
+  }
 
   /// Score d'opportunité (impact / effort)
   double get opportunityScore {
@@ -641,7 +766,7 @@ class Recommendation {
         (e) => e.name == json['effort'],
         orElse: () => EffortLevel.moderate,
       ),
-      steps: (json['steps'] as List<dynamic>?)
+      actionSteps: (json['steps'] as List<dynamic>?)
               ?.map((s) => ActionStep.fromJson(s as Map<String, dynamic>))
               .toList() ??
           [],
@@ -650,6 +775,14 @@ class Recommendation {
         (c) => c.name == json['category'],
         orElse: () => AuditCategory.performance,
       ),
+      impact: json['impact'] != null
+          ? ImpactLevel.values.firstWhere(
+              (i) => i.name == json['impact'],
+              orElse: () => ImpactLevel.medium,
+            )
+          : null,
+      estimatedSavings: json['estimatedSavings'] as String?,
+      codeExample: json['codeExample'] as String?,
     );
   }
 
@@ -660,9 +793,12 @@ class Recommendation {
         'priority': priority.name,
         'estimatedImpact': estimatedImpact,
         'effort': effort.name,
-        'steps': steps.map((s) => s.toJson()).toList(),
+        'steps': actionSteps.map((s) => s.toJson()).toList(),
         'generatedCode': generatedCode,
         'category': category.name,
+        'impact': impact.name,
+        'estimatedSavings': estimatedSavings,
+        'codeExample': codeExample,
       };
 }
 
@@ -854,6 +990,22 @@ class AuditResult {
   List<Recommendation> get sortedRecommendations => List.from(recommendations)
     ..sort((a, b) => b.opportunityScore.compareTo(a.opportunityScore));
 
+  /// Compteurs pour l'UI
+  int get issueCount => issues.length;
+  int get recommendationCount => recommendations.length;
+  
+  /// Durée d'analyse (alias pour auditDuration)
+  Duration get duration => auditDuration;
+  
+  /// Métriques Core Web Vitals (alias pour webVitals compatible avec PerformanceMetrics)
+  PerformanceMetrics? get metrics => PerformanceMetrics.fromCoreWebVitals(webVitals);
+
+  /// Scores par catégorie pour l'UI
+  int get performanceScore => categories[AuditCategory.performance]?.score ?? 0;
+  int get accessibilityScore => categories[AuditCategory.accessibility]?.score ?? 0;
+  int get seoScore => categories[AuditCategory.seo]?.score ?? 0;
+  int get securityScore => categories[AuditCategory.security]?.score ?? 0;
+
   factory AuditResult.fromJson(Map<String, dynamic> json) {
     return AuditResult(
       id: json['id'] as String,
@@ -898,6 +1050,45 @@ class AuditResult {
         'devicePreset': devicePreset,
         'isMobile': isMobile,
       };
+}
+
+/// Métriques de performance pour l'UI (wrapper de CoreWebVitals)
+class PerformanceMetrics {
+  final CoreWebVitals _vitals;
+  
+  PerformanceMetrics._(this._vitals);
+  
+  factory PerformanceMetrics.fromCoreWebVitals(CoreWebVitals vitals) {
+    return PerformanceMetrics._(vitals);
+  }
+  
+  // Getters formatés
+  String get formattedLCP => _vitals.formattedLCP;
+  String get formattedFID => _vitals.formattedFID;
+  String get formattedCLS => _vitals.formattedCLS;
+  String get formattedTTFB => _vitals.formattedTTFB;
+  String get formattedTTI => _vitals.formattedTTI;
+  
+  // Statuts
+  MetricStatus get lcpStatus => _severityToMetricStatus(_vitals.lcpStatus);
+  MetricStatus get fidStatus => _severityToMetricStatus(_vitals.fidStatus);
+  MetricStatus get clsStatus => _severityToMetricStatus(_vitals.clsStatus);
+  MetricStatus get ttfbStatus => _severityToMetricStatus(_vitals.ttfbStatus);
+  MetricStatus get ttiStatus => _severityToMetricStatus(_vitals.ttiStatus);
+  
+  static MetricStatus _severityToMetricStatus(IssueSeverity severity) {
+    switch (severity) {
+      case IssueSeverity.passed:
+        return MetricStatus.good;
+      case IssueSeverity.warning:
+        return MetricStatus.needsImprovement;
+      case IssueSeverity.critical:
+      case IssueSeverity.high:
+        return MetricStatus.poor;
+      default:
+        return MetricStatus.unknown;
+    }
+  }
 }
 
 /// Entrée d'historique d'audit
