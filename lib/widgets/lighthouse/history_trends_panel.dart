@@ -833,8 +833,14 @@ class _ChartPainter extends CustomPainter {
 
     // Ajuster les limites pour avoir un peu de marge
     final range = maxValue - minValue;
-    minValue = minValue - range * 0.1;
-    maxValue = maxValue + range * 0.1;
+    if (range == 0) {
+      // Si toutes les valeurs sont identiques, créer une plage minimale
+      minValue = minValue - 1;
+      maxValue = maxValue + 1;
+    } else {
+      minValue = minValue - range * 0.1;
+      maxValue = maxValue + range * 0.1;
+    }
 
     // Dessiner les lignes de grille
     final gridPaint = Paint()
@@ -881,10 +887,15 @@ class _ChartPainter extends CustomPainter {
           break;
       }
 
-      final x = padding + (chartWidth / (history.length - 1)) * i;
-      final y = padding +
-          chartHeight -
-          ((value - minValue) / (maxValue - minValue)) * chartHeight;
+      // Éviter la division par zéro
+      final divisor = history.length > 1 ? (history.length - 1) : 1;
+      final x = padding + (chartWidth / divisor) * i;
+      
+      final valueRange = maxValue - minValue;
+      final normalizedValue = valueRange > 0 
+          ? ((value - minValue) / valueRange) * chartHeight
+          : chartHeight / 2;
+      final y = padding + chartHeight - normalizedValue;
 
       final point = Offset(x, y);
       points.add(point);

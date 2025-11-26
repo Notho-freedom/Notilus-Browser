@@ -300,32 +300,31 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                           ),
                           builder: (context, data, _) {
                             // Attacher automatiquement les services Studio et Lighthouse à l'onglet actif
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              final tabManager = context.read<TabManager>();
-                              final tabWebViewManager = context.read<TabWebViewManager>();
-                              final studioService = context.read<StudioService>();
-                              final lighthouseService = context.read<LighthouseService>();
-                              final activeTab = tabManager.activeTab;
-                              
-                              if (activeTab != null && activeTab.url != null && 
-                                  activeTab.url!.isNotEmpty && 
-                                  activeTab.url != 'about:blank' && 
-                                  activeTab.url != 'about:newtab') {
-                                final engine = tabWebViewManager.getEngineForTab(activeTab.id);
+                            // Utiliser un callback unique pour éviter les appels multiples
+                            if (data.activeTabId != null && data.activeTabUrl != null &&
+                                data.activeTabUrl!.isNotEmpty &&
+                                data.activeTabUrl != 'about:blank' &&
+                                data.activeTabUrl != 'about:newtab') {
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                final tabWebViewManager = context.read<TabWebViewManager>();
+                                final studioService = context.read<StudioService>();
+                                final lighthouseService = context.read<LighthouseService>();
+                                
+                                final engine = tabWebViewManager.getEngineForTab(data.activeTabId!);
                                 if (engine != null) {
-                                  // Attacher Studio
+                                  // Attacher Studio seulement si nécessaire
                                   if (studioService.engine != engine) {
                                     studioService.attachEngine(engine);
-                                    studioService.updateUrl(activeTab.url!);
+                                    studioService.updateUrl(data.activeTabUrl!);
                                   }
-                                  // Attacher Lighthouse
+                                  // Attacher Lighthouse seulement si nécessaire
                                   if (lighthouseService.engine != engine) {
                                     lighthouseService.attachEngine(engine);
-                                    lighthouseService.updateUrl(activeTab.url!);
+                                    lighthouseService.updateUrl(data.activeTabUrl!);
                                   }
                                 }
-                              }
-                            });
+                              });
+                            }
                             
                             // Priorité 1: Mosaïque si active
                             if (data.isMosaicActive) {
