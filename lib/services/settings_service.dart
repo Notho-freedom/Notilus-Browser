@@ -47,6 +47,7 @@ class SettingsService extends ChangeNotifier {
   static const String _keyShowSystemWidgets = 'notilus_show_system_widgets';
   static const String _keyShowQuickAccess = 'notilus_show_quick_access';
   static const String _keyShowRecentHistory = 'notilus_show_recent_history';
+  static const String _keyHomePageStyle = 'notilus_home_page_style'; // 'modern', 'notilus_dev'
   
   // Services Web Sidebar
   static const String _keyEnabledWebServices = 'notilus_enabled_web_services';
@@ -281,6 +282,14 @@ class SettingsService extends ChangeNotifier {
   
   Future<void> setShowRecentHistory(bool show) async {
     await _prefs?.setBool(_keyShowRecentHistory, show);
+    notifyListeners();
+  }
+  
+  /// Style de la page d'accueil: 'modern' (classique) ou 'notilus_dev' (développeur)
+  String get homePageStyle => _prefs?.getString(_keyHomePageStyle) ?? 'modern';
+  
+  Future<void> setHomePageStyle(String style) async {
+    await _prefs?.setString(_keyHomePageStyle, style);
     notifyListeners();
   }
 
