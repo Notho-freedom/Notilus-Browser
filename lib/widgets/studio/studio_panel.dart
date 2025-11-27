@@ -111,39 +111,6 @@ class _StudioPanelState extends State<StudioPanel>
       ),
       child: Row(
         children: [
-          // Logo
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                Container(
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [accentColor, accentColor.withOpacity(0.7)],
-                    ),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Center(
-                    child: Icon(CupertinoIcons.paintbrush, size: 14, color: Colors.white),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Notilus Studio',
-                  style: TextStyle(
-                    color: accentColor,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          Container(width: 1, height: 24, color: Colors.white.withOpacity(0.1)),
-
           // Tabs
           Expanded(
             child: TabBar(

@@ -305,7 +305,8 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                                 data.activeTabUrl!.isNotEmpty &&
                                 data.activeTabUrl != 'about:blank' &&
                                 data.activeTabUrl != 'about:newtab') {
-                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                              // Utiliser un Future.microtask pour éviter les appels multiples pendant le build
+                              Future.microtask(() {
                                 final tabWebViewManager = context.read<TabWebViewManager>();
                                 final studioService = context.read<StudioService>();
                                 final lighthouseService = context.read<LighthouseService>();
@@ -316,12 +317,27 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                                   if (studioService.engine != engine) {
                                     studioService.attachEngine(engine);
                                     studioService.updateUrl(data.activeTabUrl!);
+                                    debugPrint('✅ StudioService attached to engine for tab: ${data.activeTabId}');
                                   }
                                   // Attacher Lighthouse seulement si nécessaire
                                   if (lighthouseService.engine != engine) {
                                     lighthouseService.attachEngine(engine);
                                     lighthouseService.updateUrl(data.activeTabUrl!);
                                   }
+                                } else {
+                                  debugPrint('⚠️ No engine found for tab: ${data.activeTabId}');
+                                }
+                              });
+                            } else {
+                              // Détacher si pas d'onglet actif valide
+                              Future.microtask(() {
+                                final studioService = context.read<StudioService>();
+                                final lighthouseService = context.read<LighthouseService>();
+                                if (studioService.engine != null) {
+                                  studioService.detachEngine();
+                                }
+                                if (lighthouseService.engine != null) {
+                                  lighthouseService.detachEngine();
                                 }
                               });
                             }

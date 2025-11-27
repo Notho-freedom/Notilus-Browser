@@ -75,6 +75,8 @@ class ResponsiveTesterService extends ChangeNotifier {
       scrollPosition: _syncScrollPosition,
     );
     notifyListeners();
+    // Forcer une mise à jour immédiate
+    Future.microtask(() => notifyListeners());
   }
 
   /// Supprime un viewport
@@ -82,6 +84,8 @@ class ResponsiveTesterService extends ChangeNotifier {
     _activeViewports.removeWhere((v) => v.id == presetId);
     _viewportStates.remove(presetId);
     notifyListeners();
+    // Forcer une mise à jour immédiate
+    Future.microtask(() => notifyListeners());
   }
 
   /// Supprime tous les viewports
@@ -89,6 +93,8 @@ class ResponsiveTesterService extends ChangeNotifier {
     _activeViewports.clear();
     _viewportStates.clear();
     notifyListeners();
+    // Forcer une mise à jour immédiate
+    Future.microtask(() => notifyListeners());
   }
 
   /// Ajoute les viewports par défaut
