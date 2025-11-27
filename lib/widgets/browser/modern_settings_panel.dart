@@ -16,6 +16,8 @@ import '../../services/auth/config_sync_service.dart';
 import '../../widgets/auth/sync_status_widget.dart';
 import '../../widgets/auth/auth_dialog.dart';
 import '../common/color_picker_dialog.dart';
+import '../common/gx_futuristic_dialog.dart';
+import '../../core/constants/notilus_fonts.dart';
 
 class ModernSettingsPanel extends StatefulWidget {
   final VoidCallback? onClose;
@@ -1619,45 +1621,34 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
     Color accentColor,
     {bool isDestructive = false}
   ) {
-    return showDialog<bool>(
+    return GxFuturisticDialog.show<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A20),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(
-              isDestructive ? CupertinoIcons.exclamationmark_triangle : CupertinoIcons.trash,
-              color: isDestructive ? Colors.red : accentColor,
-              size: 24,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
-              ),
-            ),
-          ],
+      title: title,
+      titleIcon: isDestructive ? Icons.warning_rounded : Icons.delete_rounded,
+      accentColor: isDestructive ? Colors.red : accentColor,
+      width: 450,
+      child: Text(
+        message,
+        style: NotilusFonts.rajdhani(
+          fontSize: 13,
+          color: Colors.white.withOpacity(0.7),
         ),
-        content: Text(
-          message,
-          style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('Annuler', style: TextStyle(color: Colors.white.withOpacity(0.6))),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: isDestructive ? Colors.red : accentColor,
-            ),
-            child: const Text('Confirmer', style: TextStyle(color: Colors.white)),
-          ),
-        ],
       ),
+      actions: [
+        GxFuturisticButton(
+          label: 'Annuler',
+          variant: GxFuturisticButtonVariant.secondary,
+          accentColor: accentColor,
+          onPressed: () => Navigator.pop(context, false),
+        ),
+        GxFuturisticButton(
+          label: 'Confirmer',
+          icon: Icons.check_rounded,
+          variant: GxFuturisticButtonVariant.primary,
+          accentColor: isDestructive ? Colors.red : accentColor,
+          onPressed: () => Navigator.pop(context, true),
+        ),
+      ],
     );
   }
 
