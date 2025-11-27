@@ -2069,7 +2069,7 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
                         ),
                       ),
                       // Panneau de détails
-                      if (_selectedLog != null && _selectedLog!.hasRequestDetails)
+                      if (_selectedLog != null)
                         Container(
                           width: 400,
                           decoration: BoxDecoration(
@@ -2377,31 +2377,33 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
                 const SizedBox(height: 16),
                 
                 // Détails de la requête
-                if (log.request != null) ...[
+                if (log.request != null && log.request!.isNotEmpty) ...[
                   _DetailSection(
                     title: 'Request',
                     accentColor: accent,
                     children: [
                       if (log.request!['method'] != null)
-                        _DetailRow('Method', log.request!['method']),
+                        _DetailRow('Method', log.request!['method'].toString()),
                       if (log.request!['url'] != null)
-                        _DetailRow('URL', log.request!['url']),
+                        _DetailRow('URL', log.request!['url'].toString()),
                       if (log.request!['path'] != null)
-                        _DetailRow('Path', log.request!['path']),
+                        _DetailRow('Path', log.request!['path'].toString()),
+                      if (log.request!['query_string'] != null && log.request!['query_string'].toString().isNotEmpty)
+                        _DetailRow('Query', log.request!['query_string'].toString()),
                       if (log.request!['client_host'] != null)
-                        _DetailRow('Client', log.request!['client_host']),
+                        _DetailRow('Client', log.request!['client_host'].toString()),
                     ],
                   ),
                   
-                  if (log.request!['headers'] != null) ...[
+                  if (log.request!['headers'] != null && log.request!['headers'] is Map) ...[
                     const SizedBox(height: 16),
                     _DetailSection(
                       title: 'Request Headers',
                       accentColor: accent,
-                      children: (log.request!['headers'] as Map<String, dynamic>?)
-                          ?.entries
+                      children: (log.request!['headers'] as Map<String, dynamic>)
+                          .entries
                           .map((e) => _DetailRow(e.key, e.value.toString()))
-                          .toList() ?? [],
+                          .toList(),
                     ),
                   ],
                   
@@ -2418,10 +2420,21 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
                       ],
                     ),
                   ],
+                ] else if (log.message.contains('GET') || log.message.contains('POST') || 
+                          log.message.contains('PUT') || log.message.contains('DELETE')) ...[
+                  // Si c'est un log HTTP mais sans détails, extraire les infos du message
+                  _DetailSection(
+                    title: 'Request Info',
+                    accentColor: accent,
+                    children: [
+                      _DetailRow('Message', log.message),
+                      _DetailRow('Raw', log.raw),
+                    ],
+                  ),
                 ],
                 
                 // Détails de la réponse
-                if (log.response != null) ...[
+                if (log.response != null && log.response!.isNotEmpty) ...[
                   const SizedBox(height: 16),
                   _DetailSection(
                     title: 'Response',
@@ -2434,15 +2447,15 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
                     ],
                   ),
                   
-                  if (log.response!['headers'] != null) ...[
+                  if (log.response!['headers'] != null && log.response!['headers'] is Map) ...[
                     const SizedBox(height: 16),
                     _DetailSection(
                       title: 'Response Headers',
                       accentColor: accent,
-                      children: (log.response!['headers'] as Map<String, dynamic>?)
-                          ?.entries
+                      children: (log.response!['headers'] as Map<String, dynamic>)
+                          .entries
                           .map((e) => _DetailRow(e.key, e.value.toString()))
-                          .toList() ?? [],
+                          .toList(),
                     ),
                   ],
                 ],
