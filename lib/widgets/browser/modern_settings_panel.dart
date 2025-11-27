@@ -745,6 +745,12 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
               );
             }),
             const SizedBox(height: 20),
+            _buildSubsectionTitle('Interface', gxRed),
+            const SizedBox(height: 4),
+            Text('Choisissez le type d\'interface du terminal', style: TextStyle(color: Colors.white60, fontSize: 10)),
+            const SizedBox(height: 12),
+            _buildTerminalInterfaceSelector(gxRed),
+            const SizedBox(height: 20),
             _buildSubsectionTitle('Apparence', gxRed),
             const SizedBox(height: 12),
             Row(
@@ -783,6 +789,106 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
           ],
         );
       },
+    );
+  }
+
+  Widget _buildTerminalInterfaceSelector(Color gxRed) {
+    return Row(
+      children: [
+        Expanded(
+          child: GestureDetector(
+            onTap: () => _settings.setTerminalInterfaceType('native'),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: _settings.terminalInterfaceType == 'native'
+                    ? gxRed.withOpacity(0.2)
+                    : Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: _settings.terminalInterfaceType == 'native'
+                      ? gxRed
+                      : Colors.white.withOpacity(0.1),
+                  width: _settings.terminalInterfaceType == 'native' ? 2 : 1,
+                ),
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    CupertinoIcons.square_list,
+                    color: _settings.terminalInterfaceType == 'native' ? gxRed : Colors.white70,
+                    size: 24,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Notilus Native',
+                    style: TextStyle(
+                      color: _settings.terminalInterfaceType == 'native' ? gxRed : Colors.white70,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Interface Flutter',
+                    style: TextStyle(
+                      color: Colors.white60,
+                      fontSize: 9,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: GestureDetector(
+            onTap: () => _settings.setTerminalInterfaceType('xterm'),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: _settings.terminalInterfaceType == 'xterm'
+                    ? gxRed.withOpacity(0.2)
+                    : Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: _settings.terminalInterfaceType == 'xterm'
+                      ? gxRed
+                      : Colors.white.withOpacity(0.1),
+                  width: _settings.terminalInterfaceType == 'xterm' ? 2 : 1,
+                ),
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    CupertinoIcons.square_list,
+                    color: _settings.terminalInterfaceType == 'xterm' ? gxRed : Colors.white70,
+                    size: 24,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'XTerm.js',
+                    style: TextStyle(
+                      color: _settings.terminalInterfaceType == 'xterm' ? gxRed : Colors.white70,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Terminal avancé',
+                    style: TextStyle(
+                      color: Colors.white60,
+                      fontSize: 9,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

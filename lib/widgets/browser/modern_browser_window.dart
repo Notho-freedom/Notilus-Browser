@@ -21,7 +21,7 @@ import 'webview_service_panel.dart';
 import '../../core/services/wallpaper_manager.dart';
 import '../../core/services/color_theme_manager.dart';
 import '../../services/settings_service.dart';
-import '../../widgets/terminal/native_terminal_panel.dart';
+import '../../widgets/terminal/terminal_panel.dart';
 import '../../widgets/dev_tools/notilus_devtools.dart';
 import '../../widgets/documentation/documentation_panel.dart';
 import '../../widgets/mosaic/mosaic_container.dart';
@@ -585,7 +585,7 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
         return _SidebarPanelConfig(
           title: 'Terminal',
           icon: CupertinoIcons.square_list,
-          child: const NativeTerminalPanel(),
+          child: const TerminalPanel(),
         );
       case SidebarSection.youtubeMusic:
         return _SidebarPanelConfig(
@@ -699,33 +699,34 @@ class _NotilusWidgetsPanel extends StatelessWidget {
     final theme = Theme.of(context);
     final gxRed = Provider.of<ColorThemeManager>(context).nativeSecondaryColor;
     
-    return Container(
-      decoration: BoxDecoration(
-        image: DecorationImage(
-          image: NetworkImage(context.watch<WallpaperManager>().current),
-          fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(
-            Colors.black.withValues(alpha: 0.85),
-            BlendMode.srcOver,
+    return Consumer<SettingsService>(
+      builder: (context, settings, _) => Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: NetworkImage(context.watch<WallpaperManager>().current),
+            fit: BoxFit.cover,
+            colorFilter: ColorFilter.mode(
+              Colors.black.withValues(alpha: 0.85),
+              BlendMode.srcOver,
+            ),
           ),
         ),
-      ),
-      child: Container(
-        color: Colors.black.withValues(alpha: 0.5),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Row(
-                children: [
-                  Text(
-                    'Widgets système',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
+        child: Container(
+          color: Colors.black.withValues(alpha: 1.0 - settings.panelTransparency),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Row(
+                  children: [
+                    Text(
+                      'Widgets système',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
                   const Spacer(),
                   Container(
                     width: 8,
@@ -785,6 +786,7 @@ class _NotilusWidgetsPanel extends StatelessWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }
