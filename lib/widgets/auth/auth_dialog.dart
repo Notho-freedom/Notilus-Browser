@@ -80,16 +80,33 @@ class AuthDialog extends StatelessWidget {
               label: 'Continuer avec GitHub',
               color: Colors.white,
               onPressed: () async {
-                final result = await authService.signInWithGitHub();
-                if (result != null && context.mounted) {
-                  Navigator.of(context).pop(true);
-                } else if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('GitHub OAuth non encore implémenté'),
-                      backgroundColor: Colors.orange,
-                    ),
-                  );
+                try {
+                  final result = await authService.signInWithGitHub();
+                  if (result != null && context.mounted) {
+                    Navigator.of(context).pop(true);
+                  } else if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Authentification GitHub en cours... Vérifiez votre navigateur'),
+                        backgroundColor: Colors.blue,
+                        duration: Duration(seconds: 3),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          e.toString().contains('configuration')
+                              ? 'GitHub OAuth nécessite une configuration dans Firebase Console'
+                              : 'Erreur lors de la connexion GitHub: ${e.toString()}'
+                        ),
+                        backgroundColor: Colors.red,
+                        duration: const Duration(seconds: 5),
+                      ),
+                    );
+                  }
                 }
               },
             ),

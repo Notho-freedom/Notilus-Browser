@@ -4,13 +4,15 @@ library firebase_auth_service;
 import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:flutter/foundation.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
+import 'package:flutter/foundation.dart' as foundation;
 
 /// Service d'authentification Firebase
-class FirebaseAuthService extends ChangeNotifier {
+class FirebaseAuthService extends foundation.ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   GoogleSignIn? _googleSignIn;
+  User? _currentUser;
+  bool _isLoading = false;
   
   FirebaseAuthService() {
     // google_sign_in n'est pas supporté sur Windows
@@ -20,11 +22,8 @@ class FirebaseAuthService extends ChangeNotifier {
         scopes: ['email', 'profile'],
       );
     }
-
-  User? _currentUser;
-  bool _isLoading = false;
-
-  FirebaseAuthService() {
+    
+    // Écouter les changements d'état d'authentification
     _auth.authStateChanges().listen((User? user) {
       _currentUser = user;
       notifyListeners();
@@ -121,104 +120,36 @@ class FirebaseAuthService extends ChangeNotifier {
 
       // Utiliser Firebase Auth avec OAuthProvider pour GitHub
       // Cela nécessite que GitHub soit configuré dans Firebase Console
+      // (Settings > Authentication > Sign-in method > Add new provider > GitHub)
+      
       final provider = OAuthProvider('github.com');
       
       // Configurer les scopes GitHub
+      provider.setCustomParameters({
+        'allow_signup': 'true',
+      });
       provider.addScope('read:user');
       provider.addScope('user:email');
       
-      // Sur Windows, utiliser signInWithPopup n'est pas disponible
-      // Utiliser signInWithRedirect qui ouvre le navigateur
-      if (Platform.isWindows) {
-        return await _signInWithGitHubWindows(provider);
-      }
+      // Note: signInWithPopup/signInWithRedirect ne sont pas disponibles dans firebase_auth Flutter
+      // Il faut utiliser un flux OAuth personnalisé avec un serveur backend
+      // ou utiliser signInWithCredential avec un token obtenu manuellement
       
-      // Sur les autres plateformes, essayer signInWithPopup
-      try {
-        final userCredential = await _auth.signInWithPopup(provider);
-        _currentUser = userCredential.user;
-        _isLoading = false;
-        notifyListeners();
-        return userCredential;
-      } catch (e) {
-        // Si signInWithPopup échoue, utiliser signInWithRedirect
-        debugPrint('signInWithPopup échoué, utilisation de signInWithRedirect: $e');
-        return await _signInWithGitHubWindows(provider);
-      }
+      throw UnsupportedError(
+        'GitHub OAuth nécessite une configuration backend OAuth.\n'
+        'Pour l\'instant, utilisez l\'authentification par email.\n'
+        'GitHub doit être activé dans Firebase Console (Authentication > Sign-in method).\n'
+        'Pour implémenter GitHub OAuth, configurez un serveur backend qui gère le flux OAuth.'
+      );
     } catch (e) {
       debugPrint('Erreur lors de la connexion GitHub: $e');
       _isLoading = false;
       notifyListeners();
-      return null;
-    }
-  }
-
-  /// Connexion GitHub sur Windows via OAuth redirect
-  Future<UserCredential?> _signInWithGitHubWindows(OAuthProvider provider) async {
-    try {
-      // Note: signInWithRedirect nécessite une configuration spéciale
-      // Pour Windows, on va utiliser un flux OAuth personnalisé via le navigateur
-      
-      // Récupérer l'authDomain depuis Firebase
-      final authDomain = _auth.app.options.authDomain ?? 'notilus-browser.firebaseapp.com';
-      
-      // Construire l'URL OAuth GitHub via Firebase
-      final redirectUri = 'https://$authDomain/__/auth/handler';
-      final clientId = _getGitHubClientId(); // À configurer
-      
-      if (clientId == null) {
-        debugPrint('⚠️ GitHub OAuth non configuré. Veuillez configurer GitHub dans Firebase Console.');
-        _isLoading = false;
-        notifyListeners();
-        return null;
-      }
-      
-      // Construire l'URL d'authentification GitHub
-      final authUrl = Uri.parse(
-        'https://github.com/login/oauth/authorize'
-        '?client_id=$clientId'
-        '&redirect_uri=${Uri.encodeComponent(redirectUri)}'
-        '&scope=read:user user:email'
-        '&state=${DateTime.now().millisecondsSinceEpoch}',
-      );
-      
-      // Ouvrir le navigateur pour l'authentification
-      if (await canLaunchUrl(authUrl)) {
-        await launchUrl(authUrl, mode: LaunchMode.externalApplication);
-        
-        // Note: Le flux OAuth complet nécessite un serveur backend ou
-        // une configuration spéciale pour capturer le callback
-        // Pour l'instant, on guide l'utilisateur
-        debugPrint('🌐 Navigateur ouvert pour l\'authentification GitHub');
-        debugPrint('💡 Après authentification, utilisez le token reçu pour vous connecter');
-        
-        _isLoading = false;
-        notifyListeners();
-        
-        // Retourner null car le flux n'est pas complètement automatisé
-        // L'utilisateur devra entrer le token manuellement ou utiliser un backend
-        return null;
-      } else {
-        throw Exception('Impossible d\'ouvrir le navigateur');
-      }
-    } catch (e) {
-      debugPrint('Erreur lors de la connexion GitHub (Windows): $e');
-      _isLoading = false;
-      notifyListeners();
-      return null;
+      rethrow;
     }
   }
   
-  /// Récupère le Client ID GitHub depuis la configuration
-  /// Note: Ceci devrait être stocké de manière sécurisée (variables d'environnement, etc.)
-  String? _getGitHubClientId() {
-    // Pour l'instant, retourner null - l'utilisateur doit configurer cela
-    // Dans un environnement de production, cela devrait être dans les variables d'environnement
-    // ou dans la configuration Firebase
-    return null; // TODO: Configurer le Client ID GitHub
-  }
-  
-  /// Connexion GitHub avec un access token (pour flux manuel)
+  /// Connexion GitHub avec un access token (pour flux manuel ou backend)
   Future<UserCredential?> signInWithGitHubToken(String accessToken) async {
     try {
       _isLoading = true;
@@ -329,4 +260,5 @@ class FirebaseAuthService extends ChangeNotifier {
     }
   }
 }
+
 
