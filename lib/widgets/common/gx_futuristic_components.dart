@@ -510,21 +510,19 @@ class GxFuturisticProgress extends StatelessWidget {
           ),
           child: Stack(
             children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                width: double.infinity,
-                height: double.infinity,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      accent,
-                      accent.withOpacity(0.7),
-                    ],
+              FractionallySizedBox(
+                widthFactor: progressValue,
+                child: Container(
+                  height: double.infinity,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        accent,
+                        accent.withOpacity(0.7),
+                      ],
+                    ),
                   ),
                 ),
-                transform: Matrix4.identity()
-                  ..scaleX(progressValue),
-                alignment: Alignment.centerLeft,
               ),
             ],
           ),

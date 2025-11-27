@@ -2,6 +2,7 @@
 library gx_notification_service;
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../core/constants/notilus_colors.dart';
 import '../core/constants/notilus_fonts.dart';
 import '../core/services/color_theme_manager.dart';
