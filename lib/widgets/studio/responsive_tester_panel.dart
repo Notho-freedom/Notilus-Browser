@@ -9,6 +9,8 @@ import '../../services/studio/studio_service.dart';
 import '../../services/studio/responsive_tester_service.dart';
 import '../../models/studio/viewport_preset.dart';
 import '../../core/services/color_theme_manager.dart';
+import '../../core/constants/notilus_fonts.dart';
+import '../common/gx_futuristic_widgets.dart';
 
 /// Panneau du testeur responsive
 class ResponsiveTesterPanel extends StatefulWidget {
@@ -62,14 +64,11 @@ class _ResponsiveTesterPanelState extends State<ResponsiveTesterPanel> {
                 minHeight: isCompact ? 60 : 40,
                 maxHeight: isCompact ? 80 : 40,
               ),
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: isCompact ? 4 : 0),
-              decoration: BoxDecoration(
-                color: const Color(0xFF18181E),
-                border: Border(
-                  bottom: BorderSide(color: Colors.white.withOpacity(0.05)),
-                ),
-              ),
-              child: isCompact
+              child: GxFuturisticContainer(
+                accentColor: accentColor,
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: isCompact ? 4 : 0),
+                showBorders: false,
+                child: isCompact
                   ? SingleChildScrollView(
                       scrollDirection: Axis.vertical,
                       child: Column(
@@ -234,6 +233,7 @@ class _ResponsiveTesterPanelState extends State<ResponsiveTesterPanel> {
                         ],
                       ),
                     ),
+              ),
             );
           },
         );

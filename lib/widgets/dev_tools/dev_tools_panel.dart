@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../../core/utils/theme_extensions.dart';
 import 'package:provider/provider.dart';
 import '../../widgets/common/glassmorphic_container.dart';
+import '../../widgets/common/gx_futuristic_widgets.dart';
+import '../../core/services/color_theme_manager.dart';
+import 'package:provider/provider.dart';
 import '../../widgets/common/neon_button.dart';
 
 enum DevToolsTab { console, network, performance, elements, sources, application }
@@ -164,15 +167,14 @@ class _DevToolsPanelState extends State<DevToolsPanel> {
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: GlassmorphicContainer(
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                child: Text(
-                  '> Console prête\n> Les logs apparaîtront ici\n> Intégration CEF à venir',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    fontFamily: 'Roboto Mono',
-                    color: context.textSecondaryColor,
-                  ),
+            child: GxFuturisticContainer(
+              accentColor: Provider.of<ColorThemeManager>(context, listen: false).nativeSecondaryColor,
+              padding: const EdgeInsets.all(8),
+              child: Text(
+                '> Console prête\n> Les logs apparaîtront ici\n> Intégration CEF à venir',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontFamily: 'Roboto Mono',
+                  color: context.textSecondaryColor,
                 ),
               ),
             ),
@@ -226,10 +228,10 @@ class _DevToolsPanelState extends State<DevToolsPanel> {
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: GlassmorphicContainer(
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                child: Text(
+            child: GxFuturisticContainer(
+              accentColor: Provider.of<ColorThemeManager>(context, listen: false).nativeSecondaryColor,
+              padding: const EdgeInsets.all(8),
+              child: Text(
                   'Requêtes réseau\nLes requêtes HTTP apparaîtront ici\nIntégration CEF à venir',
                   style: theme.textTheme.bodySmall?.copyWith(
                     fontFamily: 'Roboto Mono',
@@ -258,10 +260,10 @@ class _DevToolsPanelState extends State<DevToolsPanel> {
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: GlassmorphicContainer(
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                child: Text(
+            child: GxFuturisticContainer(
+              accentColor: Provider.of<ColorThemeManager>(context, listen: false).nativeSecondaryColor,
+              padding: const EdgeInsets.all(8),
+              child: Text(
                   'Métriques de performance\nGraphiques et statistiques\nIntégration CEF à venir',
                   style: theme.textTheme.bodySmall?.copyWith(
                     fontFamily: 'Roboto Mono',
@@ -290,10 +292,10 @@ class _DevToolsPanelState extends State<DevToolsPanel> {
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: GlassmorphicContainer(
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                child: Text(
+            child: GxFuturisticContainer(
+              accentColor: Provider.of<ColorThemeManager>(context, listen: false).nativeSecondaryColor,
+              padding: const EdgeInsets.all(8),
+              child: Text(
                   'Inspecteur DOM\nArborescence HTML\nIntégration CEF à venir',
                   style: theme.textTheme.bodySmall?.copyWith(
                     fontFamily: 'Roboto Mono',
@@ -322,10 +324,10 @@ class _DevToolsPanelState extends State<DevToolsPanel> {
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: GlassmorphicContainer(
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                child: Text(
+            child: GxFuturisticContainer(
+              accentColor: Provider.of<ColorThemeManager>(context, listen: false).nativeSecondaryColor,
+              padding: const EdgeInsets.all(8),
+              child: Text(
                   'Éditeur de sources\nFichiers JS/CSS\nIntégration CEF à venir',
                   style: theme.textTheme.bodySmall?.copyWith(
                     fontFamily: 'Roboto Mono',
@@ -354,10 +356,10 @@ class _DevToolsPanelState extends State<DevToolsPanel> {
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: GlassmorphicContainer(
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                child: Text(
+            child: GxFuturisticContainer(
+              accentColor: Provider.of<ColorThemeManager>(context, listen: false).nativeSecondaryColor,
+              padding: const EdgeInsets.all(8),
+              child: Text(
                   'Storage, Cookies, Cache\nInformations d\'application\nIntégration CEF à venir',
                   style: theme.textTheme.bodySmall?.copyWith(
                     fontFamily: 'Roboto Mono',

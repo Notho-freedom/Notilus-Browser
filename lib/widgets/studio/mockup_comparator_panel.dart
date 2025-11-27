@@ -12,6 +12,8 @@ import '../../services/studio/studio_service.dart';
 import '../../services/studio/mockup_comparator_service.dart';
 import '../../models/studio/studio_models.dart';
 import '../../core/services/color_theme_manager.dart';
+import '../../core/constants/notilus_fonts.dart';
+import '../common/gx_futuristic_widgets.dart';
 
 /// Panneau Mockup Comparator
 class MockupComparatorPanel extends StatefulWidget {
@@ -40,24 +42,16 @@ class _MockupComparatorPanelState extends State<MockupComparatorPanel> {
               return SingleChildScrollView(
                 child: Column(
                   children: [
-                    Container(
+                    GxFuturisticPanel(
                       padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        border: Border(
-                          bottom: BorderSide(color: Colors.white.withOpacity(0.05)),
-                        ),
-                      ),
                       child: _buildControlsPanel(comparator, accentColor),
                     ),
-                    Container(
+                    SizedBox(
                       height: 300,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        border: Border(
-                          bottom: BorderSide(color: Colors.white.withOpacity(0.05)),
-                        ),
+                      child: GxFuturisticPanel(
+                        padding: const EdgeInsets.all(16),
+                        child: _buildComparisonView(comparator, accentColor),
                       ),
-                      child: _buildComparisonView(comparator, accentColor),
                     ),
                     if (comparator.lastResult != null)
                       Container(
@@ -74,13 +68,10 @@ class _MockupComparatorPanelState extends State<MockupComparatorPanel> {
                 children: [
                   Row(
                     children: [
-                      Container(
+                      GxFuturisticContainer(
+                        accentColor: accentColor,
                         width: 280,
-                        decoration: BoxDecoration(
-                          border: Border(
-                            right: BorderSide(color: Colors.white.withOpacity(0.05)),
-                          ),
-                        ),
+                        padding: EdgeInsets.zero,
                         child: _buildControlsPanel(comparator, accentColor),
                       ),
                       Expanded(
@@ -89,13 +80,10 @@ class _MockupComparatorPanelState extends State<MockupComparatorPanel> {
                     ],
                   ),
                   if (comparator.lastResult != null)
-                    Container(
+                    GxFuturisticContainer(
+                      accentColor: accentColor,
                       height: 200,
-                      decoration: BoxDecoration(
-                        border: Border(
-                          top: BorderSide(color: Colors.white.withOpacity(0.05)),
-                        ),
-                      ),
+                      padding: EdgeInsets.zero,
                       child: _buildResultsPanel(comparator, accentColor),
                     ),
                 ],

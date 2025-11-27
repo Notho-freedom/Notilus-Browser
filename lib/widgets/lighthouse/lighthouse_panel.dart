@@ -11,6 +11,8 @@ import '../../services/lighthouse/report_generator.dart';
 import '../../services/lighthouse/audit_history_service.dart';
 import '../../models/lighthouse/audit_models.dart';
 import '../../core/services/color_theme_manager.dart';
+import '../../core/constants/notilus_colors.dart';
+import '../../widgets/common/gx_futuristic_panel.dart';
 import 'package:flutter/services.dart';
 import 'history_trends_panel.dart';
 import 'ai_advisor_panel.dart';

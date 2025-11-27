@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../../core/constants/notilus_colors.dart';
 import '../../core/constants/notilus_fonts.dart';
 import '../../core/services/color_theme_manager.dart';
+import '../../services/settings_service.dart';
 
 /// Dialog futuriste avec contours géométriques façon OS SF
 class GxFuturisticDialog extends StatelessWidget {
@@ -67,6 +68,8 @@ class GxFuturisticDialog extends StatelessWidget {
     final accent = accentColor ?? NotilusColors.getSecondaryColor(context);
     final themeManager = Provider.of<ColorThemeManager>(context, listen: false);
     final bgColor = themeManager.nativeBackgroundColor;
+    final settings = SettingsService();
+    final panelOpacity = 1.0 - settings.panelTransparency;
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -95,7 +98,7 @@ class GxFuturisticDialog extends StatelessWidget {
               filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
               child: Container(
                 decoration: BoxDecoration(
-                  color: bgColor.withOpacity(0.95),
+                  color: bgColor.withOpacity(panelOpacity.clamp(0.0, 1.0)),
                   border: Border.all(
                     color: accent.withOpacity(0.4),
                     width: 1.5,
@@ -103,9 +106,6 @@ class GxFuturisticDialog extends StatelessWidget {
                 ),
                 child: Stack(
                   children: [
-                    // Effet de grille de fond
-                    _GridPattern(color: accent.withOpacity(0.1)),
-                    
                     // Contours géométriques
                     _GeometricBorders(accentColor: accent),
                     
@@ -310,58 +310,6 @@ class _DialogActions extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Motif de grille de fond
-class _GridPattern extends StatelessWidget {
-  final Color color;
-
-  const _GridPattern({required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(
-      painter: _GridPainter(color: color),
-      child: const SizedBox.expand(),
-    );
-  }
-}
-
-class _GridPainter extends CustomPainter {
-  final Color color;
-
-  _GridPainter({required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 0.5
-      ..style = PaintingStyle.stroke;
-
-    const spacing = 20.0;
-
-    // Lignes verticales
-    for (double x = 0; x < size.width; x += spacing) {
-      canvas.drawLine(
-        Offset(x, 0),
-        Offset(x, size.height),
-        paint,
-      );
-    }
-
-    // Lignes horizontales
-    for (double y = 0; y < size.height; y += spacing) {
-      canvas.drawLine(
-        Offset(0, y),
-        Offset(size.width, y),
-        paint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 /// Contours géométriques aux angles

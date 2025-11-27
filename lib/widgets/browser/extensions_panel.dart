@@ -7,6 +7,9 @@ import '../../core/utils/theme_extensions.dart';
 import '../../services/extension_service.dart';
 import '../../models/extension.dart';
 import '../../widgets/common/glassmorphic_container.dart';
+import '../../widgets/common/gx_futuristic_widgets.dart';
+import '../../core/services/color_theme_manager.dart';
+import 'package:provider/provider.dart';
 import '../../widgets/common/neon_button.dart';
 import '../../core/services/color_theme_manager.dart';
 import 'package:provider/provider.dart';
@@ -154,7 +157,10 @@ class _ExtensionsPanelState extends State<ExtensionsPanel> {
 
   Widget _buildExtensionItem(
       BuildContext context, ThemeData theme, Extension extension) {
-    return GlassmorphicContainer(
+    final accentColor = Provider.of<ColorThemeManager>(context, listen: false).nativeSecondaryColor;
+    
+    return GxFuturisticCard(
+      accentColor: accentColor,
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       child: Row(
