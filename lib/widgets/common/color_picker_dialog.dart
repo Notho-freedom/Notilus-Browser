@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/notilus_colors.dart';
+import '../../core/constants/notilus_fonts.dart';
+import 'gx_futuristic_dialog.dart';
 
 /// Dialog de sélection de couleur personnalisé pour Notilus
 class ColorPickerDialog extends StatefulWidget {
@@ -58,33 +60,33 @@ class _ColorPickerDialogState extends State<ColorPickerDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final accentColor = NotilusColors.getSecondaryColor(context);
     
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      child: Container(
-        width: 400,
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: NotilusColors.nativeBackground,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: NotilusColors.neonRed.withValues(alpha: 0.3),
-            width: 1,
-          ),
+    return GxFuturisticDialog(
+      title: widget.title,
+      titleIcon: Icons.palette_rounded,
+      accentColor: accentColor,
+      width: 450,
+      actions: [
+        GxFuturisticButton(
+          label: 'Annuler',
+          variant: GxFuturisticButtonVariant.secondary,
+          accentColor: accentColor,
+          onPressed: () => Navigator.of(context).pop(),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              widget.title,
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 24),
+        const SizedBox(width: 8),
+        GxFuturisticButton(
+          label: 'Appliquer',
+          icon: Icons.check_rounded,
+          variant: GxFuturisticButtonVariant.primary,
+          accentColor: accentColor,
+          onPressed: () => Navigator.of(context).pop(_selectedColor),
+        ),
+      ],
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
             
             // Aperçu de la couleur
             Container(
@@ -181,29 +183,7 @@ class _ColorPickerDialogState extends State<ColorPickerDialog> {
               ],
             ),
             
-            const SizedBox(height: 24),
-            
-            // Boutons
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Annuler'),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: () => Navigator.of(context).pop(_selectedColor),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: NotilusColors.neonRed,
-                    foregroundColor: Colors.white,
-                  ),
-                  child: const Text('Appliquer'),
-                ),
-              ],
-            ),
-          ],
-        ),
+        ],
       ),
     );
   }
