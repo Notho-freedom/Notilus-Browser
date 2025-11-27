@@ -27,6 +27,12 @@ from backend_lab.security_scanner import router as security_scanner_router
 from backend_lab.performance_lab import router as performance_lab_router
 from backend_lab.mock_server import router as mock_server_router
 from backend_lab.analytics import router as analytics_router
+from backend_lab.auto_config import router as auto_config_router
+from backend_lab.console import router as console_router, ConsoleMiddleware
+# Importer pour initialiser le handler de console
+import backend_lab.console
+# Réinitialiser les handlers après la configuration de logging
+backend_lab.console.initialize_console_handlers()
 
 # Charger les variables d'environnement
 load_dotenv()
@@ -61,6 +67,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Middleware pour capturer les logs de requêtes
+app.add_middleware(ConsoleMiddleware)
 
 # ============================================================================
 # Services existants
@@ -114,6 +123,16 @@ app.include_router(
     prefix="/api/backend-lab/analytics", 
     tags=["📊 Analytics"]
 )
+app.include_router(
+    auto_config_router, 
+    prefix="/api/backend-lab/auto-config", 
+    tags=["⚙️ Auto Configuration"]
+)
+app.include_router(
+    console_router, 
+    prefix="/api/backend-lab/console", 
+    tags=["🖥️ Console"]
+)
 
 
 @app.get("/")
@@ -136,11 +155,49 @@ async def health_check():
 
 
 if __name__ == "__main__":
+    import logging.config
+    
+    # Configuration de logging pour capturer tous les logs
+    log_config = {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "default": {
+                "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            },
+            "access": {
+                "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            },
+        },
+        "handlers": {
+            "default": {
+                "formatter": "default",
+                "class": "logging.StreamHandler",
+                "stream": "ext://sys.stdout",
+            },
+            "access": {
+                "formatter": "access",
+                "class": "logging.StreamHandler",
+                "stream": "ext://sys.stdout",
+            },
+        },
+        "loggers": {
+            "uvicorn": {"handlers": ["default"], "level": "INFO", "propagate": False},
+            "uvicorn.error": {"handlers": ["default"], "level": "INFO", "propagate": False},
+            "uvicorn.access": {"handlers": ["access"], "level": "INFO", "propagate": False},
+            "fastapi": {"handlers": ["default"], "level": "INFO", "propagate": False},
+        },
+    }
+    
+    # Appliquer la configuration
+    logging.config.dictConfig(log_config)
+    
     port = int(os.getenv("PORT", 8000))
     uvicorn.run(
         "main:app",
         host="127.0.0.1",
         port=port,
-        reload=True
+        reload=True,
+        log_config=log_config
     )
 

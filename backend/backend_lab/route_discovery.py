@@ -22,6 +22,7 @@ from .models.route import (
 )
 from .models.server import DiscoveredServer
 from .server_discovery import _discovered_servers
+from .validators import validate_server_id, validate_route_id
 
 router = APIRouter()
 
@@ -652,6 +653,7 @@ async def discover_routes(server_id: str, request: Optional[DiscoverRequest] = N
     Découvre automatiquement toutes les routes d'un serveur.
     Utilise OpenAPI, GraphQL introspection et fuzzing.
     """
+    server_id = validate_server_id(server_id)
     options = request or DiscoverRequest()
     return await _service.discover_routes(
         server_id,
@@ -666,6 +668,7 @@ async def list_routes(server_id: str):
     """
     Liste toutes les routes découvertes pour un serveur.
     """
+    server_id = validate_server_id(server_id)
     return _service.get_routes_for_server(server_id)
 
 
@@ -674,6 +677,8 @@ async def get_route(server_id: str, route_id: str):
     """
     Récupère les détails d'une route spécifique.
     """
+    server_id = validate_server_id(server_id)
+    route_id = validate_route_id(route_id)
     route = _service.get_route(route_id)
     if route.server_id != server_id:
         raise HTTPException(status_code=404, detail="Route not found for this server")
@@ -685,6 +690,7 @@ async def import_openapi(server_id: str, request: ImportOpenAPIRequest):
     """
     Importe une spécification OpenAPI pour un serveur.
     """
+    server_id = validate_server_id(server_id)
     return await _service.import_openapi(server_id, request.spec)
 
 
@@ -693,6 +699,7 @@ async def delete_route(route_id: str):
     """
     Supprime une route de la liste des routes découvertes.
     """
+    route_id = validate_route_id(route_id)
     if route_id in _discovered_routes:
         del _discovered_routes[route_id]
     return {"status": "ok", "message": "Route deleted"}

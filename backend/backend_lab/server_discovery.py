@@ -24,6 +24,7 @@ from .models.server import (
     ScanConfig,
     ScanResult,
 )
+from .validators import validate_server_id
 
 router = APIRouter()
 
@@ -483,6 +484,9 @@ class ServerDiscoveryService:
         server.framework = framework
         server.headers_signature = headers
         
+        # Récupérer le maximum d'informations
+        await self._gather_server_info(server)
+        
         # Health check
         server.health = await HealthChecker.check(base_url)
         server.last_seen = datetime.now()
@@ -493,6 +497,69 @@ class ServerDiscoveryService:
             server.status = ServerStatus.RUNNING
         
         return server
+    
+    async def _gather_server_info(self, server: DiscoveredServer):
+        """Récupère le maximum d'informations sur un serveur"""
+        base_url = server.base_url
+        
+        async with httpx.AsyncClient(timeout=10.0, verify=False, follow_redirects=True) as client:
+            try:
+                # Requête de base pour récupérer les headers
+                response = await client.get(base_url)
+                
+                # Récupérer tous les headers
+                all_headers = dict(response.headers)
+                server.headers_signature.update({
+                    k: v for k, v in all_headers.items() 
+                    if k.lower() in ['server', 'x-powered-by', 'x-framework', 'x-aspnet-version', 
+                                    'x-request-id', 'x-runtime', 'x-version', 'x-api-version']
+                })
+                
+                # Récupérer les cookies
+                server.cookies_detected = list(response.cookies.keys())
+                
+                # Chercher OpenAPI/Swagger
+                from .route_discovery import OpenAPIParser
+                openapi_spec = await OpenAPIParser.discover(base_url)
+                if openapi_spec:
+                    server.metadata['openapi_available'] = True
+                    server.metadata['openapi_version'] = openapi_spec.get('openapi') or openapi_spec.get('swagger')
+                    server.metadata['openapi_info'] = openapi_spec.get('info', {})
+                    server.endpoints_found.append('/openapi.json')
+                
+                # Chercher d'autres endpoints de documentation
+                doc_endpoints = ['/docs', '/swagger', '/redoc', '/api-docs']
+                for endpoint in doc_endpoints:
+                    try:
+                        doc_response = await client.get(f"{base_url}{endpoint}", timeout=2.0)
+                        if doc_response.status_code in [200, 301, 302]:
+                            server.endpoints_found.append(endpoint)
+                    except:
+                        pass
+                
+                # Chercher GraphQL
+                from .route_discovery import GraphQLIntrospector
+                gql_endpoint = await GraphQLIntrospector.discover(base_url)
+                if gql_endpoint:
+                    server.metadata['graphql_available'] = True
+                    server.endpoints_found.append(gql_endpoint)
+                
+                # Récupérer les informations de version si disponibles
+                version_endpoints = ['/version', '/api/version', '/info', '/api/info']
+                for endpoint in version_endpoints:
+                    try:
+                        version_response = await client.get(f"{base_url}{endpoint}", timeout=2.0)
+                        if version_response.status_code == 200:
+                            try:
+                                version_data = version_response.json()
+                                server.metadata['version_info'] = version_data
+                            except:
+                                pass
+                    except:
+                        pass
+                
+            except Exception as e:
+                pass  # Ignorer les erreurs
     
     def get_all_servers(self) -> List[DiscoveredServer]:
         """Retourne tous les serveurs découverts"""
@@ -599,6 +666,7 @@ async def get_server(server_id: str):
     """
     Récupère les détails d'un serveur spécifique.
     """
+    server_id = validate_server_id(server_id)
     return _service.get_server(server_id)
 
 
@@ -607,6 +675,7 @@ async def health_check(server_id: str):
     """
     Effectue un health check sur un serveur.
     """
+    server_id = validate_server_id(server_id)
     server = _service.get_server(server_id)
     result = await HealthChecker.check(server.base_url)
     server.health = result
@@ -619,6 +688,7 @@ async def refresh_server(server_id: str):
     """
     Rafraîchit toutes les informations d'un serveur.
     """
+    server_id = validate_server_id(server_id)
     return await _service.refresh_server(server_id)
 
 
@@ -627,6 +697,7 @@ async def remove_server(server_id: str):
     """
     Supprime un serveur de la liste des serveurs découverts.
     """
+    server_id = validate_server_id(server_id)
     _service.remove_server(server_id)
     return {"status": "ok", "message": "Server removed"}
 
