@@ -10,7 +10,9 @@ from datetime import datetime
 from typing import List, Dict, Optional, Any
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Request
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request as StarletteRequest
 from starlette.responses import Response
+from starlette.datastructures import UploadFile
 from pydantic import BaseModel
 import json
 import asyncio
@@ -249,8 +251,30 @@ async def get_console_status():
 class ConsoleMiddleware(BaseHTTPMiddleware):
     """Middleware pour capturer et logger toutes les requêtes HTTP"""
     
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: StarletteRequest, call_next):
         start_time = datetime.now()
+        
+        # Capturer le body de la requête (seulement pour POST, PUT, PATCH)
+        request_body = None
+        request_headers = dict(request.headers)
+        
+        if request.method in ["POST", "PUT", "PATCH"]:
+            try:
+                # Lire le body
+                body_bytes = await request.body()
+                if body_bytes:
+                    request_body = body_bytes.decode('utf-8', errors='ignore')
+                    # Limiter la taille du body pour éviter les problèmes de mémoire
+                    if len(request_body) > 10000:
+                        request_body = request_body[:10000] + "... (tronqué)"
+                    
+                    # Recréer le body pour que les handlers puissent le lire
+                    async def receive():
+                        return {"type": "http.request", "body": body_bytes}
+                    
+                    request._receive = receive
+            except Exception:
+                pass
         
         # Exécuter la requête
         response = await call_next(request)
@@ -262,18 +286,35 @@ class ConsoleMiddleware(BaseHTTPMiddleware):
         client_host = request.client.host if request.client else "unknown"
         method = request.method
         path = request.url.path
+        query_string = str(request.url.query) if request.url.query else ""
+        full_path = f"{path}?{query_string}" if query_string else path
         status_code = response.status_code
         
         # Créer le message de log au format uvicorn
-        log_message = f'{client_host} - "{method} {path} HTTP/1.1" {status_code}'
+        log_message = f'{client_host} - "{method} {full_path} HTTP/1.1" {status_code}'
         
-        # Créer l'entrée de log
+        # Créer l'entrée de log avec toutes les informations
         log_entry = {
             "timestamp": datetime.now().isoformat(),
             "level": "INFO",
             "message": log_message,
             "color": _get_color_for_status(status_code),
             "raw": log_message,
+            # Informations détaillées de la requête
+            "request": {
+                "method": method,
+                "url": str(request.url),
+                "path": path,
+                "query_string": query_string,
+                "headers": request_headers,
+                "body": request_body,
+                "client_host": client_host,
+            },
+            "response": {
+                "status_code": status_code,
+                "headers": dict(response.headers),
+                "duration_ms": process_time,
+            },
         }
         
         # Ajouter au store
