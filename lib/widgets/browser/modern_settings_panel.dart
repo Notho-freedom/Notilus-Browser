@@ -11,6 +11,10 @@ import '../../services/settings_service.dart';
 import '../../services/terminal_service.dart';
 import '../../services/history_service.dart';
 import '../../services/tab_webview_manager.dart';
+import '../../services/auth/firebase_auth_service.dart';
+import '../../services/auth/config_sync_service.dart';
+import '../../widgets/auth/sync_status_widget.dart';
+import '../../widgets/auth/auth_dialog.dart';
 import '../common/color_picker_dialog.dart';
 
 class ModernSettingsPanel extends StatefulWidget {
@@ -47,9 +51,11 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
           ),
         ),
       ),
-      child: Container(
-        color: Colors.black.withOpacity(0.5),
-        child: Row(
+      child: ListenableBuilder(
+        listenable: _settings,
+        builder: (context, _) => Container(
+          color: Colors.black.withOpacity(1.0 - _settings.panelTransparency),
+          child: Row(
           children: [
             // Navigation latérale des sections
             Container(
@@ -89,6 +95,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                         _buildSectionItem('homepage', 'Page d\'accueil', CupertinoIcons.house, gxRed),
                         _buildSectionItem('webservices', 'Services Web', CupertinoIcons.globe, gxRed),
                         _buildSectionItem('privacy', 'Confidentialité', CupertinoIcons.shield, gxRed),
+                        _buildSectionItem('account', 'Compte', CupertinoIcons.person_circle, gxRed),
                         _buildSectionItem('devtools', 'DevTools', CupertinoIcons.ant, gxRed),
                         _buildSectionItem('about', 'À propos', CupertinoIcons.info_circle, gxRed),
                       ],
@@ -102,6 +109,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
               child: _buildSectionContent(context, theme, gxRed),
             ),
           ],
+        ),
         ),
       ),
     );
@@ -163,6 +171,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
             'homepage' => _buildHomepageSection(context, theme, gxRed),
             'webservices' => _buildWebServicesSection(context, theme, gxRed),
             'privacy' => _buildPrivacySection(context, theme, gxRed),
+            'account' => _buildAccountSection(context, theme, gxRed),
             'devtools' => _buildDevToolsSection(context, theme, gxRed),
             'about' => _buildAboutSection(context, theme, gxRed),
             _ => const SizedBox.shrink(),
@@ -182,6 +191,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
       'homepage': ('Page d\'accueil', 'Personnalisez la page d\'accueil'),
       'webservices': ('Services Web', 'Gérez les services de la sidebar'),
       'privacy': ('Confidentialité', 'Protégez vos données de navigation'),
+      'account': ('Compte', 'Authentification et synchronisation'),
       'devtools': ('DevTools', 'Configuration des outils de développement'),
       'about': ('À propos', 'Informations sur Notilus Browser'),
     };
@@ -1946,6 +1956,214 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
           ),
         ],
       ),
+    );
+  }
+
+  // ============================================
+  // SECTION COMPTE
+  // ============================================
+  
+  Widget _buildAccountSection(BuildContext context, ThemeData theme, Color gxRed) {
+    return Consumer2<FirebaseAuthService?, ConfigSyncService?>(
+      builder: (context, authService, syncService, _) {
+        if (authService == null || syncService == null) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSubsectionTitle('Authentification', gxRed),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(CupertinoIcons.info, color: Colors.orange, size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Firebase n\'est pas configuré. Configurez Firebase pour activer l\'authentification et la synchronisation.',
+                        style: TextStyle(color: Colors.white70, fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        }
+
+        final isSignedIn = authService.isSignedIn;
+        final user = authService.currentUser;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSubsectionTitle('Authentification', gxRed),
+            const SizedBox(height: 12),
+            if (!isSignedIn) ...[
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.white.withOpacity(0.1)),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      'Connectez-vous pour synchroniser vos configurations',
+                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      onPressed: () async {
+                        final result = await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AuthDialog(authService: authService),
+                        );
+                        if (result == true && context.mounted) {
+                          await syncService!.restoreConfigs();
+                        }
+                      },
+                      icon: Icon(CupertinoIcons.person_circle),
+                      label: const Text('Se connecter'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: gxRed.withOpacity(0.2),
+                        foregroundColor: gxRed,
+                        side: BorderSide(color: gxRed),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ] else ...[
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.green.withOpacity(0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        if (user?.photoURL != null)
+                          CircleAvatar(
+                            radius: 20,
+                            backgroundImage: NetworkImage(user!.photoURL!),
+                          )
+                        else
+                          CircleAvatar(
+                            radius: 20,
+                            child: Icon(CupertinoIcons.person),
+                          ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                user?.displayName ?? user?.email ?? 'Utilisateur',
+                                style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                              ),
+                              Text(
+                                user?.email ?? '',
+                                style: TextStyle(color: Colors.white60, fontSize: 11),
+                              ),
+                            ],
+                          ),
+                        ),
+                        ElevatedButton(
+                          onPressed: () async {
+                            await authService.signOut();
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Déconnexion réussie')),
+                              );
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red.withOpacity(0.2),
+                            foregroundColor: Colors.red,
+                            side: BorderSide(color: Colors.red),
+                          ),
+                          child: const Text('Déconnexion'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              _buildSubsectionTitle('Synchronisation', gxRed),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: syncService.isSyncing
+                          ? null
+                          : () async {
+                              final success = await syncService.exportConfigs();
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(success
+                                        ? 'Configurations synchronisées'
+                                        : 'Erreur lors de la synchronisation'),
+                                  ),
+                                );
+                              }
+                            },
+                      icon: Icon(CupertinoIcons.cloud_upload),
+                      label: const Text('Exporter vers le cloud'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: gxRed.withOpacity(0.2),
+                        foregroundColor: gxRed,
+                        side: BorderSide(color: gxRed),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: syncService.isSyncing
+                          ? null
+                          : () async {
+                              final success = await syncService.restoreConfigs();
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(success
+                                        ? 'Configurations restaurées'
+                                        : 'Erreur lors de la restauration'),
+                                  ),
+                                );
+                              }
+                            },
+                      icon: Icon(CupertinoIcons.cloud_download),
+                      label: const Text('Restaurer depuis le cloud'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue.withOpacity(0.2),
+                        foregroundColor: Colors.blue,
+                        side: BorderSide(color: Colors.blue),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              SyncStatusWidget(syncService: syncService),
+            ],
+          ],
+        );
+      },
     );
   }
 

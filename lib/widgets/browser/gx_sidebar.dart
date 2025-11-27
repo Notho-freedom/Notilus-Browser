@@ -189,9 +189,11 @@ class _GXSidebarState extends State<GXSidebar> {
     final webServices = _getWebServices(gxRed);
     
     return RepaintBoundary(
-      child: Container(
-        width: 50,
-        color: colorThemeManager.nativeBackgroundColor,
+      child: ListenableBuilder(
+        listenable: _settings,
+        builder: (context, _) => Container(
+          width: 50,
+          color: colorThemeManager.nativeBackgroundColor.withOpacity(1.0 - _settings.panelTransparency),
         child: LayoutBuilder(
           builder: (context, constraints) {
             return Column(
@@ -276,6 +278,7 @@ class _GXSidebarState extends State<GXSidebar> {
               ],
             );
           },
+        ),
         ),
       ),
     );

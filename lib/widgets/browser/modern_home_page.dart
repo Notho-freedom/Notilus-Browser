@@ -231,25 +231,27 @@ class _ModernHomePageState extends State<ModernHomePage> {
     
     final wallpaperManager = context.watch<WallpaperManager>();
     
-    return Container(
-      decoration: BoxDecoration(
-        image: DecorationImage(
-          image: CachedNetworkImageProvider(wallpaperManager.current),
-          fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(
-            Colors.black.withValues(alpha:isDark ? 0.65 : 0.75),
-            BlendMode.srcOver,
+    return ListenableBuilder(
+      listenable: _settings,
+      builder: (context, _) => Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: CachedNetworkImageProvider(wallpaperManager.current),
+            fit: BoxFit.cover,
+            colorFilter: ColorFilter.mode(
+              Colors.black.withValues(alpha:isDark ? 0.65 : 0.75),
+              BlendMode.srcOver,
+            ),
+          ),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.black.withValues(alpha:0.88 * (1.0 - _settings.widgetTransparency)),
+              Colors.black.withValues(alpha:0.94 * (1.0 - _settings.widgetTransparency)),
+            ],
           ),
         ),
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Colors.black.withValues(alpha:0.88),
-            Colors.black.withValues(alpha:0.94),
-          ],
-        ),
-      ),
       child: SafeArea(
         child: Stack(
           children: [
@@ -800,6 +802,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
             ),
           ],
         ),
+      ),
       ),
     );
   }
