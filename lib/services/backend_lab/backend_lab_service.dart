@@ -6,6 +6,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:web_socket_channel/web_socket_channel.dart';
 import '../../models/backend_lab/backend_lab_models.dart';
 
 /// Service principal du Backend Lab
@@ -22,10 +23,17 @@ class BackendLabService extends ChangeNotifier {
   List<Vulnerability> _vulnerabilities = [];
   List<CapturedRequest> _captures = [];
   List<TestResult> _testResults = [];
+  List<LoadTestResult> _loadTestResults = [];
   OverviewStats? _stats;
   
   // Scan en cours
   bool _isScanning = false;
+  
+  // Console logs
+  final List<ConsoleLogEntry> _consoleLogs = [];
+  WebSocketChannel? _consoleWebSocket;
+  StreamSubscription? _consoleSubscription;
+  final StreamController<ConsoleLogEntry> _consoleLogController = StreamController<ConsoleLogEntry>.broadcast();
   
   BackendLabService({String? baseUrl}) : _baseUrl = baseUrl ?? _defaultBaseUrl;
   
@@ -37,6 +45,7 @@ class BackendLabService extends ChangeNotifier {
   List<Vulnerability> get vulnerabilities => _vulnerabilities;
   List<CapturedRequest> get captures => _captures;
   List<TestResult> get testResults => _testResults;
+  List<LoadTestResult> get loadTestResults => _loadTestResults;
   OverviewStats? get stats => _stats;
   bool get isScanning => _isScanning;
   
@@ -421,10 +430,20 @@ class BackendLabService extends ChangeNotifier {
       
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return LoadTestResult.fromJson(data);
+        final result = LoadTestResult.fromJson(data);
+        
+        // Ajouter le résultat à la liste
+        _loadTestResults.insert(0, result); // Ajouter au début
+        if (_loadTestResults.length > 50) {
+          _loadTestResults.removeLast(); // Garder seulement les 50 derniers
+        }
+        
+        notifyListeners();
+        return result;
       }
     } catch (e) {
       _lastError = e.toString();
+      notifyListeners();
     }
     return null;
   }
@@ -583,4 +602,111 @@ class BackendLabService extends ChangeNotifier {
     _stats = null;
     notifyListeners();
   }
+  
+  // ============================================================================
+  // Console
+  // ============================================================================
+  
+  /// Connecte au WebSocket de la console
+  Future<void> connectConsole() async {
+    try {
+      // Nettoyer l'URL pour éviter les caractères indésirables
+      String cleanBaseUrl = _baseUrl.trim();
+      if (cleanBaseUrl.endsWith('/')) {
+        cleanBaseUrl = cleanBaseUrl.substring(0, cleanBaseUrl.length - 1);
+      }
+      if (cleanBaseUrl.endsWith('#')) {
+        cleanBaseUrl = cleanBaseUrl.substring(0, cleanBaseUrl.length - 1);
+      }
+      
+      final wsUrl = cleanBaseUrl.replaceFirst('http://', 'ws://').replaceFirst('https://', 'wss://');
+      final wsUri = Uri.parse('$wsUrl/api/backend-lab/console/ws');
+      
+      _consoleWebSocket = WebSocketChannel.connect(wsUri);
+      
+      _consoleSubscription = _consoleWebSocket!.stream.listen(
+        (data) {
+          try {
+            final jsonData = jsonDecode(data as String);
+            final logEntry = ConsoleLogEntry.fromJson(jsonData);
+            _consoleLogs.add(logEntry);
+            
+            // Garder seulement les 1000 derniers logs
+            if (_consoleLogs.length > 1000) {
+              _consoleLogs.removeAt(0);
+            }
+            
+            _consoleLogController.add(logEntry);
+            notifyListeners();
+          } catch (e) {
+            // Ignorer les erreurs de parsing
+          }
+        },
+        onError: (error) {
+          _lastError = 'Console WebSocket error: $error';
+          notifyListeners();
+        },
+        onDone: () {
+          // Reconnexion automatique après 2 secondes
+          Future.delayed(const Duration(seconds: 2), () {
+            if (_isConnected) {
+              connectConsole();
+            }
+          });
+        },
+      );
+    } catch (e) {
+      _lastError = 'Failed to connect console: $e';
+      notifyListeners();
+    }
+  }
+  
+  /// Déconnecte de la console
+  void disconnectConsole() {
+    _consoleSubscription?.cancel();
+    _consoleWebSocket?.sink.close();
+    _consoleSubscription = null;
+    _consoleWebSocket = null;
+  }
+  
+  /// Récupère les logs de la console
+  Future<List<ConsoleLogEntry>> getConsoleLogs({int limit = 100}) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/api/backend-lab/console/logs?limit=$limit'),
+      );
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as List;
+        _consoleLogs.clear();
+        _consoleLogs.addAll(data.map((e) => ConsoleLogEntry.fromJson(e)).toList());
+        notifyListeners();
+      }
+    } catch (e) {
+      _lastError = e.toString();
+    }
+    return _consoleLogs;
+  }
+  
+  /// Efface les logs de la console
+  Future<bool> clearConsoleLogs() async {
+    try {
+      final response = await http.delete(
+        Uri.parse('$_baseUrl/api/backend-lab/console/logs'),
+      );
+      
+      if (response.statusCode == 200) {
+        _consoleLogs.clear();
+        notifyListeners();
+        return true;
+      }
+    } catch (e) {
+      _lastError = e.toString();
+    }
+    return false;
+  }
+  
+  // Getters
+  List<ConsoleLogEntry> get consoleLogs => _consoleLogs;
+  Stream<ConsoleLogEntry> get consoleLogStream => _consoleLogController.stream;
 }
