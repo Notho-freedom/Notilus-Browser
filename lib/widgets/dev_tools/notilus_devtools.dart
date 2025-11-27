@@ -12,6 +12,7 @@ import '../../services/settings_service.dart';
 import '../../core/services/color_theme_manager.dart';
 import '../../core/constants/notilus_fonts.dart';
 import '../common/gx_futuristic_dialog.dart';
+import '../common/gx_futuristic_widgets.dart';
 import 'devtools_console_panel.dart';
 import 'devtools_network_panel.dart';
 import 'devtools_elements_panel.dart';
@@ -427,14 +428,13 @@ class _NotilusDevToolsState extends State<NotilusDevTools>
     return RawKeyboardListener(
       focusNode: FocusNode(),
       onKey: _handleKeyEvent,
-      child: Container(
-        height: _height,
-        decoration: BoxDecoration(
-          color: const Color(0xFF0D0D12),
-          border: Border(top: BorderSide(color: accentColor.withOpacity(0.5), width: 1)),
-          boxShadow: [BoxShadow(color: accentColor.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, -5))],
-        ),
-        child: Column(
+      child: GxFuturisticPanel(
+        accentColor: accentColor,
+        padding: EdgeInsets.zero,
+        border: Border(top: BorderSide(color: accentColor.withOpacity(0.5), width: 1)),
+        child: SizedBox(
+          height: _height,
+          child: Column(
           children: [
             _buildResizeHandle(accentColor),
             _buildTabBar(accentColor),
@@ -457,6 +457,7 @@ class _NotilusDevToolsState extends State<NotilusDevTools>
               ),
             ),
           ],
+        ),
         ),
       ),
     );
@@ -488,12 +489,12 @@ class _NotilusDevToolsState extends State<NotilusDevTools>
   }
 
   Widget _buildTabBar(Color accentColor) {
-    return Container(
+    return GxFuturisticContainer(
+      accentColor: accentColor,
+      padding: EdgeInsets.zero,
       height: 36,
-      decoration: BoxDecoration(
-        color: const Color(0xFF131318),
-        border: Border(bottom: BorderSide(color: accentColor.withOpacity(0.2))),
-      ),
+      showBorders: false,
+      border: Border(bottom: BorderSide(color: accentColor.withOpacity(0.2))),
       child: Row(
         children: [
           // Logo

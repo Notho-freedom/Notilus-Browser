@@ -7,6 +7,8 @@ import '../../services/tab_manager.dart';
 import '../../core/services/wallpaper_manager.dart';
 import '../../services/favicon_service.dart';
 import '../../core/services/color_theme_manager.dart';
+import '../../core/constants/notilus_colors.dart';
+import '../common/gx_futuristic_widgets.dart';
 
 class ModernHistoryPanel extends StatefulWidget {
   const ModernHistoryPanel({super.key});
