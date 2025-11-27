@@ -10,6 +10,7 @@ import '../../models/backend_lab/backend_lab_models.dart';
 import '../../core/services/color_theme_manager.dart';
 import '../../core/constants/notilus_colors.dart';
 import '../../core/constants/notilus_fonts.dart';
+import '../common/gx_futuristic_dialog.dart';
 
 /// Onglets du Backend Lab
 enum BackendLabTab {
@@ -2473,43 +2474,42 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
 
   void _showSettings() {
     final urlController = TextEditingController(text: _labService.baseUrl);
+    final accent = NotilusColors.getSecondaryColor(context);
     
-    showDialog(
+    GxFuturisticDialog.show(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: NotilusColors.chromeDark,
-        title: Text(
-          'Paramètres Backend Lab',
-          style: NotilusFonts.orbitron(color: Colors.white),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _GxTextField(
-              controller: urlController,
-              hint: 'URL du serveur Backend Lab',
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Annuler', style: NotilusFonts.rajdhani()),
-          ),
-          _GxButton(
-            onPressed: () {
-              _labService.baseUrl = urlController.text;
-              _labService.checkConnection();
-              Navigator.pop(context);
-            },
-            icon: const Icon(Icons.save_rounded, size: 16),
-            label: const Text('Sauvegarder'),
-            color: NotilusColors.getSecondaryColor(context),
-            accent: NotilusColors.getSecondaryColor(context),
-            compact: true,
+      title: 'Paramètres Backend Lab',
+      titleIcon: Icons.settings_rounded,
+      accentColor: accent,
+      width: 450,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _GxTextField(
+            controller: urlController,
+            hint: 'URL du serveur Backend Lab',
           ),
         ],
       ),
+      actions: [
+        GxFuturisticButton(
+          label: 'Annuler',
+          variant: GxFuturisticButtonVariant.secondary,
+          accentColor: accent,
+          onPressed: () => Navigator.pop(context),
+        ),
+        GxFuturisticButton(
+          label: 'Sauvegarder',
+          icon: Icons.save_rounded,
+          variant: GxFuturisticButtonVariant.primary,
+          accentColor: accent,
+          onPressed: () {
+            _labService.baseUrl = urlController.text;
+            _labService.checkConnection();
+            Navigator.pop(context);
+          },
+        ),
+      ],
     );
   }
 
@@ -2526,131 +2526,126 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
       urlController.text = _configuredServer!.baseUrl;
     }
     
-    showDialog(
+    GxFuturisticDialog.show(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: NotilusColors.chromeDark,
-        title: Text(
-          'Nouveau Test de Charge',
-          style: NotilusFonts.orbitron(color: Colors.white),
-        ),
-        content: SizedBox(
-          width: 400,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+      title: 'Nouveau Test de Charge',
+      titleIcon: Icons.speed_rounded,
+      accentColor: accent,
+      width: 500,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _GxTextField(controller: nameController, hint: 'Nom du test'),
+          const SizedBox(height: 12),
+          _AutoConfigUrlField(
+            controller: urlController,
+            hint: 'URL cible',
+            configuredServer: _configuredServer,
+            selectedRoute: _selectedRouteForConfig,
+            routeParams: _routeParams,
+          ),
+          const SizedBox(height: 12),
+          Row(
             children: [
-              _GxTextField(controller: nameController, hint: 'Nom du test'),
-              const SizedBox(height: 12),
-              _AutoConfigUrlField(
-                controller: urlController,
-                hint: 'URL cible',
-                configuredServer: _configuredServer,
-                selectedRoute: _selectedRouteForConfig,
-                routeParams: _routeParams,
+              Expanded(
+                child: _GxTextField(
+                  controller: usersController,
+                  hint: 'Utilisateurs virtuels',
+                ),
               ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _GxTextField(
-                      controller: usersController,
-                      hint: 'Utilisateurs virtuels',
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _GxTextField(
-                      controller: durationController,
-                      hint: 'Durée (sec)',
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _GxTextField(
-                      controller: rampUpController,
-                      hint: 'Ramp-up (sec)',
-                    ),
-                  ),
-                ],
+              const SizedBox(width: 8),
+              Expanded(
+                child: _GxTextField(
+                  controller: durationController,
+                  hint: 'Durée (sec)',
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _GxTextField(
+                  controller: rampUpController,
+                  hint: 'Ramp-up (sec)',
+                ),
               ),
             ],
           ),
+        ],
+      ),
+      actions: [
+        GxFuturisticButton(
+          label: 'Annuler',
+          variant: GxFuturisticButtonVariant.secondary,
+          accentColor: accent,
+          onPressed: () => Navigator.pop(context),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Annuler', style: NotilusFonts.rajdhani()),
-          ),
-          _GxButton(
-            onPressed: () async {
-              if (nameController.text.isNotEmpty && urlController.text.isNotEmpty) {
-                Navigator.pop(context);
-                setState(() => _isLoadTestRunning = true);
+        GxFuturisticButton(
+          label: 'Démarrer',
+          icon: Icons.play_arrow_rounded,
+          variant: GxFuturisticButtonVariant.primary,
+          accentColor: accent,
+          onPressed: () async {
+            if (nameController.text.isNotEmpty && urlController.text.isNotEmpty) {
+              Navigator.pop(context);
+              setState(() => _isLoadTestRunning = true);
+              
+              try {
+                final result = await _labService.runLoadTest(
+                  name: nameController.text,
+                  targetUrl: urlController.text,
+                  virtualUsers: int.tryParse(usersController.text) ?? 10,
+                  durationSec: int.tryParse(durationController.text) ?? 60,
+                  rampUpSec: int.tryParse(rampUpController.text) ?? 10,
+                );
                 
-                try {
-                  final result = await _labService.runLoadTest(
-                    name: nameController.text,
-                    targetUrl: urlController.text,
-                    virtualUsers: int.tryParse(usersController.text) ?? 10,
-                    durationSec: int.tryParse(durationController.text) ?? 60,
-                    rampUpSec: int.tryParse(rampUpController.text) ?? 10,
-                  );
-                  
-                  if (mounted) {
-                    if (result != null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'Test de charge terminé ! ${result.totalRequests} requêtes exécutées',
-                            style: NotilusFonts.rajdhani(),
-                          ),
-                          backgroundColor: result.status == LoadTestStatus.completed
-                              ? const Color(0xFF22C55E)
-                              : const Color(0xFFFF9800),
-                          duration: const Duration(seconds: 3),
-                        ),
-                      );
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'Test de charge lancé (résultats en attente)',
-                            style: NotilusFonts.rajdhani(),
-                          ),
-                          backgroundColor: const Color(0xFF22C55E),
-                          duration: const Duration(seconds: 2),
-                        ),
-                      );
-                    }
-                  }
-                } catch (e) {
-                  if (mounted) {
+                if (mounted) {
+                  if (result != null) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(
-                          'Erreur lors du test: $e',
+                          'Test de charge terminé ! ${result.totalRequests} requêtes exécutées',
                           style: NotilusFonts.rajdhani(),
                         ),
-                        backgroundColor: const Color(0xFFEF4444),
+                        backgroundColor: result.status == LoadTestStatus.completed
+                            ? const Color(0xFF22C55E)
+                            : const Color(0xFFFF9800),
                         duration: const Duration(seconds: 3),
                       ),
                     );
-                  }
-                } finally {
-                  if (mounted) {
-                    setState(() => _isLoadTestRunning = false);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Test de charge lancé (résultats en attente)',
+                          style: NotilusFonts.rajdhani(),
+                        ),
+                        backgroundColor: const Color(0xFF22C55E),
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
                   }
                 }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Erreur lors du test: $e',
+                        style: NotilusFonts.rajdhani(),
+                      ),
+                      backgroundColor: const Color(0xFFEF4444),
+                      duration: const Duration(seconds: 3),
+                    ),
+                  );
+                }
+              } finally {
+                if (mounted) {
+                  setState(() => _isLoadTestRunning = false);
+                }
               }
-            },
-            icon: const Icon(Icons.play_arrow_rounded, size: 16),
-            label: const Text('Démarrer'),
-            color: const Color(0xFF8B5CF6),
-            accent: accent,
-            compact: true,
-          ),
-        ],
-      ),
+            }
+          },
+        ),
+      ],
     );
   }
 }

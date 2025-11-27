@@ -10,6 +10,8 @@ import '../../services/devtools_service.dart';
 import '../../services/browser_engine.dart';
 import '../../services/settings_service.dart';
 import '../../core/services/color_theme_manager.dart';
+import '../../core/constants/notilus_fonts.dart';
+import '../common/gx_futuristic_dialog.dart';
 import 'devtools_console_panel.dart';
 import 'devtools_network_panel.dart';
 import 'devtools_elements_panel.dart';
@@ -826,49 +828,44 @@ class _NotilusDevToolsState extends State<NotilusDevTools>
   }
 
   void _showDevToolsSettings(BuildContext context, Color accentColor) {
-    showDialog(
+    GxFuturisticDialog.show(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A20),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(Icons.settings, color: accentColor, size: 24),
-            const SizedBox(width: 12),
-            const Text(
-              'Paramètres DevTools',
-              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-          ],
-        ),
-        content: SingleChildScrollView(
+      title: 'Paramètres DevTools',
+      titleIcon: Icons.settings_rounded,
+      accentColor: accentColor,
+      width: 450,
       child: Column(
         mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-                'Les paramètres DevTools sont disponibles dans le panneau Paramètres de l\'application.',
-                style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  // Ouvrir le panneau settings (sera géré par le parent)
-                },
-                style: ElevatedButton.styleFrom(backgroundColor: accentColor),
-                child: const Text('Ouvrir les paramètres', style: TextStyle(color: Colors.white)),
-              ),
-            ],
+            'Les paramètres DevTools sont disponibles dans le panneau Paramètres de l\'application.',
+            style: NotilusFonts.rajdhani(
+              fontSize: 13,
+              color: Colors.white.withOpacity(0.7),
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Fermer', style: TextStyle(color: accentColor)),
+          const SizedBox(height: 16),
+          GxFuturisticButton(
+            label: 'Ouvrir les paramètres',
+            icon: Icons.settings_rounded,
+            variant: GxFuturisticButtonVariant.primary,
+            accentColor: accentColor,
+            onPressed: () {
+              Navigator.pop(context);
+              // Ouvrir le panneau settings (sera géré par le parent)
+            },
           ),
         ],
       ),
+      actions: [
+        GxFuturisticButton(
+          label: 'Fermer',
+          variant: GxFuturisticButtonVariant.secondary,
+          accentColor: accentColor,
+          onPressed: () => Navigator.pop(context),
+        ),
+      ],
     );
   }
 }
