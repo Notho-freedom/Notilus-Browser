@@ -49,7 +49,7 @@ class AuthDialog extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             _AuthButton(
-              icon: CupertinoIcons.logo_google,
+              icon: Icons.g_mobiledata,
               label: 'Continuer avec Google',
               color: Colors.blue,
               onPressed: () async {
@@ -61,7 +61,7 @@ class AuthDialog extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             _AuthButton(
-              icon: CupertinoIcons.logo_github,
+              icon: Icons.code,
               label: 'Continuer avec GitHub',
               color: Colors.white,
               onPressed: () async {
