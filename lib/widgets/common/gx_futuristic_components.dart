@@ -188,65 +188,61 @@ class _GxFuturisticInputState extends State<GxFuturisticInput> {
               ),
             ),
           ),
-        FocusScope(
-          child: Focus(
-            onFocusChange: (hasFocus) {
-              setState(() => _isFocused = hasFocus);
-            },
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
-                border: Border.all(
-                  color: _isFocused
-                      ? accent
-                      : Colors.white.withOpacity(0.2),
-                  width: _isFocused ? 1.5 : 1,
-                ),
-              ),
-              child: TextFormField(
-                controller: widget.controller,
-                obscureText: widget.obscureText,
-                keyboardType: widget.keyboardType,
-                onChanged: widget.onChanged,
-                validator: widget.validator,
-                style: NotilusFonts.rajdhani(
-                  fontSize: 14,
-                  color: Colors.white,
-                ),
-                decoration: InputDecoration(
-                  hintText: widget.hint,
-                  hintStyle: NotilusFonts.rajdhani(
-                    fontSize: 14,
-                    color: Colors.white.withOpacity(0.4),
-                  ),
-                  prefixIcon: widget.prefixIcon != null
-                      ? Icon(
-                          widget.prefixIcon,
-                          color: _isFocused
-                              ? accent
-                              : Colors.white.withOpacity(0.5),
-                          size: 20,
-                        )
-                      : null,
-                  suffixIcon: widget.suffixIcon != null
-                      ? GestureDetector(
-                          onTap: widget.onSuffixTap,
-                          child: Icon(
-                            widget.suffixIcon,
-                            color: Colors.white.withOpacity(0.5),
-                            size: 20,
-                          ),
-                        )
-                      : null,
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
-                ),
-              ),
+        TextFormField(
+          controller: widget.controller,
+          obscureText: widget.obscureText,
+          keyboardType: widget.keyboardType,
+          onChanged: widget.onChanged,
+          validator: widget.validator,
+          style: NotilusFonts.rajdhani(
+            fontSize: 14,
+            color: Colors.white,
+          ),
+          decoration: InputDecoration(
+            labelText: widget.hint,
+            labelStyle: NotilusFonts.rajdhani(
+              fontSize: 14,
+              color: Colors.white.withOpacity(0.6),
+            ),
+            hintText: widget.hint,
+            hintStyle: NotilusFonts.rajdhani(
+              fontSize: 14,
+              color: Colors.white.withOpacity(0.4),
+            ),
+            filled: true,
+            fillColor: Colors.white.withOpacity(0.05),
+            prefixIcon: widget.prefixIcon != null
+                ? Icon(
+                    widget.prefixIcon,
+                    color: Colors.white.withOpacity(0.5),
+                    size: 20,
+                  )
+                : null,
+            suffixIcon: widget.suffixIcon != null
+                ? GestureDetector(
+                    onTap: widget.onSuffixTap,
+                    child: Icon(
+                      widget.suffixIcon,
+                      color: Colors.white.withOpacity(0.5),
+                      size: 20,
+                    ),
+                  )
+                : null,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.24)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.24)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: accent, width: 1),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
             ),
           ),
         ),
@@ -500,12 +496,12 @@ class GxFuturisticProgress extends StatelessWidget {
             ),
           ),
         Container(
-          height: height ?? 6,
+          height: height ?? 2,
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.1),
+            color: Colors.white.withOpacity(0.05),
             border: Border.all(
-              color: Colors.white.withOpacity(0.2),
-              width: 1,
+              color: accent.withOpacity(0.2),
+              width: 0.5,
             ),
           ),
           child: Stack(
@@ -518,9 +514,16 @@ class GxFuturisticProgress extends StatelessWidget {
                     gradient: LinearGradient(
                       colors: [
                         accent,
-                        accent.withOpacity(0.7),
+                        accent.withOpacity(0.8),
                       ],
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: accent.withOpacity(0.5),
+                        blurRadius: 4,
+                        spreadRadius: 1,
+                      ),
+                    ],
                   ),
                 ),
               ),

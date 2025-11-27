@@ -95,6 +95,13 @@ class SettingsService extends ChangeNotifier {
   static const String _keyDevToolsRefreshRate = 'notilus_devtools_refresh_rate';
   static const String _keyDevToolsFontSize = 'notilus_devtools_font_size';
   
+  // Notifications
+  static const String _keyNotificationPosition = 'notilus_notification_position'; // 'top-right', 'top-left', 'bottom-right', 'bottom-left'
+  static const String _keyNotificationSoundEnabled = 'notilus_notification_sound_enabled';
+  static const String _keyNotificationVolume = 'notilus_notification_volume'; // 0.0 - 1.0
+  static const String _keyNotificationDuration = 'notilus_notification_duration'; // en secondes
+  static const String _keyNotificationMaxVisible = 'notilus_notification_max_visible';
+  
   // ============================================
   // INITIALISATION
   // ============================================
@@ -615,6 +622,41 @@ class SettingsService extends ChangeNotifier {
     await _prefs?.remove(_keyDevToolsHighlightColor);
     await _prefs?.remove(_keyDevToolsRefreshRate);
     await _prefs?.remove(_keyDevToolsFontSize);
+    notifyListeners();
+  }
+
+  // ============================================
+  // NOTIFICATIONS
+  // ============================================
+  
+  String get notificationPosition => _prefs?.getString(_keyNotificationPosition) ?? 'top-right';
+  Future<void> setNotificationPosition(String position) async {
+    await _prefs?.setString(_keyNotificationPosition, position);
+    notifyListeners();
+  }
+  
+  bool get notificationSoundEnabled => _prefs?.getBool(_keyNotificationSoundEnabled) ?? true;
+  Future<void> setNotificationSoundEnabled(bool value) async {
+    await _prefs?.setBool(_keyNotificationSoundEnabled, value);
+    notifyListeners();
+  }
+  
+  double get notificationVolume => _prefs?.getDouble(_keyNotificationVolume) ?? 0.7;
+  Future<void> setNotificationVolume(double volume) async {
+    final clampedVolume = volume.clamp(0.0, 1.0);
+    await _prefs?.setDouble(_keyNotificationVolume, clampedVolume);
+    notifyListeners();
+  }
+  
+  int get notificationDuration => _prefs?.getInt(_keyNotificationDuration) ?? 4;
+  Future<void> setNotificationDuration(int seconds) async {
+    await _prefs?.setInt(_keyNotificationDuration, seconds);
+    notifyListeners();
+  }
+  
+  int get notificationMaxVisible => _prefs?.getInt(_keyNotificationMaxVisible) ?? 5;
+  Future<void> setNotificationMaxVisible(int count) async {
+    await _prefs?.setInt(_keyNotificationMaxVisible, count);
     notifyListeners();
   }
 
