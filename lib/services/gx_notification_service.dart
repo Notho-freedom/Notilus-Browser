@@ -253,6 +253,7 @@ class _GxNotificationWidgetState extends State<_GxNotificationWidget>
       CurvedAnimation(parent: _controller, curve: Curves.easeOut),
     );
 
+    // L'animation de slide sera ajustée dans le build selon la position
     _slideAnimation = Tween<Offset>(
       begin: const Offset(1.0, 0.0),
       end: Offset.zero,
@@ -294,12 +295,53 @@ class _GxNotificationWidgetState extends State<_GxNotificationWidget>
     final bgColor = themeManager.nativeBackgroundColor;
     final settings = SettingsService();
     final panelOpacity = 1.0 - settings.panelTransparency;
+    final position = settings.notificationPosition;
+
+    // Calculer la position selon les paramètres
+    double? top, bottom, left, right;
+    Offset slideBegin;
+    switch (position) {
+      case 'top-right':
+        top = MediaQuery.of(context).padding.top + 20;
+        right = 20;
+        slideBegin = const Offset(1.0, 0.0);
+        break;
+      case 'top-left':
+        top = MediaQuery.of(context).padding.top + 20;
+        left = 20;
+        slideBegin = const Offset(-1.0, 0.0);
+        break;
+      case 'bottom-right':
+        bottom = 20;
+        right = 20;
+        slideBegin = const Offset(1.0, 0.0);
+        break;
+      case 'bottom-left':
+        bottom = 20;
+        left = 20;
+        slideBegin = const Offset(-1.0, 0.0);
+        break;
+      default:
+        top = MediaQuery.of(context).padding.top + 20;
+        right = 20;
+        slideBegin = const Offset(1.0, 0.0);
+    }
+
+    // Créer l'animation de slide selon la position
+    _slideAnimation ??= Tween<Offset>(
+      begin: slideBegin,
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
+    );
 
     return Positioned(
-      top: MediaQuery.of(context).padding.top + 20,
-      right: 20,
+      top: top,
+      bottom: bottom,
+      left: left,
+      right: right,
       child: SlideTransition(
-        position: _slideAnimation,
+        position: _slideAnimation!,
         child: FadeTransition(
           opacity: _opacityAnimation,
           child: ScaleTransition(

@@ -18,6 +18,7 @@ import '../../widgets/auth/auth_dialog.dart';
 import '../common/color_picker_dialog.dart';
 import '../common/gx_futuristic_dialog.dart';
 import '../../core/constants/notilus_fonts.dart';
+import '../../services/gx_notification_service.dart';
 
 class ModernSettingsPanel extends StatefulWidget {
   final VoidCallback? onClose;
@@ -105,6 +106,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                         _buildSectionItem('account', 'Compte', CupertinoIcons.person_circle, gxRed),
                         _buildSectionItem('devtools', 'DevTools', CupertinoIcons.ant, gxRed),
                         _buildSectionItem('gxComponents', 'Composants GX', CupertinoIcons.square_grid_2x2, gxRed),
+                        _buildSectionItem('notifications', 'Notifications', CupertinoIcons.bell, gxRed),
                         _buildSectionItem('about', 'À propos', CupertinoIcons.info_circle, gxRed),
                       ],
                     ),
@@ -180,6 +182,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
             'webservices' => _buildWebServicesSection(context, theme, gxRed),
             'privacy' => _buildPrivacySection(context, theme, gxRed),
             'gxComponents' => _buildGxComponentsSection(context, theme, gxRed),
+            'notifications' => _buildNotificationsSection(context, theme, gxRed),
             'account' => _buildAccountSection(context, theme, gxRed),
             'devtools' => _buildDevToolsSection(context, theme, gxRed),
             'about' => _buildAboutSection(context, theme, gxRed),
@@ -2376,6 +2379,204 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
           ),
         ],
       ),
+    );
+  }
+
+  // ============================================
+  // SECTION NOTIFICATIONS
+  // ============================================
+  
+  Widget _buildNotificationsSection(BuildContext context, ThemeData theme, Color gxRed) {
+    return ListenableBuilder(
+      listenable: _settings,
+      builder: (context, _) {
+        final positions = {
+          'top-right': 'Haut droite',
+          'top-left': 'Haut gauche',
+          'bottom-right': 'Bas droite',
+          'bottom-left': 'Bas gauche',
+        };
+        
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSubsectionTitle('Position', gxRed),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: positions.entries.map((entry) {
+                final isSelected = _settings.notificationPosition == entry.key;
+                return ChoiceChip(
+                  label: Text(entry.value),
+                  selected: isSelected,
+                  onSelected: (_) => _settings.setNotificationPosition(entry.key),
+                  selectedColor: gxRed.withOpacity(0.2),
+                  backgroundColor: Colors.white.withOpacity(0.05),
+                  side: BorderSide(color: isSelected ? gxRed : Colors.white24),
+                  labelStyle: TextStyle(color: isSelected ? gxRed : Colors.white70, fontSize: 11),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 28),
+            
+            _buildSubsectionTitle('Son', gxRed),
+            const SizedBox(height: 12),
+            _buildSettingSwitch(
+              title: 'Activer le son',
+              subtitle: 'Jouer un son lors de l\'affichage d\'une notification',
+              value: _settings.notificationSoundEnabled,
+              onChanged: (value) => _settings.setNotificationSoundEnabled(value),
+              gxRed: gxRed,
+            ),
+            const SizedBox(height: 16),
+            if (_settings.notificationSoundEnabled) ...[
+              Row(
+                children: [
+                  const Text('Volume', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Slider(
+                      value: _settings.notificationVolume,
+                      min: 0.0,
+                      max: 1.0,
+                      divisions: 10,
+                      activeColor: gxRed,
+                      inactiveColor: Colors.white.withOpacity(0.1),
+                      onChanged: (value) => _settings.setNotificationVolume(value),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    '${(_settings.notificationVolume * 100).toInt()}%',
+                    style: TextStyle(color: Colors.white70, fontSize: 11),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 28),
+            
+            _buildSubsectionTitle('Affichage', gxRed),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                const Text('Durée d\'affichage', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Slider(
+                    value: _settings.notificationDuration.toDouble(),
+                    min: 2.0,
+                    max: 10.0,
+                    divisions: 8,
+                    activeColor: gxRed,
+                    inactiveColor: Colors.white.withOpacity(0.1),
+                    onChanged: (value) => _settings.setNotificationDuration(value.toInt()),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  '${_settings.notificationDuration}s',
+                  style: TextStyle(color: Colors.white70, fontSize: 11),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                const Text('Nombre maximum visible', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Slider(
+                    value: _settings.notificationMaxVisible.toDouble(),
+                    min: 1.0,
+                    max: 10.0,
+                    divisions: 9,
+                    activeColor: gxRed,
+                    inactiveColor: Colors.white.withOpacity(0.1),
+                    onChanged: (value) => _settings.setNotificationMaxVisible(value.toInt()),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  '${_settings.notificationMaxVisible}',
+                  style: TextStyle(color: Colors.white70, fontSize: 11),
+                ),
+              ],
+            ),
+            const SizedBox(height: 28),
+            
+            // Test de notification
+            _buildSubsectionTitle('Test', gxRed),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: () {
+                    GxNotificationService().showSuccess(
+                      title: 'Notification de test',
+                      message: 'Ceci est une notification de succès',
+                      context: context,
+                    );
+                  },
+                  icon: const Icon(Icons.check_circle_rounded, size: 16),
+                  label: const Text('Test Succès', style: TextStyle(fontSize: 11)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF22C55E),
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    GxNotificationService().showError(
+                      title: 'Notification de test',
+                      message: 'Ceci est une notification d\'erreur',
+                      context: context,
+                    );
+                  },
+                  icon: const Icon(Icons.error_rounded, size: 16),
+                  label: const Text('Test Erreur', style: TextStyle(fontSize: 11)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFEF4444),
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    GxNotificationService().showWarning(
+                      title: 'Notification de test',
+                      message: 'Ceci est une notification d\'avertissement',
+                      context: context,
+                    );
+                  },
+                  icon: const Icon(Icons.warning_rounded, size: 16),
+                  label: const Text('Test Avertissement', style: TextStyle(fontSize: 11)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF59E0B),
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    GxNotificationService().showInfo(
+                      title: 'Notification de test',
+                      message: 'Ceci est une notification d\'information',
+                      context: context,
+                    );
+                  },
+                  icon: const Icon(Icons.info_rounded, size: 16),
+                  label: const Text('Test Info', style: TextStyle(fontSize: 11)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF3B82F6),
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        );
+      },
     );
   }
 

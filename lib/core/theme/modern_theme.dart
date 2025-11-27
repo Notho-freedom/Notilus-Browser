@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'app_theme.dart';
+import '../constants/notilus_fonts.dart';
 
 /// Thème moderne et épuré pour Notilus
 class ModernTheme extends AppTheme {
@@ -32,41 +33,36 @@ class ModernTheme extends AppTheme {
           background: Color(0xFFFAFAFA),
           error: Color(0xFFFF3B30),
         ),
-        fontFamily: 'SF Pro Display',
-        textTheme: const TextTheme(
-          displayLarge: TextStyle(
+        textTheme: TextTheme(
+          displayLarge: NotilusFonts.orbitron(
             fontSize: 34,
             fontWeight: FontWeight.w700,
-            letterSpacing: -0.5,
-            color: Color(0xFF1C1C1E),
+            color: const Color(0xFF1C1C1E),
           ),
-          displayMedium: TextStyle(
+          displayMedium: NotilusFonts.orbitron(
             fontSize: 28,
             fontWeight: FontWeight.w600,
-            letterSpacing: -0.3,
-            color: Color(0xFF1C1C1E),
+            color: const Color(0xFF1C1C1E),
           ),
-          headlineLarge: TextStyle(
+          headlineLarge: NotilusFonts.orbitron(
             fontSize: 22,
             fontWeight: FontWeight.w600,
-            letterSpacing: -0.2,
-            color: Color(0xFF1C1C1E),
+            color: const Color(0xFF1C1C1E),
           ),
-          bodyLarge: TextStyle(
+          bodyLarge: NotilusFonts.rajdhani(
             fontSize: 17,
             fontWeight: FontWeight.w400,
-            color: Color(0xFF1C1C1E),
+            color: const Color(0xFF1C1C1E),
           ),
-          bodyMedium: TextStyle(
+          bodyMedium: NotilusFonts.rajdhani(
             fontSize: 15,
             fontWeight: FontWeight.w400,
-            color: Color(0xFF1C1C1E),
+            color: const Color(0xFF1C1C1E),
           ),
-          labelLarge: TextStyle(
+          labelLarge: NotilusFonts.rajdhani(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            letterSpacing: 0.2,
-            color: Color(0xFF1C1C1E),
+            color: const Color(0xFF1C1C1E),
           ),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
@@ -131,41 +127,36 @@ class ModernDarkTheme extends AppTheme {
           background: Color(0xFF000000),
           error: Color(0xFFFF453A),
         ),
-        fontFamily: 'SF Pro Display',
-        textTheme: const TextTheme(
-          displayLarge: TextStyle(
+        textTheme: TextTheme(
+          displayLarge: NotilusFonts.orbitron(
             fontSize: 34,
             fontWeight: FontWeight.w700,
-            letterSpacing: -0.5,
-            color: Color(0xFFFFFFFF),
+            color: Colors.white,
           ),
-          displayMedium: TextStyle(
+          displayMedium: NotilusFonts.orbitron(
             fontSize: 28,
             fontWeight: FontWeight.w600,
-            letterSpacing: -0.3,
-            color: Color(0xFFFFFFFF),
+            color: Colors.white,
           ),
-          headlineLarge: TextStyle(
+          headlineLarge: NotilusFonts.orbitron(
             fontSize: 22,
             fontWeight: FontWeight.w600,
-            letterSpacing: -0.2,
-            color: Color(0xFFFFFFFF),
+            color: Colors.white,
           ),
-          bodyLarge: TextStyle(
+          bodyLarge: NotilusFonts.rajdhani(
             fontSize: 17,
             fontWeight: FontWeight.w400,
-            color: Color(0xFFFFFFFF),
+            color: Colors.white,
           ),
-          bodyMedium: TextStyle(
+          bodyMedium: NotilusFonts.rajdhani(
             fontSize: 15,
             fontWeight: FontWeight.w400,
-            color: Color(0xFFFFFFFF),
+            color: Colors.white,
           ),
-          labelLarge: TextStyle(
+          labelLarge: NotilusFonts.rajdhani(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            letterSpacing: 0.2,
-            color: Color(0xFFFFFFFF),
+            color: Colors.white,
           ),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
