@@ -10,8 +10,6 @@ import '../../services/studio/studio_service.dart';
 import '../../services/studio/live_editor_service.dart';
 import '../../models/studio/studio_models.dart';
 import '../../core/services/color_theme_manager.dart';
-import '../../core/constants/notilus_fonts.dart';
-import '../common/gx_futuristic_widgets.dart';
 
 /// Panneau Live Editor
 class LiveEditorPanel extends StatefulWidget {
@@ -95,12 +93,9 @@ class _LiveEditorPanelState extends State<LiveEditorPanel>
                   Expanded(
                     child: _buildInspectorPanel(editor, accentColor),
                   ),
-                  GxFuturisticContainer(
-                    accentColor: accentColor,
+                  Container(
                     height: 1,
-                    padding: EdgeInsets.zero,
-                    showBorders: false,
-                    child: const SizedBox.shrink(),
+                    color: Colors.white.withOpacity(0.05),
                   ),
                   Expanded(
                     child: _buildEditorPanel(editor, accentColor),

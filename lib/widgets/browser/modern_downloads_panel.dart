@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/services/wallpaper_manager.dart';
 import '../../core/services/color_theme_manager.dart';
-import '../../core/constants/notilus_colors.dart';
-import '../common/gx_futuristic_widgets.dart';
 import '../../services/download_service.dart';
 import '../../models/download_model.dart';
 import 'package:url_launcher/url_launcher.dart';

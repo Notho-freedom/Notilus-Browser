@@ -1903,8 +1903,8 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
               
               if (loadTestResults.isEmpty) {
                 return _GxEmptyState(
-                  icon: Icons.trending_up_rounded,
-                  title: 'Tests de Performance',
+            icon: Icons.trending_up_rounded,
+            title: 'Tests de Performance',
                   subtitle: 'Lancez un test de charge pour analyser les performances\nLes résultats apparaîtront ici une fois le test terminé',
                 );
               }
@@ -2483,33 +2483,33 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
       accentColor: accent,
       width: 450,
       child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
+          mainAxisSize: MainAxisSize.min,
+          children: [
           _GxTextField(
             controller: urlController,
-            hint: 'URL du serveur Backend Lab',
-          ),
-        ],
-      ),
-      actions: [
+              hint: 'URL du serveur Backend Lab',
+            ),
+          ],
+        ),
+        actions: [
         GxFuturisticButton(
           label: 'Annuler',
           variant: GxFuturisticButtonVariant.secondary,
           accentColor: accent,
-          onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(context),
         ),
         GxFuturisticButton(
           label: 'Sauvegarder',
           icon: Icons.save_rounded,
           variant: GxFuturisticButtonVariant.primary,
           accentColor: accent,
-          onPressed: () {
+            onPressed: () {
             _labService.baseUrl = urlController.text;
-            _labService.checkConnection();
-            Navigator.pop(context);
-          },
-        ),
-      ],
+              _labService.checkConnection();
+              Navigator.pop(context);
+            },
+          ),
+        ],
     );
   }
 
@@ -2532,11 +2532,11 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
       titleIcon: Icons.speed_rounded,
       accentColor: accent,
       width: 500,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
           _GxTextField(controller: nameController, hint: 'Nom du test'),
-          const SizedBox(height: 12),
+              const SizedBox(height: 12),
           _AutoConfigUrlField(
             controller: urlController,
             hint: 'URL cible',
@@ -2544,7 +2544,7 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
             selectedRoute: _selectedRouteForConfig,
             routeParams: _routeParams,
           ),
-          const SizedBox(height: 12),
+              const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
@@ -2570,13 +2570,13 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
             ],
           ),
         ],
-      ),
-      actions: [
+        ),
+        actions: [
         GxFuturisticButton(
           label: 'Annuler',
           variant: GxFuturisticButtonVariant.secondary,
           accentColor: accent,
-          onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(context),
         ),
         GxFuturisticButton(
           label: 'Démarrer',
@@ -2584,7 +2584,7 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
           variant: GxFuturisticButtonVariant.primary,
           accentColor: accent,
           onPressed: () async {
-            if (nameController.text.isNotEmpty && urlController.text.isNotEmpty) {
+              if (nameController.text.isNotEmpty && urlController.text.isNotEmpty) {
               Navigator.pop(context);
               setState(() => _isLoadTestRunning = true);
               
