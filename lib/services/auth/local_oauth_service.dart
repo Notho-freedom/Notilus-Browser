@@ -65,9 +65,9 @@ class LocalOAuthService {
     }
   }
   
-  /// Initie le flux GitHub OAuth
-  String getGitHubAuthUrl() {
-    return '$_baseUrl/github/authorize';
+  /// Initie le flux GitHub OAuth avec un state spécifique
+  String getGitHubAuthUrl(String state) {
+    return '$_baseUrl/github/authorize?state=$state';
   }
   
   /// Récupère le token GitHub après autorisation

@@ -49,7 +49,7 @@ class TokenResponse(BaseModel):
 # Google OAuth - Device Flow
 # ============================================================================
 
-@router.get("/oauth/google/device-flow", response_model=DeviceFlowResponse)
+@router.get("/google/device-flow", response_model=DeviceFlowResponse)
 async def google_device_flow():
     """
     Initie le Device Flow pour Google OAuth
@@ -99,7 +99,7 @@ async def google_device_flow():
         raise HTTPException(status_code=500, detail=f"Erreur lors de la demande device code: {str(e)}")
 
 
-@router.get("/oauth/google/poll/{device_code}", response_model=TokenResponse)
+@router.get("/google/poll/{device_code}", response_model=TokenResponse)
 async def google_poll_token(device_code: str):
     """
     Poll pour vérifier si l'utilisateur a autorisé l'app
@@ -180,10 +180,11 @@ async def google_poll_token(device_code: str):
 # GitHub OAuth - WebView Flow
 # ============================================================================
 
-@router.get("/oauth/github/authorize")
-async def github_authorize():
+@router.get("/github/authorize")
+async def github_authorize(state: Optional[str] = Query(None)):
     """
     Redirige vers GitHub OAuth
+    Si state n'est pas fourni, en génère un nouveau
     """
     if not GITHUB_CLIENT_ID:
         raise HTTPException(
@@ -191,8 +192,9 @@ async def github_authorize():
             detail="GITHUB_CLIENT_ID non configuré. Configurez-le dans .env"
         )
     
-    # Générer un state pour la sécurité
-    state = secrets.token_urlsafe(32)
+    # Utiliser le state fourni ou en générer un nouveau
+    if not state:
+        state = secrets.token_urlsafe(32)
     
     # Construire l'URL d'autorisation GitHub
     redirect_uri = f"http://localhost:8000/api/oauth/github/callback"
@@ -210,7 +212,7 @@ async def github_authorize():
     return RedirectResponse(url=auth_url)
 
 
-@router.get("/oauth/github/callback")
+@router.get("/github/callback")
 async def github_callback(
     code: Optional[str] = Query(None),
     state: Optional[str] = Query(None),
@@ -332,7 +334,7 @@ async def github_callback(
         raise HTTPException(status_code=500, detail=f"Erreur lors de l'échange du token: {str(e)}")
 
 
-@router.get("/oauth/github/token/{state}", response_model=TokenResponse)
+@router.get("/github/token/{state}", response_model=TokenResponse)
 async def github_get_token(state: str):
     """
     Récupère le token GitHub après autorisation
@@ -361,7 +363,7 @@ async def github_get_token(state: str):
 # Utilitaires
 # ============================================================================
 
-@router.get("/oauth/config")
+@router.get("/config")
 async def get_oauth_config():
     """
     Retourne la configuration OAuth (sans secrets)
