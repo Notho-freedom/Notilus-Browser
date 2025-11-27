@@ -152,19 +152,23 @@ class _DocumentationPanelState extends State<DocumentationPanel> {
         children: [
           Icon(CupertinoIcons.book, color: accentColor, size: 24),
           const SizedBox(width: 12),
-          Text(
-            'Documentation Notilus',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
+          Flexible(
+            child: Text(
+              'Documentation Notilus',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
-          const Spacer(),
+          const SizedBox(width: 12),
           // Barre de recherche
-          Container(
-            width: 300,
-            height: 36,
+          Flexible(
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 300),
+              height: 36,
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.05),
               borderRadius: BorderRadius.circular(8),
@@ -213,6 +217,7 @@ class _DocumentationPanelState extends State<DocumentationPanel> {
               ),
             ),
           ),
+        ),
         ],
       ),
     );

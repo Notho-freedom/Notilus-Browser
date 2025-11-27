@@ -1196,8 +1196,8 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
           child: Slider(
             value: value,
             min: 0.0,
-            max: 0.8,
-            divisions: 16,
+            max: 1.0,
+            divisions: 20,
             onChanged: onChanged,
           ),
         ),
