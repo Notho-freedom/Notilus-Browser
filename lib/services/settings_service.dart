@@ -40,6 +40,7 @@ class SettingsService extends ChangeNotifier {
   // Terminal
   static const String _keyPreferredTerminal = 'notilus_preferred_terminal';
   static const String _keyTerminalFontSize = 'notilus_terminal_font_size';
+  static const String _keyTerminalInterfaceType = 'notilus_terminal_interface_type'; // 'native' | 'xterm'
   
   // Page d'accueil
   static const String _keyLeftColumnExpanded = 'notilus_left_column_expanded';
@@ -258,7 +259,18 @@ class SettingsService extends ChangeNotifier {
     await _prefs?.setString(_keyPreferredTerminal, terminalId);
     notifyListeners();
   }
+
+  /// Type d'interface terminal ('native' | 'xterm')
+  String get terminalInterfaceType => _prefs?.getString(_keyTerminalInterfaceType) ?? 'native';
   
+  Future<void> setTerminalInterfaceType(String type) async {
+    if (type != 'native' && type != 'xterm') {
+      throw ArgumentError('Type must be "native" or "xterm"');
+    }
+    await _prefs?.setString(_keyTerminalInterfaceType, type);
+    notifyListeners();
+  }
+
   double get terminalFontSize => _prefs?.getDouble(_keyTerminalFontSize) ?? 14.0;
   
   Future<void> setTerminalFontSize(double size) async {
