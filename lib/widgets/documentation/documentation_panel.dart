@@ -9,6 +9,8 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import '../../core/services/color_theme_manager.dart';
 import '../../core/animations/notilus_animations.dart';
 import '../../services/documentation_service.dart';
+import '../../core/constants/notilus_colors.dart';
+import '../common/gx_futuristic_widgets.dart';
 
 class DocumentationPanel extends StatefulWidget {
   const DocumentationPanel({super.key});
