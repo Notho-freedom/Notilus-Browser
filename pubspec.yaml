@@ -43,6 +43,18 @@ dependencies:
   
   # File Picker
   file_picker: ^6.1.1
+  
+  # Firebase
+  firebase_core: ^2.24.2
+  firebase_auth: ^4.15.3
+  cloud_firestore: ^4.13.6
+  
+  # Auth Providers
+  google_sign_in: ^6.1.6
+  
+  # Markdown (pour documentation)
+  flutter_markdown: ^0.6.18
+  markdown: ^6.0.2
 
 dev_dependencies:
   flutter_test:
