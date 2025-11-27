@@ -162,9 +162,9 @@ class _ColorPickerDialogState extends State<ColorPickerDialog> {
             // Couleurs prédéfinies
             Text(
               'Couleurs rapides',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: Colors.white70,
+              style: NotilusFonts.rajdhani(
                 fontSize: 11,
+                color: Colors.white70,
               ),
             ),
             const SizedBox(height: 8),
