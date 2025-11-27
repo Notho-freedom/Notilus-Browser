@@ -5,14 +5,26 @@ import 'webview2_browser_engine.dart';
 import 'windows_browser_engine.dart';
 import '../models/tab_model.dart';
 import 'download_service.dart';
+import 'studio/studio_service.dart';
+import 'lighthouse/lighthouse_service.dart';
 
 /// Gestionnaire qui associe chaque onglet à son moteur de rendu
 /// Optimisé pour conserver les sessions et éviter les rechargements
 class TabWebViewManager extends ChangeNotifier {
   DownloadService? _downloadService;
+  StudioService? _studioService;
+  LighthouseService? _lighthouseService;
   
   void setDownloadService(DownloadService service) {
     _downloadService = service;
+  }
+  
+  void setStudioService(StudioService service) {
+    _studioService = service;
+  }
+  
+  void setLighthouseService(LighthouseService service) {
+    _lighthouseService = service;
   }
   // Engines actifs (associés à des onglets ouverts)
   final Map<String, BrowserEngine> _activeEngines = {};
@@ -38,6 +50,21 @@ class TabWebViewManager extends ChangeNotifier {
         _tabUrlMap[tabId] = url;
         engine.navigate(url);
       }
+      // S'assurer que les services sont attachés (au cas où ils n'étaient pas attachés avant)
+      if (_studioService != null && _studioService!.engine != engine) {
+        _studioService!.attachEngine(engine);
+        final currentUrl = url ?? _tabUrlMap[tabId];
+        if (currentUrl != null) {
+          _studioService!.updateUrl(currentUrl);
+        }
+      }
+      if (_lighthouseService != null && _lighthouseService!.engine != engine) {
+        _lighthouseService!.attachEngine(engine);
+        final currentUrl = url ?? _tabUrlMap[tabId];
+        if (currentUrl != null) {
+          _lighthouseService!.updateUrl(currentUrl);
+        }
+      }
       return engine;
     }
     
@@ -51,6 +78,15 @@ class TabWebViewManager extends ChangeNotifier {
       _activeEngines[tabId] = engine!;
       _tabUrlMap[tabId] = url;
       debugPrint('✅ Réutilisation d\'un engine en cache pour $url');
+      // Attacher les services
+      if (_studioService != null) {
+        _studioService!.attachEngine(engine);
+        _studioService!.updateUrl(url);
+      }
+      if (_lighthouseService != null) {
+        _lighthouseService!.attachEngine(engine);
+        _lighthouseService!.updateUrl(url);
+      }
       return engine;
     }
     
@@ -66,9 +102,19 @@ class TabWebViewManager extends ChangeNotifier {
       _tabUrlMap[tabId] = url;
     }
     
+    // Les services Studio et Lighthouse seront attachés depuis le widget
+    // pour éviter les appels setState pendant le build
+    
     // Configurer les callbacks
     engine.onUrlChanged = (newUrl) {
       _tabUrlMap[tabId] = newUrl;
+      // Mettre à jour les services Studio et Lighthouse
+      if (_studioService != null) {
+        _studioService!.updateUrl(newUrl);
+      }
+      if (_lighthouseService != null) {
+        _lighthouseService!.updateUrl(newUrl);
+      }
       notifyListeners();
     };
     

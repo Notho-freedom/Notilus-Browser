@@ -21,15 +21,22 @@ import 'webview_service_panel.dart';
 import '../../core/services/wallpaper_manager.dart';
 import '../../core/services/color_theme_manager.dart';
 import '../../services/settings_service.dart';
-import '../../widgets/terminal/native_terminal_panel.dart';
+import '../../widgets/terminal/terminal_panel.dart';
 import '../../widgets/dev_tools/notilus_devtools.dart';
 import '../../widgets/documentation/documentation_panel.dart';
 import '../../widgets/mosaic/mosaic_container.dart';
 import '../../services/mosaic_service.dart';
+import '../../widgets/studio/studio_panel.dart';
+import '../../widgets/lighthouse/lighthouse_panel.dart';
+import '../../services/lighthouse/lighthouse_service.dart';
+import '../../services/studio/studio_service.dart';
 
 // Intent pour les raccourcis clavier
 class _ToggleMosaicIntent extends Intent {}
 class _OpenDevToolsIntent extends Intent {}
+class _OpenLighthouseIntent extends Intent {}
+class _OpenStudioIntent extends Intent {}
+class _RunLighthouseAuditIntent extends Intent {}
 
 class ModernBrowserWindow extends StatefulWidget {
   const ModernBrowserWindow({super.key});
@@ -151,6 +158,9 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
         LogicalKeySet(LogicalKeyboardKey.f12): _OpenDevToolsIntent(),
         LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.shift, LogicalKeyboardKey.keyI): _OpenDevToolsIntent(),
         LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.shift, LogicalKeyboardKey.keyM): _ToggleMosaicIntent(),
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.shift, LogicalKeyboardKey.keyL): _OpenLighthouseIntent(),
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.shift, LogicalKeyboardKey.keyS): _OpenStudioIntent(),
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.shift, LogicalKeyboardKey.keyR): _RunLighthouseAuditIntent(),
       },
       child: Actions(
         actions: {
@@ -165,6 +175,35 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
               final mosaicService = Provider.of<NotilusMosaicService>(context, listen: false);
               final tabManager = Provider.of<TabManager>(context, listen: false);
               mosaicService.toggle(activeTabId: tabManager.activeTab?.id);
+              return null;
+            },
+          ),
+          _OpenLighthouseIntent: CallbackAction<_OpenLighthouseIntent>(
+            onInvoke: (_) {
+              setState(() {
+                _currentSection = SidebarSection.lighthouse;
+              });
+              return null;
+            },
+          ),
+          _OpenStudioIntent: CallbackAction<_OpenStudioIntent>(
+            onInvoke: (_) {
+              setState(() {
+                _currentSection = SidebarSection.studio;
+              });
+              return null;
+            },
+          ),
+          _RunLighthouseAuditIntent: CallbackAction<_RunLighthouseAuditIntent>(
+            onInvoke: (_) {
+              if (_currentSection == SidebarSection.lighthouse) {
+                final lighthouseService = Provider.of<LighthouseService>(context, listen: false);
+                final tabManager = Provider.of<TabManager>(context, listen: false);
+                final activeTab = tabManager.activeTab;
+                if (activeTab != null && !lighthouseService.isRunning) {
+                  lighthouseService.runFullAudit();
+                }
+              }
               return null;
             },
           ),
@@ -260,6 +299,49 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                             activeTabUrl: tabs.activeTab?.url,
                           ),
                           builder: (context, data, _) {
+                            // Attacher automatiquement les services Studio et Lighthouse à l'onglet actif
+                            // Utiliser un callback unique pour éviter les appels multiples
+                            if (data.activeTabId != null && data.activeTabUrl != null &&
+                                data.activeTabUrl!.isNotEmpty &&
+                                data.activeTabUrl != 'about:blank' &&
+                                data.activeTabUrl != 'about:newtab') {
+                              // Utiliser un Future.microtask pour éviter les appels multiples pendant le build
+                              Future.microtask(() {
+                                final tabWebViewManager = context.read<TabWebViewManager>();
+                                final studioService = context.read<StudioService>();
+                                final lighthouseService = context.read<LighthouseService>();
+                                
+                                final engine = tabWebViewManager.getEngineForTab(data.activeTabId!);
+                                if (engine != null) {
+                                  // Attacher Studio seulement si nécessaire
+                                  if (studioService.engine != engine) {
+                                    studioService.attachEngine(engine);
+                                    studioService.updateUrl(data.activeTabUrl!);
+                                    debugPrint('✅ StudioService attached to engine for tab: ${data.activeTabId}');
+                                  }
+                                  // Attacher Lighthouse seulement si nécessaire
+                                  if (lighthouseService.engine != engine) {
+                                    lighthouseService.attachEngine(engine);
+                                    lighthouseService.updateUrl(data.activeTabUrl!);
+                                  }
+                                } else {
+                                  debugPrint('⚠️ No engine found for tab: ${data.activeTabId}');
+                                }
+                              });
+                            } else {
+                              // Détacher si pas d'onglet actif valide
+                              Future.microtask(() {
+                                final studioService = context.read<StudioService>();
+                                final lighthouseService = context.read<LighthouseService>();
+                                if (studioService.engine != null) {
+                                  studioService.detachEngine();
+                                }
+                                if (lighthouseService.engine != null) {
+                                  lighthouseService.detachEngine();
+                                }
+                              });
+                            }
+                            
                             // Priorité 1: Mosaïque si active
                             if (data.isMosaicActive) {
                               return const MosaicContainer();
@@ -503,7 +585,7 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
         return _SidebarPanelConfig(
           title: 'Terminal',
           icon: CupertinoIcons.square_list,
-          child: const NativeTerminalPanel(),
+          child: const TerminalPanel(),
         );
       case SidebarSection.youtubeMusic:
         return _SidebarPanelConfig(
@@ -575,6 +657,18 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
       case SidebarSection.nativeDevtools:
       case SidebarSection.mosaic:
         return null;
+      case SidebarSection.studio:
+        return _SidebarPanelConfig(
+          title: 'Notilus Studio',
+          icon: CupertinoIcons.paintbrush,
+          child: const StudioPanel(),
+        );
+      case SidebarSection.lighthouse:
+        return _SidebarPanelConfig(
+          title: 'Notilus Lighthouse',
+          icon: CupertinoIcons.gauge,
+          child: const LighthousePanel(),
+        );
       case SidebarSection.docs:
         return _SidebarPanelConfig(
           title: 'Documentation',
@@ -605,33 +699,34 @@ class _NotilusWidgetsPanel extends StatelessWidget {
     final theme = Theme.of(context);
     final gxRed = Provider.of<ColorThemeManager>(context).nativeSecondaryColor;
     
-    return Container(
-      decoration: BoxDecoration(
-        image: DecorationImage(
-          image: NetworkImage(context.watch<WallpaperManager>().current),
-          fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(
-            Colors.black.withValues(alpha: 0.85),
-            BlendMode.srcOver,
+    return Consumer<SettingsService>(
+      builder: (context, settings, _) => Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: NetworkImage(context.watch<WallpaperManager>().current),
+            fit: BoxFit.cover,
+            colorFilter: ColorFilter.mode(
+              Colors.black.withValues(alpha: 0.85),
+              BlendMode.srcOver,
+            ),
           ),
         ),
-      ),
-      child: Container(
-        color: Colors.black.withValues(alpha: 0.5),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Row(
-                children: [
-                  Text(
-                    'Widgets système',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
+        child: Container(
+          color: Colors.black.withValues(alpha: 1.0 - settings.panelTransparency),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Row(
+                  children: [
+                    Text(
+                      'Widgets système',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
                   const Spacer(),
                   Container(
                     width: 8,
@@ -691,6 +786,7 @@ class _NotilusWidgetsPanel extends StatelessWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }
