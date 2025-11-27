@@ -6,13 +6,16 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter/foundation.dart' as foundation;
+import 'local_oauth_service.dart';
 
 /// Service d'authentification Firebase
 class FirebaseAuthService extends foundation.ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   GoogleSignIn? _googleSignIn;
+  final LocalOAuthService _localOAuth = LocalOAuthService();
   User? _currentUser;
   bool _isLoading = false;
+  bool _useLocalBackend = false;
   
   FirebaseAuthService() {
     // google_sign_in n'est pas supporté sur Windows
@@ -28,6 +31,24 @@ class FirebaseAuthService extends foundation.ChangeNotifier {
       _currentUser = user;
       notifyListeners();
     });
+    
+    // Vérifier si le backend local est disponible
+    _checkLocalBackend();
+  }
+  
+  /// Vérifie si le backend local OAuth est disponible
+  Future<void> _checkLocalBackend() async {
+    try {
+      _useLocalBackend = await _localOAuth.isBackendAvailable();
+      if (_useLocalBackend) {
+        debugPrint('✅ Backend OAuth local disponible');
+      } else {
+        debugPrint('⚠️ Backend OAuth local non disponible');
+      }
+    } catch (e) {
+      debugPrint('Erreur lors de la vérification du backend: $e');
+      _useLocalBackend = false;
+    }
   }
 
   /// Utilisateur actuel
@@ -91,61 +112,147 @@ class FirebaseAuthService extends foundation.ChangeNotifier {
     }
   }
 
-  /// Connexion Google sur Windows via OAuth personnalisé
+  /// Connexion Google sur Windows via Device Flow (backend local)
   Future<UserCredential?> _signInWithGoogleWindows() async {
     try {
-      // Note: Pour Windows, il faut configurer OAuth dans Firebase Console
-      // et utiliser un flux personnalisé. Pour l'instant, on affiche un message.
-      debugPrint('⚠️ Google Sign-In sur Windows nécessite une configuration OAuth personnalisée');
-      debugPrint('💡 Utilisez l\'authentification par email/mot de passe pour Windows');
+      // Vérifier si le backend local est disponible
+      if (!_useLocalBackend) {
+        await _checkLocalBackend();
+      }
       
-      _isLoading = false;
-      notifyListeners();
+      if (!_useLocalBackend) {
+        debugPrint('⚠️ Backend OAuth local non disponible');
+        debugPrint('💡 Démarrez le backend avec: cd backend && python main.py');
+        debugPrint('💡 Ou utilisez l\'authentification par email/mot de passe');
+        _isLoading = false;
+        notifyListeners();
+        return null;
+      }
       
-      // Retourner null pour indiquer que la méthode n'est pas disponible
-      return null;
+      // Initier le Device Flow
+      final deviceFlow = await _localOAuth.initiateGoogleDeviceFlow();
+      if (deviceFlow == null) {
+        _isLoading = false;
+        notifyListeners();
+        return null;
+      }
+      
+      // Retourner les informations du Device Flow pour que l'UI puisse les afficher
+      // L'UI devra appeler pollGoogleTokenDeviceFlow() pour vérifier l'autorisation
+      throw GoogleDeviceFlowException(deviceFlow);
+      
     } catch (e) {
+      if (e is GoogleDeviceFlowException) {
+        rethrow; // Relancer pour que l'UI puisse gérer
+      }
       debugPrint('Erreur lors de la connexion Google (Windows): $e');
       _isLoading = false;
       notifyListeners();
       return null;
     }
   }
+  
+  /// Poll pour vérifier si Google Device Flow est complété
+  Future<UserCredential?> pollGoogleTokenDeviceFlow(String deviceCode) async {
+    try {
+      final token = await _localOAuth.pollGoogleToken(deviceCode);
+      
+      if (token == null) {
+        // En attente
+        return null;
+      }
+      
+      // Utiliser le token pour créer un credential Firebase
+      // Pour Google, on a besoin de l'id_token pour Firebase
+      if (token.idToken == null) {
+        debugPrint('⚠️ id_token manquant dans la réponse OAuth');
+        _isLoading = false;
+        notifyListeners();
+        return null;
+      }
+      
+      final credential = GoogleAuthProvider.credential(
+        idToken: token.idToken,
+        accessToken: token.accessToken,
+      );
+      
+      final userCredential = await _auth.signInWithCredential(credential);
+      _currentUser = userCredential.user;
+      _isLoading = false;
+      notifyListeners();
+      
+      return userCredential;
+    } catch (e) {
+      debugPrint('Erreur lors du polling Google token: $e');
+      _isLoading = false;
+      notifyListeners();
+      return null;
+    }
+  }
 
-  /// Connexion avec GitHub (OAuth via Firebase)
+  /// Connexion avec GitHub (OAuth via backend local)
   Future<UserCredential?> signInWithGitHub() async {
     try {
       _isLoading = true;
       notifyListeners();
 
-      // Utiliser Firebase Auth avec OAuthProvider pour GitHub
-      // Cela nécessite que GitHub soit configuré dans Firebase Console
-      // (Settings > Authentication > Sign-in method > Add new provider > GitHub)
+      // Vérifier si le backend local est disponible
+      if (!_useLocalBackend) {
+        await _checkLocalBackend();
+      }
       
-      final provider = OAuthProvider('github.com');
+      if (!_useLocalBackend) {
+        throw UnsupportedError(
+          'Backend OAuth local non disponible.\n'
+          'Démarrez le backend avec: cd backend && python main.py\n'
+          'Ou utilisez l\'authentification par email.'
+        );
+      }
       
-      // Configurer les scopes GitHub
-      provider.setCustomParameters({
-        'allow_signup': 'true',
-      });
-      provider.addScope('read:user');
-      provider.addScope('user:email');
+      // Générer un state pour la sécurité
+      final state = DateTime.now().millisecondsSinceEpoch.toString();
       
-      // Note: signInWithPopup/signInWithRedirect ne sont pas disponibles dans firebase_auth Flutter
-      // Il faut utiliser un flux OAuth personnalisé avec un serveur backend
-      // ou utiliser signInWithCredential avec un token obtenu manuellement
+      // Retourner l'URL d'autorisation pour que l'UI puisse ouvrir une WebView
+      final authUrl = _localOAuth.getGitHubAuthUrl();
+      throw GitHubOAuthUrlException(authUrl, state);
       
-      throw UnsupportedError(
-        'GitHub OAuth nécessite une configuration backend OAuth.\n'
-        'Pour l\'instant, utilisez l\'authentification par email.\n'
-        'GitHub doit être activé dans Firebase Console (Authentication > Sign-in method).\n'
-        'Pour implémenter GitHub OAuth, configurez un serveur backend qui gère le flux OAuth.'
-      );
     } catch (e) {
+      if (e is GitHubOAuthUrlException) {
+        rethrow; // Relancer pour que l'UI puisse gérer
+      }
       debugPrint('Erreur lors de la connexion GitHub: $e');
       _isLoading = false;
       notifyListeners();
       rethrow;
+    }
+  }
+  
+  /// Récupère le token GitHub après autorisation dans WebView
+  Future<UserCredential?> getGitHubTokenAfterAuth(String state) async {
+    try {
+      final token = await _localOAuth.getGitHubToken(state);
+      
+      if (token == null) {
+        // En attente
+        return null;
+      }
+      
+      // Utiliser le token pour créer un credential Firebase
+      final credential = OAuthProvider('github.com').credential(
+        accessToken: token.accessToken,
+      );
+      
+      final userCredential = await _auth.signInWithCredential(credential);
+      _currentUser = userCredential.user;
+      _isLoading = false;
+      notifyListeners();
+      
+      return userCredential;
+    } catch (e) {
+      debugPrint('Erreur lors de la récupération du token GitHub: $e');
+      _isLoading = false;
+      notifyListeners();
+      return null;
     }
   }
   
@@ -259,6 +366,30 @@ class FirebaseAuthService extends foundation.ChangeNotifier {
       return null;
     }
   }
+  
+  /// Vérifie si le backend local est disponible
+  bool get isLocalBackendAvailable => _useLocalBackend;
+}
+
+/// Exception pour gérer le Device Flow Google
+class GoogleDeviceFlowException implements Exception {
+  final GoogleDeviceFlow deviceFlow;
+  
+  GoogleDeviceFlowException(this.deviceFlow);
+  
+  @override
+  String toString() => 'Google Device Flow initié';
+}
+
+/// Exception pour gérer l'URL GitHub OAuth
+class GitHubOAuthUrlException implements Exception {
+  final String authUrl;
+  final String state;
+  
+  GitHubOAuthUrlException(this.authUrl, this.state);
+  
+  @override
+  String toString() => 'GitHub OAuth URL: $authUrl';
 }
 
 

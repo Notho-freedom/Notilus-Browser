@@ -17,6 +17,7 @@ from services.detection import router as detection_router
 from services.injection import router as injection_router
 from services.automation import router as automation_router
 from services.ai_service import router as ai_router
+from services.oauth_service import router as oauth_router
 
 # Backend Lab - Le système de tests backend le plus avancé
 from backend_lab.server_discovery import router as server_discovery_router
@@ -79,6 +80,7 @@ app.include_router(detection_router, prefix="/api/detection", tags=["Detection"]
 app.include_router(injection_router, prefix="/api/injection", tags=["Injection"])
 app.include_router(automation_router, prefix="/api/automation", tags=["Automation"])
 app.include_router(ai_router, prefix="/api/ai", tags=["AI"])
+app.include_router(oauth_router, prefix="/api/oauth", tags=["🔐 OAuth"])
 
 # ============================================================================
 # Backend Lab - Le système de tests backend inégalable
