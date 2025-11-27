@@ -10,8 +10,6 @@ import '../../services/studio/studio_service.dart';
 import '../../services/studio/interaction_recorder_service.dart';
 import '../../models/studio/studio_models.dart';
 import '../../core/services/color_theme_manager.dart';
-import '../../core/constants/notilus_fonts.dart';
-import '../common/gx_futuristic_widgets.dart';
 
 /// Panneau Interaction Recorder
 class InteractionRecorderPanel extends StatefulWidget {
@@ -42,16 +40,24 @@ class _InteractionRecorderPanelState extends State<InteractionRecorderPanel> {
               return SingleChildScrollView(
                 child: Column(
                   children: [
-                    GxFuturisticPanel(
+                    Container(
                       padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(color: Colors.white.withOpacity(0.05)),
+                        ),
+                      ),
                       child: _buildControlsPanel(recorder, accentColor),
                     ),
-                    SizedBox(
+                    Container(
                       height: 300,
-                      child: GxFuturisticPanel(
-                        padding: const EdgeInsets.all(16),
-                        child: _buildTimelinePanel(recorder, accentColor),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(color: Colors.white.withOpacity(0.05)),
+                        ),
                       ),
+                      child: _buildTimelinePanel(recorder, accentColor),
                     ),
                     Container(
                       padding: const EdgeInsets.all(16),
@@ -65,10 +71,13 @@ class _InteractionRecorderPanelState extends State<InteractionRecorderPanel> {
             if (isCompact) {
               return Row(
                 children: [
-                  GxFuturisticContainer(
-                    accentColor: accentColor,
+                  Container(
                     width: 280,
-                    padding: EdgeInsets.zero,
+                    decoration: BoxDecoration(
+                      border: Border(
+                        right: BorderSide(color: Colors.white.withOpacity(0.05)),
+                      ),
+                    ),
                     child: _buildControlsPanel(recorder, accentColor),
                   ),
                   Expanded(
@@ -77,10 +86,13 @@ class _InteractionRecorderPanelState extends State<InteractionRecorderPanel> {
                         Expanded(
                           child: _buildTimelinePanel(recorder, accentColor),
                         ),
-                        GxFuturisticContainer(
-                          accentColor: accentColor,
+                        Container(
                           height: 200,
-                          padding: EdgeInsets.zero,
+                          decoration: BoxDecoration(
+                            border: Border(
+                              top: BorderSide(color: Colors.white.withOpacity(0.05)),
+                            ),
+                          ),
                           child: _buildExportPanel(recorder, accentColor),
                         ),
                       ],

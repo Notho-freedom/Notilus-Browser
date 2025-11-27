@@ -7,8 +7,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import '../../services/studio/studio_service.dart';
 import '../../core/services/color_theme_manager.dart';
-import '../../core/constants/notilus_colors.dart';
-import '../../widgets/common/gx_futuristic_panel.dart';
 import 'responsive_tester_panel.dart';
 import 'screenshot_panel.dart';
 import 'live_editor_panel.dart';
@@ -74,11 +72,12 @@ class _StudioPanelState extends State<StudioPanel>
     final colorTheme = context.watch<ColorThemeManager>();
     final accentColor = colorTheme.nativeSecondaryColor;
 
-    return GxFuturisticPanel(
-      accentColor: accentColor,
-      padding: EdgeInsets.zero,
-      border: Border(
-        top: BorderSide(color: accentColor.withOpacity(0.3)),
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF0D0D12),
+        border: Border(
+          top: BorderSide(color: accentColor.withOpacity(0.3)),
+        ),
       ),
       child: Column(
         children: [
