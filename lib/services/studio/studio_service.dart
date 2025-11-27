@@ -47,18 +47,30 @@ class StudioService extends ChangeNotifier {
 
   /// Attache le service à un moteur de rendu
   void attachEngine(BrowserEngine engine) {
+    if (_engine == engine) {
+      debugPrint('⚠️ StudioService: Engine already attached');
+      return;
+    }
     _engine = engine;
     responsiveTester.attachEngine(engine);
     screenshot.attachEngine(engine);
     liveEditor.attachEngine(engine);
     interactionRecorder.attachEngine(engine);
     mockupComparator.attachEngine(engine);
+    debugPrint('✅ StudioService: Engine attached successfully. URL: $_currentUrl');
+    notifyListeners();
+    // Écouter les changements du ResponsiveTesterService pour propager les mises à jour
+    responsiveTester.addListener(_onResponsiveTesterChanged);
+  }
+
+  void _onResponsiveTesterChanged() {
     notifyListeners();
   }
 
   /// Détache le moteur
   void detachEngine() {
     _engine = null;
+    responsiveTester.removeListener(_onResponsiveTesterChanged);
     responsiveTester.detachEngine();
     screenshot.detachEngine();
     liveEditor.detachEngine();
@@ -101,7 +113,11 @@ class StudioService extends ChangeNotifier {
 
   /// Met à jour l'URL courante
   void updateUrl(String url) {
+    if (_currentUrl == url) {
+      return; // Pas besoin de mettre à jour si c'est la même URL
+    }
     _currentUrl = url;
+    debugPrint('✅ StudioService: URL updated to: $url');
     liveEditor.onUrlChanged(url);
     notifyListeners();
   }

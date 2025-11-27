@@ -27,18 +27,24 @@ class _ResponsiveTesterPanelState extends State<ResponsiveTesterPanel> {
     return Consumer<StudioService>(
       builder: (context, studioService, _) {
         final tester = studioService.responsiveTester;
-
-        return Column(
-          children: [
-            _buildToolbar(tester, accentColor),
-            Expanded(
-              child: tester.activeViewports.isEmpty
-                  ? _buildEmptyState(tester, accentColor)
-                  : _buildViewportGrid(tester, accentColor),
-            ),
-            if (tester.showBreakpoints && tester.detectedBreakpoints.isNotEmpty)
-              _buildBreakpointsBar(tester, accentColor),
-          ],
+        
+        // Utiliser AnimatedBuilder pour écouter les changements du ResponsiveTesterService
+        return AnimatedBuilder(
+          animation: tester,
+          builder: (context, _) {
+            return Column(
+              children: [
+                _buildToolbar(tester, accentColor),
+                Expanded(
+                  child: tester.activeViewports.isEmpty
+                      ? _buildEmptyState(tester, accentColor)
+                      : _buildViewportGrid(tester, accentColor),
+                ),
+                if (tester.showBreakpoints && tester.detectedBreakpoints.isNotEmpty)
+                  _buildBreakpointsBar(tester, accentColor),
+              ],
+            );
+          },
         );
       },
     );
@@ -294,6 +300,9 @@ class _ResponsiveTesterPanelState extends State<ResponsiveTesterPanel> {
 
   Widget _buildViewportGrid(ResponsiveTesterService tester, Color accentColor) {
     final viewports = tester.activeViewports;
+    // Limiter à 2 viewports maximum pour les previews
+    final activeViewports = viewports.take(2).toList();
+    final otherViewports = viewports.skip(2).toList();
     
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -302,29 +311,61 @@ class _ResponsiveTesterPanelState extends State<ResponsiveTesterPanel> {
         if (width < 600) {
           crossAxisCount = 1;
         } else if (width < 1000) {
-          crossAxisCount = viewports.length <= 2 ? viewports.length : 2;
+          crossAxisCount = activeViewports.length <= 2 ? activeViewports.length : 2;
         } else {
-          crossAxisCount = viewports.length <= 2 ? viewports.length : (viewports.length <= 4 ? 2 : 3);
+          crossAxisCount = activeViewports.length <= 2 ? activeViewports.length : 2;
         }
         
-        return GridView.builder(
-          padding: const EdgeInsets.all(16),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
-            childAspectRatio: 0.7,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-          ),
-          itemCount: viewports.length,
-          itemBuilder: (context, index) {
-            final viewport = viewports[index];
-            return _ViewportCard(
-              preset: viewport,
-              accentColor: accentColor,
-              onRotate: () => tester.rotateViewport(viewport.id),
-              onRemove: () => tester.removeViewport(viewport.id),
-            );
-          },
+        return Column(
+          children: [
+            Expanded(
+              child: GridView.builder(
+                padding: const EdgeInsets.all(16),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossAxisCount,
+                  childAspectRatio: 0.7,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                ),
+                itemCount: activeViewports.length,
+                itemBuilder: (context, index) {
+                  final viewport = activeViewports[index];
+                  return _ViewportCard(
+                    preset: viewport,
+                    accentColor: accentColor,
+                    onRotate: () => tester.rotateViewport(viewport.id),
+                    onRemove: () => tester.removeViewport(viewport.id),
+                    isActive: true,
+                  );
+                },
+              ),
+            ),
+            if (otherViewports.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF18181E),
+                  border: Border(
+                    top: BorderSide(color: Colors.white.withOpacity(0.05)),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(CupertinoIcons.info, size: 14, color: accentColor.withOpacity(0.7)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '${otherViewports.length} viewport(s) supplémentaire(s) - Limite de 2 previews actives',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.5),
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
         );
       },
     );
@@ -475,108 +516,378 @@ class _ToolbarToggle extends StatelessWidget {
   }
 }
 
-class _ViewportCard extends StatelessWidget {
+class _ViewportCard extends StatefulWidget {
   final ViewportPreset preset;
   final Color accentColor;
   final VoidCallback? onRotate;
   final VoidCallback? onRemove;
+  final bool isActive;
 
   const _ViewportCard({
     required this.preset,
     required this.accentColor,
     this.onRotate,
     this.onRemove,
+    this.isActive = false,
   });
 
   @override
+  State<_ViewportCard> createState() => _ViewportCardState();
+}
+
+class _ViewportCardState extends State<_ViewportCard> {
+  bool _isLoading = true;
+  String? _iframeId;
+  StudioService? _studioService;
+
+  @override
+  void initState() {
+    super.initState();
+    _iframeId = 'viewport_${widget.preset.id}_${DateTime.now().millisecondsSinceEpoch}';
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Sauvegarder la référence au service pour pouvoir l'utiliser dans dispose()
+    _studioService = context.read<StudioService>();
+    if (widget.isActive) {
+      _loadPreview();
+    }
+  }
+
+  @override
+  void dispose() {
+    _cleanupIframe();
+    super.dispose();
+  }
+
+  Future<void> _cleanupIframe() async {
+    if (_iframeId == null || _studioService == null) return;
+    if (_studioService!.engine == null) return;
+
+    final script = '''
+      (function() {
+        const iframe = document.getElementById('$_iframeId');
+        if (iframe) {
+          iframe.remove();
+        }
+      })();
+    ''';
+
+    try {
+      await _studioService!.executeScript(script);
+    } catch (e) {
+      debugPrint('Error cleaning up iframe: $e');
+    }
+  }
+
+  Future<void> _loadPreview() async {
+    if (_studioService == null) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+      return;
+    }
+    
+    if (_studioService!.engine == null || _studioService!.currentUrl == null) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+      return;
+    }
+
+    final url = _studioService!.currentUrl!;
+    if (url == 'about:blank' || url == 'about:newtab') {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+      return;
+    }
+
+    if (mounted) {
+      setState(() => _isLoading = true);
+    }
+
+    // Injecter un iframe dans le WebView principal avec les dimensions du viewport
+    final script = '''
+      (function() {
+        const iframeId = '${_iframeId}';
+        let iframe = document.getElementById(iframeId);
+        
+        if (!iframe) {
+          iframe = document.createElement('iframe');
+          iframe.id = iframeId;
+          iframe.style.position = 'fixed';
+          iframe.style.top = '-9999px';
+          iframe.style.left = '-9999px';
+          iframe.style.width = '${widget.preset.width}px';
+          iframe.style.height = '${widget.preset.height}px';
+          iframe.style.border = 'none';
+          iframe.style.transform = 'scale(0.5)';
+          iframe.style.transformOrigin = 'top left';
+          document.body.appendChild(iframe);
+        }
+        
+        iframe.src = '$url';
+        iframe.onload = function() {
+          window.postMessage({
+            type: 'viewport_loaded',
+            id: iframeId,
+            width: ${widget.preset.width},
+            height: ${widget.preset.height}
+          }, '*');
+        };
+      })();
+    ''';
+
+    try {
+      await _studioService!.executeScript(script);
+      // Attendre un peu pour le chargement
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      debugPrint('Error loading viewport preview: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF18181E),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
-      ),
-      child: Column(
-        children: [
-          // Header
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(color: Colors.white.withOpacity(0.05)),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(preset.category.icon, size: 14, color: accentColor),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        preset.name,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        preset.dimensionsText,
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.4),
-                          fontSize: 10,
-                        ),
-                      ),
-                    ],
+    return Consumer<StudioService>(
+      builder: (context, studioService, _) {
+        final hasEngine = studioService.engine != null;
+        final currentUrl = studioService.currentUrl ?? 'about:blank';
+        
+        return Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF18181E),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.white.withOpacity(0.1)),
+          ),
+          child: Column(
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(color: Colors.white.withOpacity(0.05)),
                   ),
                 ),
-                IconButton(
-                  icon: Icon(CupertinoIcons.rotate_right, size: 14, color: Colors.white.withOpacity(0.5)),
-                  onPressed: onRotate,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
-                ),
-                IconButton(
-                  icon: Icon(CupertinoIcons.xmark, size: 14, color: Colors.white.withOpacity(0.5)),
-                  onPressed: onRemove,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
-                ),
-              ],
-            ),
-          ),
-          // Preview (placeholder)
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF0D0D12),
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: Colors.white.withOpacity(0.05)),
-              ),
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
+                child: Row(
                   children: [
-                    Icon(
-                      preset.category.icon,
-                      size: 32,
-                      color: accentColor.withOpacity(0.3),
+                    Icon(widget.preset.category.icon, size: 14, color: widget.accentColor),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.preset.name,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            widget.preset.dimensionsText,
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.4),
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Preview',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.3),
-                        fontSize: 11,
+                    if (widget.isActive)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: widget.accentColor.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'Live',
+                          style: TextStyle(
+                            color: widget.accentColor,
+                            fontSize: 8,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    IconButton(
+                      icon: Icon(CupertinoIcons.rotate_right, size: 14, color: Colors.white.withOpacity(0.5)),
+                      onPressed: widget.onRotate,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                    ),
+                    IconButton(
+                      icon: Icon(CupertinoIcons.xmark, size: 14, color: Colors.white.withOpacity(0.5)),
+                      onPressed: widget.onRemove,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                    ),
+                  ],
+                ),
+              ),
+              // Preview
+              Expanded(
+                child: Container(
+                  margin: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0D0D12),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: Colors.white.withOpacity(0.05)),
+                  ),
+                  child: widget.isActive && hasEngine && currentUrl != 'about:blank' && currentUrl != 'about:newtab'
+                      ? _buildPreviewContent(context, widget.preset, widget.accentColor, currentUrl)
+                      : _buildEmptyState(widget.accentColor),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPreviewContent(BuildContext context, ViewportPreset preset, Color accentColor, String url) {
+    if (_isLoading) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Chargement...',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.5),
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Stack(
+      children: [
+        // Simulated viewport with scaled preview
+        Center(
+          child: FittedBox(
+            fit: BoxFit.contain,
+            child: Container(
+              width: preset.width.toDouble(),
+              height: preset.height.toDouble(),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(2),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(2),
+                child: Stack(
+                  children: [
+                    // Preview content - L'iframe est chargée dans le WebView principal
+                    Container(
+                      color: Colors.white,
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              preset.category.icon,
+                              size: 24,
+                              color: accentColor.withOpacity(0.5),
+                            ),
+                            const SizedBox(height: 8),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: Text(
+                                url.length > 40 ? '${url.substring(0, 40)}...' : url,
+                                style: TextStyle(
+                                  color: Colors.black.withOpacity(0.6),
+                                  fontSize: 10,
+                                ),
+                                textAlign: TextAlign.center,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${preset.width} × ${preset.height}',
+                              style: TextStyle(
+                                color: Colors.black.withOpacity(0.4),
+                                fontSize: 9,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: accentColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                'Preview chargée',
+                                style: TextStyle(
+                                  color: accentColor,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyState(Color accentColor) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            CupertinoIcons.exclamationmark_triangle,
+            size: 32,
+            color: accentColor.withOpacity(0.3),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Aucune page chargée',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.3),
+              fontSize: 11,
             ),
           ),
         ],
