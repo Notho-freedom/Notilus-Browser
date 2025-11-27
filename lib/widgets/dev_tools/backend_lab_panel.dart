@@ -1,5 +1,5 @@
-/// Backend Lab Panel
-/// Interface avancée pour les tests backend et la découverte de serveurs
+/// Backend Lab Panel - Version Notilus GX Native
+/// Interface ultra-réactive pour les tests backend avec configuration automatique
 library backend_lab_panel;
 
 import 'dart:async';
@@ -8,6 +8,8 @@ import 'package:provider/provider.dart';
 import '../../services/backend_lab/backend_lab_service.dart';
 import '../../models/backend_lab/backend_lab_models.dart';
 import '../../core/services/color_theme_manager.dart';
+import '../../core/constants/notilus_colors.dart';
+import '../../core/constants/notilus_fonts.dart';
 
 /// Onglets du Backend Lab
 enum BackendLabTab {
@@ -18,6 +20,7 @@ enum BackendLabTab {
   security,
   performance,
   capture,
+  console,
 }
 
 extension BackendLabTabExt on BackendLabTab {
@@ -30,6 +33,7 @@ extension BackendLabTabExt on BackendLabTab {
       case BackendLabTab.security: return 'Sécurité';
       case BackendLabTab.performance: return 'Performance';
       case BackendLabTab.capture: return 'Capture';
+      case BackendLabTab.console: return 'Console';
     }
   }
   
@@ -42,6 +46,7 @@ extension BackendLabTabExt on BackendLabTab {
       case BackendLabTab.security: return Icons.shield_rounded;
       case BackendLabTab.performance: return Icons.speed_rounded;
       case BackendLabTab.capture: return Icons.videocam_rounded;
+      case BackendLabTab.console: return Icons.terminal_rounded;
     }
   }
   
@@ -54,11 +59,12 @@ extension BackendLabTabExt on BackendLabTab {
       case BackendLabTab.security: return const Color(0xFFEF4444);
       case BackendLabTab.performance: return const Color(0xFF8B5CF6);
       case BackendLabTab.capture: return const Color(0xFF14B8A6);
+      case BackendLabTab.console: return const Color(0xFF10B981);
     }
   }
 }
 
-/// Panneau principal Backend Lab
+/// Panneau principal Backend Lab - Style Notilus GX
 class BackendLabPanel extends StatefulWidget {
   const BackendLabPanel({super.key});
 
@@ -77,6 +83,32 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
   final _quickUrlController = TextEditingController();
   final _quickBodyController = TextEditingController();
   bool _isRunningTest = false;
+  
+  // Auto-config state
+  final Map<String, bool> _configuringServers = {};
+  
+  // Selected items for details panel
+  DiscoveredServer? _selectedServer;
+  DiscoveredRoute? _selectedRoute;
+  CapturedRequest? _selectedCapture;
+  ConsoleLogEntry? _selectedLog;
+  
+  // Filter for routes tab
+  String? _filteredServerId;
+  
+  // Loading states
+  final Map<String, bool> _loadingStates = {};
+  bool _isSecurityScanning = false;
+  bool _isLoadTestRunning = false;
+  
+  // Frontend auto-config state
+  DiscoveredServer? _configuredServer; // Serveur configuré pour le frontend
+  DiscoveredRoute? _selectedRouteForConfig; // Route sélectionnée pour la config
+  final Map<String, String> _routeParams = {}; // Valeurs des paramètres de route
+  
+  // Route selection for quick test
+  DiscoveredRoute? _selectedRouteForQuickTest;
+  final Map<String, String> _quickTestParams = {};
 
   @override
   void initState() {
@@ -89,7 +121,17 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
 
   void _onTabChanged() {
     if (!_tabController.indexIsChanging) {
-      setState(() => _activeTab = BackendLabTab.values[_tabController.index]);
+      final newTab = BackendLabTab.values[_tabController.index];
+      setState(() {
+        _activeTab = newTab;
+        // Réinitialiser les sélections si on change d'onglet
+        if (newTab != BackendLabTab.servers) {
+          _selectedServer = null;
+        }
+        if (newTab != BackendLabTab.routes) {
+          _selectedRoute = null;
+        }
+      });
     }
   }
 
@@ -99,6 +141,8 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
       setState(() => _isInitialized = true);
       if (_labService.isConnected) {
         _labService.refreshAll();
+        // Connecter à la console
+        _labService.connectConsole();
       }
     }
   }
@@ -108,6 +152,7 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
     _tabController.dispose();
     _quickUrlController.dispose();
     _quickBodyController.dispose();
+    _labService.disconnectConsole();
     super.dispose();
   }
 
@@ -115,12 +160,13 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
   Widget build(BuildContext context) {
     final colorTheme = Provider.of<ColorThemeManager>(context);
     final accent = colorTheme.nativeSecondaryColor;
+    final bgColor = NotilusColors.getNativeBackgroundColor(context);
 
     return Container(
-      color: const Color(0xFF0A0A0F),
+      color: bgColor,
       child: Column(
         children: [
-          _buildHeader(accent),
+          _buildHeader(accent, bgColor),
           _buildTabBar(accent),
           Expanded(
             child: _isInitialized
@@ -132,34 +178,38 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
     );
   }
 
-  Widget _buildHeader(Color accent) {
+  Widget _buildHeader(Color accent, Color bgColor) {
     return Container(
-      height: 44,
+      height: 48,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            accent.withOpacity(0.15),
-            accent.withOpacity(0.05),
+            accent.withOpacity(0.12),
+            accent.withOpacity(0.06),
             Colors.transparent,
           ],
         ),
-        border: Border(bottom: BorderSide(color: accent.withOpacity(0.2))),
+        border: Border(bottom: BorderSide(color: accent.withOpacity(0.15))),
       ),
       child: Row(
         children: [
-          // Logo
+          // Logo avec style GX
           Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [accent, accent.withOpacity(0.6)],
+                colors: [accent, accent.withOpacity(0.7)],
               ),
               borderRadius: BorderRadius.circular(8),
               boxShadow: [
-                BoxShadow(color: accent.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 2)),
+                BoxShadow(
+                  color: accent.withOpacity(0.4),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
               ],
             ),
             child: const Icon(Icons.science_outlined, size: 18, color: Colors.white),
@@ -171,36 +221,40 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
             children: [
               Text(
                 'BACKEND LAB',
-                style: TextStyle(
+                style: NotilusFonts.orbitron(
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
-                  letterSpacing: 1.5,
                   color: accent,
-                ),
+                ).copyWith(letterSpacing: 1.5),
               ),
               Text(
                 'Tests API • Sécurité • Performance',
-                style: TextStyle(fontSize: 9, color: Colors.white.withOpacity(0.5)),
+                style: NotilusFonts.rajdhani(
+                  fontSize: 9,
+                  color: Colors.white.withOpacity(0.5),
+                ),
               ),
             ],
           ),
           
           const Spacer(),
           
-          // Connection status
+          // Connection status avec animation
           _buildConnectionBadge(accent),
           
           const SizedBox(width: 12),
           
           // Actions
-          _IconBtn(
-            icon: Icons.refresh,
+          _GxIconBtn(
+            icon: Icons.refresh_rounded,
             tooltip: 'Rafraîchir',
+            accent: accent,
             onTap: () => _labService.refreshAll(),
           ),
-          _IconBtn(
+          _GxIconBtn(
             icon: Icons.settings_outlined,
             tooltip: 'Paramètres',
+            accent: accent,
             onTap: _showSettings,
           ),
         ],
@@ -209,20 +263,29 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
   }
 
   Widget _buildConnectionBadge(Color accent) {
+    return ListenableBuilder(
+      listenable: _labService,
+      builder: (context, _) {
     final connected = _labService.isConnected;
-    return Container(
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: connected ? const Color(0xFF22C55E).withOpacity(0.15) : const Color(0xFFEF4444).withOpacity(0.15),
+            color: connected 
+                ? const Color(0xFF22C55E).withOpacity(0.15) 
+                : const Color(0xFFEF4444).withOpacity(0.15),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: connected ? const Color(0xFF22C55E).withOpacity(0.3) : const Color(0xFFEF4444).withOpacity(0.3),
+              color: connected 
+                  ? const Color(0xFF22C55E).withOpacity(0.3) 
+                  : const Color(0xFFEF4444).withOpacity(0.3),
         ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
             width: 6,
             height: 6,
             decoration: BoxDecoration(
@@ -230,7 +293,8 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: (connected ? const Color(0xFF22C55E) : const Color(0xFFEF4444)).withOpacity(0.5),
+                      color: (connected ? const Color(0xFF22C55E) : const Color(0xFFEF4444))
+                          .withOpacity(0.5),
                   blurRadius: 4,
                 ),
               ],
@@ -239,7 +303,7 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
           const SizedBox(width: 6),
           Text(
             connected ? 'Connecté' : 'Déconnecté',
-            style: TextStyle(
+                style: NotilusFonts.rajdhani(
               fontSize: 10,
               fontWeight: FontWeight.w600,
               color: connected ? const Color(0xFF22C55E) : const Color(0xFFEF4444),
@@ -247,14 +311,16 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
           ),
         ],
       ),
+        );
+      },
     );
   }
 
   Widget _buildTabBar(Color accent) {
     return Container(
-      height: 40,
+      height: 42,
       decoration: BoxDecoration(
-        color: const Color(0xFF0D0D14),
+        color: NotilusColors.chromeDark,
         border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
       ),
       child: TabBar(
@@ -267,14 +333,17 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
         tabs: BackendLabTab.values.map((tab) {
           final isActive = _activeTab == tab;
           return Tab(
-            height: 40,
+            height: 42,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 14),
+              curve: Curves.easeOutCubic,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
                 color: isActive ? tab.accentColor.withOpacity(0.15) : Colors.transparent,
                 borderRadius: BorderRadius.circular(8),
-                border: isActive ? Border.all(color: tab.accentColor.withOpacity(0.3)) : null,
+                border: isActive 
+                    ? Border.all(color: tab.accentColor.withOpacity(0.3), width: 1)
+                    : null,
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -287,7 +356,7 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
                   const SizedBox(width: 8),
                   Text(
                     tab.label,
-                    style: TextStyle(
+                    style: NotilusFonts.rajdhani(
                       fontSize: 11,
                       fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
                       color: isActive ? tab.accentColor : Colors.white.withOpacity(0.5),
@@ -318,7 +387,10 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
           const SizedBox(height: 16),
           Text(
             'Connexion au Backend Lab...',
-            style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+            style: NotilusFonts.rajdhani(
+              color: Colors.white.withOpacity(0.5),
+              fontSize: 12,
+            ),
           ),
         ],
       ),
@@ -337,6 +409,7 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
         _buildSecurityTab(),
         _buildPerformanceTab(),
         _buildCaptureTab(),
+        _buildConsoleTab(),
       ],
     );
   }
@@ -346,61 +419,70 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
   // ============================================================================
 
   Widget _buildOverviewTab() {
+    return ListenableBuilder(
+      listenable: _labService,
+      builder: (context, _) {
     final stats = _labService.stats;
+        final accent = NotilusColors.getSecondaryColor(context);
     
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Stats cards
-          _buildStatsRow(stats),
+              // Stats cards avec style GX
+              _buildStatsRow(stats, accent),
           const SizedBox(height: 24),
           
           // Quick actions
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(child: _buildQuickTestCard()),
+                  Expanded(child: _buildQuickTestCard(accent)),
               const SizedBox(width: 16),
-              Expanded(child: _buildRecentActivityCard()),
+                  Expanded(child: _buildRecentActivityCard(accent)),
             ],
           ),
         ],
       ),
+        );
+      },
     );
   }
 
-  Widget _buildStatsRow(OverviewStats? stats) {
+  Widget _buildStatsRow(OverviewStats? stats, Color accent) {
     return Wrap(
       spacing: 16,
       runSpacing: 16,
       children: [
-        _StatCard(
+        _GxStatCard(
           title: 'Serveurs',
           value: '${stats?.totalServers ?? _labService.servers.length}',
           subtitle: 'Découverts',
           icon: Icons.dns_rounded,
           color: const Color(0xFF22C55E),
+          accent: accent,
           onTap: () => _tabController.animateTo(1),
         ),
-        _StatCard(
+        _GxStatCard(
           title: 'Routes',
           value: '${stats?.totalRoutes ?? _labService.routes.length}',
           subtitle: 'Mappées',
           icon: Icons.alt_route_rounded,
           color: const Color(0xFF3B82F6),
+          accent: accent,
           onTap: () => _tabController.animateTo(2),
         ),
-        _StatCard(
+        _GxStatCard(
           title: 'Tests',
           value: '${stats?.totalTestsRun ?? _labService.testResults.length}',
           subtitle: '${stats?.testSuccessRate.toStringAsFixed(0) ?? 0}% succès',
           icon: Icons.science_rounded,
           color: const Color(0xFFF59E0B),
+          accent: accent,
           onTap: () => _tabController.animateTo(3),
         ),
-        _StatCard(
+        _GxStatCard(
           title: 'Vulnérabilités',
           value: '${stats?.totalVulnerabilities ?? _labService.vulnerabilities.length}',
           subtitle: _getVulnSummary(),
@@ -408,14 +490,16 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
           color: _labService.vulnerabilities.any((v) => v.severity == VulnerabilitySeverity.critical)
               ? const Color(0xFFEF4444)
               : const Color(0xFFF59E0B),
+          accent: accent,
           onTap: () => _tabController.animateTo(4),
         ),
-        _StatCard(
+        _GxStatCard(
           title: 'Captures',
           value: '${_labService.captures.length}',
           subtitle: 'Requêtes',
           icon: Icons.videocam_rounded,
           color: const Color(0xFF14B8A6),
+          accent: accent,
           onTap: () => _tabController.animateTo(6),
         ),
       ],
@@ -432,11 +516,12 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
     return '${vulns.length} trouvées';
   }
 
-  Widget _buildQuickTestCard() {
-    return _Card(
+  Widget _buildQuickTestCard(Color accent) {
+    return _GxCard(
       title: 'Test Rapide',
       icon: Icons.bolt_rounded,
       color: const Color(0xFFF59E0B),
+      accent: accent,
       child: Column(
         children: [
           // Method + URL
@@ -450,8 +535,8 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
                     value: _quickMethod,
-                    dropdownColor: const Color(0xFF1A1A24),
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                    dropdownColor: NotilusColors.chromeDark,
+                    style: NotilusFonts.rajdhani(fontSize: 12, fontWeight: FontWeight.w600),
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     items: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'].map((m) {
                       return DropdownMenuItem(
@@ -465,9 +550,57 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _StyledTextField(
+                child: Column(
+                  children: [
+                    // Sélecteur de route si serveur configuré
+                    if (_configuredServer != null) ...[
+                      _RouteSelector(
+                        server: _configuredServer!,
+                        routes: _labService.routes.where((r) => r.serverId == _configuredServer!.id).toList(),
+                        selectedRoute: _selectedRouteForQuickTest,
+                        accent: accent,
+                        onRouteSelected: (route) {
+                          setState(() {
+                            _selectedRouteForQuickTest = route;
+                            _quickTestParams.clear();
+                            // Initialiser avec valeurs par défaut
+                            for (var param in route.pathParams) {
+                              _quickTestParams[param.name] = param.defaultValue?.toString() ?? '';
+                            }
+                            for (var param in route.queryParams) {
+                              _quickTestParams[param.name] = param.defaultValue?.toString() ?? '';
+                            }
+                            _updateQuickTestUrl();
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    _AutoConfigUrlField(
                   controller: _quickUrlController,
                   hint: 'https://api.example.com/endpoint',
+                      configuredServer: _configuredServer,
+                      selectedRoute: _selectedRouteForQuickTest ?? _selectedRouteForConfig,
+                      routeParams: _quickTestParams.isNotEmpty ? _quickTestParams : _routeParams,
+                    ),
+                    // Éditeur de paramètres si route sélectionnée
+                    if (_selectedRouteForQuickTest != null && 
+                        (_selectedRouteForQuickTest!.pathParams.isNotEmpty || 
+                         _selectedRouteForQuickTest!.queryParams.isNotEmpty)) ...[
+                      const SizedBox(height: 8),
+                      _RouteParamsEditor(
+                        route: _selectedRouteForQuickTest!,
+                        params: _quickTestParams,
+                        accent: accent,
+                        onParamChanged: (key, value) {
+                          setState(() {
+                            _quickTestParams[key] = value;
+                            _updateQuickTestUrl();
+                          });
+                        },
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ],
@@ -476,7 +609,7 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
           
           // Body (for POST/PUT/PATCH)
           if (['POST', 'PUT', 'PATCH'].contains(_quickMethod)) ...[
-            _StyledTextField(
+            _GxTextField(
               controller: _quickBodyController,
               hint: '{"key": "value"}',
               maxLines: 3,
@@ -484,10 +617,10 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
             const SizedBox(height: 12),
           ],
           
-          // Run button
+          // Run button avec style GX
           SizedBox(
             width: double.infinity,
-            child: ElevatedButton.icon(
+            child: _GxButton(
               onPressed: _isRunningTest ? null : _runQuickTest,
               icon: _isRunningTest
                   ? const SizedBox(
@@ -497,12 +630,8 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
                     )
                   : const Icon(Icons.play_arrow_rounded, size: 18),
               label: Text(_isRunningTest ? 'Exécution...' : 'Exécuter'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFF59E0B),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
+              color: const Color(0xFFF59E0B),
+              accent: accent,
             ),
           ),
         ],
@@ -527,11 +656,15 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
     }
   }
 
-  Widget _buildRecentActivityCard() {
-    return _Card(
+  Widget _buildRecentActivityCard(Color accent) {
+    return ListenableBuilder(
+      listenable: _labService,
+      builder: (context, _) {
+        return _GxCard(
       title: 'Activité Récente',
       icon: Icons.history_rounded,
       color: const Color(0xFF6366F1),
+          accent: accent,
       child: _labService.testResults.isEmpty
           ? Center(
               child: Padding(
@@ -542,7 +675,10 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
                     const SizedBox(height: 8),
                     Text(
                       'Aucune activité',
-                      style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.4)),
+                          style: NotilusFonts.rajdhani(
+                            fontSize: 12,
+                            color: Colors.white.withOpacity(0.4),
+                          ),
                     ),
                   ],
                 ),
@@ -554,9 +690,11 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
               itemCount: _labService.testResults.take(5).length,
               itemBuilder: (context, index) {
                 final result = _labService.testResults[index];
-                return _ActivityItem(result: result);
+                    return _GxActivityItem(result: result);
               },
             ),
+        );
+      },
     );
   }
 
@@ -572,24 +710,34 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
   }
 
   // ============================================================================
-  // Servers Tab
+  // Servers Tab - Style DevTools avec split view
   // ============================================================================
 
   Widget _buildServersTab() {
-    return Column(
+    return ListenableBuilder(
+      listenable: _labService,
+      builder: (context, _) {
+        final accent = NotilusColors.getSecondaryColor(context);
+        
+        return Row(
+          children: [
+            // === LISTE GAUCHE: Serveurs style console ===
+            Expanded(
+              flex: 2,
+              child: Column(
       children: [
         // Toolbar
         Container(
           height: 48,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            color: const Color(0xFF0D0D14),
+                      color: NotilusColors.chromeDark,
             border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
           ),
           child: Row(
             children: [
-              ElevatedButton.icon(
-                onPressed: _labService.isScanning ? null : () => _labService.scanServers(),
+                        _GxButton(
+                          onPressed: _labService.isScanning ? null : () => _scanServersWithLoader(),
                 icon: _labService.isScanning
                     ? const SizedBox(
                         width: 14,
@@ -598,94 +746,789 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
                       )
                     : const Icon(Icons.radar_rounded, size: 16),
                 label: Text(_labService.isScanning ? 'Scan...' : 'Scanner'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF22C55E),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                ),
+                          color: const Color(0xFF22C55E),
+                          accent: accent,
+                          compact: true,
               ),
               const SizedBox(width: 12),
               Text(
-                '${_labService.servers.length} serveurs découverts',
-                style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.5)),
+                          '${_labService.servers.length} serveurs',
+                          style: NotilusFonts.rajdhani(
+                            fontSize: 11,
+                            color: Colors.white.withOpacity(0.5),
+                          ),
               ),
             ],
           ),
         ),
         
-        // Server list
+                  // Liste des serveurs style console
         Expanded(
           child: _labService.servers.isEmpty
-              ? _EmptyState(
+                        ? _GxEmptyState(
                   icon: Icons.dns_outlined,
                   title: 'Aucun serveur découvert',
                   subtitle: 'Cliquez sur "Scanner" pour détecter les serveurs locaux',
                 )
               : ListView.builder(
-                  padding: const EdgeInsets.all(16),
+                            padding: EdgeInsets.zero,
                   itemCount: _labService.servers.length,
                   itemBuilder: (context, index) {
                     final server = _labService.servers[index];
-                    return _ServerCard(
+                              final isSelected = _selectedServer?.id == server.id;
+                              return _DevToolsServerListItem(
                       server: server,
-                      onDiscoverRoutes: () => _labService.discoverRoutes(server.id),
-                      onHealthCheck: () => _labService.healthCheck(server.id),
+                                accent: accent,
+                                isSelected: isSelected,
+                                isLoading: _loadingStates[server.id] ?? false,
+                                onTap: () => setState(() => _selectedServer = server),
+                                onRoutesTap: () => _navigateToRoutesForServer(server.id),
                     );
                   },
                 ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // === PANNEAU DROITE: Détails du serveur ===
+            if (_selectedServer != null)
+              Container(
+                width: 400,
+                decoration: BoxDecoration(
+                  color: NotilusColors.chromeDark,
+                  border: Border(left: BorderSide(color: accent.withOpacity(0.2))),
+                ),
+                child: _buildServerDetailsPanel(_selectedServer!, accent),
+              ),
+          ],
+        );
+      },
+    );
+  }
+  
+  Widget _buildServerDetailsPanel(DiscoveredServer server, Color accent) {
+    return Column(
+      children: [
+        // Header avec bouton fermer
+        Container(
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: NotilusColors.chromeDark,
+            border: Border(bottom: BorderSide(color: accent.withOpacity(0.2))),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.dns_rounded, size: 16, color: accent),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  server.displayName,
+                  style: NotilusFonts.rajdhani(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close, size: 16),
+                color: Colors.white.withOpacity(0.5),
+                onPressed: () => setState(() => _selectedServer = null),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              ),
+            ],
+          ),
+        ),
+        
+        // Contenu scrollable
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Informations générales
+                _DetailSection(
+                  title: 'Informations',
+                  accentColor: accent,
+                  children: [
+                    _DetailRow('Host', server.host),
+                    _DetailRow('Port', '${server.port}'),
+                    _DetailRow('Protocol', server.protocol),
+                    _DetailRow('Base URL', server.baseUrl),
+                    _DetailRow('Framework', server.framework.name),
+                    if (server.language != null) _DetailRow('Language', server.language!),
+                    _DetailRow('Status', server.status.name),
+                  ],
+                ),
+                
+                const SizedBox(height: 16),
+                
+                // Health
+                _DetailSection(
+                  title: 'Health Check',
+                  accentColor: accent,
+                  children: [
+                    _DetailRow('Status', server.health.status.name),
+                    _DetailRow('Response Time', '${server.health.responseTimeMs.toStringAsFixed(0)}ms'),
+                    _DetailRow('Uptime', '${server.health.uptimePercentage.toStringAsFixed(1)}%'),
+                    if (server.health.errorMessage != null)
+                      _DetailRow('Error', server.health.errorMessage!),
+                  ],
+                ),
+                
+                const SizedBox(height: 16),
+                
+                // Statistiques
+                _DetailSection(
+                  title: 'Statistiques',
+                  accentColor: accent,
+                  children: [
+                    _DetailRow('Routes découvertes', '${server.routesCount}'),
+                    _DetailRow('Requêtes totales', '${server.requestCount}'),
+                    _DetailRow('Temps de réponse moyen', '${server.avgResponseTime.toStringAsFixed(0)}ms'),
+                  ],
+                ),
+                
+                const SizedBox(height: 24),
+                
+                // Configuration Frontend
+                if (_configuredServer?.id == server.id) ...[
+                  _DetailSection(
+                    title: 'Configuration Frontend',
+                    accentColor: accent,
+                    children: [
+                      // URL du serveur (lecture seule)
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: accent.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: accent.withOpacity(0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.link_rounded, size: 14, color: accent),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                server.baseUrl,
+                                style: NotilusFonts.code(
+                                  fontSize: 11,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                            ),
+                            Icon(Icons.lock_outline, size: 12, color: accent.withOpacity(0.7)),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Sélecteur de route
+                      _RouteSelector(
+                        server: server,
+                        routes: _labService.routes.where((r) => r.serverId == server.id).toList(),
+                        selectedRoute: _selectedRouteForConfig,
+                        accent: accent,
+                        onRouteSelected: (route) {
+                          setState(() {
+                            _selectedRouteForConfig = route;
+                            // Initialiser les paramètres avec les clés
+                            _routeParams.clear();
+                            for (var param in route.pathParams) {
+                              _routeParams[param.name] = param.defaultValue?.toString() ?? '';
+                            }
+                            for (var param in route.queryParams) {
+                              _routeParams[param.name] = param.defaultValue?.toString() ?? '';
+                            }
+                            // Mettre à jour l'URL automatiquement
+                            _updateUrlFromConfig();
+                          });
+                        },
+                      ),
+                      // Éditeur de paramètres si une route est sélectionnée
+                      if (_selectedRouteForConfig != null) ...[
+                        const SizedBox(height: 12),
+                        _RouteParamsEditor(
+                          route: _selectedRouteForConfig!,
+                          params: _routeParams,
+                          accent: accent,
+                          onParamChanged: (key, value) {
+                            setState(() {
+                              _routeParams[key] = value;
+                              // Mettre à jour l'URL automatiquement
+                              _updateUrlFromConfig();
+                            });
+                          },
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                ],
+                
+                // Actions
+                _DetailSection(
+                  title: 'Actions',
+                  accentColor: accent,
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      child: _GxButton(
+                        onPressed: _configuringServers[server.id] == true
+                            ? null
+                            : () => _autoConfigureServer(server.id),
+                        icon: _configuringServers[server.id] == true
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Icon(Icons.auto_awesome_rounded, size: 16),
+                        label: Text(_configuringServers[server.id] == true ? 'Configuration...' : 'Configuration Auto'),
+                        color: accent,
+                        accent: accent,
+                        compact: true,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: _GxButton(
+                        onPressed: _loadingStates['${server.id}_routes'] == true
+                            ? null
+                            : () => _discoverRoutesWithLoader(server.id),
+                        icon: _loadingStates['${server.id}_routes'] == true
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Icon(Icons.alt_route_rounded, size: 16),
+                        label: Text(_loadingStates['${server.id}_routes'] == true ? 'Découverte...' : 'Découvrir Routes'),
+                        color: const Color(0xFF3B82F6),
+                        accent: accent,
+                        compact: true,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: _GxButton(
+                        onPressed: _loadingStates['${server.id}_health'] == true
+                            ? null
+                            : () => _healthCheckWithLoader(server.id),
+                        icon: _loadingStates['${server.id}_health'] == true
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Icon(Icons.favorite_rounded, size: 16),
+                        label: Text(_loadingStates['${server.id}_health'] == true ? 'Vérification...' : 'Health Check'),
+                        color: const Color(0xFF22C55E),
+                        accent: accent,
+                        compact: true,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: _GxButton(
+                        onPressed: () => _navigateToRoutesForServer(server.id),
+                        icon: const Icon(Icons.arrow_forward_rounded, size: 16),
+                        label: const Text('Voir Routes'),
+                        color: const Color(0xFF8B5CF6),
+                        accent: accent,
+                        compact: true,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ),
       ],
     );
   }
+  
+  Future<void> _scanServersWithLoader() async {
+    setState(() => _loadingStates['scan'] = true);
+    try {
+      await _labService.scanServers();
+      await _labService.getServers(); // Actualiser
+    } finally {
+      if (mounted) {
+        setState(() => _loadingStates['scan'] = false);
+      }
+    }
+  }
+  
+  Future<void> _discoverRoutesWithLoader(String serverId) async {
+    setState(() => _loadingStates['${serverId}_routes'] = true);
+    try {
+      await _labService.discoverRoutes(serverId);
+      await _labService.getRoutes(serverId); // Actualiser
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Routes découvertes avec succès !',
+              style: NotilusFonts.rajdhani(),
+            ),
+            backgroundColor: const Color(0xFF22C55E),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Erreur: $e',
+              style: NotilusFonts.rajdhani(),
+            ),
+            backgroundColor: const Color(0xFFEF4444),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _loadingStates['${serverId}_routes'] = false);
+      }
+    }
+  }
+  
+  Future<void> _healthCheckWithLoader(String serverId) async {
+    setState(() => _loadingStates['${serverId}_health'] = true);
+    try {
+      await _labService.healthCheck(serverId);
+      await _labService.getServers(); // Actualiser
+    } finally {
+      if (mounted) {
+        setState(() => _loadingStates['${serverId}_health'] = false);
+      }
+    }
+  }
+  
+  void _navigateToRoutesForServer(String serverId) {
+    setState(() {
+      _filteredServerId = serverId;
+      _selectedServer = null; // Fermer le panel de détails
+    });
+    _tabController.animateTo(BackendLabTab.routes.index);
+  }
+  
+  Future<void> _autoConfigureServer(String serverId) async {
+    setState(() {
+      _configuringServers[serverId] = true;
+      _loadingStates['${serverId}_config'] = true;
+    });
+    
+    try {
+      // 1. Configuration backend
+      await _labService.configureServer(
+        serverId,
+        discoverRoutes: true,
+        detectParameters: true,
+        createTests: true,
+      );
+      
+      // Actualiser les données
+      await Future.wait([
+        _labService.getServers(),
+        _labService.getRoutes(serverId),
+      ]);
+      
+      // 2. Configuration frontend automatique
+      final server = _labService.servers.firstWhere((s) => s.id == serverId);
+      setState(() {
+        _configuredServer = server;
+        _selectedRouteForConfig = null;
+        _routeParams.clear();
+      });
+      
+      // Pré-remplir l'URL dans les champs
+      if (_selectedServer?.id == serverId) {
+        _updateUrlFields(server.baseUrl);
+      }
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Configuration backend et frontend terminée !',
+              style: NotilusFonts.rajdhani(),
+            ),
+            backgroundColor: const Color(0xFF22C55E),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Erreur lors de la configuration: $e',
+              style: NotilusFonts.rajdhani(),
+            ),
+            backgroundColor: const Color(0xFFEF4444),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _configuringServers[serverId] = false;
+          _loadingStates['${serverId}_config'] = false;
+        });
+      }
+    }
+  }
+  
+  void _updateUrlFields(String baseUrl) {
+    // Pré-remplir les champs URL avec la base URL du serveur
+    if (_quickUrlController.text.isEmpty || _quickUrlController.text == 'https://api.example.com/endpoint') {
+      _quickUrlController.text = baseUrl;
+    }
+  }
+  
+  void _updateUrlFromConfig() {
+    if (_configuredServer == null || _selectedRouteForConfig == null) return;
+    
+    String baseUrl = _configuredServer!.baseUrl;
+    String path = _selectedRouteForConfig!.path;
+    
+    // Remplacer les paramètres de chemin
+    for (var param in _selectedRouteForConfig!.pathParams) {
+      final value = _routeParams[param.name] ?? '';
+      if (value.isNotEmpty) {
+        path = path.replaceAll('{${param.name}}', value);
+      }
+    }
+    
+    // Ajouter les paramètres de query
+    final queryParams = _selectedRouteForConfig!.queryParams
+        .where((p) => _routeParams[p.name]?.isNotEmpty == true)
+        .map((p) => '${p.name}=${Uri.encodeComponent(_routeParams[p.name]!)}')
+        .join('&');
+    
+    if (queryParams.isNotEmpty) {
+      path = '$path?$queryParams';
+    }
+    
+    final fullUrl = '$baseUrl$path';
+    _quickUrlController.text = fullUrl;
+  }
+  
+  void _updateQuickTestUrl() {
+    if (_configuredServer == null || _selectedRouteForQuickTest == null) return;
+    
+    String baseUrl = _configuredServer!.baseUrl;
+    String path = _selectedRouteForQuickTest!.path;
+    
+    // Remplacer les paramètres de chemin
+    for (var param in _selectedRouteForQuickTest!.pathParams) {
+      final value = _quickTestParams[param.name] ?? '';
+      if (value.isNotEmpty) {
+        path = path.replaceAll('{${param.name}}', value);
+      }
+    }
+    
+    // Ajouter les paramètres de query
+    final queryParams = _selectedRouteForQuickTest!.queryParams
+        .where((p) => _quickTestParams[p.name]?.isNotEmpty == true)
+        .map((p) => '${p.name}=${Uri.encodeComponent(_quickTestParams[p.name]!)}')
+        .join('&');
+    
+    if (queryParams.isNotEmpty) {
+      path = '$path?$queryParams';
+    }
+    
+    final fullUrl = '$baseUrl$path';
+    _quickUrlController.text = fullUrl;
+    // Mettre à jour la méthode HTTP selon la route
+    _quickMethod = _selectedRouteForQuickTest!.method.name;
+  }
 
   // ============================================================================
-  // Routes Tab
+  // Routes Tab - Style DevTools avec split view
   // ============================================================================
 
   Widget _buildRoutesTab() {
-    final routes = _labService.routes;
-    
-    return Column(
+    return ListenableBuilder(
+      listenable: _labService,
+      builder: (context, _) {
+        final allRoutes = _labService.routes;
+        final filteredRoutes = _filteredServerId != null
+            ? allRoutes.where((r) => r.serverId == _filteredServerId).toList()
+            : allRoutes;
+        final accent = NotilusColors.getSecondaryColor(context);
+        
+        return Row(
+          children: [
+            // === LISTE GAUCHE: Routes style console ===
+            Expanded(
+              flex: 2,
+              child: Column(
       children: [
         // Toolbar
         Container(
           height: 48,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            color: const Color(0xFF0D0D14),
+                      color: NotilusColors.chromeDark,
             border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
           ),
           child: Row(
             children: [
+                        if (_filteredServerId != null) ...[
+                          IconButton(
+                            icon: const Icon(Icons.arrow_back, size: 16),
+                            color: accent,
+                            onPressed: () => setState(() => _filteredServerId = null),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                          ),
+                          const SizedBox(width: 8),
               Text(
-                '${routes.length} routes découvertes',
-                style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.5)),
+                            'Routes du serveur',
+                            style: NotilusFonts.rajdhani(
+                              fontSize: 11,
+                              color: accent,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                        ],
+                        Text(
+                          '${filteredRoutes.length} routes',
+                          style: NotilusFonts.rajdhani(
+                            fontSize: 11,
+                            color: Colors.white.withOpacity(0.5),
+                          ),
               ),
               const Spacer(),
               // Filter by method
-              _FilterChip(label: 'Toutes', isActive: true, onTap: () {}),
-              _FilterChip(label: 'GET', isActive: false, color: const Color(0xFF22C55E), onTap: () {}),
-              _FilterChip(label: 'POST', isActive: false, color: const Color(0xFF3B82F6), onTap: () {}),
+                        _GxFilterChip(
+                          label: 'Toutes',
+                          isActive: true,
+                          accent: accent,
+                          onTap: () {},
+                        ),
+                        _GxFilterChip(
+                          label: 'GET',
+                          isActive: false,
+                          color: const Color(0xFF22C55E),
+                          accent: accent,
+                          onTap: () {},
+                        ),
+                        _GxFilterChip(
+                          label: 'POST',
+                          isActive: false,
+                          color: const Color(0xFF3B82F6),
+                          accent: accent,
+                          onTap: () {},
+                        ),
             ],
           ),
         ),
         
-        // Routes list
+                  // Liste des routes style console
         Expanded(
-          child: routes.isEmpty
-              ? _EmptyState(
+                    child: filteredRoutes.isEmpty
+                        ? _GxEmptyState(
                   icon: Icons.alt_route_outlined,
                   title: 'Aucune route découverte',
-                  subtitle: 'Découvrez d\'abord des serveurs, puis leurs routes',
+                            subtitle: _filteredServerId != null
+                                ? 'Aucune route pour ce serveur'
+                                : 'Sélectionnez un serveur et configurez-le automatiquement',
                 )
               : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: routes.length,
+                            padding: EdgeInsets.zero,
+                            itemCount: filteredRoutes.length,
                   itemBuilder: (context, index) {
-                    final route = routes[index];
-                    return _RouteCard(route: route);
-                  },
+                              final route = filteredRoutes[index];
+                              final isSelected = _selectedRoute?.id == route.id;
+                              return _DevToolsRouteListItem(
+                                route: route,
+                                accent: accent,
+                                isSelected: isSelected,
+                                onTap: () => setState(() => _selectedRoute = route),
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // === PANNEAU DROITE: Détails de la route ===
+            if (_selectedRoute != null)
+              Container(
+                width: 400,
+                decoration: BoxDecoration(
+                  color: NotilusColors.chromeDark,
+                  border: Border(left: BorderSide(color: accent.withOpacity(0.2))),
                 ),
+                child: _buildRouteDetailsPanel(_selectedRoute!, accent),
+              ),
+          ],
+        );
+      },
+    );
+  }
+  
+  Widget _buildRouteDetailsPanel(DiscoveredRoute route, Color accent) {
+    return Column(
+      children: [
+        // Header avec bouton fermer
+        Container(
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: NotilusColors.chromeDark,
+            border: Border(bottom: BorderSide(color: accent.withOpacity(0.2))),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: route.methodColor.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  route.method.name,
+                  style: NotilusFonts.rajdhani(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: route.methodColor,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  route.path,
+                  style: NotilusFonts.code(
+                    fontSize: 11,
+                    color: Colors.white,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close, size: 16),
+                color: Colors.white.withOpacity(0.5),
+                onPressed: () => setState(() => _selectedRoute = null),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              ),
+            ],
+          ),
+        ),
+        
+        // Contenu scrollable
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Informations générales
+                _DetailSection(
+                  title: 'Informations',
+                  accentColor: accent,
+                  children: [
+                    _DetailRow('Méthode', route.method.name),
+                    _DetailRow('Path', route.path),
+                    if (route.summary != null) _DetailRow('Summary', route.summary!),
+                    if (route.description != null) _DetailRow('Description', route.description!),
+                    _DetailRow('Auth Required', route.authRequired ? 'Oui' : 'Non'),
+                    if (route.authType != null) _DetailRow('Auth Type', route.authType!),
+                    _DetailRow('Deprecated', route.deprecated ? 'Oui' : 'Non'),
+                  ],
+                ),
+                
+                const SizedBox(height: 16),
+                
+                // Paramètres de chemin
+                if (route.pathParams.isNotEmpty)
+                  _DetailSection(
+                    title: 'Path Parameters',
+                    accentColor: accent,
+                    children: route.pathParams.map((param) => _DetailRow(
+                      param.name,
+                      '${param.type}${param.required ? " (required)" : ""}',
+                    )).toList(),
+                  ),
+                
+                if (route.pathParams.isNotEmpty) const SizedBox(height: 16),
+                
+                // Paramètres de query
+                if (route.queryParams.isNotEmpty)
+                  _DetailSection(
+                    title: 'Query Parameters',
+                    accentColor: accent,
+                    children: route.queryParams.map((param) => _DetailRow(
+                      param.name,
+                      '${param.type}${param.required ? " (required)" : ""}',
+                    )).toList(),
+                  ),
+                
+                if (route.queryParams.isNotEmpty) const SizedBox(height: 16),
+                
+                // Statistiques
+                _DetailSection(
+                  title: 'Statistiques',
+                  accentColor: accent,
+                  children: [
+                    _DetailRow('Tests', '${route.testCount}'),
+                    _DetailRow('Appels', '${route.callCount}'),
+                    _DetailRow('Temps de réponse moyen', '${route.avgResponseTime.toStringAsFixed(0)}ms'),
+                    _DetailRow('Vulnérabilités', '${route.vulnerabilityCount}'),
+                  ],
+                ),
+                
+                if (route.tags.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  _DetailSection(
+                    title: 'Tags',
+                    accentColor: accent,
+                    children: [
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: route.tags.map((tag) => Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: accent.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            tag,
+                            style: NotilusFonts.rajdhani(
+                              fontSize: 10,
+                              color: accent,
+                            ),
+                          ),
+                        )).toList(),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
         ),
       ],
     );
@@ -696,6 +1539,8 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
   // ============================================================================
 
   Widget _buildTestingTab() {
+    final accent = NotilusColors.getSecondaryColor(context);
+    
     return Row(
       children: [
         // Left: Test builder
@@ -707,7 +1552,7 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
             ),
             child: Column(
               children: [
-                _SectionHeader(title: 'Constructeur de Requête', icon: Icons.build_rounded),
+                _GxSectionHeader(title: 'Constructeur de Requête', icon: Icons.build_rounded, accent: accent),
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.all(16),
@@ -725,8 +1570,8 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
                               child: DropdownButtonHideUnderline(
                                 child: DropdownButton<String>(
                                   value: _quickMethod,
-                                  dropdownColor: const Color(0xFF1A1A24),
-                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                                  dropdownColor: NotilusColors.chromeDark,
+                                  style: NotilusFonts.rajdhani(fontSize: 12, fontWeight: FontWeight.w600),
                                   padding: const EdgeInsets.symmetric(horizontal: 12),
                                   items: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'].map((m) {
                                     return DropdownMenuItem(
@@ -740,21 +1585,67 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
                             ),
                             const SizedBox(width: 8),
                             Expanded(
-                              child: _StyledTextField(
+                              child: Column(
+                                children: [
+                                  // Sélecteur de route si serveur configuré
+                                  if (_configuredServer != null) ...[
+                                    _RouteSelector(
+                                      server: _configuredServer!,
+                                      routes: _labService.routes.where((r) => r.serverId == _configuredServer!.id).toList(),
+                                      selectedRoute: _selectedRouteForQuickTest,
+                                      accent: accent,
+                                      onRouteSelected: (route) {
+                                        setState(() {
+                                          _selectedRouteForQuickTest = route;
+                                          _quickTestParams.clear();
+                                          // Initialiser avec valeurs par défaut
+                                          for (var param in route.pathParams) {
+                                            _quickTestParams[param.name] = param.defaultValue?.toString() ?? '';
+                                          }
+                                          for (var param in route.queryParams) {
+                                            _quickTestParams[param.name] = param.defaultValue?.toString() ?? '';
+                                          }
+                                          _updateQuickTestUrl();
+                                        });
+                                      },
+                                    ),
+                                    const SizedBox(height: 8),
+                                  ],
+                                  _AutoConfigUrlField(
                                 controller: _quickUrlController,
                                 hint: 'URL de l\'endpoint',
+                                    configuredServer: _configuredServer,
+                                    selectedRoute: _selectedRouteForQuickTest ?? _selectedRouteForConfig,
+                                    routeParams: _quickTestParams.isNotEmpty ? _quickTestParams : _routeParams,
+                                  ),
+                                  // Éditeur de paramètres si route sélectionnée
+                                  if (_selectedRouteForQuickTest != null && 
+                                      (_selectedRouteForQuickTest!.pathParams.isNotEmpty || 
+                                       _selectedRouteForQuickTest!.queryParams.isNotEmpty)) ...[
+                                    const SizedBox(height: 8),
+                                    _RouteParamsEditor(
+                                      route: _selectedRouteForQuickTest!,
+                                      params: _quickTestParams,
+                                      accent: accent,
+                                      onParamChanged: (key, value) {
+                                        setState(() {
+                                          _quickTestParams[key] = value;
+                                          _updateQuickTestUrl();
+                                        });
+                                      },
+                                    ),
+                                  ],
+                                ],
                               ),
                             ),
                             const SizedBox(width: 8),
-                            ElevatedButton.icon(
+                            _GxButton(
                               onPressed: _isRunningTest ? null : _runQuickTest,
                               icon: const Icon(Icons.send_rounded, size: 16),
                               label: const Text('Envoyer'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF3B82F6),
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                              ),
+                              color: const Color(0xFF3B82F6),
+                              accent: accent,
+                              compact: true,
                             ),
                           ],
                         ),
@@ -780,9 +1671,9 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
                                   ],
                                   labelColor: Colors.white,
                                   unselectedLabelColor: Colors.white.withOpacity(0.4),
-                                  labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                                  labelStyle: NotilusFonts.rajdhani(fontSize: 11, fontWeight: FontWeight.w600),
                                   indicator: BoxDecoration(
-                                    color: const Color(0xFF3B82F6).withOpacity(0.2),
+                                    color: accent.withOpacity(0.2),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   dividerColor: Colors.transparent,
@@ -793,14 +1684,14 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
                                 height: 200,
                                 child: TabBarView(
                                   children: [
-                                    _KeyValueEditor(title: 'Headers'),
-                                    _StyledTextField(
+                                    _GxKeyValueEditor(title: 'Headers', accent: accent),
+                                    _GxTextField(
                                       controller: _quickBodyController,
                                       hint: '{\n  "key": "value"\n}',
                                       maxLines: 8,
                                     ),
-                                    _AuthEditor(),
-                                    _KeyValueEditor(title: 'Query Parameters'),
+                                    _GxAuthEditor(accent: accent),
+                                    _GxKeyValueEditor(title: 'Query Parameters', accent: accent),
                                   ],
                                 ),
                               ),
@@ -821,10 +1712,13 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
           flex: 2,
           child: Column(
             children: [
-              _SectionHeader(title: 'Résultats', icon: Icons.article_rounded),
+              _GxSectionHeader(title: 'Résultats', icon: Icons.article_rounded, accent: accent),
               Expanded(
-                child: _labService.testResults.isEmpty
-                    ? _EmptyState(
+                child: ListenableBuilder(
+                  listenable: _labService,
+                  builder: (context, _) {
+                    return _labService.testResults.isEmpty
+                        ? _GxEmptyState(
                         icon: Icons.science_outlined,
                         title: 'Aucun résultat',
                         subtitle: 'Exécutez un test pour voir les résultats',
@@ -835,7 +1729,9 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
                         itemCount: _labService.testResults.length,
                         itemBuilder: (context, index) {
                           final result = _labService.testResults[index];
-                          return _TestResultCard(result: result);
+                              return _GxTestResultCard(result: result);
+                            },
+                          );
                         },
                       ),
               ),
@@ -851,6 +1747,11 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
   // ============================================================================
 
   Widget _buildSecurityTab() {
+    return ListenableBuilder(
+      listenable: _labService,
+      builder: (context, _) {
+        final accent = NotilusColors.getSecondaryColor(context);
+        
     return Column(
       children: [
         // Toolbar
@@ -858,25 +1759,32 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
           height: 48,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            color: const Color(0xFF0D0D14),
+                color: NotilusColors.chromeDark,
             border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
           ),
           child: Row(
             children: [
-              ElevatedButton.icon(
-                onPressed: () => _labService.runSecurityScan(),
-                icon: const Icon(Icons.security_rounded, size: 16),
-                label: const Text('Lancer Scan'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFEF4444),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                ),
+                  _GxButton(
+                onPressed: _isSecurityScanning ? null : () => _runSecurityScanWithLoader(),
+                icon: _isSecurityScanning
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.security_rounded, size: 16),
+                label: Text(_isSecurityScanning ? 'Scan en cours...' : 'Lancer Scan'),
+                color: const Color(0xFFEF4444),
+                accent: accent,
+                compact: true,
               ),
               const SizedBox(width: 12),
               Text(
                 '${_labService.vulnerabilities.length} vulnérabilités trouvées',
-                style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.5)),
+                    style: NotilusFonts.rajdhani(
+                      fontSize: 11,
+                      color: Colors.white.withOpacity(0.5),
+                    ),
               ),
             ],
           ),
@@ -885,7 +1793,7 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
         // Vulnerabilities
         Expanded(
           child: _labService.vulnerabilities.isEmpty
-              ? _EmptyState(
+                  ? _GxEmptyState(
                   icon: Icons.verified_user_outlined,
                   title: 'Aucune vulnérabilité',
                   subtitle: 'Lancez un scan de sécurité pour vérifier vos APIs',
@@ -895,11 +1803,13 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
                   itemCount: _labService.vulnerabilities.length,
                   itemBuilder: (context, index) {
                     final vuln = _labService.vulnerabilities[index];
-                    return _VulnerabilityCard(vulnerability: vuln);
+                        return _GxVulnerabilityCard(vulnerability: vuln);
                   },
                 ),
         ),
       ],
+        );
+      },
     );
   }
 
@@ -908,6 +1818,8 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
   // ============================================================================
 
   Widget _buildPerformanceTab() {
+    final accent = NotilusColors.getSecondaryColor(context);
+    
     return Column(
       children: [
         // Toolbar
@@ -915,19 +1827,32 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
           height: 48,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            color: const Color(0xFF0D0D14),
+            color: NotilusColors.chromeDark,
             border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
           ),
           child: Row(
             children: [
-              ElevatedButton.icon(
-                onPressed: _showLoadTestDialog,
-                icon: const Icon(Icons.speed_rounded, size: 16),
-                label: const Text('Test de Charge'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF8B5CF6),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              _GxButton(
+                onPressed: _isLoadTestRunning ? null : _showLoadTestDialog,
+                icon: _isLoadTestRunning
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.speed_rounded, size: 16),
+                label: Text(_isLoadTestRunning ? 'Test en cours...' : 'Test de Charge'),
+                color: const Color(0xFF8B5CF6),
+                accent: accent,
+                compact: true,
+              ),
+              const SizedBox(width: 12),
+              if (_isLoadTestRunning)
+                Text(
+                  'Test de charge en cours...',
+                  style: NotilusFonts.rajdhani(
+                    fontSize: 11,
+                    color: accent,
                 ),
               ),
             ],
@@ -936,10 +1861,228 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
         
         // Performance results
         Expanded(
-          child: _EmptyState(
-            icon: Icons.trending_up_rounded,
-            title: 'Tests de Performance',
-            subtitle: 'Lancez un test de charge pour analyser les performances',
+          child: ListenableBuilder(
+            listenable: _labService,
+            builder: (context, _) {
+              final loadTestResults = _labService.loadTestResults;
+              
+              if (_isLoadTestRunning) {
+                return Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 48,
+                        height: 48,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 3,
+                          valueColor: AlwaysStoppedAnimation(accent),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Test de charge en cours...',
+                        style: NotilusFonts.rajdhani(
+                          fontSize: 14,
+                          color: Colors.white.withOpacity(0.7),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Veuillez patienter',
+                        style: NotilusFonts.rajdhani(
+                          fontSize: 11,
+                          color: Colors.white.withOpacity(0.5),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+              
+              if (loadTestResults.isEmpty) {
+                return _GxEmptyState(
+                  icon: Icons.trending_up_rounded,
+                  title: 'Tests de Performance',
+                  subtitle: 'Lancez un test de charge pour analyser les performances\nLes résultats apparaîtront ici une fois le test terminé',
+                );
+              }
+              
+              return ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: loadTestResults.length,
+                itemBuilder: (context, index) {
+                  final result = loadTestResults[index];
+                  return _GxLoadTestResultCard(result: result, accent: accent);
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+  
+  Future<void> _runSecurityScanWithLoader() async {
+    setState(() => _isSecurityScanning = true);
+    
+    try {
+      final result = await _labService.runSecurityScan();
+      
+      // Actualiser les vulnérabilités
+      await _labService.getVulnerabilities();
+      
+      if (mounted) {
+        final vulnCount = result?.vulnerabilities.length ?? 0;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              vulnCount > 0
+                  ? '$vulnCount vulnérabilité(s) trouvée(s) !'
+                  : 'Aucune vulnérabilité trouvée.',
+              style: NotilusFonts.rajdhani(),
+            ),
+            backgroundColor: vulnCount > 0 ? const Color(0xFFFF9800) : const Color(0xFF22C55E),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Erreur lors du scan: $e',
+              style: NotilusFonts.rajdhani(),
+            ),
+            backgroundColor: const Color(0xFFEF4444),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSecurityScanning = false);
+      }
+    }
+  }
+
+  // ============================================================================
+  // Console Tab
+  // ============================================================================
+
+  Widget _buildConsoleTab() {
+    final accent = NotilusColors.getSecondaryColor(context);
+    
+    return Column(
+      children: [
+        // Toolbar
+        Container(
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: NotilusColors.chromeDark,
+            border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.terminal_rounded, size: 16, color: accent),
+              const SizedBox(width: 8),
+              Text(
+                'Console FastAPI',
+                style: NotilusFonts.rajdhani(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+              const Spacer(),
+              ListenableBuilder(
+                listenable: _labService,
+                builder: (context, _) {
+                  return Text(
+                    '${_labService.consoleLogs.length} logs',
+                    style: NotilusFonts.rajdhani(
+                      fontSize: 11,
+                      color: Colors.white.withOpacity(0.5),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(width: 12),
+              TextButton.icon(
+                onPressed: () => _labService.clearConsoleLogs(),
+                icon: const Icon(Icons.delete_outline, size: 16),
+                label: Text(
+                  'Effacer',
+                  style: NotilusFonts.rajdhani(fontSize: 11),
+                ),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.white.withOpacity(0.6),
+                ),
+              ),
+            ],
+          ),
+        ),
+        
+        // Console content
+        Expanded(
+          child: StreamBuilder<ConsoleLogEntry>(
+            stream: _labService.consoleLogStream,
+            builder: (context, snapshot) {
+              return ListenableBuilder(
+                listenable: _labService,
+                builder: (context, _) {
+                  final logs = _labService.consoleLogs;
+                  
+                  if (logs.isEmpty) {
+                    return _GxEmptyState(
+                      icon: Icons.terminal_outlined,
+                      title: 'Aucun log',
+                      subtitle: 'Les logs FastAPI apparaîtront ici en temps réel',
+                    );
+                  }
+                  
+                  return Row(
+                    children: [
+                      // Liste des logs
+                      Expanded(
+                        child: Container(
+                          color: const Color(0xFF0A0A0F),
+                          child: ListView.builder(
+                            reverse: true, // Nouveaux logs en haut
+                            padding: const EdgeInsets.all(8),
+                            itemCount: logs.length,
+                            itemBuilder: (context, index) {
+                              final log = logs[logs.length - 1 - index]; // Inverser pour afficher les plus récents en haut
+                              return _ConsoleLogLine(
+                                log: log,
+                                isSelected: _selectedLog?.timestamp == log.timestamp,
+                                onTap: () {
+                                  setState(() {
+                                    _selectedLog = log;
+                                  });
+                                },
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                      // Panneau de détails
+                      if (_selectedLog != null)
+                        Container(
+                          width: 400,
+                          decoration: BoxDecoration(
+                            color: NotilusColors.chromeDark,
+                            border: Border(left: BorderSide(color: accent.withOpacity(0.2))),
+                          ),
+                          child: _buildConsoleLogDetailsPanel(_selectedLog!, accent),
+                        ),
+                    ],
+                  );
+                },
+              );
+            },
           ),
         ),
       ],
@@ -951,28 +2094,45 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
   // ============================================================================
 
   Widget _buildCaptureTab() {
-    return Column(
+    return ListenableBuilder(
+      listenable: _labService,
+      builder: (context, _) {
+        final accent = NotilusColors.getSecondaryColor(context);
+        
+        return Row(
+          children: [
+            // Liste des captures
+            Expanded(
+              child: Column(
       children: [
         // Toolbar
         Container(
           height: 48,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            color: const Color(0xFF0D0D14),
+                      color: NotilusColors.chromeDark,
             border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
           ),
           child: Row(
             children: [
               Text(
                 '${_labService.captures.length} requêtes capturées',
-                style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.5)),
+                          style: NotilusFonts.rajdhani(
+                            fontSize: 11,
+                            color: Colors.white.withOpacity(0.5),
+                          ),
               ),
               const Spacer(),
               TextButton.icon(
                 onPressed: () => _labService.clearCaptures(),
                 icon: const Icon(Icons.delete_outline, size: 16),
-                label: const Text('Effacer'),
-                style: TextButton.styleFrom(foregroundColor: Colors.white.withOpacity(0.6)),
+                          label: Text(
+                            'Effacer',
+                            style: NotilusFonts.rajdhani(fontSize: 11),
+                          ),
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.white.withOpacity(0.6),
+                          ),
               ),
             ],
           ),
@@ -981,7 +2141,7 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
         // Captures list
         Expanded(
           child: _labService.captures.isEmpty
-              ? _EmptyState(
+                        ? _GxEmptyState(
                   icon: Icons.videocam_off_outlined,
                   title: 'Aucune capture',
                   subtitle: 'Les requêtes interceptées apparaîtront ici',
@@ -991,12 +2151,317 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
                   itemCount: _labService.captures.length,
                   itemBuilder: (context, index) {
                     final capture = _labService.captures[index];
-                    return _CaptureCard(
+                              return _GxCaptureCard(
                       capture: capture,
+                                isSelected: _selectedCapture?.id == capture.id,
+                                onTap: () {
+                                  setState(() {
+                                    _selectedCapture = capture;
+                                  });
+                                },
                       onReplay: () => _labService.replayCapture(capture.id),
                     );
                   },
                 ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Panneau de détails
+            if (_selectedCapture != null)
+              Container(
+                width: 400,
+                decoration: BoxDecoration(
+                  color: NotilusColors.chromeDark,
+                  border: Border(left: BorderSide(color: accent.withOpacity(0.2))),
+                ),
+                child: _buildCaptureDetailsPanel(_selectedCapture!, accent),
+              ),
+          ],
+        );
+      },
+    );
+  }
+  
+  Widget _buildCaptureDetailsPanel(CapturedRequest capture, Color accent) {
+    return Column(
+      children: [
+        // Header
+        Container(
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: NotilusColors.chromeDark,
+            border: Border(bottom: BorderSide(color: accent.withOpacity(0.2))),
+          ),
+          child: Row(
+            children: [
+              Text(
+                'Détails de la requête',
+                style: NotilusFonts.rajdhani(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.close, size: 18),
+                color: Colors.white.withOpacity(0.6),
+                onPressed: () {
+                  setState(() {
+                    _selectedCapture = null;
+                  });
+                },
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              ),
+            ],
+          ),
+        ),
+        
+        // Contenu scrollable
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Informations générales
+                _DetailSection(
+                  title: 'Informations',
+                  accentColor: accent,
+                  children: [
+                    _DetailRow('Méthode', capture.method),
+                    _DetailRow('URL', capture.url),
+                    _DetailRow('Path', capture.path),
+                    _DetailRow('Host', capture.host),
+                    if (capture.statusCode != null)
+                      _DetailRow('Status Code', '${capture.statusCode}'),
+                    _DetailRow('Durée', '${capture.durationMs.toStringAsFixed(0)}ms'),
+                    _DetailRow('Timestamp', _formatTimestamp(capture.timestamp)),
+                  ],
+                ),
+                
+                const SizedBox(height: 16),
+                
+                // Headers de requête
+                if (capture.requestHeaders.isNotEmpty)
+                  _DetailSection(
+                    title: 'Request Headers',
+                    accentColor: accent,
+                    children: capture.requestHeaders.entries.map((e) => 
+                      _DetailRow(e.key, e.value)
+                    ).toList(),
+                  ),
+                
+                if (capture.requestHeaders.isNotEmpty) const SizedBox(height: 16),
+                
+                // Body de requête
+                if (capture.requestBodyText != null && capture.requestBodyText!.isNotEmpty)
+                  _DetailSection(
+                    title: 'Request Body',
+                    accentColor: accent,
+                    children: [
+                      _GxCodeBlock(
+                        code: capture.requestBodyText!,
+                        language: 'json',
+                      ),
+                    ],
+                  ),
+                
+                if (capture.requestBodyText != null && capture.requestBodyText!.isNotEmpty)
+                  const SizedBox(height: 16),
+                
+                // Headers de réponse
+                if (capture.responseHeaders.isNotEmpty)
+                  _DetailSection(
+                    title: 'Response Headers',
+                    accentColor: accent,
+                    children: capture.responseHeaders.entries.map((e) => 
+                      _DetailRow(e.key, e.value)
+                    ).toList(),
+                  ),
+                
+                if (capture.responseHeaders.isNotEmpty) const SizedBox(height: 16),
+                
+                // Body de réponse
+                if (capture.responseBodyText != null && capture.responseBodyText!.isNotEmpty)
+                  _DetailSection(
+                    title: 'Response Body',
+                    accentColor: accent,
+                    children: [
+                      _GxCodeBlock(
+                        code: capture.responseBodyText!,
+                        language: 'json',
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+  
+  String _formatTimestamp(DateTime timestamp) {
+    return '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}:${timestamp.second.toString().padLeft(2, '0')}';
+  }
+  
+  String _formatTimestampString(String timestamp) {
+    try {
+      final dt = DateTime.parse(timestamp);
+      return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}';
+    } catch (e) {
+      return timestamp.length > 8 ? timestamp.substring(11, 19) : timestamp;
+    }
+  }
+  
+  Widget _buildConsoleLogDetailsPanel(ConsoleLogEntry log, Color accent) {
+    return Column(
+      children: [
+        // Header
+        Container(
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: NotilusColors.chromeDark,
+            border: Border(bottom: BorderSide(color: accent.withOpacity(0.2))),
+          ),
+          child: Row(
+            children: [
+              Text(
+                'Détails de la requête',
+                style: NotilusFonts.rajdhani(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.close, size: 18),
+                color: Colors.white.withOpacity(0.6),
+                onPressed: () {
+                  setState(() {
+                    _selectedLog = null;
+                  });
+                },
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              ),
+            ],
+          ),
+        ),
+        
+        // Contenu scrollable
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Informations générales
+                _DetailSection(
+                  title: 'Informations',
+                  accentColor: accent,
+                  children: [
+                    _DetailRow('Timestamp', _formatTimestampString(log.timestamp)),
+                    _DetailRow('Level', log.level),
+                    _DetailRow('Message', log.message),
+                  ],
+                ),
+                
+                const SizedBox(height: 16),
+                
+                // Détails de la requête
+                if (log.request != null && log.request!.isNotEmpty) ...[
+                  _DetailSection(
+                    title: 'Request',
+                    accentColor: accent,
+                    children: [
+                      if (log.request!['method'] != null)
+                        _DetailRow('Method', log.request!['method'].toString()),
+                      if (log.request!['url'] != null)
+                        _DetailRow('URL', log.request!['url'].toString()),
+                      if (log.request!['path'] != null)
+                        _DetailRow('Path', log.request!['path'].toString()),
+                      if (log.request!['query_string'] != null && log.request!['query_string'].toString().isNotEmpty)
+                        _DetailRow('Query', log.request!['query_string'].toString()),
+                      if (log.request!['client_host'] != null)
+                        _DetailRow('Client', log.request!['client_host'].toString()),
+                    ],
+                  ),
+                  
+                  if (log.request!['headers'] != null && log.request!['headers'] is Map) ...[
+                    const SizedBox(height: 16),
+                    _DetailSection(
+                      title: 'Request Headers',
+                      accentColor: accent,
+                      children: (log.request!['headers'] as Map<String, dynamic>)
+                          .entries
+                          .map((e) => _DetailRow(e.key, e.value.toString()))
+                          .toList(),
+                    ),
+                  ],
+                  
+                  if (log.request!['body'] != null && log.request!['body'].toString().isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    _DetailSection(
+                      title: 'Request Body',
+                      accentColor: accent,
+                      children: [
+                        _GxCodeBlock(
+                          code: log.request!['body'].toString(),
+                          language: 'json',
+                        ),
+                      ],
+                    ),
+                  ],
+                ] else if (log.message.contains('GET') || log.message.contains('POST') || 
+                          log.message.contains('PUT') || log.message.contains('DELETE')) ...[
+                  // Si c'est un log HTTP mais sans détails, extraire les infos du message
+                  _DetailSection(
+                    title: 'Request Info',
+                    accentColor: accent,
+                    children: [
+                      _DetailRow('Message', log.message),
+                      _DetailRow('Raw', log.raw),
+                    ],
+                  ),
+                ],
+                
+                // Détails de la réponse
+                if (log.response != null && log.response!.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  _DetailSection(
+                    title: 'Response',
+                    accentColor: accent,
+                    children: [
+                      if (log.response!['status_code'] != null)
+                        _DetailRow('Status Code', '${log.response!['status_code']}'),
+                      if (log.response!['duration_ms'] != null)
+                        _DetailRow('Duration', '${log.response!['duration_ms']}ms'),
+                    ],
+                  ),
+                  
+                  if (log.response!['headers'] != null && log.response!['headers'] is Map) ...[
+                    const SizedBox(height: 16),
+                    _DetailSection(
+                      title: 'Response Headers',
+                      accentColor: accent,
+                      children: (log.response!['headers'] as Map<String, dynamic>)
+                          .entries
+                          .map((e) => _DetailRow(e.key, e.value.toString()))
+                          .toList(),
+                    ),
+                  ],
+                ],
+              ],
+            ),
+          ),
         ),
       ],
     );
@@ -1007,16 +2472,21 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
   // ============================================================================
 
   void _showSettings() {
+    final urlController = TextEditingController(text: _labService.baseUrl);
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A24),
-        title: const Text('Paramètres Backend Lab', style: TextStyle(color: Colors.white)),
+        backgroundColor: NotilusColors.chromeDark,
+        title: Text(
+          'Paramètres Backend Lab',
+          style: NotilusFonts.orbitron(color: Colors.white),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _StyledTextField(
-              controller: TextEditingController(text: _labService.baseUrl),
+            _GxTextField(
+              controller: urlController,
               hint: 'URL du serveur Backend Lab',
             ),
           ],
@@ -1024,14 +2494,19 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Annuler'),
+            child: Text('Annuler', style: NotilusFonts.rajdhani()),
           ),
-          ElevatedButton(
+          _GxButton(
             onPressed: () {
+              _labService.baseUrl = urlController.text;
               _labService.checkConnection();
               Navigator.pop(context);
             },
-            child: const Text('Sauvegarder'),
+            icon: const Icon(Icons.save_rounded, size: 16),
+            label: const Text('Sauvegarder'),
+            color: NotilusColors.getSecondaryColor(context),
+            accent: NotilusColors.getSecondaryColor(context),
+            compact: true,
           ),
         ],
       ),
@@ -1041,42 +2516,138 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
   void _showLoadTestDialog() {
     final nameController = TextEditingController();
     final urlController = TextEditingController();
+    final usersController = TextEditingController(text: '10');
+    final durationController = TextEditingController(text: '60');
+    final rampUpController = TextEditingController(text: '10');
+    final accent = NotilusColors.getSecondaryColor(context);
+    
+    // Pré-remplir avec l'URL configurée si disponible
+    if (_configuredServer != null) {
+      urlController.text = _configuredServer!.baseUrl;
+    }
     
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A24),
-        title: const Text('Nouveau Test de Charge', style: TextStyle(color: Colors.white)),
+        backgroundColor: NotilusColors.chromeDark,
+        title: Text(
+          'Nouveau Test de Charge',
+          style: NotilusFonts.orbitron(color: Colors.white),
+        ),
         content: SizedBox(
           width: 400,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _StyledTextField(controller: nameController, hint: 'Nom du test'),
+              _GxTextField(controller: nameController, hint: 'Nom du test'),
               const SizedBox(height: 12),
-              _StyledTextField(controller: urlController, hint: 'URL cible'),
+              _AutoConfigUrlField(
+                controller: urlController,
+                hint: 'URL cible',
+                configuredServer: _configuredServer,
+                selectedRoute: _selectedRouteForConfig,
+                routeParams: _routeParams,
+              ),
               const SizedBox(height: 12),
-              // Additional options would go here
+              Row(
+                children: [
+                  Expanded(
+                    child: _GxTextField(
+                      controller: usersController,
+                      hint: 'Utilisateurs virtuels',
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _GxTextField(
+                      controller: durationController,
+                      hint: 'Durée (sec)',
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _GxTextField(
+                      controller: rampUpController,
+                      hint: 'Ramp-up (sec)',
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Annuler'),
+            child: Text('Annuler', style: NotilusFonts.rajdhani()),
           ),
-          ElevatedButton(
-            onPressed: () {
+          _GxButton(
+            onPressed: () async {
               if (nameController.text.isNotEmpty && urlController.text.isNotEmpty) {
-                _labService.runLoadTest(
-                  name: nameController.text,
-                  targetUrl: urlController.text,
-                );
                 Navigator.pop(context);
+                setState(() => _isLoadTestRunning = true);
+                
+                try {
+                  final result = await _labService.runLoadTest(
+                    name: nameController.text,
+                    targetUrl: urlController.text,
+                    virtualUsers: int.tryParse(usersController.text) ?? 10,
+                    durationSec: int.tryParse(durationController.text) ?? 60,
+                    rampUpSec: int.tryParse(rampUpController.text) ?? 10,
+                  );
+                  
+                  if (mounted) {
+                    if (result != null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Test de charge terminé ! ${result.totalRequests} requêtes exécutées',
+                            style: NotilusFonts.rajdhani(),
+                          ),
+                          backgroundColor: result.status == LoadTestStatus.completed
+                              ? const Color(0xFF22C55E)
+                              : const Color(0xFFFF9800),
+                          duration: const Duration(seconds: 3),
+                        ),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Test de charge lancé (résultats en attente)',
+                            style: NotilusFonts.rajdhani(),
+                          ),
+                          backgroundColor: const Color(0xFF22C55E),
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    }
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Erreur lors du test: $e',
+                          style: NotilusFonts.rajdhani(),
+                        ),
+                        backgroundColor: const Color(0xFFEF4444),
+                        duration: const Duration(seconds: 3),
+                      ),
+                    );
+                  }
+                } finally {
+                  if (mounted) {
+                    setState(() => _isLoadTestRunning = false);
+                  }
+                }
               }
             },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF8B5CF6)),
-            child: const Text('Démarrer'),
+            icon: const Icon(Icons.play_arrow_rounded, size: 16),
+            label: const Text('Démarrer'),
+            color: const Color(0xFF8B5CF6),
+            accent: accent,
+            compact: true,
           ),
         ],
       ),
@@ -1085,15 +2656,21 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
 }
 
 // ============================================================================
-// Reusable Widgets
+// Reusable GX Widgets - Style Notilus GX
 // ============================================================================
 
-class _IconBtn extends StatelessWidget {
+class _GxIconBtn extends StatelessWidget {
   final IconData icon;
   final String tooltip;
+  final Color accent;
   final VoidCallback onTap;
 
-  const _IconBtn({required this.icon, required this.tooltip, required this.onTap});
+  const _GxIconBtn({
+    required this.icon,
+    required this.tooltip,
+    required this.accent,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1106,7 +2683,7 @@ class _IconBtn extends StatelessWidget {
           borderRadius: BorderRadius.circular(6),
           child: Padding(
             padding: const EdgeInsets.all(8),
-            child: Icon(icon, size: 16, color: Colors.white.withOpacity(0.6)),
+            child: Icon(icon, size: 16, color: accent.withOpacity(0.7)),
           ),
         ),
       ),
@@ -1114,20 +2691,22 @@ class _IconBtn extends StatelessWidget {
   }
 }
 
-class _StatCard extends StatelessWidget {
+class _GxStatCard extends StatelessWidget {
   final String title;
   final String value;
   final String subtitle;
   final IconData icon;
   final Color color;
+  final Color accent;
   final VoidCallback? onTap;
 
-  const _StatCard({
+  const _GxStatCard({
     required this.title,
     required this.value,
     required this.subtitle,
     required this.icon,
     required this.color,
+    required this.accent,
     this.onTap,
   });
 
@@ -1163,16 +2742,27 @@ class _StatCard extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               value,
-              style: TextStyle(
+              style: NotilusFonts.orbitron(
                 fontSize: 28,
                 fontWeight: FontWeight.w700,
                 color: color,
-                height: 1,
-              ),
+              ).copyWith(height: 1),
             ),
             const SizedBox(height: 4),
-            Text(title, style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.7))),
-            Text(subtitle, style: TextStyle(fontSize: 9, color: Colors.white.withOpacity(0.4))),
+            Text(
+              title,
+              style: NotilusFonts.rajdhani(
+                fontSize: 11,
+                color: Colors.white.withOpacity(0.7),
+              ),
+            ),
+            Text(
+              subtitle,
+              style: NotilusFonts.rajdhani(
+                fontSize: 9,
+                color: Colors.white.withOpacity(0.4),
+              ),
+            ),
           ],
         ),
       ),
@@ -1180,16 +2770,18 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-class _Card extends StatelessWidget {
+class _GxCard extends StatelessWidget {
   final String title;
   final IconData icon;
   final Color color;
+  final Color accent;
   final Widget child;
 
-  const _Card({
+  const _GxCard({
     required this.title,
     required this.icon,
     required this.color,
+    required this.accent,
     required this.child,
   });
 
@@ -1198,7 +2790,7 @@ class _Card extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF12121A),
+        color: NotilusColors.chromeLight,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white.withOpacity(0.05)),
       ),
@@ -1211,7 +2803,7 @@ class _Card extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 title,
-                style: TextStyle(
+                style: NotilusFonts.rajdhani(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: color,
@@ -1227,11 +2819,16 @@ class _Card extends StatelessWidget {
   }
 }
 
-class _SectionHeader extends StatelessWidget {
+class _GxSectionHeader extends StatelessWidget {
   final String title;
   final IconData icon;
+  final Color accent;
 
-  const _SectionHeader({required this.title, required this.icon});
+  const _GxSectionHeader({
+    required this.title,
+    required this.icon,
+    required this.accent,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1239,16 +2836,16 @@ class _SectionHeader extends StatelessWidget {
       height: 40,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFF0D0D14),
+        color: NotilusColors.chromeDark,
         border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 14, color: Colors.white.withOpacity(0.5)),
+          Icon(icon, size: 14, color: accent.withOpacity(0.7)),
           const SizedBox(width: 8),
           Text(
             title,
-            style: TextStyle(
+            style: NotilusFonts.rajdhani(
               fontSize: 11,
               fontWeight: FontWeight.w600,
               color: Colors.white.withOpacity(0.7),
@@ -1260,12 +2857,12 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-class _StyledTextField extends StatelessWidget {
+class _GxTextField extends StatelessWidget {
   final TextEditingController controller;
   final String hint;
   final int maxLines;
 
-  const _StyledTextField({
+  const _GxTextField({
     required this.controller,
     required this.hint,
     this.maxLines = 1,
@@ -1273,13 +2870,18 @@ class _StyledTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final accent = NotilusColors.getSecondaryColor(context);
+    
     return TextField(
       controller: controller,
       maxLines: maxLines,
-      style: const TextStyle(fontSize: 12, color: Colors.white, fontFamily: 'JetBrains Mono'),
+      style: NotilusFonts.code(fontSize: 12, color: Colors.white),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.3)),
+        hintStyle: NotilusFonts.rajdhani(
+          fontSize: 12,
+          color: Colors.white.withOpacity(0.3),
+        ),
         filled: true,
         fillColor: Colors.white.withOpacity(0.05),
         border: OutlineInputBorder(
@@ -1288,7 +2890,7 @@ class _StyledTextField extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0xFF3B82F6), width: 1),
+          borderSide: BorderSide(color: accent, width: 1),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       ),
@@ -1296,22 +2898,63 @@ class _StyledTextField extends StatelessWidget {
   }
 }
 
-class _FilterChip extends StatelessWidget {
+class _GxButton extends StatelessWidget {
+  final VoidCallback? onPressed;
+  final Widget icon;
+  final Widget label;
+  final Color color;
+  final Color accent;
+  final bool compact;
+
+  const _GxButton({
+    required this.onPressed,
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.accent,
+    this.compact = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton.icon(
+      onPressed: onPressed,
+      icon: icon,
+      label: label,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        foregroundColor: Colors.white,
+        padding: EdgeInsets.symmetric(
+          horizontal: compact ? 16 : 20,
+          vertical: compact ? 8 : 14,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        textStyle: NotilusFonts.rajdhani(fontSize: 11, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+}
+
+class _GxFilterChip extends StatelessWidget {
   final String label;
   final bool isActive;
   final Color? color;
+  final Color accent;
   final VoidCallback onTap;
 
-  const _FilterChip({
+  const _GxFilterChip({
     required this.label,
     required this.isActive,
     this.color,
+    required this.accent,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final chipColor = color ?? Colors.white;
+    final chipColor = color ?? accent;
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -1320,11 +2963,13 @@ class _FilterChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: isActive ? chipColor.withOpacity(0.15) : Colors.white.withOpacity(0.05),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: isActive ? chipColor.withOpacity(0.3) : Colors.transparent),
+          border: Border.all(
+            color: isActive ? chipColor.withOpacity(0.3) : Colors.transparent,
+          ),
         ),
         child: Text(
           label,
-          style: TextStyle(
+          style: NotilusFonts.rajdhani(
             fontSize: 10,
             fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
             color: isActive ? chipColor : Colors.white.withOpacity(0.5),
@@ -1335,13 +2980,13 @@ class _FilterChip extends StatelessWidget {
   }
 }
 
-class _EmptyState extends StatelessWidget {
+class _GxEmptyState extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
   final bool compact;
 
-  const _EmptyState({
+  const _GxEmptyState({
     required this.icon,
     required this.title,
     required this.subtitle,
@@ -1360,7 +3005,7 @@ class _EmptyState extends StatelessWidget {
             SizedBox(height: compact ? 8 : 16),
             Text(
               title,
-              style: TextStyle(
+              style: NotilusFonts.rajdhani(
                 fontSize: compact ? 12 : 14,
                 fontWeight: FontWeight.w600,
                 color: Colors.white.withOpacity(0.3),
@@ -1369,7 +3014,10 @@ class _EmptyState extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               subtitle,
-              style: TextStyle(fontSize: compact ? 10 : 11, color: Colors.white.withOpacity(0.2)),
+              style: NotilusFonts.rajdhani(
+                fontSize: compact ? 10 : 11,
+                color: Colors.white.withOpacity(0.2),
+              ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -1379,10 +3027,10 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-class _ActivityItem extends StatelessWidget {
+class _GxActivityItem extends StatelessWidget {
   final TestResult result;
 
-  const _ActivityItem({required this.result});
+  const _GxActivityItem({required this.result});
 
   @override
   Widget build(BuildContext context) {
@@ -1397,7 +3045,9 @@ class _ActivityItem extends StatelessWidget {
             width: 6,
             height: 6,
             decoration: BoxDecoration(
-              color: result.status == TestResultStatus.passed ? const Color(0xFF22C55E) : const Color(0xFFEF4444),
+              color: result.status == TestResultStatus.passed 
+                  ? const Color(0xFF22C55E) 
+                  : const Color(0xFFEF4444),
               shape: BoxShape.circle,
             ),
           ),
@@ -1407,13 +3057,19 @@ class _ActivityItem extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Test: ${result.testId}',
-                  style: const TextStyle(fontSize: 10, color: Colors.white70),
+                  '${result.testId}',
+                  style: NotilusFonts.code(
+                    fontSize: 10,
+                    color: Colors.white70,
+                  ),
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  '${result.status.name.toUpperCase()} • ${result.durationMs.round()}ms',
-                  style: TextStyle(fontSize: 9, color: Colors.white.withOpacity(0.4)),
+                  '${result.durationMs.toStringAsFixed(0)}ms',
+                  style: NotilusFonts.rajdhani(
+                    fontSize: 9,
+                    color: Colors.white.withOpacity(0.4),
+                  ),
                 ),
               ],
             ),
@@ -1424,15 +3080,23 @@ class _ActivityItem extends StatelessWidget {
   }
 }
 
-class _ServerCard extends StatelessWidget {
+class _GxServerCard extends StatelessWidget {
   final DiscoveredServer server;
+  final Color accent;
+  final bool isConfiguring;
+  final VoidCallback onAutoConfigure;
   final VoidCallback onDiscoverRoutes;
   final VoidCallback onHealthCheck;
+  final VoidCallback onRefresh;
 
-  const _ServerCard({
+  const _GxServerCard({
     required this.server,
+    required this.accent,
+    required this.isConfiguring,
+    required this.onAutoConfigure,
     required this.onDiscoverRoutes,
     required this.onHealthCheck,
+    required this.onRefresh,
   });
 
   @override
@@ -1441,7 +3105,7 @@ class _ServerCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF12121A),
+        color: NotilusColors.chromeLight,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: server.statusColor.withOpacity(0.3)),
       ),
@@ -1456,47 +3120,98 @@ class _ServerCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: server.statusColor,
                   shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: server.statusColor.withOpacity(0.5), blurRadius: 4)],
+                  boxShadow: [
+                    BoxShadow(
+                      color: server.statusColor.withOpacity(0.5),
+                      blurRadius: 4,
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(width: 12),
-              Icon(server.frameworkIcon, size: 16, color: Colors.white70),
+              Icon(server.frameworkIcon, size: 16, color: accent.withOpacity(0.7)),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      server.name ?? server.host,
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white),
+                      server.displayName,
+                      style: NotilusFonts.rajdhani(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
                     ),
                     Text(
-                      '${server.host}:${server.port} • ${server.framework ?? 'Unknown'}',
-                      style: TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.5)),
+                      '${server.host}:${server.port} • ${server.framework.name}',
+                      style: NotilusFonts.rajdhani(
+                        fontSize: 10,
+                        color: Colors.white.withOpacity(0.5),
+                      ),
                     ),
                   ],
                 ),
               ),
+              // Bouton de configuration automatique
+              _GxButton(
+                onPressed: isConfiguring ? null : onAutoConfigure,
+                icon: isConfiguring
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.auto_awesome_rounded, size: 14),
+                label: Text(isConfiguring ? 'Config...' : 'Auto Config'),
+                color: accent,
+                accent: accent,
+                compact: true,
+              ),
+              const SizedBox(width: 8),
               TextButton(
                 onPressed: onDiscoverRoutes,
-                child: const Text('Routes', style: TextStyle(fontSize: 10)),
+                child: Text(
+                  'Routes',
+                  style: NotilusFonts.rajdhani(fontSize: 10),
+                ),
               ),
               TextButton(
                 onPressed: onHealthCheck,
-                child: const Text('Health', style: TextStyle(fontSize: 10)),
+                child: Text(
+                  'Health',
+                  style: NotilusFonts.rajdhani(fontSize: 10),
+                ),
               ),
             ],
           ),
+          if (server.routesCount > 0) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(Icons.alt_route_rounded, size: 12, color: accent.withOpacity(0.7)),
+                const SizedBox(width: 6),
+                Text(
+                  '${server.routesCount} routes découvertes',
+                  style: NotilusFonts.rajdhani(
+                    fontSize: 10,
+                    color: Colors.white.withOpacity(0.5),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
   }
 }
 
-class _RouteCard extends StatelessWidget {
+class _GxRouteCard extends StatelessWidget {
   final DiscoveredRoute route;
+  final Color accent;
 
-  const _RouteCard({required this.route});
+  const _GxRouteCard({required this.route, required this.accent});
 
   @override
   Widget build(BuildContext context) {
@@ -1504,7 +3219,7 @@ class _RouteCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFF12121A),
+        color: NotilusColors.chromeLight,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: Colors.white.withOpacity(0.05)),
       ),
@@ -1518,44 +3233,64 @@ class _RouteCard extends StatelessWidget {
             ),
             child: Text(
               route.method.name,
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: route.methodColor),
+              style: NotilusFonts.rajdhani(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: route.methodColor,
+              ),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               route.path,
-              style: const TextStyle(fontSize: 11, color: Colors.white70, fontFamily: 'JetBrains Mono'),
+              style: NotilusFonts.code(
+                fontSize: 11,
+                color: Colors.white70,
+              ),
             ),
           ),
-          if (route.description != null)
-            Text(
-              route.description!,
-              style: TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.4)),
+          if (route.pathParams.isNotEmpty || route.queryParams.isNotEmpty) ...[
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: accent.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                '${route.pathParams.length + route.queryParams.length} params',
+                style: NotilusFonts.rajdhani(
+                  fontSize: 9,
+                  color: accent,
+                ),
+              ),
             ),
+          ],
         ],
       ),
     );
   }
 }
 
-class _TestResultCard extends StatelessWidget {
+class _GxTestResultCard extends StatelessWidget {
   final TestResult result;
 
-  const _TestResultCard({required this.result});
+  const _GxTestResultCard({required this.result});
 
   @override
   Widget build(BuildContext context) {
+    final isSuccess = result.status == TestResultStatus.passed;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: result.status == TestResultStatus.passed
+        color: isSuccess
             ? const Color(0xFF22C55E).withOpacity(0.08)
             : const Color(0xFFEF4444).withOpacity(0.08),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: result.status == TestResultStatus.passed
+          color: isSuccess
               ? const Color(0xFF22C55E).withOpacity(0.2)
               : const Color(0xFFEF4444).withOpacity(0.2),
         ),
@@ -1572,8 +3307,8 @@ class _TestResultCard extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                result.status.name.toUpperCase(),
-                style: TextStyle(
+                '${result.assertionsPassed}/${result.assertionsPassed + result.assertionsFailed} assertions',
+                style: NotilusFonts.rajdhani(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                   color: result.statusColor,
@@ -1581,27 +3316,35 @@ class _TestResultCard extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                '${result.durationMs.round()}ms',
-                style: TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.5)),
+                '${result.durationMs.toStringAsFixed(0)}ms',
+                style: NotilusFonts.rajdhani(
+                  fontSize: 10,
+                  color: Colors.white.withOpacity(0.5),
+                ),
               ),
             ],
           ),
+          if (result.errorMessage != null) ...[
           const SizedBox(height: 6),
           Text(
-            'Test: ${result.testId}',
-            style: const TextStyle(fontSize: 10, color: Colors.white54, fontFamily: 'JetBrains Mono'),
+              result.errorMessage!,
+              style: NotilusFonts.code(
+                fontSize: 10,
+                color: Colors.white54,
+              ),
             overflow: TextOverflow.ellipsis,
           ),
+          ],
         ],
       ),
     );
   }
 }
 
-class _VulnerabilityCard extends StatelessWidget {
+class _GxVulnerabilityCard extends StatelessWidget {
   final Vulnerability vulnerability;
 
-  const _VulnerabilityCard({required this.vulnerability});
+  const _GxVulnerabilityCard({required this.vulnerability});
 
   @override
   Widget build(BuildContext context) {
@@ -1626,7 +3369,7 @@ class _VulnerabilityCard extends StatelessWidget {
                 ),
                 child: Text(
                   vulnerability.severity.name.toUpperCase(),
-                  style: TextStyle(
+                  style: NotilusFonts.rajdhani(
                     fontSize: 9,
                     fontWeight: FontWeight.w700,
                     color: vulnerability.severityColor,
@@ -1636,8 +3379,12 @@ class _VulnerabilityCard extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  vulnerability.type.name,
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white),
+                  vulnerability.title,
+                  style: NotilusFonts.rajdhani(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ],
@@ -1645,36 +3392,50 @@ class _VulnerabilityCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             vulnerability.description,
-            style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.7)),
+            style: NotilusFonts.rajdhani(
+              fontSize: 11,
+              color: Colors.white.withOpacity(0.7),
           ),
-          if (vulnerability.routeId != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              'Route: ${vulnerability.routeId}',
-              style: const TextStyle(fontSize: 10, color: Colors.white38, fontFamily: 'JetBrains Mono'),
-            ),
-          ],
+          ),
         ],
       ),
     );
   }
 }
 
-class _CaptureCard extends StatelessWidget {
+class _GxCaptureCard extends StatelessWidget {
   final CapturedRequest capture;
+  final bool isSelected;
+  final VoidCallback onTap;
   final VoidCallback onReplay;
 
-  const _CaptureCard({required this.capture, required this.onReplay});
+  const _GxCaptureCard({
+    required this.capture,
+    this.isSelected = false,
+    required this.onTap,
+    required this.onReplay,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final accent = NotilusColors.getSecondaryColor(context);
+    
+    return InkWell(
+      onTap: onTap,
+      child: Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFF12121A),
+          color: isSelected 
+              ? accent.withOpacity(0.1)
+              : NotilusColors.chromeLight,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+          border: Border.all(
+            color: isSelected 
+                ? accent.withOpacity(0.3)
+                : Colors.white.withOpacity(0.05),
+            width: isSelected ? 1.5 : 1,
+          ),
       ),
       child: Row(
         children: [
@@ -1686,7 +3447,11 @@ class _CaptureCard extends StatelessWidget {
             ),
             child: Text(
               capture.method,
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: capture.methodColor),
+                style: NotilusFonts.rajdhani(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: capture.methodColor,
+                ),
             ),
           ),
           const SizedBox(width: 12),
@@ -1696,12 +3461,18 @@ class _CaptureCard extends StatelessWidget {
               children: [
                 Text(
                   capture.url,
-                  style: const TextStyle(fontSize: 11, color: Colors.white70, fontFamily: 'JetBrains Mono'),
+                    style: NotilusFonts.code(
+                      fontSize: 11,
+                      color: Colors.white70,
+                    ),
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  '${capture.statusCode ?? '?'} • ${capture.durationMs.round()}ms',
-                  style: TextStyle(fontSize: 9, color: Colors.white.withOpacity(0.4)),
+                    '${capture.statusCode ?? '?'} • ${capture.durationMs.toStringAsFixed(0)}ms',
+                    style: NotilusFonts.rajdhani(
+                      fontSize: 9,
+                      color: Colors.white.withOpacity(0.4),
+                    ),
                 ),
               ],
             ),
@@ -1713,15 +3484,17 @@ class _CaptureCard extends StatelessWidget {
             tooltip: 'Rejouer',
           ),
         ],
+        ),
       ),
     );
   }
 }
 
-class _KeyValueEditor extends StatelessWidget {
+class _GxKeyValueEditor extends StatelessWidget {
   final String title;
+  final Color accent;
 
-  const _KeyValueEditor({required this.title});
+  const _GxKeyValueEditor({required this.title, required this.accent});
 
   @override
   Widget build(BuildContext context) {
@@ -1736,11 +3509,23 @@ class _KeyValueEditor extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text('Key', style: TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.4))),
+                child: Text(
+                  'Key',
+                  style: NotilusFonts.rajdhani(
+                    fontSize: 10,
+                    color: Colors.white.withOpacity(0.4),
+                  ),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text('Value', style: TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.4))),
+                child: Text(
+                  'Value',
+                  style: NotilusFonts.rajdhani(
+                    fontSize: 10,
+                    color: Colors.white.withOpacity(0.4),
+                  ),
+                ),
               ),
               const SizedBox(width: 32),
             ],
@@ -1750,10 +3535,12 @@ class _KeyValueEditor extends StatelessWidget {
             children: [
               Expanded(
                 child: TextField(
-                  style: const TextStyle(fontSize: 11, color: Colors.white),
+                  style: NotilusFonts.rajdhani(fontSize: 11, color: Colors.white),
                   decoration: InputDecoration(
                     hintText: 'Content-Type',
-                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
+                    hintStyle: NotilusFonts.rajdhani(
+                      color: Colors.white.withOpacity(0.2),
+                    ),
                     isDense: true,
                     border: InputBorder.none,
                   ),
@@ -1762,10 +3549,12 @@ class _KeyValueEditor extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: TextField(
-                  style: const TextStyle(fontSize: 11, color: Colors.white),
+                  style: NotilusFonts.rajdhani(fontSize: 11, color: Colors.white),
                   decoration: InputDecoration(
                     hintText: 'application/json',
-                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
+                    hintStyle: NotilusFonts.rajdhani(
+                      color: Colors.white.withOpacity(0.2),
+                    ),
                     isDense: true,
                     border: InputBorder.none,
                   ),
@@ -1786,7 +3575,11 @@ class _KeyValueEditor extends StatelessWidget {
   }
 }
 
-class _AuthEditor extends StatelessWidget {
+class _GxAuthEditor extends StatelessWidget {
+  final Color accent;
+
+  const _GxAuthEditor({required this.accent});
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -1801,8 +3594,8 @@ class _AuthEditor extends StatelessWidget {
           DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: 'none',
-              dropdownColor: const Color(0xFF1A1A24),
-              style: const TextStyle(fontSize: 12, color: Colors.white),
+              dropdownColor: NotilusColors.chromeDark,
+              style: NotilusFonts.rajdhani(fontSize: 12, color: Colors.white),
               items: const [
                 DropdownMenuItem(value: 'none', child: Text('Aucune')),
                 DropdownMenuItem(value: 'bearer', child: Text('Bearer Token')),
@@ -1815,5 +3608,951 @@ class _AuthEditor extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+// ============================================================================
+// DevTools Style List Items
+// ============================================================================
+
+class _DevToolsServerListItem extends StatelessWidget {
+  final DiscoveredServer server;
+  final Color accent;
+  final bool isSelected;
+  final bool isLoading;
+  final VoidCallback onTap;
+  final VoidCallback onRoutesTap;
+
+  const _DevToolsServerListItem({
+    required this.server,
+    required this.accent,
+    required this.isSelected,
+    required this.isLoading,
+    required this.onTap,
+    required this.onRoutesTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? accent.withOpacity(0.1) : Colors.transparent,
+          border: Border(
+            left: BorderSide(
+              color: isSelected ? accent : Colors.transparent,
+              width: 3,
+            ),
+          ),
+        ),
+        child: Row(
+          children: [
+            // Status indicator
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: server.statusColor,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: server.statusColor.withOpacity(0.5),
+                    blurRadius: 4,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Icon
+            Icon(
+              server.frameworkIcon,
+              size: 16,
+              color: accent.withOpacity(0.7),
+            ),
+            const SizedBox(width: 12),
+            // Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    server.displayName,
+                    style: NotilusFonts.rajdhani(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${server.host}:${server.port} • ${server.framework.name}',
+                    style: NotilusFonts.rajdhani(
+                      fontSize: 10,
+                      color: Colors.white.withOpacity(0.5),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Routes count
+            if (server.routesCount > 0) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: accent.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  '${server.routesCount} routes',
+                  style: NotilusFonts.rajdhani(
+                    fontSize: 9,
+                    color: accent,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
+            // Loading indicator
+            if (isLoading)
+              const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DevToolsRouteListItem extends StatelessWidget {
+  final DiscoveredRoute route;
+  final Color accent;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _DevToolsRouteListItem({
+    required this.route,
+    required this.accent,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? accent.withOpacity(0.1) : Colors.transparent,
+          border: Border(
+            left: BorderSide(
+              color: isSelected ? accent : Colors.transparent,
+              width: 3,
+            ),
+          ),
+        ),
+        child: Row(
+          children: [
+            // Method badge
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: route.methodColor.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                route.method.name,
+                style: NotilusFonts.rajdhani(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  color: route.methodColor,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Path
+            Expanded(
+              child: Text(
+                route.path,
+                style: NotilusFonts.code(
+                  fontSize: 11,
+                  color: Colors.white70,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            // Params count
+            if (route.pathParams.isNotEmpty || route.queryParams.isNotEmpty) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: accent.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  '${route.pathParams.length + route.queryParams.length}',
+                  style: NotilusFonts.rajdhani(
+                    fontSize: 9,
+                    color: accent,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// Detail Panel Widgets
+// ============================================================================
+
+class _DetailSection extends StatelessWidget {
+  final String title;
+  final Color accentColor;
+  final List<Widget> children;
+
+  const _DetailSection({
+    required this.title,
+    required this.accentColor,
+    required this.children,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: NotilusFonts.rajdhani(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: accentColor,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.03),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: children,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _DetailRow(this.label, this.value);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              label,
+              style: NotilusFonts.rajdhani(
+                fontSize: 10,
+                color: Colors.white.withOpacity(0.5),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: NotilusFonts.code(
+                fontSize: 10,
+                color: Colors.white70,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// Frontend Auto-Config Widgets
+// ============================================================================
+
+class _AutoConfigUrlField extends StatelessWidget {
+  final TextEditingController controller;
+  final String hint;
+  final DiscoveredServer? configuredServer;
+  final DiscoveredRoute? selectedRoute;
+  final Map<String, String> routeParams;
+
+  const _AutoConfigUrlField({
+    required this.controller,
+    required this.hint,
+    this.configuredServer,
+    this.selectedRoute,
+    this.routeParams = const {},
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = NotilusColors.getSecondaryColor(context);
+    
+    // Construire l'URL automatiquement
+    String buildAutoUrl() {
+      if (configuredServer == null) return '';
+      
+      String baseUrl = configuredServer!.baseUrl;
+      
+      if (selectedRoute != null) {
+        String path = selectedRoute!.path;
+        
+        // Remplacer les paramètres de chemin
+        for (var param in selectedRoute!.pathParams) {
+          final value = routeParams[param.name] ?? '';
+          if (value.isNotEmpty) {
+            path = path.replaceAll('{${param.name}}', value);
+          }
+        }
+        
+        // Ajouter les paramètres de query
+        final queryParams = selectedRoute!.queryParams
+            .where((p) => routeParams[p.name]?.isNotEmpty == true)
+            .map((p) => '${p.name}=${Uri.encodeComponent(routeParams[p.name]!)}')
+            .join('&');
+        
+        if (queryParams.isNotEmpty) {
+          path = '$path?$queryParams';
+        }
+        
+        return '$baseUrl$path';
+      }
+      
+      return baseUrl;
+    }
+    
+    final autoUrl = buildAutoUrl();
+    
+    // Mettre à jour le contrôleur si l'URL auto est disponible
+    if (autoUrl.isNotEmpty && controller.text != autoUrl) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (controller.text.isEmpty || controller.text == hint) {
+          controller.text = autoUrl;
+        }
+      });
+    }
+    
+    return Stack(
+      children: [
+        _GxTextField(
+          controller: controller,
+          hint: hint,
+        ),
+        if (configuredServer != null)
+          Positioned(
+            right: 8,
+            top: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: accent.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.auto_awesome, size: 10, color: accent),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Auto',
+                    style: NotilusFonts.rajdhani(
+                      fontSize: 9,
+                      color: accent,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _RouteSelector extends StatelessWidget {
+  final DiscoveredServer server;
+  final List<DiscoveredRoute> routes;
+  final DiscoveredRoute? selectedRoute;
+  final Color accent;
+  final ValueChanged<DiscoveredRoute> onRouteSelected;
+
+  const _RouteSelector({
+    required this.server,
+    required this.routes,
+    required this.selectedRoute,
+    required this.accent,
+    required this.onRouteSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.03),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Sélectionner une route API',
+            style: NotilusFonts.rajdhani(
+              fontSize: 10,
+              color: Colors.white.withOpacity(0.5),
+            ),
+          ),
+          const SizedBox(height: 8),
+          DropdownButtonHideUnderline(
+            child: DropdownButton<DiscoveredRoute>(
+              value: selectedRoute,
+              isExpanded: true,
+              dropdownColor: NotilusColors.chromeDark,
+              style: NotilusFonts.code(fontSize: 11, color: Colors.white),
+              hint: Text(
+                routes.isEmpty ? 'Aucune route disponible' : 'Choisir une route...',
+                style: NotilusFonts.rajdhani(
+                  fontSize: 11,
+                  color: Colors.white.withOpacity(0.4),
+                ),
+              ),
+              items: routes.map((route) {
+                return DropdownMenuItem<DiscoveredRoute>(
+                  value: route,
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: route.methodColor.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          route.method.name,
+                          style: NotilusFonts.rajdhani(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                            color: route.methodColor,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          route.path,
+                          style: NotilusFonts.code(fontSize: 11),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+              onChanged: routes.isEmpty ? null : (route) {
+                if (route != null) onRouteSelected(route);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RouteParamsEditor extends StatelessWidget {
+  final DiscoveredRoute route;
+  final Map<String, String> params;
+  final Color accent;
+  final void Function(String, String) onParamChanged;
+
+  const _RouteParamsEditor({
+    required this.route,
+    required this.params,
+    required this.accent,
+    required this.onParamChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final allParams = [
+      ...route.pathParams.map((p) => _ParamInfo(p, true)),
+      ...route.queryParams.map((p) => _ParamInfo(p, false)),
+    ];
+    
+    if (allParams.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.03),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.info_outline, size: 14, color: accent.withOpacity(0.7)),
+            const SizedBox(width: 8),
+            Text(
+              'Cette route n\'a pas de paramètres',
+              style: NotilusFonts.rajdhani(
+                fontSize: 10,
+                color: Colors.white.withOpacity(0.5),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.03),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.tune_rounded, size: 14, color: accent),
+              const SizedBox(width: 8),
+              Text(
+                'Paramètres de la route',
+                style: NotilusFonts.rajdhani(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: accent,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...allParams.map((paramInfo) {
+            final param = paramInfo.param;
+            final isPathParam = paramInfo.isPathParam;
+            
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: isPathParam 
+                              ? accent.withOpacity(0.15)
+                              : const Color(0xFF3B82F6).withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          isPathParam ? 'PATH' : 'QUERY',
+                          style: NotilusFonts.rajdhani(
+                            fontSize: 8,
+                            fontWeight: FontWeight.w700,
+                            color: isPathParam ? accent : const Color(0xFF3B82F6),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        param.name,
+                        style: NotilusFonts.code(
+                          fontSize: 11,
+                          color: Colors.white70,
+                        ),
+                      ),
+                      if (param.required)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 4),
+                          child: Text(
+                            '*',
+                            style: NotilusFonts.rajdhani(
+                              fontSize: 11,
+                              color: const Color(0xFFEF4444),
+                            ),
+                          ),
+                        ),
+                      const Spacer(),
+                      Text(
+                        param.type,
+                        style: NotilusFonts.rajdhani(
+                          fontSize: 9,
+                          color: Colors.white.withOpacity(0.4),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  TextField(
+                    key: ValueKey(param.name),
+                    style: NotilusFonts.code(fontSize: 11, color: Colors.white),
+                    decoration: InputDecoration(
+                      hintText: param.defaultValue?.toString() ?? 'Valeur...',
+                      hintStyle: NotilusFonts.rajdhani(
+                        fontSize: 11,
+                        color: Colors.white.withOpacity(0.3),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white.withOpacity(0.05),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(6),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(6),
+                        borderSide: BorderSide(color: accent, width: 1),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      isDense: true,
+                    ),
+                    onChanged: (value) => onParamChanged(param.name, value),
+                    controller: TextEditingController(text: params[param.name] ?? '')
+                      ..selection = TextSelection.collapsed(offset: (params[param.name] ?? '').length),
+                  ),
+                  if (param.description != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      param.description!,
+                      style: NotilusFonts.rajdhani(
+                        fontSize: 9,
+                        color: Colors.white.withOpacity(0.4),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+}
+
+class _ParamInfo {
+  final RouteParameter param;
+  final bool isPathParam;
+  
+  _ParamInfo(this.param, this.isPathParam);
+}
+
+// ============================================================================
+// Console Widgets
+// ============================================================================
+
+class _GxCodeBlock extends StatelessWidget {
+  final String code;
+  final String language;
+
+  const _GxCodeBlock({required this.code, this.language = 'text'});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: SelectableText(
+        code,
+        style: NotilusFonts.code(
+          fontSize: 11,
+          color: Colors.white70,
+          height: 1.5,
+        ),
+      ),
+    );
+  }
+}
+
+class _GxLoadTestResultCard extends StatelessWidget {
+  final LoadTestResult result;
+  final Color accent;
+
+  const _GxLoadTestResultCard({required this.result, required this.accent});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: NotilusColors.chromeLight,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: result.statusColor.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: result.statusColor.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  result.status.name.toUpperCase(),
+                  style: NotilusFonts.rajdhani(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    color: result.statusColor,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              if (result.startedAt != null)
+                Text(
+                  _formatDate(result.startedAt!),
+                  style: NotilusFonts.rajdhani(
+                    fontSize: 10,
+                    color: Colors.white.withOpacity(0.4),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _GxLoadTestStatCard(
+                  label: 'Requêtes',
+                  value: '${result.totalRequests}',
+                  color: accent,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _GxLoadTestStatCard(
+                  label: 'Succès',
+                  value: '${result.successfulRequests}',
+                  color: const Color(0xFF22C55E),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _GxLoadTestStatCard(
+                  label: 'Échecs',
+                  value: '${result.failedRequests}',
+                  color: const Color(0xFFEF4444),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _GxLoadTestStatCard(
+                  label: 'Req/s',
+                  value: result.requestsPerSecond.toStringAsFixed(1),
+                  color: accent,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _GxLoadTestStatCard(
+                  label: 'Temps moyen',
+                  value: '${result.avgResponseTimeMs.toStringAsFixed(0)}ms',
+                  color: accent,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _GxLoadTestStatCard(
+                  label: 'P95',
+                  value: '${result.p95ResponseTimeMs.toStringAsFixed(0)}ms',
+                  color: accent,
+                ),
+              ),
+            ],
+          ),
+          if (result.errorRate > 0) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEF4444).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.warning_rounded, size: 14, color: const Color(0xFFEF4444)),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Taux d\'erreur: ${(result.errorRate * 100).toStringAsFixed(1)}%',
+                    style: NotilusFonts.rajdhani(
+                      fontSize: 11,
+                      color: const Color(0xFFEF4444),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+  
+  String _formatDate(DateTime date) {
+    return '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}:${date.second.toString().padLeft(2, '0')}';
+  }
+}
+
+class _GxLoadTestStatCard extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+
+  const _GxLoadTestStatCard({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: NotilusFonts.rajdhani(
+              fontSize: 9,
+              color: Colors.white.withOpacity(0.5),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: NotilusFonts.rajdhani(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ConsoleLogLine extends StatelessWidget {
+  final ConsoleLogEntry log;
+  final bool isSelected;
+  final VoidCallback? onTap;
+
+  const _ConsoleLogLine({
+    required this.log,
+    this.isSelected = false,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: isSelected ? log.colorValue.withOpacity(0.1) : Colors.transparent,
+          border: isSelected ? Border.all(color: log.colorValue.withOpacity(0.3), width: 1) : null,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Timestamp
+            SizedBox(
+              width: 80,
+              child: Text(
+                _formatTimestamp(log.timestamp),
+                style: NotilusFonts.code(
+                  fontSize: 10,
+                  color: Colors.white.withOpacity(0.4),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Level badge
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: log.colorValue.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                log.level.length > 4 ? log.level.substring(0, 4) : log.level,
+                style: NotilusFonts.rajdhani(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  color: log.colorValue,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Message avec coloration
+            Expanded(
+              child: Text(
+                log.message,
+                style: NotilusFonts.code(
+                  fontSize: 11,
+                  color: log.colorValue,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  String _formatTimestamp(String timestamp) {
+    try {
+      final dt = DateTime.parse(timestamp);
+      return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}';
+    } catch (e) {
+      return timestamp.length > 8 ? timestamp.substring(11, 19) : timestamp;
+    }
   }
 }

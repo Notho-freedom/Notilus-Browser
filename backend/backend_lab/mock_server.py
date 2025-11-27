@@ -22,6 +22,7 @@ from .models.mock import (
     MockServerStatus,
     MockRequestLog,
 )
+from .validators import validate_server_id
 
 router = APIRouter()
 
@@ -363,13 +364,6 @@ class CreateMockRouteRequest(BaseModel):
     conditions: List[Dict[str, Any]] = []
 
 
-class MockRequestSimulation(BaseModel):
-    """Simulation d'une requête vers le mock"""
-    method: str = "GET"
-    path: str
-    headers: Dict[str, str] = {}
-    query_params: Dict[str, str] = {}
-    body: Optional[Any] = None
 
 
 @router.post("/servers", response_model=MockServer)
@@ -399,6 +393,7 @@ async def get_mock_server(server_id: str):
     """
     Récupère un serveur mock.
     """
+    server_id = validate_server_id(server_id)
     return _service.get_server(server_id)
 
 
@@ -407,6 +402,7 @@ async def delete_mock_server(server_id: str):
     """
     Supprime un serveur mock.
     """
+    server_id = validate_server_id(server_id)
     _service.delete_server(server_id)
     return {"status": "ok", "message": "Mock server deleted"}
 
@@ -416,6 +412,7 @@ async def add_mock_route(server_id: str, request: CreateMockRouteRequest):
     """
     Ajoute une route à un serveur mock.
     """
+    server_id = validate_server_id(server_id)
     response = MockResponse(**request.response)
     
     conditions = []
@@ -445,30 +442,11 @@ async def list_mock_routes(server_id: str):
     """
     Liste les routes d'un serveur mock.
     """
+    server_id = validate_server_id(server_id)
     server = _service.get_server(server_id)
     return server.routes
 
 
-@router.post("/servers/{server_id}/simulate")
-async def simulate_request(server_id: str, request: MockRequestSimulation):
-    """
-    Simule une requête vers le serveur mock et retourne la réponse.
-    """
-    req_data = {
-        "method": request.method,
-        "path": request.path,
-        "headers": request.headers,
-        "query_params": request.query_params,
-        "body_json": request.body,
-    }
-    
-    response = _service.handle_request(server_id, request.method, request.path, req_data)
-    
-    # Appliquer le délai si nécessaire
-    if response.get('delay_ms', 0) > 0:
-        await asyncio.sleep(response['delay_ms'] / 1000)
-    
-    return response
 
 
 @router.get("/servers/{server_id}/logs", response_model=List[MockRequestLog])
@@ -476,6 +454,7 @@ async def get_mock_logs(server_id: str, limit: int = 100):
     """
     Récupère les logs d'un serveur mock.
     """
+    server_id = validate_server_id(server_id)
     logs = _mock_logs.get(server_id, [])
     return list(reversed(logs[-limit:]))
 
@@ -485,5 +464,6 @@ async def clear_mock_logs(server_id: str):
     """
     Vide les logs d'un serveur mock.
     """
+    server_id = validate_server_id(server_id)
     _mock_logs[server_id] = []
     return {"status": "ok", "message": "Logs cleared"}

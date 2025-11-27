@@ -825,3 +825,51 @@ class OverviewStats {
     );
   }
 }
+
+// ============================================================================
+// Console Models
+// ============================================================================
+
+/// Entrée de log de la console
+class ConsoleLogEntry {
+  final String timestamp;
+  final String level;
+  final String message;
+  final String color;
+  final String raw;
+  final Map<String, dynamic>? request;
+  final Map<String, dynamic>? response;
+
+  ConsoleLogEntry({
+    required this.timestamp,
+    required this.level,
+    required this.message,
+    required this.color,
+    required this.raw,
+    this.request,
+    this.response,
+  });
+
+  factory ConsoleLogEntry.fromJson(Map<String, dynamic> json) {
+    return ConsoleLogEntry(
+      timestamp: json['timestamp'] ?? '',
+      level: json['level'] ?? 'INFO',
+      message: json['message'] ?? '',
+      color: json['color'] ?? '#FFFFFF',
+      raw: json['raw'] ?? '',
+      request: json['request'] != null ? Map<String, dynamic>.from(json['request']) : null,
+      response: json['response'] != null ? Map<String, dynamic>.from(json['response']) : null,
+    );
+  }
+
+  Color get colorValue {
+    try {
+      return Color(int.parse(color.replaceFirst('#', '0xFF')));
+    } catch (e) {
+      return Colors.white;
+    }
+  }
+  
+  /// Vérifie si ce log contient des informations de requête HTTP
+  bool get hasRequestDetails => request != null || response != null;
+}
