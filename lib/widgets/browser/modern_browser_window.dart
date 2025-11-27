@@ -32,6 +32,7 @@ import '../../widgets/lighthouse/lighthouse_panel.dart';
 import '../../widgets/github/github_repos_panel.dart';
 import '../../services/lighthouse/lighthouse_service.dart';
 import '../../services/studio/studio_service.dart';
+import '../../widgets/common/gx_test_panel.dart';
 
 // Intent pour les raccourcis clavier
 class _ToggleMosaicIntent extends Intent {}
@@ -689,6 +690,12 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
           title: 'Documentation',
           icon: CupertinoIcons.book,
           child: const DocumentationPanel(),
+        );
+      case SidebarSection.testPanel:
+        return _SidebarPanelConfig(
+          title: 'Test Panel GX',
+          icon: CupertinoIcons.square_grid_2x2,
+          child: const GxTestPanel(),
         );
     }
   }
