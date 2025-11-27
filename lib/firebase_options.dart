@@ -36,10 +36,7 @@ class DefaultFirebaseOptions {
           'you can reconfigure this by running the FlutterFire CLI again.',
         );
       case TargetPlatform.macOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for macos - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return macos;
       case TargetPlatform.windows:
         return windows;
       case TargetPlatform.linux:
@@ -55,12 +52,22 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'YOUR_API_KEY',
-    appId: 'YOUR_APP_ID',
-    messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
-    projectId: 'YOUR_PROJECT_ID',
-    authDomain: 'YOUR_AUTH_DOMAIN',
-    storageBucket: 'YOUR_STORAGE_BUCKET',
+    apiKey: 'AIzaSyCJLgJHMGIbi7n0dQy1_EMUZZQIUCNCimE',
+    appId: '1:868597908548:web:882bf6a22b8b40c64ae811',
+    messagingSenderId: '868597908548',
+    projectId: 'notilus-browser',
+    authDomain: 'notilus-browser.firebaseapp.com',
+    storageBucket: 'notilus-browser.firebasestorage.app',
+    measurementId: 'G-K1GL90LBWR',
   );
-}
 
+  static const FirebaseOptions macos = FirebaseOptions(
+    apiKey: 'AIzaSyCmLr0lJm5LMdPm8V7qMLS-V2yi8qIOly4',
+    appId: '1:868597908548:ios:d29afd5443de27144ae811',
+    messagingSenderId: '868597908548',
+    projectId: 'notilus-browser',
+    storageBucket: 'notilus-browser.firebasestorage.app',
+    iosBundleId: 'com.example.notilus',
+  );
+
+}

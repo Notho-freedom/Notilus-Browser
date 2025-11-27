@@ -54,7 +54,7 @@ dependencies:
   
   # Markdown (pour documentation)
   flutter_markdown: ^0.6.18
-  markdown: ^6.0.2
+  markdown: ^7.0.0
 
 dev_dependencies:
   flutter_test:

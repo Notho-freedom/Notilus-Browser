@@ -252,7 +252,7 @@ class _DocumentationPanelState extends State<DocumentationPanel> {
           const SizedBox(height: 20),
           _buildCategorySection(
             'API',
-            CupertinoIcons.code,
+            CupertinoIcons.doc_on_doc,
             groupedDocs[DocumentationCategory.api] ?? [],
             accentColor,
           ),
@@ -349,7 +349,7 @@ class _DocumentationPanelState extends State<DocumentationPanel> {
       case DocumentationCategory.guides:
         return CupertinoIcons.book;
       case DocumentationCategory.api:
-        return CupertinoIcons.code;
+        return CupertinoIcons.doc_on_doc;
     }
   }
 
@@ -457,7 +457,7 @@ class _DocumentationPanelState extends State<DocumentationPanel> {
             const SizedBox(height: 32),
             _buildCategoryOverview(
               'API',
-              CupertinoIcons.code,
+              CupertinoIcons.doc_on_doc,
               groupedDocs[DocumentationCategory.api]!,
               accentColor,
             ),
