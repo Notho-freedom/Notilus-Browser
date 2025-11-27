@@ -10,8 +10,6 @@ import '../../services/studio/screenshot_service.dart';
 import '../../models/studio/studio_models.dart';
 import '../../models/studio/viewport_preset.dart';
 import '../../core/services/color_theme_manager.dart';
-import '../../core/constants/notilus_fonts.dart';
-import '../common/gx_futuristic_widgets.dart';
 
 /// Panneau Screenshot Studio
 class ScreenshotPanel extends StatefulWidget {
@@ -48,8 +46,13 @@ class _ScreenshotPanelState extends State<ScreenshotPanel> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    GxFuturisticPanel(
+                    Container(
                       padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(color: Colors.white.withOpacity(0.05)),
+                        ),
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -103,10 +106,13 @@ class _ScreenshotPanelState extends State<ScreenshotPanel> {
             return Row(
               children: [
                 // Options panel
-                GxFuturisticContainer(
-                  accentColor: accentColor,
+                Container(
                   width: 280,
-                  padding: EdgeInsets.zero,
+                  decoration: BoxDecoration(
+                    border: Border(
+                      right: BorderSide(color: Colors.white.withOpacity(0.05)),
+                    ),
+                  ),
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.all(16),
                     child: Column(
@@ -166,12 +172,21 @@ class _ScreenshotPanelState extends State<ScreenshotPanel> {
   }
 
   Widget _buildSection(String title, Widget content, Color accentColor) {
-    return GxFuturisticSection(
-      title: title,
-      accentColor: accentColor,
-      padding: const EdgeInsets.all(12),
-      margin: const EdgeInsets.only(bottom: 12),
-      child: content,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            color: accentColor,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.5,
+          ),
+        ),
+        const SizedBox(height: 8),
+        content,
+      ],
     );
   }
 
@@ -263,16 +278,18 @@ class _ScreenshotPanelState extends State<ScreenshotPanel> {
             activeColor: accentColor,
           ),
         ),
-        GxFuturisticCard(
-          accentColor: accentColor,
+        Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          showBorders: false,
+          decoration: BoxDecoration(
+            color: accentColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(4),
+          ),
           child: Text(
             '${_scale.toStringAsFixed(1)}x',
-            style: NotilusFonts.orbitron(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
+            style: TextStyle(
               color: accentColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
@@ -412,27 +429,31 @@ class _ScreenshotPanelState extends State<ScreenshotPanel> {
     return Column(
       children: [
         // Header
-        GxFuturisticContainer(
-          accentColor: accentColor,
+        Container(
           padding: const EdgeInsets.all(12),
-          showBorders: false,
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: Colors.white.withOpacity(0.05)),
+            ),
+          ),
           child: Row(
             children: [
               Text(
                 'Historique (${captures.length})',
-                style: NotilusFonts.orbitron(
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.7),
                   fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white.withOpacity(0.9),
+                  fontWeight: FontWeight.w600,
                 ),
               ),
               const Spacer(),
-              GxFuturisticButton(
-                label: 'Vider',
-                icon: CupertinoIcons.trash,
-                variant: GxFuturisticButtonVariant.secondary,
-                accentColor: accentColor,
+              TextButton.icon(
                 onPressed: screenshot.clearHistory,
+                icon: Icon(CupertinoIcons.trash, size: 14, color: Colors.white.withOpacity(0.5)),
+                label: Text(
+                  'Vider',
+                  style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.5)),
+                ),
               ),
             ],
           ),
@@ -521,10 +542,15 @@ class _MockupChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: GxFuturisticCard(
-        accentColor: accentColor,
+      child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        showBorders: isSelected,
+        decoration: BoxDecoration(
+          color: isSelected ? accentColor.withOpacity(0.2) : Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? accentColor : Colors.white.withOpacity(0.1),
+          ),
+        ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -532,9 +558,8 @@ class _MockupChip extends StatelessWidget {
             const SizedBox(width: 6),
             Text(
               label,
-              style: NotilusFonts.rajdhani(
+              style: TextStyle(
                 fontSize: 11,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                 color: isSelected ? accentColor : Colors.white.withOpacity(0.7),
               ),
             ),
@@ -558,16 +583,19 @@ class _CaptureCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GxFuturisticCard(
-      accentColor: accentColor,
-      padding: EdgeInsets.zero,
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF18181E),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
       child: Column(
         children: [
           // Preview placeholder
           Expanded(
             child: Container(
               decoration: BoxDecoration(
-                color: const Color(0xFF0D0D12).withOpacity(0.5),
+                color: const Color(0xFF0D0D12),
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
               ),
               child: Center(
@@ -580,7 +608,7 @@ class _CaptureCard extends StatelessWidget {
             ),
           ),
           // Info
-          Padding(
+          Container(
             padding: const EdgeInsets.all(8),
             child: Row(
               children: [
@@ -590,24 +618,24 @@ class _CaptureCard extends StatelessWidget {
                     children: [
                       Text(
                         '${capture.width}×${capture.height}',
-                        style: NotilusFonts.orbitron(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
+                        style: const TextStyle(
                           color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                       Text(
                         capture.formattedSize,
-                        style: NotilusFonts.rajdhani(
-                          fontSize: 9,
+                        style: TextStyle(
                           color: Colors.white.withOpacity(0.4),
+                          fontSize: 9,
                         ),
                       ),
                     ],
                   ),
                 ),
                 IconButton(
-                  icon: Icon(CupertinoIcons.trash, size: 14, color: accentColor.withOpacity(0.7)),
+                  icon: Icon(CupertinoIcons.trash, size: 14, color: Colors.white.withOpacity(0.4)),
                   onPressed: onDelete,
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(minWidth: 24, minHeight: 24),

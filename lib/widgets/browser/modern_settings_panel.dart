@@ -16,8 +16,6 @@ import '../../services/auth/config_sync_service.dart';
 import '../../widgets/auth/sync_status_widget.dart';
 import '../../widgets/auth/auth_dialog.dart';
 import '../common/color_picker_dialog.dart';
-import '../common/gx_futuristic_widgets.dart';
-import '../../core/constants/notilus_fonts.dart';
 import '../common/gx_futuristic_dialog.dart';
 import '../../core/constants/notilus_fonts.dart';
 
@@ -368,10 +366,16 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
   Widget _buildColorThemeChip(ColorTheme colorTheme, bool isSelected, ColorThemeManager manager) {
     return GestureDetector(
       onTap: () => manager.setTheme(colorTheme.id),
-      child: GxFuturisticCard(
-        accentColor: colorTheme.primary,
+      child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        showBorders: isSelected,
+        decoration: BoxDecoration(
+          color: isSelected ? colorTheme.primary.withOpacity(0.2) : Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? colorTheme.primary : Colors.white.withOpacity(0.1),
+            width: isSelected ? 2 : 1,
+          ),
+        ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -382,24 +386,15 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                 color: colorTheme.primary,
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.white.withOpacity(0.3)),
-                boxShadow: isSelected
-                    ? [
-                        BoxShadow(
-                          color: colorTheme.primary.withOpacity(0.5),
-                          blurRadius: 6,
-                          spreadRadius: 1,
-                        ),
-                      ]
-                    : null,
               ),
             ),
             const SizedBox(width: 8),
             Text(
               colorTheme.name,
-              style: NotilusFonts.rajdhani(
+              style: TextStyle(
+                color: isSelected ? colorTheme.primary : Colors.white70,
                 fontSize: 11,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                color: isSelected ? colorTheme.primary : Colors.white.withOpacity(0.7),
               ),
             ),
           ],
@@ -414,14 +409,15 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
     required Color color,
     required VoidCallback onTap,
   }) {
-    final accentColor = Provider.of<ColorThemeManager>(context, listen: false).nativeSecondaryColor;
-    
     return GestureDetector(
       onTap: onTap,
-      child: GxFuturisticCard(
-        accentColor: accentColor,
+      child: Container(
         padding: const EdgeInsets.all(12),
-        showBorders: false,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.white.withOpacity(0.1)),
+        ),
         child: Row(
           children: [
             Container(
@@ -438,26 +434,13 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: NotilusFonts.rajdhani(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
+                  Text(title, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500)),
                   const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: NotilusFonts.rajdhani(
-                      fontSize: 10,
-                      color: Colors.white.withOpacity(0.6),
-                    ),
-                  ),
+                  Text(subtitle, style: TextStyle(color: Colors.white60, fontSize: 10)),
                 ],
               ),
             ),
-            Icon(Icons.chevron_right, color: accentColor.withOpacity(0.7), size: 20),
+            Icon(Icons.chevron_right, color: Colors.white.withOpacity(0.5), size: 20),
           ],
         ),
       ),
@@ -2358,10 +2341,10 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
   Widget _buildSubsectionTitle(String title, Color gxRed) {
     return Text(
       title,
-      style: NotilusFonts.orbitron(
-        fontSize: 13,
-        fontWeight: FontWeight.w700,
+      style: TextStyle(
         color: gxRed,
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
         letterSpacing: 0.5,
       ),
     );
@@ -2374,32 +2357,22 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
     required ValueChanged<bool> onChanged,
     required Color gxRed,
   }) {
-    return GxFuturisticCard(
-      accentColor: gxRed,
+    return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      showBorders: false,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.03),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
       child: Row(
         children: [
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: NotilusFonts.rajdhani(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                ),
+                Text(title, style: const TextStyle(color: Colors.white, fontSize: 12)),
                 const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: NotilusFonts.rajdhani(
-                    fontSize: 10,
-                    color: Colors.white.withOpacity(0.6),
-                  ),
-                ),
+                Text(subtitle, style: TextStyle(color: Colors.white60, fontSize: 10)),
               ],
             ),
           ),

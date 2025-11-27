@@ -2,9 +2,6 @@ import 'package:flutter/material.dart';
 import '../../models/tab_model.dart';
 import '../../core/theme/app_theme.dart';
 import '../../widgets/common/glassmorphic_container.dart';
-import '../../widgets/common/gx_futuristic_widgets.dart';
-import '../../core/services/color_theme_manager.dart';
-import 'package:provider/provider.dart';
 
 class TabContextMenu extends StatelessWidget {
   final TabModel tab;
@@ -33,15 +30,14 @@ class TabContextMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = _getThemeFromContext();
-    final accentColor = Provider.of<ColorThemeManager>(context, listen: false).nativeSecondaryColor;
 
     return Positioned(
       left: position.dx,
       top: position.dy,
-      child: GxFuturisticContainer(
-        accentColor: accentColor,
+      child: GlassmorphicContainer(
         width: 200,
         padding: const EdgeInsets.symmetric(vertical: 4),
+        showNeonBorder: true,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,

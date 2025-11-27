@@ -10,14 +10,12 @@ class NotilusFonts {
     FontWeight? fontWeight,
     Color? color,
     double? height,
-    double? letterSpacing,
   }) {
     return GoogleFonts.orbitron(
       fontSize: fontSize ?? 14,
       fontWeight: fontWeight ?? FontWeight.w400,
       color: color,
       height: height,
-      letterSpacing: letterSpacing,
     );
   }
 
