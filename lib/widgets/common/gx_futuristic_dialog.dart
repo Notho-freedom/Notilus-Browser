@@ -75,14 +75,18 @@ class GxFuturisticDialog extends StatelessWidget {
       backgroundColor: Colors.transparent,
       elevation: 0,
       child: TweenAnimationBuilder<double>(
-        duration: const Duration(milliseconds: 300),
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeOutCubic,
         tween: Tween(begin: 0.0, end: 1.0),
         builder: (context, value, child) {
           return Transform.scale(
-            scale: 0.8 + (0.2 * value),
+            scale: 0.7 + (0.3 * Curves.easeOutBack.transform(value)),
             child: Opacity(
-              opacity: value,
-              child: child,
+              opacity: Curves.easeOut.transform(value),
+              child: Transform.translate(
+                offset: Offset(0, 20 * (1 - value)),
+                child: child,
+              ),
             ),
           );
         },
