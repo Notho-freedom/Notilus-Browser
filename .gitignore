@@ -54,6 +54,8 @@ build/
 .env
 .env.local
 .env.*.local
+# Mais garder .env.example pour la documentation
+!.env.example
 
 # IDE
 .vscode/

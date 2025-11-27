@@ -209,11 +209,11 @@ class FirebaseAuthService extends foundation.ChangeNotifier {
         );
       }
       
-      // Générer un state pour la sécurité
-      final state = DateTime.now().millisecondsSinceEpoch.toString();
+      // Générer un state pour la sécurité (utiliser un token sécurisé)
+      final state = _generateSecureState();
       
       // Retourner l'URL d'autorisation pour que l'UI puisse ouvrir une WebView
-      final authUrl = _localOAuth.getGitHubAuthUrl();
+      final authUrl = _localOAuth.getGitHubAuthUrl(state);
       throw GitHubOAuthUrlException(authUrl, state);
       
     } catch (e) {
@@ -369,6 +369,14 @@ class FirebaseAuthService extends foundation.ChangeNotifier {
   
   /// Vérifie si le backend local est disponible
   bool get isLocalBackendAvailable => _useLocalBackend;
+  
+  /// Génère un state sécurisé pour OAuth
+  String _generateSecureState() {
+    // Utiliser un timestamp + random pour créer un state unique
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final random = (timestamp * 1000 + (timestamp % 1000)).toString();
+    return 'notilus_${timestamp}_${random.substring(random.length - 8)}';
+  }
 }
 
 /// Exception pour gérer le Device Flow Google

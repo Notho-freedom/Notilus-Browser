@@ -50,7 +50,14 @@ pip install -r requirements.txt
 
 ### 4. Créer le fichier `.env`
 
-Copiez `backend/.env.example` vers `backend/.env` et remplissez:
+**Note** : Le fichier `.env` est ignoré par Git (pour la sécurité). Il a été créé automatiquement depuis `.env.example`.
+
+Si vous ne voyez pas le fichier `.env` dans votre explorateur de fichiers, c'est normal - les fichiers commençant par `.` sont souvent cachés. Vous pouvez :
+
+1. **Utiliser un éditeur de texte** (VS Code, Notepad++, etc.) et ouvrir directement `backend/.env`
+2. **Ou le créer manuellement** en copiant `backend/.env.example` vers `backend/.env`
+
+Ensuite, remplissez les valeurs :
 
 ```env
 GITHUB_CLIENT_ID=votre_github_client_id

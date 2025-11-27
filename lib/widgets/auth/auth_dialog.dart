@@ -9,6 +9,7 @@ import 'dart:async';
 import '../../services/auth/firebase_auth_service.dart';
 import '../../services/auth/local_oauth_service.dart';
 import '../../core/services/color_theme_manager.dart';
+import '../../services/tab_manager.dart';
 
 /// Dialog d'authentification
 class AuthDialog extends StatelessWidget {
@@ -513,11 +514,10 @@ class _GitHubOAuthDialogState extends State<_GitHubOAuthDialog> {
     super.dispose();
   }
   
-  void _openAuthUrl() async {
-    final uri = Uri.parse(widget.authUrl);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
+  void _openAuthUrl() {
+    // Ouvrir dans un nouvel onglet Notilus au lieu du navigateur externe
+    final tabManager = Provider.of<TabManager>(context, listen: false);
+    tabManager.addTab(url: widget.authUrl);
   }
   
   void _startPolling() {
