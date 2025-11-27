@@ -4,7 +4,10 @@ library auth_dialog;
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'dart:async';
 import '../../services/auth/firebase_auth_service.dart';
+import '../../services/auth/local_oauth_service.dart';
 import '../../core/services/color_theme_manager.dart';
 
 /// Dialog d'authentification
@@ -54,16 +57,29 @@ class AuthDialog extends StatelessWidget {
                 label: 'Continuer avec Google',
                 color: Colors.blue,
                 onPressed: () async {
-                  final result = await authService.signInWithGoogle();
-                  if (result != null && context.mounted) {
-                    Navigator.of(context).pop(true);
-                  } else if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Connexion annulée ou échouée'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
+                  try {
+                    final result = await authService.signInWithGoogle();
+                    if (result != null && context.mounted) {
+                      Navigator.of(context).pop(true);
+                    } else if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Connexion annulée ou échouée'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    if (e is GoogleDeviceFlowException && context.mounted) {
+                      _showGoogleDeviceFlowDialog(context, authService, e.deviceFlow);
+                    } else if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Erreur: ${e.toString()}'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
                   }
                 },
               )
@@ -84,23 +100,17 @@ class AuthDialog extends StatelessWidget {
                   final result = await authService.signInWithGitHub();
                   if (result != null && context.mounted) {
                     Navigator.of(context).pop(true);
-                  } else if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Authentification GitHub en cours... Vérifiez votre navigateur'),
-                        backgroundColor: Colors.blue,
-                        duration: Duration(seconds: 3),
-                      ),
-                    );
                   }
                 } catch (e) {
-                  if (context.mounted) {
+                  if (e is GitHubOAuthUrlException && context.mounted) {
+                    _showGitHubOAuthDialog(context, authService, e.authUrl, e.state);
+                  } else if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(
-                          e.toString().contains('configuration')
-                              ? 'GitHub OAuth nécessite une configuration dans Firebase Console'
-                              : 'Erreur lors de la connexion GitHub: ${e.toString()}'
+                          e.toString().contains('Backend')
+                              ? 'Backend OAuth local non disponible. Démarrez-le avec: cd backend && python main.py'
+                              : 'Erreur: ${e.toString()}'
                         ),
                         backgroundColor: Colors.red,
                         duration: const Duration(seconds: 5),
@@ -301,6 +311,274 @@ class AuthDialog extends StatelessWidget {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+  
+  void _showGoogleDeviceFlowDialog(
+    BuildContext context,
+    FirebaseAuthService authService,
+    GoogleDeviceFlow deviceFlow,
+  ) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => _GoogleDeviceFlowDialog(
+        authService: authService,
+        deviceFlow: deviceFlow,
+      ),
+    );
+  }
+  
+  void _showGitHubOAuthDialog(
+    BuildContext context,
+    FirebaseAuthService authService,
+    String authUrl,
+    String state,
+  ) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => _GitHubOAuthDialog(
+        authService: authService,
+        authUrl: authUrl,
+        state: state,
+      ),
+    );
+  }
+}
+
+class _GoogleDeviceFlowDialog extends StatefulWidget {
+  final FirebaseAuthService authService;
+  final GoogleDeviceFlow deviceFlow;
+  
+  const _GoogleDeviceFlowDialog({
+    required this.authService,
+    required this.deviceFlow,
+  });
+  
+  @override
+  State<_GoogleDeviceFlowDialog> createState() => _GoogleDeviceFlowDialogState();
+}
+
+class _GoogleDeviceFlowDialogState extends State<_GoogleDeviceFlowDialog> {
+  Timer? _pollTimer;
+  bool _isPolling = false;
+  
+  @override
+  void initState() {
+    super.initState();
+    _startPolling();
+    _openVerificationUrl();
+  }
+  
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
+  }
+  
+  void _openVerificationUrl() async {
+    final uri = Uri.parse(widget.deviceFlow.verificationUriComplete);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+  
+  void _startPolling() {
+    setState(() => _isPolling = true);
+    
+    _pollTimer = Timer.periodic(
+      Duration(seconds: widget.deviceFlow.interval),
+      (timer) async {
+        final result = await widget.authService.pollGoogleTokenDeviceFlow(
+          widget.deviceFlow.deviceCode,
+        );
+        
+        if (result != null && mounted) {
+          timer.cancel();
+          Navigator.of(context).pop(); // Fermer ce dialog
+          Navigator.of(context).pop(true); // Fermer le dialog principal
+        }
+      },
+    );
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    final gxRed = Provider.of<ColorThemeManager>(context).nativeSecondaryColor;
+    
+    return Dialog(
+      backgroundColor: const Color(0xFF15151A),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        width: 400,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.phone_android, size: 48, color: Colors.blue),
+            const SizedBox(height: 16),
+            const Text(
+              'Authentification Google',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.white24),
+              ),
+              child: Column(
+                children: [
+                  const Text(
+                    'Code de vérification:',
+                    style: TextStyle(color: Colors.white60, fontSize: 12),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    widget.deviceFlow.userCode,
+                    style: TextStyle(
+                      color: gxRed,
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              '1. Ouvrez le lien dans votre navigateur\n'
+              '2. Entrez le code ci-dessus\n'
+              '3. Autorisez l\'application',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white60, fontSize: 12),
+            ),
+            const SizedBox(height: 16),
+            if (_isPolling)
+              const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: () {
+                _pollTimer?.cancel();
+                Navigator.of(context).pop();
+              },
+              child: const Text('Annuler', style: TextStyle(color: Colors.white60)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GitHubOAuthDialog extends StatefulWidget {
+  final FirebaseAuthService authService;
+  final String authUrl;
+  final String state;
+  
+  const _GitHubOAuthDialog({
+    required this.authService,
+    required this.authUrl,
+    required this.state,
+  });
+  
+  @override
+  State<_GitHubOAuthDialog> createState() => _GitHubOAuthDialogState();
+}
+
+class _GitHubOAuthDialogState extends State<_GitHubOAuthDialog> {
+  Timer? _pollTimer;
+  bool _isPolling = false;
+  
+  @override
+  void initState() {
+    super.initState();
+    _openAuthUrl();
+    _startPolling();
+  }
+  
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
+  }
+  
+  void _openAuthUrl() async {
+    final uri = Uri.parse(widget.authUrl);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+  
+  void _startPolling() {
+    setState(() => _isPolling = true);
+    
+    _pollTimer = Timer.periodic(
+      const Duration(seconds: 2),
+      (timer) async {
+        final result = await widget.authService.getGitHubTokenAfterAuth(
+          widget.state,
+        );
+        
+        if (result != null && mounted) {
+          timer.cancel();
+          Navigator.of(context).pop(); // Fermer ce dialog
+          Navigator.of(context).pop(true); // Fermer le dialog principal
+        }
+      },
+    );
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: const Color(0xFF15151A),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        width: 400,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.code, size: 48, color: Colors.white),
+            const SizedBox(height: 16),
+            const Text(
+              'Authentification GitHub',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Une fenêtre de votre navigateur va s\'ouvrir.\n'
+              'Connectez-vous avec GitHub et autorisez l\'application.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white60, fontSize: 12),
+            ),
+            const SizedBox(height: 16),
+            if (_isPolling)
+              const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: () {
+                _pollTimer?.cancel();
+                Navigator.of(context).pop();
+              },
+              child: const Text('Annuler', style: TextStyle(color: Colors.white60)),
+            ),
+          ],
         ),
       ),
     );
