@@ -21,6 +21,18 @@ class TerminalService extends ChangeNotifier {
   void initialize() {
     _availableTerminals = _getAvailableTerminals();
     _updateLockedStatus();
+    
+    // Sélectionner un terminal par défaut si aucun n'est sélectionné
+    if (_selectedTerminal == null && _availableTerminals.isNotEmpty) {
+      // Sur Windows, préférer PowerShell, sinon prendre le premier disponible
+      final defaultTerminal = _availableTerminals.firstWhere(
+        (t) => !t.isLocked && (Platform.isWindows ? t.id == 'powershell' : true),
+        orElse: () => _availableTerminals.firstWhere((t) => !t.isLocked, orElse: () => _availableTerminals.first),
+      );
+      _selectedTerminal = defaultTerminal;
+      _activeTerminalId = defaultTerminal.id;
+    }
+    
     notifyListeners();
   }
 

@@ -806,9 +806,11 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
     return Row(
       children: [
         Expanded(
-          child: GestureDetector(
-            onTap: () => _settings.setTerminalInterfaceType('native'),
-            child: Container(
+          child: Tooltip(
+            message: 'Interface native Notilus - Interface Flutter optimisée, légère et rapide',
+            child: GestureDetector(
+              onTap: () => _settings.setTerminalInterfaceType('native'),
+              child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: _settings.terminalInterfaceType == 'native'
@@ -850,12 +852,15 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
               ),
             ),
           ),
+          ),
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: GestureDetector(
-            onTap: () => _settings.setTerminalInterfaceType('xterm'),
-            child: Container(
+          child: Tooltip(
+            message: 'XTerm.js - Terminal avancé avec support complet des fonctionnalités terminal',
+            child: GestureDetector(
+              onTap: () => _settings.setTerminalInterfaceType('xterm'),
+              child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: _settings.terminalInterfaceType == 'xterm'
@@ -896,6 +901,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                 ],
               ),
             ),
+          ),
           ),
         ),
       ],
@@ -989,6 +995,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
               value: _settings.widgetTransparency,
               onChanged: (v) => _settings.setWidgetTransparency(v),
               gxRed: gxRed,
+              tooltip: 'Transparence des widgets et éléments de l\'interface (barre d\'adresse, onglets, etc.)',
             ),
             const SizedBox(height: 12),
             _buildTransparencySlider(
@@ -996,6 +1003,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
               value: _settings.panelTransparency,
               onChanged: (v) => _settings.setPanelTransparency(v),
               gxRed: gxRed,
+              tooltip: 'Transparence des panneaux latéraux (sidebar, paramètres, documentation, etc.)',
             ),
             const SizedBox(height: 12),
             _buildTransparencySlider(
@@ -1003,6 +1011,15 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
               value: _settings.overlayTransparency,
               onChanged: (v) => _settings.setOverlayTransparency(v),
               gxRed: gxRed,
+              tooltip: 'Transparence des overlays et menus contextuels',
+            ),
+            const SizedBox(height: 12),
+            _buildTransparencySlider(
+              label: 'Page d\'accueil',
+              value: _settings.homePageBlur,
+              onChanged: (v) => _settings.setHomePageBlur(v),
+              gxRed: gxRed,
+              tooltip: 'Contrôle l\'opacité du fond d\'écran et du flou sur la page d\'accueil',
             ),
             const SizedBox(height: 12),
             Row(
@@ -1163,13 +1180,27 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
     required double value,
     required ValueChanged<double> onChanged,
     required Color gxRed,
+    String? tooltip,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            Text(label, style: TextStyle(color: Colors.white70, fontSize: 12)),
+            if (tooltip != null)
+              Tooltip(
+                message: tooltip,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(label, style: TextStyle(color: Colors.white70, fontSize: 12)),
+                    const SizedBox(width: 4),
+                    Icon(Icons.info_outline, size: 14, color: Colors.white.withOpacity(0.5)),
+                  ],
+                ),
+              )
+            else
+              Text(label, style: TextStyle(color: Colors.white70, fontSize: 12)),
             const Spacer(),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

@@ -247,8 +247,8 @@ class _ModernHomePageState extends State<ModernHomePage> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Colors.black.withValues(alpha:0.88 * (1.0 - _settings.widgetTransparency)),
-              Colors.black.withValues(alpha:0.94 * (1.0 - _settings.widgetTransparency)),
+              Colors.black.withValues(alpha: _settings.homePageBlur * (1.0 - _settings.widgetTransparency)),
+              Colors.black.withValues(alpha: (_settings.homePageBlur + 0.06) * (1.0 - _settings.widgetTransparency)),
             ],
           ),
         ),
