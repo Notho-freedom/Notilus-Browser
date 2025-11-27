@@ -40,12 +40,14 @@ class SettingsService extends ChangeNotifier {
   // Terminal
   static const String _keyPreferredTerminal = 'notilus_preferred_terminal';
   static const String _keyTerminalFontSize = 'notilus_terminal_font_size';
+  static const String _keyTerminalInterfaceType = 'notilus_terminal_interface_type'; // 'native' | 'xterm'
   
   // Page d'accueil
   static const String _keyLeftColumnExpanded = 'notilus_left_column_expanded';
   static const String _keyRightColumnExpanded = 'notilus_right_column_expanded';
   static const String _keyShowSystemWidgets = 'notilus_show_system_widgets';
   static const String _keyShowQuickAccess = 'notilus_show_quick_access';
+  static const String _keyHomePageBlur = 'notilus_home_page_blur';
   static const String _keyShowRecentHistory = 'notilus_show_recent_history';
   static const String _keyHomePageStyle = 'notilus_home_page_style'; // 'modern', 'notilus_dev', 'frontend', 'backend', 'devops', 'data_science', 'minimal'
   static const String _keyDevProfile = 'notilus_dev_profile'; // 'frontend', 'backend', 'fullstack', 'devops', 'data_science', 'mobile', 'gamedev', 'security'
@@ -258,7 +260,18 @@ class SettingsService extends ChangeNotifier {
     await _prefs?.setString(_keyPreferredTerminal, terminalId);
     notifyListeners();
   }
+
+  /// Type d'interface terminal ('native' | 'xterm')
+  String get terminalInterfaceType => _prefs?.getString(_keyTerminalInterfaceType) ?? 'native';
   
+  Future<void> setTerminalInterfaceType(String type) async {
+    if (type != 'native' && type != 'xterm') {
+      throw ArgumentError('Type must be "native" or "xterm"');
+    }
+    await _prefs?.setString(_keyTerminalInterfaceType, type);
+    notifyListeners();
+  }
+
   double get terminalFontSize => _prefs?.getDouble(_keyTerminalFontSize) ?? 14.0;
   
   Future<void> setTerminalFontSize(double size) async {
@@ -288,6 +301,17 @@ class SettingsService extends ChangeNotifier {
   
   Future<void> setShowSystemWidgets(bool show) async {
     await _prefs?.setBool(_keyShowSystemWidgets, show);
+    notifyListeners();
+  }
+  
+  /// Opacité du flou/overlay de la page d'accueil (0.0 = transparent, 1.0 = opaque)
+  double get homePageBlur => _prefs?.getDouble(_keyHomePageBlur) ?? 0.88;
+  
+  Future<void> setHomePageBlur(double value) async {
+    if (value < 0.0 || value > 1.0) {
+      throw ArgumentError('Value must be between 0.0 and 1.0');
+    }
+    await _prefs?.setDouble(_keyHomePageBlur, value);
     notifyListeners();
   }
   

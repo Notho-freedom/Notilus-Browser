@@ -19,9 +19,26 @@ import 'services/download_service.dart';
 import 'services/devtools_service.dart';
 import 'services/settings_service.dart';
 import 'services/mosaic_service.dart';
+import 'services/studio/studio_service.dart';
+import 'services/lighthouse/lighthouse_service.dart';
+import 'services/documentation_service.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+import 'services/auth/firebase_auth_service.dart';
+import 'services/auth/config_sync_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialiser Firebase (si configuré)
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    // Firebase non configuré, continuer sans
+    debugPrint('Firebase non initialisé: $e');
+  }
 
   // Supprime le halo bleu Windows autour des champs focus
   FocusManager.instance.highlightStrategy = FocusHighlightStrategy.alwaysTouch;
@@ -32,6 +49,16 @@ void main() async {
   
   final mosaicService = NotilusMosaicService();
   await mosaicService.initialize();
+
+  // Initialiser Firebase Auth et Config Sync (si Firebase est configuré)
+  FirebaseAuthService? authService;
+  ConfigSyncService? syncService;
+  try {
+    authService = FirebaseAuthService();
+    syncService = ConfigSyncService(authService, settingsService);
+  } catch (e) {
+    debugPrint('Services Firebase non initialisés: $e');
+  }
   
   // Initialisation de window_manager AVANT runApp
   await windowManager.ensureInitialized();
@@ -66,6 +93,8 @@ void main() async {
   runApp(NotilusApp(
     settingsService: settingsService,
     mosaicService: mosaicService,
+    authService: authService,
+    syncService: syncService,
   ));
 }
 
@@ -131,11 +160,15 @@ class _InvisibleScrollBehavior extends ScrollBehavior {
 class NotilusApp extends StatelessWidget {
   final SettingsService settingsService;
   final NotilusMosaicService mosaicService;
+  final FirebaseAuthService? authService;
+  final ConfigSyncService? syncService;
   
   const NotilusApp({
     super.key,
     required this.settingsService,
     required this.mosaicService,
+    this.authService,
+    this.syncService,
   });
 
   @override
@@ -149,20 +182,33 @@ class NotilusApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => DownloadService()),
         ChangeNotifierProvider(create: (_) => TabManager()),
         ChangeNotifierProvider(create: (_) => DevToolsService()),
+        ChangeNotifierProvider(create: (_) => StudioService()),
+        ChangeNotifierProvider(create: (_) => LighthouseService()),
         ChangeNotifierProvider.value(value: mosaicService),
-        ChangeNotifierProvider(
-          create: (context) {
-            final tabWebViewManager = TabWebViewManager();
-            final downloadService = context.read<DownloadService>();
-            tabWebViewManager.setDownloadService(downloadService);
-            return tabWebViewManager;
-          },
-        ),
+            ChangeNotifierProvider(
+              create: (context) {
+                final tabWebViewManager = TabWebViewManager();
+                final downloadService = context.read<DownloadService>();
+                final studioService = context.read<StudioService>();
+                final lighthouseService = context.read<LighthouseService>();
+                tabWebViewManager.setDownloadService(downloadService);
+                tabWebViewManager.setStudioService(studioService);
+                tabWebViewManager.setLighthouseService(lighthouseService);
+                return tabWebViewManager;
+              },
+            ),
         ChangeNotifierProvider(create: (_) => SideWebViewManager()),
         ChangeNotifierProvider(create: (_) => SystemMetricsService()),
         ChangeNotifierProvider(create: (_) => TerminalService()..initialize()),
         ChangeNotifierProvider(create: (_) => TerminalManager()),
         ChangeNotifierProvider(create: (_) => NativeTerminalService()),
+        // Documentation Service
+        ChangeNotifierProvider(create: (_) => DocumentationService()..initialize()),
+        // Firebase Auth et Sync (si disponibles)
+        if (authService != null)
+          ChangeNotifierProvider.value(value: authService),
+        if (syncService != null)
+          ChangeNotifierProvider.value(value: syncService),
       ],
       child: Consumer<ThemeModeNotifier>(
         builder: (context, themeModeNotifier, _) {

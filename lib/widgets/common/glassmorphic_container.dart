@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
+import 'package:provider/provider.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
+import '../../services/settings_service.dart';
 
 class GlassmorphicContainer extends StatelessWidget {
   final Widget child;
@@ -32,6 +34,11 @@ class GlassmorphicContainer extends StatelessWidget {
     final theme = Theme.of(context).brightness == Brightness.dark
         ? _getThemeFromContext(context)
         : null;
+    
+    // Obtenir les paramètres de transparence
+    final settings = context.watch<SettingsService>();
+    final blurIntensity = settings.glassBlurIntensity;
+    final widgetOpacity = 1.0 - settings.widgetTransparency;
     
     if (theme == null) {
       return Container(
@@ -79,13 +86,13 @@ class GlassmorphicContainer extends StatelessWidget {
         borderRadius: borderRadius ?? BorderRadius.circular(12),
         child: BackdropFilter(
           filter: ImageFilter.blur(
-            sigmaX: AppConstants.glassBlur,
-            sigmaY: AppConstants.glassBlur,
+            sigmaX: blurIntensity,
+            sigmaY: blurIntensity,
           ),
           child: Container(
             padding: padding,
             decoration: BoxDecoration(
-              color: theme.glassBackground,
+              color: theme.glassBackground.withOpacity(widgetOpacity),
               borderRadius: borderRadius ?? BorderRadius.circular(12),
             ),
             child: child,
@@ -116,4 +123,3 @@ class GlassmorphicContainer extends StatelessWidget {
     );
   }
 }
-
