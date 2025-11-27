@@ -104,6 +104,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                         _buildSectionItem('privacy', 'Confidentialité', CupertinoIcons.shield, gxRed),
                         _buildSectionItem('account', 'Compte', CupertinoIcons.person_circle, gxRed),
                         _buildSectionItem('devtools', 'DevTools', CupertinoIcons.ant, gxRed),
+                        _buildSectionItem('gxComponents', 'Composants GX', CupertinoIcons.square_grid_2x2, gxRed),
                         _buildSectionItem('about', 'À propos', CupertinoIcons.info_circle, gxRed),
                       ],
                     ),
@@ -178,6 +179,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
             'homepage' => _buildHomepageSection(context, theme, gxRed),
             'webservices' => _buildWebServicesSection(context, theme, gxRed),
             'privacy' => _buildPrivacySection(context, theme, gxRed),
+            'gxComponents' => _buildGxComponentsSection(context, theme, gxRed),
             'account' => _buildAccountSection(context, theme, gxRed),
             'devtools' => _buildDevToolsSection(context, theme, gxRed),
             'about' => _buildAboutSection(context, theme, gxRed),
@@ -2198,6 +2200,182 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
           ],
         );
       },
+    );
+  }
+
+  // ============================================
+  // SECTION COMPOSANTS GX
+  // ============================================
+  
+  Widget _buildGxComponentsSection(BuildContext context, ThemeData theme, Color gxRed) {
+    return ListenableBuilder(
+      listenable: _settings,
+      builder: (context, _) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSubsectionTitle('Composants Futuristes', gxRed),
+            const SizedBox(height: 8),
+            Text(
+              'Configuration des composants avec style OS Science-Fiction',
+              style: TextStyle(color: Colors.white60, fontSize: 11),
+            ),
+            const SizedBox(height: 24),
+            
+            // Informations sur les composants
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: gxRed.withOpacity(0.3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.info_outline_rounded, color: gxRed, size: 18),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Composants disponibles',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _buildComponentInfo('GxFuturisticCard', 'Cartes avec contours géométriques'),
+                  _buildComponentInfo('GxFuturisticInput', 'Champs de saisie futuristes'),
+                  _buildComponentInfo('GxFuturisticBadge', 'Badges avec effet glow'),
+                  _buildComponentInfo('GxFuturisticSwitch', 'Interrupteurs animés'),
+                  _buildComponentInfo('GxFuturisticProgress', 'Barres de progression'),
+                  _buildComponentInfo('GxFuturisticDialog', 'Dialogs avec animations'),
+                  _buildComponentInfo('GxNotificationService', 'Système de notifications'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            
+            // Lien vers le panel de test
+            _buildSubsectionTitle('Panel de Test', gxRed),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.white.withOpacity(0.1)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Testez tous les composants',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Ouvrez le panel de test depuis la sidebar pour voir tous les composants en action.',
+                    style: TextStyle(color: Colors.white60, fontSize: 11),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      // Fermer les paramètres et ouvrir le panel de test
+                      Navigator.of(context).pop();
+                      // Le panel sera ouvert via la sidebar
+                    },
+                    icon: const Icon(Icons.science_rounded, size: 14),
+                    label: const Text('Ouvrir le panel de test', style: TextStyle(fontSize: 11)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: gxRed,
+                      side: BorderSide(color: gxRed.withOpacity(0.5)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            
+            // Documentation
+            _buildSubsectionTitle('Documentation', gxRed),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.white.withOpacity(0.1)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Guide d\'utilisation',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Consultez le fichier GX_FUTURISTIC_COMPONENTS_README.md pour des exemples d\'utilisation détaillés.',
+                    style: TextStyle(color: Colors.white60, fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+  
+  Widget _buildComponentInfo(String name, String description) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            margin: const EdgeInsets.only(top: 6, right: 8),
+            decoration: BoxDecoration(
+              color: NotilusColors.getSecondaryColor(context),
+              shape: BoxShape.circle,
+            ),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  description,
+                  style: TextStyle(color: Colors.white60, fontSize: 10),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 

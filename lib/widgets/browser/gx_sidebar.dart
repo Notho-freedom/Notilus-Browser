@@ -29,6 +29,7 @@ enum SidebarSection {
   studio,
   lighthouse,
   github,
+  testPanel,
   youtubeMusic,
   youtube,
   chatgpt,
@@ -125,6 +126,11 @@ class _GXSidebarState extends State<GXSidebar> {
       section: SidebarSection.docs,
       icon: CupertinoIcons.book,
       label: 'Documentation',
+    ),
+    _SidebarDestination(
+      section: SidebarSection.testPanel,
+      icon: CupertinoIcons.square_grid_2x2,
+      label: 'Test Panel GX',
     ),
   ];
 
