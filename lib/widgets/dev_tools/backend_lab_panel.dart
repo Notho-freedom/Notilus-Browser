@@ -20,6 +20,7 @@ enum BackendLabTab {
   security,
   performance,
   capture,
+  console,
 }
 
 extension BackendLabTabExt on BackendLabTab {
@@ -32,6 +33,7 @@ extension BackendLabTabExt on BackendLabTab {
       case BackendLabTab.security: return 'Sécurité';
       case BackendLabTab.performance: return 'Performance';
       case BackendLabTab.capture: return 'Capture';
+      case BackendLabTab.console: return 'Console';
     }
   }
   
@@ -44,6 +46,7 @@ extension BackendLabTabExt on BackendLabTab {
       case BackendLabTab.security: return Icons.shield_rounded;
       case BackendLabTab.performance: return Icons.speed_rounded;
       case BackendLabTab.capture: return Icons.videocam_rounded;
+      case BackendLabTab.console: return Icons.terminal_rounded;
     }
   }
   
@@ -56,6 +59,7 @@ extension BackendLabTabExt on BackendLabTab {
       case BackendLabTab.security: return const Color(0xFFEF4444);
       case BackendLabTab.performance: return const Color(0xFF8B5CF6);
       case BackendLabTab.capture: return const Color(0xFF14B8A6);
+      case BackendLabTab.console: return const Color(0xFF10B981);
     }
   }
 }
@@ -86,12 +90,25 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
   // Selected items for details panel
   DiscoveredServer? _selectedServer;
   DiscoveredRoute? _selectedRoute;
+  CapturedRequest? _selectedCapture;
+  ConsoleLogEntry? _selectedLog;
   
   // Filter for routes tab
   String? _filteredServerId;
   
   // Loading states
   final Map<String, bool> _loadingStates = {};
+  bool _isSecurityScanning = false;
+  bool _isLoadTestRunning = false;
+  
+  // Frontend auto-config state
+  DiscoveredServer? _configuredServer; // Serveur configuré pour le frontend
+  DiscoveredRoute? _selectedRouteForConfig; // Route sélectionnée pour la config
+  final Map<String, String> _routeParams = {}; // Valeurs des paramètres de route
+  
+  // Route selection for quick test
+  DiscoveredRoute? _selectedRouteForQuickTest;
+  final Map<String, String> _quickTestParams = {};
 
   @override
   void initState() {
@@ -124,6 +141,8 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
       setState(() => _isInitialized = true);
       if (_labService.isConnected) {
         _labService.refreshAll();
+        // Connecter à la console
+        _labService.connectConsole();
       }
     }
   }
@@ -133,6 +152,7 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
     _tabController.dispose();
     _quickUrlController.dispose();
     _quickBodyController.dispose();
+    _labService.disconnectConsole();
     super.dispose();
   }
 
@@ -389,6 +409,7 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
         _buildSecurityTab(),
         _buildPerformanceTab(),
         _buildCaptureTab(),
+        _buildConsoleTab(),
       ],
     );
   }
@@ -529,9 +550,57 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _GxTextField(
+                child: Column(
+                  children: [
+                    // Sélecteur de route si serveur configuré
+                    if (_configuredServer != null) ...[
+                      _RouteSelector(
+                        server: _configuredServer!,
+                        routes: _labService.routes.where((r) => r.serverId == _configuredServer!.id).toList(),
+                        selectedRoute: _selectedRouteForQuickTest,
+                        accent: accent,
+                        onRouteSelected: (route) {
+                          setState(() {
+                            _selectedRouteForQuickTest = route;
+                            _quickTestParams.clear();
+                            // Initialiser avec valeurs par défaut
+                            for (var param in route.pathParams) {
+                              _quickTestParams[param.name] = param.defaultValue?.toString() ?? '';
+                            }
+                            for (var param in route.queryParams) {
+                              _quickTestParams[param.name] = param.defaultValue?.toString() ?? '';
+                            }
+                            _updateQuickTestUrl();
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    _AutoConfigUrlField(
                   controller: _quickUrlController,
                   hint: 'https://api.example.com/endpoint',
+                      configuredServer: _configuredServer,
+                      selectedRoute: _selectedRouteForQuickTest ?? _selectedRouteForConfig,
+                      routeParams: _quickTestParams.isNotEmpty ? _quickTestParams : _routeParams,
+                    ),
+                    // Éditeur de paramètres si route sélectionnée
+                    if (_selectedRouteForQuickTest != null && 
+                        (_selectedRouteForQuickTest!.pathParams.isNotEmpty || 
+                         _selectedRouteForQuickTest!.queryParams.isNotEmpty)) ...[
+                      const SizedBox(height: 8),
+                      _RouteParamsEditor(
+                        route: _selectedRouteForQuickTest!,
+                        params: _quickTestParams,
+                        accent: accent,
+                        onParamChanged: (key, value) {
+                          setState(() {
+                            _quickTestParams[key] = value;
+                            _updateQuickTestUrl();
+                          });
+                        },
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ],
@@ -827,6 +896,81 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
                 
                 const SizedBox(height: 24),
                 
+                // Configuration Frontend
+                if (_configuredServer?.id == server.id) ...[
+                  _DetailSection(
+                    title: 'Configuration Frontend',
+                    accentColor: accent,
+                    children: [
+                      // URL du serveur (lecture seule)
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: accent.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: accent.withOpacity(0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.link_rounded, size: 14, color: accent),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                server.baseUrl,
+                                style: NotilusFonts.code(
+                                  fontSize: 11,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                            ),
+                            Icon(Icons.lock_outline, size: 12, color: accent.withOpacity(0.7)),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Sélecteur de route
+                      _RouteSelector(
+                        server: server,
+                        routes: _labService.routes.where((r) => r.serverId == server.id).toList(),
+                        selectedRoute: _selectedRouteForConfig,
+                        accent: accent,
+                        onRouteSelected: (route) {
+                          setState(() {
+                            _selectedRouteForConfig = route;
+                            // Initialiser les paramètres avec les clés
+                            _routeParams.clear();
+                            for (var param in route.pathParams) {
+                              _routeParams[param.name] = param.defaultValue?.toString() ?? '';
+                            }
+                            for (var param in route.queryParams) {
+                              _routeParams[param.name] = param.defaultValue?.toString() ?? '';
+                            }
+                            // Mettre à jour l'URL automatiquement
+                            _updateUrlFromConfig();
+                          });
+                        },
+                      ),
+                      // Éditeur de paramètres si une route est sélectionnée
+                      if (_selectedRouteForConfig != null) ...[
+                        const SizedBox(height: 12),
+                        _RouteParamsEditor(
+                          route: _selectedRouteForConfig!,
+                          params: _routeParams,
+                          accent: accent,
+                          onParamChanged: (key, value) {
+                            setState(() {
+                              _routeParams[key] = value;
+                              // Mettre à jour l'URL automatiquement
+                              _updateUrlFromConfig();
+                            });
+                          },
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                ],
+                
                 // Actions
                 _DetailSection(
                   title: 'Actions',
@@ -989,6 +1133,7 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
     });
     
     try {
+      // 1. Configuration backend
       await _labService.configureServer(
         serverId,
         discoverRoutes: true,
@@ -1002,11 +1147,24 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
         _labService.getRoutes(serverId),
       ]);
       
+      // 2. Configuration frontend automatique
+      final server = _labService.servers.firstWhere((s) => s.id == serverId);
+      setState(() {
+        _configuredServer = server;
+        _selectedRouteForConfig = null;
+        _routeParams.clear();
+      });
+      
+      // Pré-remplir l'URL dans les champs
+      if (_selectedServer?.id == serverId) {
+        _updateUrlFields(server.baseUrl);
+      }
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Configuration automatique terminée !',
+              'Configuration backend et frontend terminée !',
               style: NotilusFonts.rajdhani(),
             ),
             backgroundColor: const Color(0xFF22C55E),
@@ -1036,6 +1194,71 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
       }
     }
   }
+  
+  void _updateUrlFields(String baseUrl) {
+    // Pré-remplir les champs URL avec la base URL du serveur
+    if (_quickUrlController.text.isEmpty || _quickUrlController.text == 'https://api.example.com/endpoint') {
+      _quickUrlController.text = baseUrl;
+    }
+  }
+  
+  void _updateUrlFromConfig() {
+    if (_configuredServer == null || _selectedRouteForConfig == null) return;
+    
+    String baseUrl = _configuredServer!.baseUrl;
+    String path = _selectedRouteForConfig!.path;
+    
+    // Remplacer les paramètres de chemin
+    for (var param in _selectedRouteForConfig!.pathParams) {
+      final value = _routeParams[param.name] ?? '';
+      if (value.isNotEmpty) {
+        path = path.replaceAll('{${param.name}}', value);
+      }
+    }
+    
+    // Ajouter les paramètres de query
+    final queryParams = _selectedRouteForConfig!.queryParams
+        .where((p) => _routeParams[p.name]?.isNotEmpty == true)
+        .map((p) => '${p.name}=${Uri.encodeComponent(_routeParams[p.name]!)}')
+        .join('&');
+    
+    if (queryParams.isNotEmpty) {
+      path = '$path?$queryParams';
+    }
+    
+    final fullUrl = '$baseUrl$path';
+    _quickUrlController.text = fullUrl;
+  }
+  
+  void _updateQuickTestUrl() {
+    if (_configuredServer == null || _selectedRouteForQuickTest == null) return;
+    
+    String baseUrl = _configuredServer!.baseUrl;
+    String path = _selectedRouteForQuickTest!.path;
+    
+    // Remplacer les paramètres de chemin
+    for (var param in _selectedRouteForQuickTest!.pathParams) {
+      final value = _quickTestParams[param.name] ?? '';
+      if (value.isNotEmpty) {
+        path = path.replaceAll('{${param.name}}', value);
+      }
+    }
+    
+    // Ajouter les paramètres de query
+    final queryParams = _selectedRouteForQuickTest!.queryParams
+        .where((p) => _quickTestParams[p.name]?.isNotEmpty == true)
+        .map((p) => '${p.name}=${Uri.encodeComponent(_quickTestParams[p.name]!)}')
+        .join('&');
+    
+    if (queryParams.isNotEmpty) {
+      path = '$path?$queryParams';
+    }
+    
+    final fullUrl = '$baseUrl$path';
+    _quickUrlController.text = fullUrl;
+    // Mettre à jour la méthode HTTP selon la route
+    _quickMethod = _selectedRouteForQuickTest!.method.name;
+  }
 
   // ============================================================================
   // Routes Tab - Style DevTools avec split view
@@ -1057,17 +1280,17 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
             Expanded(
               flex: 2,
               child: Column(
-                children: [
-                  // Toolbar
-                  Container(
-                    height: 48,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: BoxDecoration(
+      children: [
+        // Toolbar
+        Container(
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
                       color: NotilusColors.chromeDark,
-                      border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
-                    ),
-                    child: Row(
-                      children: [
+            border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
+          ),
+          child: Row(
+            children: [
                         if (_filteredServerId != null) ...[
                           IconButton(
                             icon: const Icon(Icons.arrow_back, size: 16),
@@ -1077,7 +1300,7 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
                             constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                           ),
                           const SizedBox(width: 8),
-                          Text(
+              Text(
                             'Routes du serveur',
                             style: NotilusFonts.rajdhani(
                               fontSize: 11,
@@ -1092,9 +1315,9 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
                             fontSize: 11,
                             color: Colors.white.withOpacity(0.5),
                           ),
-                        ),
-                        const Spacer(),
-                        // Filter by method
+              ),
+              const Spacer(),
+              // Filter by method
                         _GxFilterChip(
                           label: 'Toutes',
                           isActive: true,
@@ -1115,24 +1338,24 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
                           accent: accent,
                           onTap: () {},
                         ),
-                      ],
-                    ),
-                  ),
-                  
+            ],
+          ),
+        ),
+        
                   // Liste des routes style console
-                  Expanded(
+        Expanded(
                     child: filteredRoutes.isEmpty
                         ? _GxEmptyState(
-                            icon: Icons.alt_route_outlined,
-                            title: 'Aucune route découverte',
+                  icon: Icons.alt_route_outlined,
+                  title: 'Aucune route découverte',
                             subtitle: _filteredServerId != null
                                 ? 'Aucune route pour ce serveur'
                                 : 'Sélectionnez un serveur et configurez-le automatiquement',
-                          )
-                        : ListView.builder(
+                )
+              : ListView.builder(
                             padding: EdgeInsets.zero,
                             itemCount: filteredRoutes.length,
-                            itemBuilder: (context, index) {
+                  itemBuilder: (context, index) {
                               final route = filteredRoutes[index];
                               final isSelected = _selectedRoute?.id == route.id;
                               return _DevToolsRouteListItem(
@@ -1362,9 +1585,57 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
                             ),
                             const SizedBox(width: 8),
                             Expanded(
-                              child: _GxTextField(
+                              child: Column(
+                                children: [
+                                  // Sélecteur de route si serveur configuré
+                                  if (_configuredServer != null) ...[
+                                    _RouteSelector(
+                                      server: _configuredServer!,
+                                      routes: _labService.routes.where((r) => r.serverId == _configuredServer!.id).toList(),
+                                      selectedRoute: _selectedRouteForQuickTest,
+                                      accent: accent,
+                                      onRouteSelected: (route) {
+                                        setState(() {
+                                          _selectedRouteForQuickTest = route;
+                                          _quickTestParams.clear();
+                                          // Initialiser avec valeurs par défaut
+                                          for (var param in route.pathParams) {
+                                            _quickTestParams[param.name] = param.defaultValue?.toString() ?? '';
+                                          }
+                                          for (var param in route.queryParams) {
+                                            _quickTestParams[param.name] = param.defaultValue?.toString() ?? '';
+                                          }
+                                          _updateQuickTestUrl();
+                                        });
+                                      },
+                                    ),
+                                    const SizedBox(height: 8),
+                                  ],
+                                  _AutoConfigUrlField(
                                 controller: _quickUrlController,
                                 hint: 'URL de l\'endpoint',
+                                    configuredServer: _configuredServer,
+                                    selectedRoute: _selectedRouteForQuickTest ?? _selectedRouteForConfig,
+                                    routeParams: _quickTestParams.isNotEmpty ? _quickTestParams : _routeParams,
+                                  ),
+                                  // Éditeur de paramètres si route sélectionnée
+                                  if (_selectedRouteForQuickTest != null && 
+                                      (_selectedRouteForQuickTest!.pathParams.isNotEmpty || 
+                                       _selectedRouteForQuickTest!.queryParams.isNotEmpty)) ...[
+                                    const SizedBox(height: 8),
+                                    _RouteParamsEditor(
+                                      route: _selectedRouteForQuickTest!,
+                                      params: _quickTestParams,
+                                      accent: accent,
+                                      onParamChanged: (key, value) {
+                                        setState(() {
+                                          _quickTestParams[key] = value;
+                                          _updateQuickTestUrl();
+                                        });
+                                      },
+                                    ),
+                                  ],
+                                ],
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -1494,12 +1765,18 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
           child: Row(
             children: [
                   _GxButton(
-                onPressed: () => _labService.runSecurityScan(),
-                icon: const Icon(Icons.security_rounded, size: 16),
-                label: const Text('Lancer Scan'),
-                    color: const Color(0xFFEF4444),
-                    accent: accent,
-                    compact: true,
+                onPressed: _isSecurityScanning ? null : () => _runSecurityScanWithLoader(),
+                icon: _isSecurityScanning
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.security_rounded, size: 16),
+                label: Text(_isSecurityScanning ? 'Scan en cours...' : 'Lancer Scan'),
+                color: const Color(0xFFEF4444),
+                accent: accent,
+                compact: true,
               ),
               const SizedBox(width: 12),
               Text(
@@ -1556,12 +1833,27 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
           child: Row(
             children: [
               _GxButton(
-                onPressed: _showLoadTestDialog,
-                icon: const Icon(Icons.speed_rounded, size: 16),
-                label: const Text('Test de Charge'),
+                onPressed: _isLoadTestRunning ? null : _showLoadTestDialog,
+                icon: _isLoadTestRunning
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.speed_rounded, size: 16),
+                label: Text(_isLoadTestRunning ? 'Test en cours...' : 'Test de Charge'),
                 color: const Color(0xFF8B5CF6),
                 accent: accent,
                 compact: true,
+              ),
+              const SizedBox(width: 12),
+              if (_isLoadTestRunning)
+                Text(
+                  'Test de charge en cours...',
+                  style: NotilusFonts.rajdhani(
+                    fontSize: 11,
+                    color: accent,
+                ),
               ),
             ],
           ),
@@ -1569,10 +1861,228 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
         
         // Performance results
         Expanded(
-          child: _GxEmptyState(
-            icon: Icons.trending_up_rounded,
-            title: 'Tests de Performance',
-            subtitle: 'Lancez un test de charge pour analyser les performances',
+          child: ListenableBuilder(
+            listenable: _labService,
+            builder: (context, _) {
+              final loadTestResults = _labService.loadTestResults;
+              
+              if (_isLoadTestRunning) {
+                return Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 48,
+                        height: 48,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 3,
+                          valueColor: AlwaysStoppedAnimation(accent),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Test de charge en cours...',
+                        style: NotilusFonts.rajdhani(
+                          fontSize: 14,
+                          color: Colors.white.withOpacity(0.7),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Veuillez patienter',
+                        style: NotilusFonts.rajdhani(
+                          fontSize: 11,
+                          color: Colors.white.withOpacity(0.5),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+              
+              if (loadTestResults.isEmpty) {
+                return _GxEmptyState(
+                  icon: Icons.trending_up_rounded,
+                  title: 'Tests de Performance',
+                  subtitle: 'Lancez un test de charge pour analyser les performances\nLes résultats apparaîtront ici une fois le test terminé',
+                );
+              }
+              
+              return ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: loadTestResults.length,
+                itemBuilder: (context, index) {
+                  final result = loadTestResults[index];
+                  return _GxLoadTestResultCard(result: result, accent: accent);
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+  
+  Future<void> _runSecurityScanWithLoader() async {
+    setState(() => _isSecurityScanning = true);
+    
+    try {
+      final result = await _labService.runSecurityScan();
+      
+      // Actualiser les vulnérabilités
+      await _labService.getVulnerabilities();
+      
+      if (mounted) {
+        final vulnCount = result?.vulnerabilities.length ?? 0;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              vulnCount > 0
+                  ? '$vulnCount vulnérabilité(s) trouvée(s) !'
+                  : 'Aucune vulnérabilité trouvée.',
+              style: NotilusFonts.rajdhani(),
+            ),
+            backgroundColor: vulnCount > 0 ? const Color(0xFFFF9800) : const Color(0xFF22C55E),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Erreur lors du scan: $e',
+              style: NotilusFonts.rajdhani(),
+            ),
+            backgroundColor: const Color(0xFFEF4444),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSecurityScanning = false);
+      }
+    }
+  }
+
+  // ============================================================================
+  // Console Tab
+  // ============================================================================
+
+  Widget _buildConsoleTab() {
+    final accent = NotilusColors.getSecondaryColor(context);
+    
+    return Column(
+      children: [
+        // Toolbar
+        Container(
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: NotilusColors.chromeDark,
+            border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.terminal_rounded, size: 16, color: accent),
+              const SizedBox(width: 8),
+              Text(
+                'Console FastAPI',
+                style: NotilusFonts.rajdhani(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+              const Spacer(),
+              ListenableBuilder(
+                listenable: _labService,
+                builder: (context, _) {
+                  return Text(
+                    '${_labService.consoleLogs.length} logs',
+                    style: NotilusFonts.rajdhani(
+                      fontSize: 11,
+                      color: Colors.white.withOpacity(0.5),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(width: 12),
+              TextButton.icon(
+                onPressed: () => _labService.clearConsoleLogs(),
+                icon: const Icon(Icons.delete_outline, size: 16),
+                label: Text(
+                  'Effacer',
+                  style: NotilusFonts.rajdhani(fontSize: 11),
+                ),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.white.withOpacity(0.6),
+                ),
+              ),
+            ],
+          ),
+        ),
+        
+        // Console content
+        Expanded(
+          child: StreamBuilder<ConsoleLogEntry>(
+            stream: _labService.consoleLogStream,
+            builder: (context, snapshot) {
+              return ListenableBuilder(
+                listenable: _labService,
+                builder: (context, _) {
+                  final logs = _labService.consoleLogs;
+                  
+                  if (logs.isEmpty) {
+                    return _GxEmptyState(
+                      icon: Icons.terminal_outlined,
+                      title: 'Aucun log',
+                      subtitle: 'Les logs FastAPI apparaîtront ici en temps réel',
+                    );
+                  }
+                  
+                  return Row(
+                    children: [
+                      // Liste des logs
+                      Expanded(
+                        child: Container(
+                          color: const Color(0xFF0A0A0F),
+                          child: ListView.builder(
+                            reverse: true, // Nouveaux logs en haut
+                            padding: const EdgeInsets.all(8),
+                            itemCount: logs.length,
+                            itemBuilder: (context, index) {
+                              final log = logs[logs.length - 1 - index]; // Inverser pour afficher les plus récents en haut
+                              return _ConsoleLogLine(
+                                log: log,
+                                isSelected: _selectedLog?.timestamp == log.timestamp,
+                                onTap: () {
+                                  setState(() {
+                                    _selectedLog = log;
+                                  });
+                                },
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                      // Panneau de détails
+                      if (_selectedLog != null && _selectedLog!.hasRequestDetails)
+                        Container(
+                          width: 400,
+                          decoration: BoxDecoration(
+                            color: NotilusColors.chromeDark,
+                            border: Border(left: BorderSide(color: accent.withOpacity(0.2))),
+                          ),
+                          child: _buildConsoleLogDetailsPanel(_selectedLog!, accent),
+                        ),
+                    ],
+                  );
+                },
+              );
+            },
           ),
         ),
       ],
@@ -1587,36 +2097,42 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
     return ListenableBuilder(
       listenable: _labService,
       builder: (context, _) {
-    return Column(
+        final accent = NotilusColors.getSecondaryColor(context);
+        
+        return Row(
+          children: [
+            // Liste des captures
+            Expanded(
+              child: Column(
       children: [
         // Toolbar
         Container(
           height: 48,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-                color: NotilusColors.chromeDark,
+                      color: NotilusColors.chromeDark,
             border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
           ),
           child: Row(
             children: [
               Text(
                 '${_labService.captures.length} requêtes capturées',
-                    style: NotilusFonts.rajdhani(
-                      fontSize: 11,
-                      color: Colors.white.withOpacity(0.5),
-                    ),
+                          style: NotilusFonts.rajdhani(
+                            fontSize: 11,
+                            color: Colors.white.withOpacity(0.5),
+                          ),
               ),
               const Spacer(),
               TextButton.icon(
                 onPressed: () => _labService.clearCaptures(),
                 icon: const Icon(Icons.delete_outline, size: 16),
-                    label: Text(
-                      'Effacer',
-                      style: NotilusFonts.rajdhani(fontSize: 11),
-                    ),
-                    style: TextButton.styleFrom(
-                      foregroundColor: Colors.white.withOpacity(0.6),
-                    ),
+                          label: Text(
+                            'Effacer',
+                            style: NotilusFonts.rajdhani(fontSize: 11),
+                          ),
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.white.withOpacity(0.6),
+                          ),
               ),
             ],
           ),
@@ -1625,7 +2141,7 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
         // Captures list
         Expanded(
           child: _labService.captures.isEmpty
-                  ? _GxEmptyState(
+                        ? _GxEmptyState(
                   icon: Icons.videocam_off_outlined,
                   title: 'Aucune capture',
                   subtitle: 'Les requêtes interceptées apparaîtront ici',
@@ -1635,16 +2151,306 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
                   itemCount: _labService.captures.length,
                   itemBuilder: (context, index) {
                     final capture = _labService.captures[index];
-                        return _GxCaptureCard(
+                              return _GxCaptureCard(
                       capture: capture,
+                                isSelected: _selectedCapture?.id == capture.id,
+                                onTap: () {
+                                  setState(() {
+                                    _selectedCapture = capture;
+                                  });
+                                },
                       onReplay: () => _labService.replayCapture(capture.id),
                     );
                   },
                 ),
-        ),
-      ],
+                  ),
+                ],
+              ),
+            ),
+            
+            // Panneau de détails
+            if (_selectedCapture != null)
+              Container(
+                width: 400,
+                decoration: BoxDecoration(
+                  color: NotilusColors.chromeDark,
+                  border: Border(left: BorderSide(color: accent.withOpacity(0.2))),
+                ),
+                child: _buildCaptureDetailsPanel(_selectedCapture!, accent),
+              ),
+          ],
         );
       },
+    );
+  }
+  
+  Widget _buildCaptureDetailsPanel(CapturedRequest capture, Color accent) {
+    return Column(
+      children: [
+        // Header
+        Container(
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: NotilusColors.chromeDark,
+            border: Border(bottom: BorderSide(color: accent.withOpacity(0.2))),
+          ),
+          child: Row(
+            children: [
+              Text(
+                'Détails de la requête',
+                style: NotilusFonts.rajdhani(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.close, size: 18),
+                color: Colors.white.withOpacity(0.6),
+                onPressed: () {
+                  setState(() {
+                    _selectedCapture = null;
+                  });
+                },
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              ),
+            ],
+          ),
+        ),
+        
+        // Contenu scrollable
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Informations générales
+                _DetailSection(
+                  title: 'Informations',
+                  accentColor: accent,
+                  children: [
+                    _DetailRow('Méthode', capture.method),
+                    _DetailRow('URL', capture.url),
+                    _DetailRow('Path', capture.path),
+                    _DetailRow('Host', capture.host),
+                    if (capture.statusCode != null)
+                      _DetailRow('Status Code', '${capture.statusCode}'),
+                    _DetailRow('Durée', '${capture.durationMs.toStringAsFixed(0)}ms'),
+                    _DetailRow('Timestamp', _formatTimestamp(capture.timestamp)),
+                  ],
+                ),
+                
+                const SizedBox(height: 16),
+                
+                // Headers de requête
+                if (capture.requestHeaders.isNotEmpty)
+                  _DetailSection(
+                    title: 'Request Headers',
+                    accentColor: accent,
+                    children: capture.requestHeaders.entries.map((e) => 
+                      _DetailRow(e.key, e.value)
+                    ).toList(),
+                  ),
+                
+                if (capture.requestHeaders.isNotEmpty) const SizedBox(height: 16),
+                
+                // Body de requête
+                if (capture.requestBodyText != null && capture.requestBodyText!.isNotEmpty)
+                  _DetailSection(
+                    title: 'Request Body',
+                    accentColor: accent,
+                    children: [
+                      _GxCodeBlock(
+                        code: capture.requestBodyText!,
+                        language: 'json',
+                      ),
+                    ],
+                  ),
+                
+                if (capture.requestBodyText != null && capture.requestBodyText!.isNotEmpty)
+                  const SizedBox(height: 16),
+                
+                // Headers de réponse
+                if (capture.responseHeaders.isNotEmpty)
+                  _DetailSection(
+                    title: 'Response Headers',
+                    accentColor: accent,
+                    children: capture.responseHeaders.entries.map((e) => 
+                      _DetailRow(e.key, e.value)
+                    ).toList(),
+                  ),
+                
+                if (capture.responseHeaders.isNotEmpty) const SizedBox(height: 16),
+                
+                // Body de réponse
+                if (capture.responseBodyText != null && capture.responseBodyText!.isNotEmpty)
+                  _DetailSection(
+                    title: 'Response Body',
+                    accentColor: accent,
+                    children: [
+                      _GxCodeBlock(
+                        code: capture.responseBodyText!,
+                        language: 'json',
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+  
+  String _formatTimestamp(DateTime timestamp) {
+    return '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}:${timestamp.second.toString().padLeft(2, '0')}';
+  }
+  
+  String _formatTimestampString(String timestamp) {
+    try {
+      final dt = DateTime.parse(timestamp);
+      return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}';
+    } catch (e) {
+      return timestamp.length > 8 ? timestamp.substring(11, 19) : timestamp;
+    }
+  }
+  
+  Widget _buildConsoleLogDetailsPanel(ConsoleLogEntry log, Color accent) {
+    return Column(
+      children: [
+        // Header
+        Container(
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: NotilusColors.chromeDark,
+            border: Border(bottom: BorderSide(color: accent.withOpacity(0.2))),
+          ),
+          child: Row(
+            children: [
+              Text(
+                'Détails de la requête',
+                style: NotilusFonts.rajdhani(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.close, size: 18),
+                color: Colors.white.withOpacity(0.6),
+                onPressed: () {
+                  setState(() {
+                    _selectedLog = null;
+                  });
+                },
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              ),
+            ],
+          ),
+        ),
+        
+        // Contenu scrollable
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Informations générales
+                _DetailSection(
+                  title: 'Informations',
+                  accentColor: accent,
+                  children: [
+                    _DetailRow('Timestamp', _formatTimestampString(log.timestamp)),
+                    _DetailRow('Level', log.level),
+                    _DetailRow('Message', log.message),
+                  ],
+                ),
+                
+                const SizedBox(height: 16),
+                
+                // Détails de la requête
+                if (log.request != null) ...[
+                  _DetailSection(
+                    title: 'Request',
+                    accentColor: accent,
+                    children: [
+                      if (log.request!['method'] != null)
+                        _DetailRow('Method', log.request!['method']),
+                      if (log.request!['url'] != null)
+                        _DetailRow('URL', log.request!['url']),
+                      if (log.request!['path'] != null)
+                        _DetailRow('Path', log.request!['path']),
+                      if (log.request!['client_host'] != null)
+                        _DetailRow('Client', log.request!['client_host']),
+                    ],
+                  ),
+                  
+                  if (log.request!['headers'] != null) ...[
+                    const SizedBox(height: 16),
+                    _DetailSection(
+                      title: 'Request Headers',
+                      accentColor: accent,
+                      children: (log.request!['headers'] as Map<String, dynamic>?)
+                          ?.entries
+                          .map((e) => _DetailRow(e.key, e.value.toString()))
+                          .toList() ?? [],
+                    ),
+                  ],
+                  
+                  if (log.request!['body'] != null && log.request!['body'].toString().isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    _DetailSection(
+                      title: 'Request Body',
+                      accentColor: accent,
+                      children: [
+                        _GxCodeBlock(
+                          code: log.request!['body'].toString(),
+                          language: 'json',
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+                
+                // Détails de la réponse
+                if (log.response != null) ...[
+                  const SizedBox(height: 16),
+                  _DetailSection(
+                    title: 'Response',
+                    accentColor: accent,
+                    children: [
+                      if (log.response!['status_code'] != null)
+                        _DetailRow('Status Code', '${log.response!['status_code']}'),
+                      if (log.response!['duration_ms'] != null)
+                        _DetailRow('Duration', '${log.response!['duration_ms']}ms'),
+                    ],
+                  ),
+                  
+                  if (log.response!['headers'] != null) ...[
+                    const SizedBox(height: 16),
+                    _DetailSection(
+                      title: 'Response Headers',
+                      accentColor: accent,
+                      children: (log.response!['headers'] as Map<String, dynamic>?)
+                          ?.entries
+                          .map((e) => _DetailRow(e.key, e.value.toString()))
+                          .toList() ?? [],
+                    ),
+                  ],
+                ],
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -1697,7 +2503,15 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
   void _showLoadTestDialog() {
     final nameController = TextEditingController();
     final urlController = TextEditingController();
+    final usersController = TextEditingController(text: '10');
+    final durationController = TextEditingController(text: '60');
+    final rampUpController = TextEditingController(text: '10');
     final accent = NotilusColors.getSecondaryColor(context);
+    
+    // Pré-remplir avec l'URL configurée si disponible
+    if (_configuredServer != null) {
+      urlController.text = _configuredServer!.baseUrl;
+    }
     
     showDialog(
       context: context,
@@ -1714,7 +2528,38 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
             children: [
               _GxTextField(controller: nameController, hint: 'Nom du test'),
               const SizedBox(height: 12),
-              _GxTextField(controller: urlController, hint: 'URL cible'),
+              _AutoConfigUrlField(
+                controller: urlController,
+                hint: 'URL cible',
+                configuredServer: _configuredServer,
+                selectedRoute: _selectedRouteForConfig,
+                routeParams: _routeParams,
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _GxTextField(
+                      controller: usersController,
+                      hint: 'Utilisateurs virtuels',
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _GxTextField(
+                      controller: durationController,
+                      hint: 'Durée (sec)',
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _GxTextField(
+                      controller: rampUpController,
+                      hint: 'Ramp-up (sec)',
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
@@ -1724,13 +2569,65 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
             child: Text('Annuler', style: NotilusFonts.rajdhani()),
           ),
           _GxButton(
-            onPressed: () {
+            onPressed: () async {
               if (nameController.text.isNotEmpty && urlController.text.isNotEmpty) {
-                _labService.runLoadTest(
-                  name: nameController.text,
-                  targetUrl: urlController.text,
-                );
                 Navigator.pop(context);
+                setState(() => _isLoadTestRunning = true);
+                
+                try {
+                  final result = await _labService.runLoadTest(
+                    name: nameController.text,
+                    targetUrl: urlController.text,
+                    virtualUsers: int.tryParse(usersController.text) ?? 10,
+                    durationSec: int.tryParse(durationController.text) ?? 60,
+                    rampUpSec: int.tryParse(rampUpController.text) ?? 10,
+                  );
+                  
+                  if (mounted) {
+                    if (result != null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Test de charge terminé ! ${result.totalRequests} requêtes exécutées',
+                            style: NotilusFonts.rajdhani(),
+                          ),
+                          backgroundColor: result.status == LoadTestStatus.completed
+                              ? const Color(0xFF22C55E)
+                              : const Color(0xFFFF9800),
+                          duration: const Duration(seconds: 3),
+                        ),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Test de charge lancé (résultats en attente)',
+                            style: NotilusFonts.rajdhani(),
+                          ),
+                          backgroundColor: const Color(0xFF22C55E),
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    }
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Erreur lors du test: $e',
+                          style: NotilusFonts.rajdhani(),
+                        ),
+                        backgroundColor: const Color(0xFFEF4444),
+                        duration: const Duration(seconds: 3),
+                      ),
+                    );
+                  }
+                } finally {
+                  if (mounted) {
+                    setState(() => _isLoadTestRunning = false);
+                  }
+                }
               }
             },
             icon: const Icon(Icons.play_arrow_rounded, size: 16),
@@ -2495,19 +3392,37 @@ class _GxVulnerabilityCard extends StatelessWidget {
 
 class _GxCaptureCard extends StatelessWidget {
   final CapturedRequest capture;
+  final bool isSelected;
+  final VoidCallback onTap;
   final VoidCallback onReplay;
 
-  const _GxCaptureCard({required this.capture, required this.onReplay});
+  const _GxCaptureCard({
+    required this.capture,
+    this.isSelected = false,
+    required this.onTap,
+    required this.onReplay,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final accent = NotilusColors.getSecondaryColor(context);
+    
+    return InkWell(
+      onTap: onTap,
+      child: Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: NotilusColors.chromeLight,
+          color: isSelected 
+              ? accent.withOpacity(0.1)
+              : NotilusColors.chromeLight,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+          border: Border.all(
+            color: isSelected 
+                ? accent.withOpacity(0.3)
+                : Colors.white.withOpacity(0.05),
+            width: isSelected ? 1.5 : 1,
+          ),
       ),
       child: Row(
         children: [
@@ -2519,11 +3434,11 @@ class _GxCaptureCard extends StatelessWidget {
             ),
             child: Text(
               capture.method,
-              style: NotilusFonts.rajdhani(
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: capture.methodColor,
-              ),
+                style: NotilusFonts.rajdhani(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: capture.methodColor,
+                ),
             ),
           ),
           const SizedBox(width: 12),
@@ -2533,18 +3448,18 @@ class _GxCaptureCard extends StatelessWidget {
               children: [
                 Text(
                   capture.url,
-                  style: NotilusFonts.code(
-                    fontSize: 11,
-                    color: Colors.white70,
-                  ),
+                    style: NotilusFonts.code(
+                      fontSize: 11,
+                      color: Colors.white70,
+                    ),
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  '${capture.statusCode ?? '?'} • ${capture.durationMs.toStringAsFixed(0)}ms',
-                  style: NotilusFonts.rajdhani(
-                    fontSize: 9,
-                    color: Colors.white.withOpacity(0.4),
-                  ),
+                    '${capture.statusCode ?? '?'} • ${capture.durationMs.toStringAsFixed(0)}ms',
+                    style: NotilusFonts.rajdhani(
+                      fontSize: 9,
+                      color: Colors.white.withOpacity(0.4),
+                    ),
                 ),
               ],
             ),
@@ -2556,6 +3471,7 @@ class _GxCaptureCard extends StatelessWidget {
             tooltip: 'Rejouer',
           ),
         ],
+        ),
       ),
     );
   }
@@ -2962,5 +3878,668 @@ class _DetailRow extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+// ============================================================================
+// Frontend Auto-Config Widgets
+// ============================================================================
+
+class _AutoConfigUrlField extends StatelessWidget {
+  final TextEditingController controller;
+  final String hint;
+  final DiscoveredServer? configuredServer;
+  final DiscoveredRoute? selectedRoute;
+  final Map<String, String> routeParams;
+
+  const _AutoConfigUrlField({
+    required this.controller,
+    required this.hint,
+    this.configuredServer,
+    this.selectedRoute,
+    this.routeParams = const {},
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = NotilusColors.getSecondaryColor(context);
+    
+    // Construire l'URL automatiquement
+    String buildAutoUrl() {
+      if (configuredServer == null) return '';
+      
+      String baseUrl = configuredServer!.baseUrl;
+      
+      if (selectedRoute != null) {
+        String path = selectedRoute!.path;
+        
+        // Remplacer les paramètres de chemin
+        for (var param in selectedRoute!.pathParams) {
+          final value = routeParams[param.name] ?? '';
+          if (value.isNotEmpty) {
+            path = path.replaceAll('{${param.name}}', value);
+          }
+        }
+        
+        // Ajouter les paramètres de query
+        final queryParams = selectedRoute!.queryParams
+            .where((p) => routeParams[p.name]?.isNotEmpty == true)
+            .map((p) => '${p.name}=${Uri.encodeComponent(routeParams[p.name]!)}')
+            .join('&');
+        
+        if (queryParams.isNotEmpty) {
+          path = '$path?$queryParams';
+        }
+        
+        return '$baseUrl$path';
+      }
+      
+      return baseUrl;
+    }
+    
+    final autoUrl = buildAutoUrl();
+    
+    // Mettre à jour le contrôleur si l'URL auto est disponible
+    if (autoUrl.isNotEmpty && controller.text != autoUrl) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (controller.text.isEmpty || controller.text == hint) {
+          controller.text = autoUrl;
+        }
+      });
+    }
+    
+    return Stack(
+      children: [
+        _GxTextField(
+          controller: controller,
+          hint: hint,
+        ),
+        if (configuredServer != null)
+          Positioned(
+            right: 8,
+            top: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: accent.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.auto_awesome, size: 10, color: accent),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Auto',
+                    style: NotilusFonts.rajdhani(
+                      fontSize: 9,
+                      color: accent,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _RouteSelector extends StatelessWidget {
+  final DiscoveredServer server;
+  final List<DiscoveredRoute> routes;
+  final DiscoveredRoute? selectedRoute;
+  final Color accent;
+  final ValueChanged<DiscoveredRoute> onRouteSelected;
+
+  const _RouteSelector({
+    required this.server,
+    required this.routes,
+    required this.selectedRoute,
+    required this.accent,
+    required this.onRouteSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.03),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Sélectionner une route API',
+            style: NotilusFonts.rajdhani(
+              fontSize: 10,
+              color: Colors.white.withOpacity(0.5),
+            ),
+          ),
+          const SizedBox(height: 8),
+          DropdownButtonHideUnderline(
+            child: DropdownButton<DiscoveredRoute>(
+              value: selectedRoute,
+              isExpanded: true,
+              dropdownColor: NotilusColors.chromeDark,
+              style: NotilusFonts.code(fontSize: 11, color: Colors.white),
+              hint: Text(
+                routes.isEmpty ? 'Aucune route disponible' : 'Choisir une route...',
+                style: NotilusFonts.rajdhani(
+                  fontSize: 11,
+                  color: Colors.white.withOpacity(0.4),
+                ),
+              ),
+              items: routes.map((route) {
+                return DropdownMenuItem<DiscoveredRoute>(
+                  value: route,
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: route.methodColor.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          route.method.name,
+                          style: NotilusFonts.rajdhani(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                            color: route.methodColor,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          route.path,
+                          style: NotilusFonts.code(fontSize: 11),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+              onChanged: routes.isEmpty ? null : (route) {
+                if (route != null) onRouteSelected(route);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RouteParamsEditor extends StatelessWidget {
+  final DiscoveredRoute route;
+  final Map<String, String> params;
+  final Color accent;
+  final void Function(String, String) onParamChanged;
+
+  const _RouteParamsEditor({
+    required this.route,
+    required this.params,
+    required this.accent,
+    required this.onParamChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final allParams = [
+      ...route.pathParams.map((p) => _ParamInfo(p, true)),
+      ...route.queryParams.map((p) => _ParamInfo(p, false)),
+    ];
+    
+    if (allParams.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.03),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.info_outline, size: 14, color: accent.withOpacity(0.7)),
+            const SizedBox(width: 8),
+            Text(
+              'Cette route n\'a pas de paramètres',
+              style: NotilusFonts.rajdhani(
+                fontSize: 10,
+                color: Colors.white.withOpacity(0.5),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.03),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.tune_rounded, size: 14, color: accent),
+              const SizedBox(width: 8),
+              Text(
+                'Paramètres de la route',
+                style: NotilusFonts.rajdhani(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: accent,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...allParams.map((paramInfo) {
+            final param = paramInfo.param;
+            final isPathParam = paramInfo.isPathParam;
+            
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: isPathParam 
+                              ? accent.withOpacity(0.15)
+                              : const Color(0xFF3B82F6).withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          isPathParam ? 'PATH' : 'QUERY',
+                          style: NotilusFonts.rajdhani(
+                            fontSize: 8,
+                            fontWeight: FontWeight.w700,
+                            color: isPathParam ? accent : const Color(0xFF3B82F6),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        param.name,
+                        style: NotilusFonts.code(
+                          fontSize: 11,
+                          color: Colors.white70,
+                        ),
+                      ),
+                      if (param.required)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 4),
+                          child: Text(
+                            '*',
+                            style: NotilusFonts.rajdhani(
+                              fontSize: 11,
+                              color: const Color(0xFFEF4444),
+                            ),
+                          ),
+                        ),
+                      const Spacer(),
+                      Text(
+                        param.type,
+                        style: NotilusFonts.rajdhani(
+                          fontSize: 9,
+                          color: Colors.white.withOpacity(0.4),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  TextField(
+                    key: ValueKey(param.name),
+                    style: NotilusFonts.code(fontSize: 11, color: Colors.white),
+                    decoration: InputDecoration(
+                      hintText: param.defaultValue?.toString() ?? 'Valeur...',
+                      hintStyle: NotilusFonts.rajdhani(
+                        fontSize: 11,
+                        color: Colors.white.withOpacity(0.3),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white.withOpacity(0.05),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(6),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(6),
+                        borderSide: BorderSide(color: accent, width: 1),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      isDense: true,
+                    ),
+                    onChanged: (value) => onParamChanged(param.name, value),
+                    controller: TextEditingController(text: params[param.name] ?? '')
+                      ..selection = TextSelection.collapsed(offset: (params[param.name] ?? '').length),
+                  ),
+                  if (param.description != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      param.description!,
+                      style: NotilusFonts.rajdhani(
+                        fontSize: 9,
+                        color: Colors.white.withOpacity(0.4),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+}
+
+class _ParamInfo {
+  final RouteParameter param;
+  final bool isPathParam;
+  
+  _ParamInfo(this.param, this.isPathParam);
+}
+
+// ============================================================================
+// Console Widgets
+// ============================================================================
+
+class _GxCodeBlock extends StatelessWidget {
+  final String code;
+  final String language;
+
+  const _GxCodeBlock({required this.code, this.language = 'text'});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: SelectableText(
+        code,
+        style: NotilusFonts.code(
+          fontSize: 11,
+          color: Colors.white70,
+          height: 1.5,
+        ),
+      ),
+    );
+  }
+}
+
+class _GxLoadTestResultCard extends StatelessWidget {
+  final LoadTestResult result;
+  final Color accent;
+
+  const _GxLoadTestResultCard({required this.result, required this.accent});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: NotilusColors.chromeLight,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: result.statusColor.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: result.statusColor.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  result.status.name.toUpperCase(),
+                  style: NotilusFonts.rajdhani(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    color: result.statusColor,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              if (result.startedAt != null)
+                Text(
+                  _formatDate(result.startedAt!),
+                  style: NotilusFonts.rajdhani(
+                    fontSize: 10,
+                    color: Colors.white.withOpacity(0.4),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _GxLoadTestStatCard(
+                  label: 'Requêtes',
+                  value: '${result.totalRequests}',
+                  color: accent,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _GxLoadTestStatCard(
+                  label: 'Succès',
+                  value: '${result.successfulRequests}',
+                  color: const Color(0xFF22C55E),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _GxLoadTestStatCard(
+                  label: 'Échecs',
+                  value: '${result.failedRequests}',
+                  color: const Color(0xFFEF4444),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _GxLoadTestStatCard(
+                  label: 'Req/s',
+                  value: result.requestsPerSecond.toStringAsFixed(1),
+                  color: accent,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _GxLoadTestStatCard(
+                  label: 'Temps moyen',
+                  value: '${result.avgResponseTimeMs.toStringAsFixed(0)}ms',
+                  color: accent,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _GxLoadTestStatCard(
+                  label: 'P95',
+                  value: '${result.p95ResponseTimeMs.toStringAsFixed(0)}ms',
+                  color: accent,
+                ),
+              ),
+            ],
+          ),
+          if (result.errorRate > 0) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEF4444).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.warning_rounded, size: 14, color: const Color(0xFFEF4444)),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Taux d\'erreur: ${(result.errorRate * 100).toStringAsFixed(1)}%',
+                    style: NotilusFonts.rajdhani(
+                      fontSize: 11,
+                      color: const Color(0xFFEF4444),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+  
+  String _formatDate(DateTime date) {
+    return '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}:${date.second.toString().padLeft(2, '0')}';
+  }
+}
+
+class _GxLoadTestStatCard extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+
+  const _GxLoadTestStatCard({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: NotilusFonts.rajdhani(
+              fontSize: 9,
+              color: Colors.white.withOpacity(0.5),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: NotilusFonts.rajdhani(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ConsoleLogLine extends StatelessWidget {
+  final ConsoleLogEntry log;
+  final bool isSelected;
+  final VoidCallback? onTap;
+
+  const _ConsoleLogLine({
+    required this.log,
+    this.isSelected = false,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: isSelected ? log.colorValue.withOpacity(0.1) : Colors.transparent,
+          border: isSelected ? Border.all(color: log.colorValue.withOpacity(0.3), width: 1) : null,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Timestamp
+            SizedBox(
+              width: 80,
+              child: Text(
+                _formatTimestamp(log.timestamp),
+                style: NotilusFonts.code(
+                  fontSize: 10,
+                  color: Colors.white.withOpacity(0.4),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Level badge
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: log.colorValue.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                log.level.length > 4 ? log.level.substring(0, 4) : log.level,
+                style: NotilusFonts.rajdhani(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  color: log.colorValue,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Message avec coloration
+            Expanded(
+              child: Text(
+                log.message,
+                style: NotilusFonts.code(
+                  fontSize: 11,
+                  color: log.colorValue,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  String _formatTimestamp(String timestamp) {
+    try {
+      final dt = DateTime.parse(timestamp);
+      return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}';
+    } catch (e) {
+      return timestamp.length > 8 ? timestamp.substring(11, 19) : timestamp;
+    }
   }
 }
