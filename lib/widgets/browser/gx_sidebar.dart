@@ -92,6 +92,11 @@ class _GXSidebarState extends State<GXSidebar> {
       label: 'Paramètres',
     ),
     _SidebarDestination(
+      section: SidebarSection.updates,
+      icon: CupertinoIcons.arrow_up_circle,
+      label: 'Mises à jour',
+    ),
+    _SidebarDestination(
       section: SidebarSection.terminal,
       icon: CupertinoIcons.square_list,
       label: 'Terminal',
