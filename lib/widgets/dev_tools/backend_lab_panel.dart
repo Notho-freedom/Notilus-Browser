@@ -11,6 +11,7 @@ import '../../core/services/color_theme_manager.dart';
 import '../../core/constants/notilus_colors.dart';
 import '../../core/constants/notilus_fonts.dart';
 import '../common/gx_futuristic_dialog.dart';
+import '../common/gx_futuristic_components.dart';
 
 /// Onglets du Backend Lab
 enum BackendLabTab {

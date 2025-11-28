@@ -12,6 +12,7 @@ import '../../services/settings_service.dart';
 import '../../core/services/color_theme_manager.dart';
 import '../../core/constants/notilus_fonts.dart';
 import '../common/gx_futuristic_dialog.dart';
+import '../common/gx_futuristic_components.dart';
 import 'devtools_console_panel.dart';
 import 'devtools_network_panel.dart';
 import 'devtools_elements_panel.dart';
