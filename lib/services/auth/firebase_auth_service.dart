@@ -422,7 +422,7 @@ class FirebaseAuthService extends foundation.ChangeNotifier {
       }
       
       _isLoading = false;
-      notifyListeners();
+      // notifyListeners() est déjà appelé dans _saveGitHubUser()
       return null; // Pas de UserCredential car on n'utilise pas Firebase pour GitHub
     } catch (e) {
       debugPrint('❌ Erreur lors de la récupération du token GitHub: $e');
