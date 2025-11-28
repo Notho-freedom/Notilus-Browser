@@ -901,7 +901,8 @@ class _FuturisticSearchBarState extends State<_FuturisticSearchBar> {
                 color: _isFocused ? widget.accentColor : Colors.white.withOpacity(0.6),
               ),
               const SizedBox(width: 16),
-              Expanded(
+              Flexible(
+                flex: 1,
                 child: TextField(
                   controller: widget.controller,
                   focusNode: widget.focusNode,
@@ -920,6 +921,8 @@ class _FuturisticSearchBarState extends State<_FuturisticSearchBar> {
                     border: InputBorder.none,
                     enabledBorder: InputBorder.none,
                     focusedBorder: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
                   ),
                   onSubmitted: widget.onSubmitted,
                 ),
@@ -931,7 +934,7 @@ class _FuturisticSearchBarState extends State<_FuturisticSearchBar> {
                 variant: GxFuturisticButtonVariant.primary,
                 accentColor: widget.accentColor,
                 height: 40,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                 onPressed: () => widget.onSubmitted(widget.controller.text),
               ),
               const SizedBox(width: 16),

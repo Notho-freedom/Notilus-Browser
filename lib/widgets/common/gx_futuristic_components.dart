@@ -703,32 +703,23 @@ class GxFuturisticList extends StatelessWidget {
     final settings = SettingsService();
     final panelOpacity = 1.0 - settings.panelTransparency;
 
-    return Container(
+    return ListView.separated(
       padding: padding ?? const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: bgColor.withOpacity(panelOpacity.clamp(0.0, 1.0)),
-        border: Border.all(
-          color: accent.withOpacity(0.2),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: items.asMap().entries.map((entry) {
-          final index = entry.key;
-          final item = entry.value;
-          return Column(
-            children: [
-              item,
-              if (showDividers && index < items.length - 1)
-                GxFuturisticDivider(
+      itemCount: items.length,
+      separatorBuilder: (context, index) {
+        return showDividers
+            ? Padding(
+                padding: padding ?? EdgeInsets.zero,
+                child: GxFuturisticDivider(
                   accentColor: accent,
                   height: 0.5,
                 ),
-            ],
-          );
-        }).toList(),
-      ),
+              )
+            : const SizedBox.shrink();
+      },
+      itemBuilder: (context, index) {
+        return items[index];
+      },
     );
   }
 }
