@@ -1,11 +1,13 @@
 /// Panel d'historique futuriste Notilus GX
 library gx_futuristic_history_panel;
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter/foundation.dart';
 import '../../services/history_service.dart';
 import '../../services/tab_manager.dart';
 import '../../core/services/wallpaper_manager.dart';
@@ -35,16 +37,21 @@ class _GxFuturisticHistoryPanelState extends State<GxFuturisticHistoryPanel> {
   String _selectedDomainFilter = 'Tous';
   final Map<String, bool> _expandedPeriods = {};
   final ScrollController _scrollController = ScrollController();
+  
+  // Cache pour optimiser les performances
+  Timer? _searchDebounceTimer;
+  Map<String, List<dynamic>>? _cachedGroupedItems;
+  List<dynamic>? _cachedFilteredItems;
+  List<String>? _cachedSortedDomains;
+  String? _lastSearchQuery;
+  String? _lastPeriodFilter;
+  String? _lastDomainFilter;
 
   @override
   void initState() {
     super.initState();
     _historyFuture = _historyService.getHistory();
-    _searchController.addListener(() {
-      setState(() {
-        _searchQuery = _searchController.text.toLowerCase();
-      });
-    });
+    _searchController.addListener(_onSearchChanged);
     _filterController.addListener(() {
       setState(() {
         // Le filtre sera géré par les sélecteurs
@@ -59,9 +66,25 @@ class _GxFuturisticHistoryPanelState extends State<GxFuturisticHistoryPanel> {
       'Plus ancien': true,
     });
   }
+  
+  void _onSearchChanged() {
+    _searchDebounceTimer?.cancel();
+    _searchDebounceTimer = Timer(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        setState(() {
+          _searchQuery = _searchController.text.toLowerCase();
+          // Invalider le cache
+          _cachedFilteredItems = null;
+          _cachedGroupedItems = null;
+          _cachedSortedDomains = null;
+        });
+      }
+    });
+  }
 
   @override
   void dispose() {
+    _searchDebounceTimer?.cancel();
     _searchController.dispose();
     _filterController.dispose();
     _scrollController.dispose();
@@ -77,10 +100,15 @@ class _GxFuturisticHistoryPanelState extends State<GxFuturisticHistoryPanel> {
   Future<void> _refresh() async {
     setState(() {
       _historyFuture = _historyService.getHistory();
+      // Invalider le cache
+      _cachedFilteredItems = null;
+      _cachedGroupedItems = null;
+      _cachedSortedDomains = null;
     });
   }
   
   /// Groupe les items par période (Aujourd'hui, Hier, Cette semaine, etc.)
+  /// Utilise le cache si disponible
   Map<String, List<dynamic>> _groupItemsByPeriod(List<dynamic> items) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -230,11 +258,11 @@ class _GxFuturisticHistoryPanelState extends State<GxFuturisticHistoryPanel> {
                         ),
                       ),
                       SizedBox(width: itemSpacing),
-                      // Bouton effacer compact
+                      // Bouton effacer avec variant secondary
                       GxFuturisticButton(
                         label: isCompact ? '' : 'Effacer',
                         icon: CupertinoIcons.delete,
-                        variant: GxFuturisticButtonVariant.outline,
+                        variant: GxFuturisticButtonVariant.secondary,
                         accentColor: accentColor,
                         width: isCompact ? 36 : null,
                         height: isCompact ? 36 : null,
@@ -263,15 +291,34 @@ class _GxFuturisticHistoryPanelState extends State<GxFuturisticHistoryPanel> {
                         }
 
                         final items = snapshot.data as List<dynamic>? ?? [];
-                        final filteredItems = _searchQuery.isEmpty
-                            ? items
-                            : items.where((item) {
-                                return item.title.toLowerCase().contains(_searchQuery) ||
-                                       item.url.toLowerCase().contains(_searchQuery);
-                              }).toList();
+                        
+                        // Utiliser le cache si les filtres n'ont pas changé
+                        List<dynamic> filteredItems;
+                        if (_cachedFilteredItems != null && 
+                            _lastSearchQuery == _searchQuery) {
+                          filteredItems = _cachedFilteredItems!;
+                        } else {
+                          filteredItems = _searchQuery.isEmpty
+                              ? items
+                              : items.where((item) {
+                                  final title = (item.title ?? '').toLowerCase();
+                                  final url = (item.url ?? '').toLowerCase();
+                                  return title.contains(_searchQuery) ||
+                                         url.contains(_searchQuery);
+                                }).toList();
+                          _cachedFilteredItems = filteredItems;
+                          _lastSearchQuery = _searchQuery;
+                        }
 
-                        // Grouper les items par période
-                        final groupedItems = _groupItemsByPeriod(filteredItems);
+                        // Grouper les items par période (avec cache)
+                        Map<String, List<dynamic>> groupedItems;
+                        if (_cachedGroupedItems != null && 
+                            _lastSearchQuery == _searchQuery) {
+                          groupedItems = _cachedGroupedItems!;
+                        } else {
+                          groupedItems = _groupItemsByPeriod(filteredItems);
+                          _cachedGroupedItems = groupedItems;
+                        }
                         
                         // Filtrer par période si sélectionnée
                         final filteredGroupedItems = _selectedPeriodFilter == 'Toutes'
@@ -316,81 +363,49 @@ class _GxFuturisticHistoryPanelState extends State<GxFuturisticHistoryPanel> {
                           );
                         }
 
-                        // Extraire les domaines uniques pour le filtre
-                        final uniqueDomains = <String>{};
-                        for (final item in filteredItems) {
-                          uniqueDomains.add(_extractDomainFromUrl(item.url));
+                        // Extraire les domaines uniques pour le filtre (avec cache)
+                        List<String> sortedDomains;
+                        if (_cachedSortedDomains != null && 
+                            _lastSearchQuery == _searchQuery) {
+                          sortedDomains = _cachedSortedDomains!;
+                        } else {
+                          final uniqueDomains = <String>{};
+                          for (final item in filteredItems) {
+                            uniqueDomains.add(_extractDomainFromUrl(item.url ?? ''));
+                          }
+                          sortedDomains = uniqueDomains.toList()..sort();
+                          _cachedSortedDomains = sortedDomains;
                         }
-                        final sortedDomains = uniqueDomains.toList()..sort();
 
-                        // Construire la liste avec séparateurs et sticky headers
-                        final List<Widget> listItems = [];
-                        int itemIndex = 0;
+                        // Préparer la liste d'items pour ListView.builder
+                        final List<_ListItemData> flatItems = [];
                         
                         filteredGroupedItems.forEach((period, periodItems) {
                           final isExpanded = _expandedPeriods[period] ?? true;
                           
-                          // Ajouter le séparateur avec label cliquable
-                          if (listItems.isNotEmpty) {
-                            listItems.add(
-                              Padding(
-                                padding: EdgeInsets.symmetric(vertical: itemSpacing * 2),
-                                child: _PeriodSeparator(
-                                  label: period,
-                                  accentColor: accentColor,
-                                  isExpanded: isExpanded,
-                                  onTap: () => _togglePeriod(period),
-                                ),
-                              ),
-                            );
-                          } else {
-                            // Premier séparateur
-                            listItems.add(
-                              Padding(
-                                padding: EdgeInsets.only(bottom: itemSpacing * 2),
-                                child: _PeriodSeparator(
-                                  label: period,
-                                  accentColor: accentColor,
-                                  isExpanded: isExpanded,
-                                  onTap: () => _togglePeriod(period),
-                                ),
-                              ),
-                            );
-                          }
+                          // Ajouter le séparateur
+                          flatItems.add(_ListItemData(
+                            type: _ListItemType.separator,
+                            period: period,
+                            isExpanded: isExpanded,
+                            isFirst: flatItems.isEmpty,
+                          ));
                           
                           // Ajouter les items de cette période si expandée
                           if (isExpanded) {
                             for (final item in periodItems) {
                               // Filtrer par domaine si sélectionné
                               if (_selectedDomainFilter != 'Tous') {
-                                final domain = _extractDomainFromUrl(item.url);
+                                final domain = _extractDomainFromUrl(item.url ?? '');
                                 if (domain != _selectedDomainFilter) {
                                   continue;
                                 }
                               }
                               
-                              listItems.add(
-                                RepaintBoundary(
-                                  child: _HistoryListItem(
-                                    item: item,
-                                    accentColor: accentColor,
-                                    bgColor: bgColor,
-                                    panelOpacity: panelOpacity,
-                                    isCompact: isCompact,
-                                    isMedium: isMedium,
-                                    titleFontSize: titleFontSize,
-                                    urlFontSize: urlFontSize,
-                                    metaFontSize: metaFontSize,
-                                    itemHeight: itemHeight,
-                                    faviconSize: faviconSize,
-                                    index: itemIndex++,
-                                    onTap: () {
-                                      final tabManager = Provider.of<TabManager>(context, listen: false);
-                                      tabManager.addTab(url: item.url);
-                                    },
-                                  ),
-                                ),
-                              );
+                              flatItems.add(_ListItemData(
+                                type: _ListItemType.item,
+                                item: item,
+                              ));
                             }
                           }
                         });
@@ -436,15 +451,70 @@ class _GxFuturisticHistoryPanelState extends State<GxFuturisticHistoryPanel> {
                                 ),
                               ),
                             ],
-                            // Liste avec scroll
+                            // Liste avec scroll optimisée (ListView.builder pour virtualisation)
                             Expanded(
-                              child: ListView(
+                              child: ListView.builder(
                                 controller: _scrollController,
                                 padding: EdgeInsets.symmetric(
                                   horizontal: horizontalPadding,
                                   vertical: itemSpacing,
                                 ),
-                                children: listItems,
+                                itemCount: flatItems.length,
+                                cacheExtent: 500, // Cache optimisé
+                                addAutomaticKeepAlives: false,
+                                addRepaintBoundaries: true,
+                                itemBuilder: (context, index) {
+                                  final itemData = flatItems[index];
+                                  
+                                  if (itemData.type == _ListItemType.separator) {
+                                    return Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        vertical: itemData.isFirst ? 0 : itemSpacing * 2,
+                                        horizontal: 0,
+                                      ),
+                                      child: _PeriodSeparator(
+                                        label: itemData.period!,
+                                        accentColor: accentColor,
+                                        isExpanded: itemData.isExpanded!,
+                                        onTap: () => _togglePeriod(itemData.period!),
+                                      ),
+                                    );
+                                  } else {
+                                    final item = itemData.item!;
+                                    return RepaintBoundary(
+                                      key: ValueKey('history_${item.id}'),
+                                      child: _HistoryListItem(
+                                        item: item,
+                                        accentColor: accentColor,
+                                        bgColor: bgColor,
+                                        panelOpacity: panelOpacity,
+                                        isCompact: isCompact,
+                                        isMedium: isMedium,
+                                        titleFontSize: titleFontSize,
+                                        urlFontSize: urlFontSize,
+                                        metaFontSize: metaFontSize,
+                                        itemHeight: itemHeight,
+                                        faviconSize: faviconSize,
+                                        index: index,
+                                        onTap: () {
+                                          final tabManager = Provider.of<TabManager>(context, listen: false);
+                                          tabManager.addTab(url: item.url);
+                                        },
+                                        onDelete: () async {
+                                          await _historyService.removeHistoryItem(item.id);
+                                          await _refresh();
+                                          if (mounted) {
+                                            GxNotificationService().showInfo(
+                                              title: 'Item supprimé',
+                                              message: 'L\'élément a été retiré de l\'historique',
+                                              context: context,
+                                            );
+                                          }
+                                        },
+                                      ),
+                                    );
+                                  }
+                                },
                               ),
                             ),
                           ],
@@ -470,6 +540,29 @@ class _GxFuturisticHistoryPanelState extends State<GxFuturisticHistoryPanel> {
     } catch (_) {}
     return 'unknown';
   }
+}
+
+/// Type d'élément dans la liste
+enum _ListItemType {
+  separator,
+  item,
+}
+
+/// Données pour un élément de la liste
+class _ListItemData {
+  final _ListItemType type;
+  final dynamic item;
+  final String? period;
+  final bool? isExpanded;
+  final bool isFirst;
+
+  _ListItemData({
+    required this.type,
+    this.item,
+    this.period,
+    this.isExpanded,
+    this.isFirst = false,
+  });
 }
 
 /// Séparateur de période avec collapse/expand
@@ -600,6 +693,7 @@ class _HistoryListItem extends StatefulWidget {
   final double faviconSize;
   final int index;
   final VoidCallback onTap;
+  final VoidCallback? onDelete;
 
   const _HistoryListItem({
     required this.item,
@@ -615,6 +709,7 @@ class _HistoryListItem extends StatefulWidget {
     required this.faviconSize,
     required this.index,
     required this.onTap,
+    this.onDelete,
   });
 
   @override
@@ -825,20 +920,26 @@ class _HistoryListItemState extends State<_HistoryListItem> {
                             ],
                           ),
                           SizedBox(height: 4),
-                          // Bouton action avec flèche sans queue
+                          // Bouton action : flèche par défaut, X en hover pour supprimer
                           AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
                             transform: Matrix4.identity()
                               ..translate(_isHovered ? 2.0 : 0.0),
                             child: GxFuturisticButton(
                               label: '',
-                              icon: CupertinoIcons.chevron_right,
+                              icon: _isHovered && widget.onDelete != null
+                                  ? CupertinoIcons.xmark
+                                  : CupertinoIcons.chevron_right,
                               variant: GxFuturisticButtonVariant.ghost,
-                              accentColor: widget.accentColor,
+                              accentColor: _isHovered && widget.onDelete != null
+                                  ? const Color(0xFFEF4444)
+                                  : widget.accentColor,
                               width: widget.isCompact ? 28 : 32,
                               height: widget.isCompact ? 28 : 32,
                               padding: EdgeInsets.zero,
-                              onPressed: widget.onTap,
+                              onPressed: _isHovered && widget.onDelete != null
+                                  ? widget.onDelete
+                                  : widget.onTap,
                             ),
                           ),
                         ],
@@ -849,19 +950,7 @@ class _HistoryListItemState extends State<_HistoryListItem> {
               ),
             ),
           ),
-        )
-          .animate()
-          .fadeIn(
-            duration: 300.ms,
-            delay: (widget.index * 30).ms,
-            curve: Curves.easeOut,
-          )
-          .slideX(
-            begin: 0.1,
-            duration: 300.ms,
-            delay: (widget.index * 30).ms,
-            curve: Curves.easeOutCubic,
-          );
+        );
       },
     );
   }
