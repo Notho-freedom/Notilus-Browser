@@ -1308,6 +1308,14 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
         '✨',
         Colors.white,
       ),
+      (
+        'gx_futuristic',
+        'GX Futuristic',
+        'Design ultra-futuriste avec contours géométriques façon OS Science-Fiction',
+        CupertinoIcons.flame,
+        '🚀',
+        const Color(0xFFFF2D55),
+      ),
     ];
     
     return Column(
