@@ -170,6 +170,58 @@ class _GroupedTabBarState extends State<GroupedTabBar> {
         // Construire la liste des widgets à afficher
         final List<Widget> tabBarItems = [];
         
+        // Récupérer tous les onglets et identifier ceux qui sont dans un groupe
+        final allTabs = tabManager.tabs;
+        final tabsInGroups = <String>{};
+        for (final group in groups) {
+          tabsInGroups.addAll(group.tabIds);
+        }
+        
+        // Afficher les onglets non groupés (domaines avec un seul onglet)
+        for (final tab in allTabs) {
+          if (!tabsInGroups.contains(tab.id)) {
+            final isActive = tab.id == tabManager.activeTab?.id;
+            // Obtenir la couleur du domaine même pour les onglets non groupés
+            // Extraire le domaine de l'URL
+            String domain = 'local';
+            if (tab.url != null && tab.url!.isNotEmpty) {
+              try {
+                final uri = Uri.parse(tab.url!);
+                if (uri.host.isNotEmpty) {
+                  domain = uri.host.replaceFirst(RegExp(r'^www\.'), '');
+                } else if (tab.url!.startsWith('about:')) {
+                  domain = 'about';
+                } else if (tab.url!.startsWith('file:')) {
+                  domain = 'local';
+                } else {
+                  domain = 'unknown';
+                }
+              } catch (e) {
+                domain = 'unknown';
+              }
+            }
+            final colorCode = groupService.getColorForDomain(domain);
+            
+            tabBarItems.add(
+              ConstrainedBox(
+                constraints: const BoxConstraints(
+                  minWidth: 100,
+                  maxWidth: 200,
+                ),
+                child: _ExpandedTabItem(
+                  tab: tab,
+                  isActive: isActive,
+                  colorCode: colorCode,
+                  accentColor: accentColor,
+                  onClose: () => tabManager.closeTab(tab.id),
+                  onSelect: () => tabManager.selectTab(tab.id),
+                ),
+              ),
+            );
+          }
+        }
+        
+        // Afficher les groupes (domaines avec plusieurs onglets)
         for (final group in groups) {
           // Si le groupe est expandé, insérer ses onglets avant le groupe
           if (group.isExpanded) {

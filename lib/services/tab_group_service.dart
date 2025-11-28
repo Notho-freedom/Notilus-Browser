@@ -166,10 +166,19 @@ class TabGroupService extends ChangeNotifier {
       domainGroups.putIfAbsent(domain, () => <TabModel>[]).add(tab);
     }
     
-    // Créer ou mettre à jour les groupes
+    // Créer ou mettre à jour les groupes (seulement si plus d'un onglet)
     for (final entry in domainGroups.entries) {
       final domain = entry.key;
       final domainTabs = entry.value;
+      
+      // Ne créer un groupe que s'il y a plus d'un onglet pour ce domaine
+      if (domainTabs.length <= 1) {
+        // Pas de groupe pour un seul onglet, mais on doit quand même traiter l'onglet
+        for (final tab in domainTabs) {
+          processedTabs.add(tab.id);
+        }
+        continue;
+      }
       
       // Chercher un groupe existant pour ce domaine
       TabGroup? existingGroup;
