@@ -28,6 +28,7 @@ import '../../widgets/mosaic/mosaic_container.dart';
 import '../../services/mosaic_service.dart';
 import '../../widgets/studio/studio_panel.dart';
 import '../../widgets/lighthouse/lighthouse_panel.dart';
+import '../../widgets/github/github_repos_panel.dart';
 import '../../services/lighthouse/lighthouse_service.dart';
 import '../../services/studio/studio_service.dart';
 
@@ -675,6 +676,12 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
           title: 'Notilus Lighthouse',
           icon: CupertinoIcons.gauge,
           child: const LighthousePanel(),
+        );
+      case SidebarSection.github:
+        return _SidebarPanelConfig(
+          title: 'Mes Dépôts GitHub',
+          icon: Icons.code,
+          child: const GitHubReposPanel(),
         );
       case SidebarSection.docs:
         return _SidebarPanelConfig(
