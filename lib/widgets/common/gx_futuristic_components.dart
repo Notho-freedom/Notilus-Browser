@@ -1111,19 +1111,20 @@ class GxFuturisticButton extends StatelessWidget {
                 valueColor: AlwaysStoppedAnimation<Color>(textColor),
               ),
             ),
-            const SizedBox(width: 8),
+            if (label.isNotEmpty) const SizedBox(width: 8),
           ] else if (icon != null) ...[
             Icon(icon, size: 16, color: textColor),
-            const SizedBox(width: 8),
+            if (label.isNotEmpty) const SizedBox(width: 8),
           ],
-          Text(
-            label,
-            style: NotilusFonts.rajdhani(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: textColor,
+          if (label.isNotEmpty)
+            Text(
+              label,
+              style: NotilusFonts.rajdhani(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: textColor,
+              ),
             ),
-          ),
         ],
       ),
     );

@@ -294,15 +294,15 @@ class _GxFuturisticBookmarksPanelState extends State<GxFuturisticBookmarksPanel>
                         ),
                       ),
                       SizedBox(width: itemSpacing),
-                      // Bouton ajouter
+                      // Bouton ajouter avec variant secondary et icône centrée
                       GxFuturisticButton(
                         label: isCompact ? '' : 'Ajouter',
                         icon: CupertinoIcons.add_circled,
-                        variant: GxFuturisticButtonVariant.primary,
+                        variant: GxFuturisticButtonVariant.secondary,
                         accentColor: accentColor,
                         width: isCompact ? 36 : null,
                         height: isCompact ? 36 : null,
-                        padding: isCompact ? EdgeInsets.zero : null,
+                        padding: isCompact ? EdgeInsets.zero : EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                         onPressed: _addBookmark,
                       ),
                     ],
@@ -385,7 +385,7 @@ class _GxFuturisticBookmarksPanelState extends State<GxFuturisticBookmarksPanel>
                           );
                         }
 
-                        // Utiliser ListView.builder pour virtualisation
+                        // Utiliser ListView.builder pour virtualisation avec espacement comme historique
                         return ListView.builder(
                           controller: _scrollController,
                           padding: EdgeInsets.symmetric(
@@ -398,20 +398,23 @@ class _GxFuturisticBookmarksPanelState extends State<GxFuturisticBookmarksPanel>
                           addRepaintBoundaries: true,
                           itemBuilder: (context, index) {
                             final bookmark = filteredBookmarks[index];
-                            return RepaintBoundary(
-                              key: ValueKey('bookmark_${bookmark.id}'),
-                              child: _BookmarkListItem(
-                                bookmark: bookmark,
-                                accentColor: accentColor,
-                                bgColor: bgColor,
-                                panelOpacity: panelOpacity,
-                                isCompact: isCompact,
-                                isMedium: isMedium,
-                                onTap: () {
-                                  final tabManager = Provider.of<TabManager>(context, listen: false);
-                                  tabManager.addTab(url: bookmark.url);
-                                },
-                                onDelete: () => _deleteBookmark(bookmark),
+                            return Padding(
+                              padding: EdgeInsets.only(bottom: itemSpacing),
+                              child: RepaintBoundary(
+                                key: ValueKey('bookmark_${bookmark.id}'),
+                                child: _BookmarkListItem(
+                                  bookmark: bookmark,
+                                  accentColor: accentColor,
+                                  bgColor: bgColor,
+                                  panelOpacity: panelOpacity,
+                                  isCompact: isCompact,
+                                  isMedium: isMedium,
+                                  onTap: () {
+                                    final tabManager = Provider.of<TabManager>(context, listen: false);
+                                    tabManager.addTab(url: bookmark.url);
+                                  },
+                                  onDelete: () => _deleteBookmark(bookmark),
+                                ),
                               ),
                             );
                           },
