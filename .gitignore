@@ -82,7 +82,5 @@ cef/
 cef_binary/
 
 # Large audio files
-assets/soundeffects/*.wav
-assets/soundeffects/*.mp3
-assets/soundeffects/*.ogg
+assets/soundeffects/
 
