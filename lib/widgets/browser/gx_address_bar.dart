@@ -15,6 +15,7 @@ import '../common/notilus_tooltip.dart';
 import '../../services/auth/firebase_auth_service.dart';
 import '../../widgets/auth/auth_dialog.dart';
 import '../../services/adblocker_service.dart';
+import 'address_suggestions.dart';
 
 // La couleur rouge est maintenant gérée par ColorThemeManager
 
@@ -41,6 +42,7 @@ class _GXAddressBarState extends State<GXAddressBar> {
   final FocusNode _focusNode = FocusNode();
   bool _isFocused = false;
   bool _isSecure = false;
+  bool _showSuggestions = false;
   final HistoryService _historyService = HistoryService();
   final BookmarkService _bookmarkService = BookmarkService();
 
@@ -51,6 +53,14 @@ class _GXAddressBarState extends State<GXAddressBar> {
       setState(() {
         _isFocused = _focusNode.hasFocus;
       });
+      
+      // Sélectionner automatiquement le texte au focus
+      if (_focusNode.hasFocus && _controller.text.isNotEmpty) {
+        _controller.selection = TextSelection(
+          baseOffset: 0,
+          extentOffset: _controller.text.length,
+        );
+      }
     });
   }
 
@@ -66,6 +76,10 @@ class _GXAddressBarState extends State<GXAddressBar> {
     final activeTab = tabManager.activeTab;
     
     if (activeTab != null) {
+      setState(() {
+        _showSuggestions = false;
+      });
+      
       String? formattedUrl = UrlValidator.validateAndFormat(url);
       
       if (formattedUrl == null) {
@@ -88,6 +102,62 @@ class _GXAddressBarState extends State<GXAddressBar> {
       final engine = webViewManager.getEngineForTab(activeTab.id);
       engine.navigate(formattedUrl);
     }
+  }
+
+  Future<List<SuggestionItem>> _getSuggestions(String query) async {
+    final suggestions = <SuggestionItem>[];
+    
+    if (query.isEmpty) {
+      // Afficher l'historique récent si la query est vide
+      final history = await _historyService.getHistory();
+      for (var item in history.take(8)) {
+        suggestions.add(SuggestionItem(
+          title: item.title,
+          subtitle: item.url,
+          url: item.url,
+          icon: Icons.history,
+          type: SuggestionType.history,
+        ));
+      }
+      return suggestions;
+    }
+    
+    // Search history
+    final history = await _historyService.searchHistory(query);
+    for (var item in history.take(5)) {
+      suggestions.add(SuggestionItem(
+        title: item.title,
+        subtitle: item.url,
+        url: item.url,
+        icon: Icons.history,
+        type: SuggestionType.history,
+      ));
+    }
+    
+    // Search bookmarks
+    final bookmarks = await _bookmarkService.searchBookmarks(query);
+    for (var bookmark in bookmarks.take(5)) {
+      suggestions.add(SuggestionItem(
+        title: bookmark.title,
+        subtitle: bookmark.url,
+        url: bookmark.url,
+        icon: Icons.bookmark,
+        type: SuggestionType.bookmark,
+      ));
+    }
+    
+    // Add search suggestion if query doesn't look like URL
+    if (!UrlValidator.isUrl(query) && query.isNotEmpty) {
+      suggestions.add(SuggestionItem(
+        title: 'Rechercher "$query"',
+        subtitle: 'Google Search',
+        url: UrlValidator.createSearchUrl(query),
+        icon: Icons.search,
+        type: SuggestionType.search,
+      ));
+    }
+    
+    return suggestions;
   }
 
   Future<void> _loadFavicon(String url, String tabId, TabManager tabManager) async {
@@ -443,30 +513,89 @@ class _GXAddressBarState extends State<GXAddressBar> {
 
                         // URL field
                         Expanded(
-                          child: TextField(
-                            controller: _controller,
-                            focusNode: _focusNode,
-                            cursorColor: gxRed,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w400,
-                            ),
-                            decoration: InputDecoration(
-                              hintText: 'Enter search or web address',
-                              hintStyle: TextStyle(
-                                color: Colors.white.withValues(alpha:0.35),
-                                fontSize: 12,
+                          child: Stack(
+                            children: [
+                              TextSelectionTheme(
+                                data: TextSelectionThemeData(
+                                  selectionColor: gxRed.withValues(alpha: 0.3),
+                                  selectionHandleColor: gxRed,
+                                  cursorColor: gxRed,
+                                ),
+                                child: TextField(
+                                  controller: _controller,
+                                  focusNode: _focusNode,
+                                  cursorColor: gxRed,
+                                  selectionControls: MaterialTextSelectionControls(),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                                decoration: InputDecoration(
+                                  hintText: 'Enter search or web address',
+                                  hintStyle: TextStyle(
+                                    color: Colors.white.withValues(alpha:0.35),
+                                    fontSize: 12,
+                                  ),
+                                  border: InputBorder.none,
+                                  focusedBorder: InputBorder.none,
+                                  enabledBorder: InputBorder.none,
+                                  isDense: true,
+                                  contentPadding: const EdgeInsets.symmetric(vertical: 6),
+                                  fillColor: Colors.transparent,
+                                  filled: true,
+                                ),
+                                onSubmitted: _navigateToUrl,
+                                onChanged: (value) {
+                                  if (value.isNotEmpty && _isFocused) {
+                                    setState(() {
+                                      _showSuggestions = true;
+                                    });
+                                  } else {
+                                    setState(() {
+                                      _showSuggestions = false;
+                                    });
+                                  }
+                                },
+                                onTap: () {
+                                  // Sélectionner tout le texte au clic
+                                  if (_controller.text.isNotEmpty) {
+                                    _controller.selection = TextSelection(
+                                      baseOffset: 0,
+                                      extentOffset: _controller.text.length,
+                                    );
+                                  }
+                                  setState(() {
+                                    if (_controller.text.isNotEmpty) {
+                                      _showSuggestions = true;
+                                    }
+                                  });
+                                },
+                                ),
                               ),
-                              border: InputBorder.none,
-                              focusedBorder: InputBorder.none,
-                              enabledBorder: InputBorder.none,
-                              isDense: true,
-                              contentPadding: const EdgeInsets.symmetric(vertical: 6),
-                              fillColor: Colors.transparent,
-                              filled: true,
-                            ),
-                            onSubmitted: _navigateToUrl,
+                              // Suggestions dropdown
+                              if (_showSuggestions && _isFocused)
+                                Positioned(
+                                  top: 32,
+                                  left: 0,
+                                  right: 0,
+                                  child: FutureBuilder<List<SuggestionItem>>(
+                                    future: _getSuggestions(_controller.text),
+                                    builder: (context, snapshot) {
+                                      if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+                                        return AddressSuggestions(
+                                          items: snapshot.data!,
+                                          onSelect: (item) {
+                                            _controller.text = item.url;
+                                            _navigateToUrl(item.url);
+                                          },
+                                        );
+                                      }
+                                      return const SizedBox.shrink();
+                                    },
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
 
