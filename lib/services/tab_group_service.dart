@@ -148,15 +148,8 @@ class TabGroupService extends ChangeNotifier {
     final newGroupOrder = <String>[];
     final processedTabs = <String>{};
     
-    // Vérifier si l'onglet actif a changé de groupe
-    final activeTab = _tabManager.activeTab;
-    if (activeTab != null && _selectedGroupId != null) {
-      final currentGroupId = _tabToGroup[activeTab.id];
-      if (currentGroupId != _selectedGroupId) {
-        // L'onglet actif n'est plus dans le groupe sélectionné, réinitialiser
-        _selectedGroupId = null;
-      }
-    }
+    // Vérifier si l'onglet actif a changé de groupe (après la mise à jour des groupes)
+    // Cette vérification sera faite après la création des nouveaux groupes
     
     // Grouper les onglets par domaine
     final domainGroups = <String, List<TabModel>>{};
@@ -226,6 +219,19 @@ class TabGroupService extends ChangeNotifier {
     _tabToGroup.addAll(newTabToGroup);
     _groupOrder.clear();
     _groupOrder.addAll(newGroupOrder);
+    
+    // Vérifier si l'onglet actif a changé de groupe (après la mise à jour)
+    final activeTab = _tabManager.activeTab;
+    if (activeTab != null && _selectedGroupId != null) {
+      final currentGroupId = _tabToGroup[activeTab.id];
+      if (currentGroupId != _selectedGroupId) {
+        // L'onglet actif n'est plus dans le groupe sélectionné, réinitialiser
+        _selectedGroupId = null;
+      }
+    } else if (activeTab == null || _tabToGroup[activeTab.id] == null) {
+      // L'onglet actif n'existe plus ou n'est plus dans un groupe, réinitialiser
+      _selectedGroupId = null;
+    }
     
     notifyListeners();
   }

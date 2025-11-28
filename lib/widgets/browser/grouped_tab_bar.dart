@@ -155,8 +155,10 @@ class _GroupedTabBarState extends State<GroupedTabBar> {
     Color accentColor,
   ) {
     final groups = groupService.orderedGroups;
+    final allTabs = tabManager.tabs;
     
-    if (groups.isEmpty) {
+    // Vérifier s'il y a des onglets (groupés ou non)
+    if (allTabs.isEmpty) {
       return Center(
         child: Text(
           'Aucun onglet ouvert',
@@ -170,8 +172,7 @@ class _GroupedTabBarState extends State<GroupedTabBar> {
         // Construire la liste des widgets à afficher
         final List<Widget> tabBarItems = [];
         
-        // Récupérer tous les onglets et identifier ceux qui sont dans un groupe
-        final allTabs = tabManager.tabs;
+        // Identifier les onglets qui sont dans un groupe
         final tabsInGroups = <String>{};
         for (final group in groups) {
           tabsInGroups.addAll(group.tabIds);
