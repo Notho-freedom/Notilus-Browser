@@ -509,12 +509,7 @@ class _GXAddressBarState extends State<GXAddressBar> {
                                   margin: const EdgeInsets.only(right: 2),
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(14),
-                                    color: adBlocker.isEnabled 
-                                        ? gxRed.withValues(alpha: 0.25)
-                                        : gxRed.withValues(alpha: 0.1),
-                                    border: adBlocker.isEnabled
-                                        ? Border.all(color: gxRed, width: 1.5)
-                                        : null,
+                                    color: Colors.transparent,
                                   ),
                                   child: IconButton(
                                     padding: EdgeInsets.zero,
@@ -524,7 +519,7 @@ class _GXAddressBarState extends State<GXAddressBar> {
                                           ? CupertinoIcons.shield_fill
                                           : CupertinoIcons.shield,
                                       size: 16,
-                                      color: gxRed,
+                                      color: adBlocker.isEnabled ? gxRed : gxRed.withValues(alpha: 0.5),
                                     ),
                                     onPressed: () => adBlocker.setEnabled(!adBlocker.isEnabled),
                                   ),

@@ -304,10 +304,12 @@ class _ModernAddressBarState extends State<ModernAddressBar> {
                 children: [
                   Consumer<AdBlockerService>(
                     builder: (context, adBlocker, _) {
-                      return _NavigationButton(
+                      final theme = Theme.of(context);
+                      return _HoverNavButton(
                         icon: adBlocker.isEnabled 
                             ? CupertinoIcons.shield_fill 
                             : CupertinoIcons.shield,
+                        iconColor: adBlocker.isEnabled ? theme.colorScheme.primary : null,
                         onPressed: () => adBlocker.setEnabled(!adBlocker.isEnabled),
                       );
                     },
@@ -351,10 +353,12 @@ class _NavigationButton extends StatelessWidget {
 class _HoverNavButton extends StatefulWidget {
   final IconData icon;
   final VoidCallback? onPressed;
+  final Color? iconColor;
 
   const _HoverNavButton({
     required this.icon,
     this.onPressed,
+    this.iconColor,
   });
 
   @override
@@ -375,9 +379,9 @@ class _HoverNavButtonState extends State<_HoverNavButton> {
             : Colors.black.withOpacity(0.05))
         : Colors.transparent;
 
-    final iconColor = widget.onPressed != null
+    final iconColor = widget.iconColor ?? (widget.onPressed != null
         ? theme.iconTheme.color
-        : theme.iconTheme.color?.withOpacity(0.3);
+        : theme.iconTheme.color?.withOpacity(0.3));
 
     return MouseRegion(
       cursor: widget.onPressed != null

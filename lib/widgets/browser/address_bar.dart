@@ -418,23 +418,15 @@ class AddressBarState extends State<AddressBar> {
                         width: 32,
                         height: 32,
                         decoration: BoxDecoration(
-                          color: adBlocker.isEnabled
-                              ? theme.colorScheme.primary.withOpacity(0.2)
-                              : Colors.transparent,
+                          color: Colors.transparent,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: adBlocker.isEnabled
-                                ? theme.colorScheme.primary
-                                : Colors.grey.withOpacity(0.3),
-                            width: adBlocker.isEnabled ? 2 : 1,
-                          ),
                         ),
                         child: Icon(
                           adBlocker.isEnabled ? Icons.shield : Icons.shield_outlined,
                           size: 16,
-                          color: adBlocker.isEnabled
-                              ? theme.colorScheme.primary
-                              : Colors.grey,
+                          color: adBlocker.isEnabled 
+                              ? theme.colorScheme.primary 
+                              : Colors.grey.withOpacity(0.5),
                         ),
                       ),
                     ),
