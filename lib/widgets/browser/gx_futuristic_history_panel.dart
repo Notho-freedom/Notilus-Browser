@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../services/history_service.dart';
 import '../../services/tab_manager.dart';
 import '../../core/services/wallpaper_manager.dart';
@@ -51,6 +52,49 @@ class _GxFuturisticHistoryPanelState extends State<GxFuturisticHistoryPanel> {
     setState(() {
       _historyFuture = _historyService.getHistory();
     });
+  }
+  
+  /// Groupe les items par période (Aujourd'hui, Hier, Cette semaine, etc.)
+  Map<String, List<dynamic>> _groupItemsByPeriod(List<dynamic> items) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final weekStart = today.subtract(Duration(days: now.weekday - 1));
+    final monthStart = DateTime(now.year, now.month, 1);
+    
+    final Map<String, List<dynamic>> grouped = {};
+    
+    for (final item in items) {
+      final visitedAt = item.visitedAt ?? DateTime.now();
+      final visitedDate = DateTime(visitedAt.year, visitedAt.month, visitedAt.day);
+      
+      String period;
+      if (visitedDate == today) {
+        period = 'Aujourd\'hui';
+      } else if (visitedDate == yesterday) {
+        period = 'Hier';
+      } else if (visitedDate.isAfter(weekStart.subtract(const Duration(days: 1)))) {
+        period = 'Cette semaine';
+      } else if (visitedDate.isAfter(monthStart.subtract(const Duration(days: 1)))) {
+        period = 'Ce mois';
+      } else {
+        period = 'Plus ancien';
+      }
+      
+      grouped.putIfAbsent(period, () => []).add(item);
+    }
+    
+    // Trier les périodes dans l'ordre chronologique
+    final orderedPeriods = ['Aujourd\'hui', 'Hier', 'Cette semaine', 'Ce mois', 'Plus ancien'];
+    final Map<String, List<dynamic>> orderedGrouped = {};
+    
+    for (final period in orderedPeriods) {
+      if (grouped.containsKey(period)) {
+        orderedGrouped[period] = grouped[period]!;
+      }
+    }
+    
+    return orderedGrouped;
   }
 
   Future<void> _clearHistory() async {
@@ -122,158 +166,202 @@ class _GxFuturisticHistoryPanelState extends State<GxFuturisticHistoryPanel> {
       ),
       child: Container(
         color: Colors.black.withOpacity(0.3),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Dimensions adaptatives selon la taille du panel
+            final isCompact = constraints.maxWidth < 400;
+            final isMedium = constraints.maxWidth >= 400 && constraints.maxWidth < 600;
+            final isLarge = constraints.maxWidth >= 600;
+            
+            // Padding adaptatif
+            final horizontalPadding = isCompact ? 12.0 : isMedium ? 16.0 : 20.0;
+            final verticalPadding = isCompact ? 8.0 : isMedium ? 12.0 : 16.0;
+            final itemSpacing = isCompact ? 6.0 : isMedium ? 8.0 : 12.0;
+            
+            // Tailles de police adaptatives
+            final titleFontSize = isCompact ? 11.0 : isMedium ? 12.0 : 13.0;
+            final urlFontSize = isCompact ? 9.0 : isMedium ? 10.0 : 11.0;
+            final metaFontSize = isCompact ? 8.0 : isMedium ? 9.0 : 10.0;
+            
+            // Hauteur des items adaptative
+            final itemHeight = isCompact ? 56.0 : isMedium ? 64.0 : 72.0;
+            final faviconSize = isCompact ? 20.0 : isMedium ? 24.0 : 28.0;
+            
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header compact (sans titre répété)
+                Padding(
+                  padding: EdgeInsets.fromLTRB(horizontalPadding, verticalPadding, horizontalPadding, itemSpacing),
+                  child: Row(
                     children: [
-                      Icon(
-                        CupertinoIcons.time,
-                        color: accentColor,
-                        size: 24,
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        'HISTORIQUE',
-                        style: NotilusFonts.orbitron(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                          letterSpacing: 1,
+                      // Barre de recherche compacte
+                      Expanded(
+                        child: GxFuturisticInput(
+                          controller: _searchController,
+                          hint: isCompact ? 'Rechercher...' : 'Rechercher dans l\'historique...',
+                          prefixIcon: CupertinoIcons.search,
+                          accentColor: accentColor,
                         ),
                       ),
-                      const Spacer(),
+                      SizedBox(width: itemSpacing),
+                      // Bouton effacer compact
                       GxFuturisticButton(
-                        label: 'Effacer',
+                        label: isCompact ? '' : 'Effacer',
                         icon: CupertinoIcons.delete,
                         variant: GxFuturisticButtonVariant.outline,
                         accentColor: accentColor,
+                        width: isCompact ? 36 : null,
+                        height: isCompact ? 36 : null,
+                        padding: isCompact ? EdgeInsets.zero : null,
                         onPressed: _clearHistory,
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
-                  // Barre de recherche
-                  GxFuturisticInput(
-                    controller: _searchController,
-                    hint: 'Rechercher dans l\'historique...',
-                    prefixIcon: CupertinoIcons.search,
-                    accentColor: accentColor,
-                  ),
-                ],
-              ),
-            ),
-            
-            // Liste
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: _refresh,
-                color: accentColor,
-                child: FutureBuilder(
-                  future: _historyFuture,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return Center(
-                        child: GxFuturisticSpinner(
-                          accentColor: accentColor,
-                          message: 'Chargement...',
-                        ),
-                      );
-                    }
-
-                    final items = snapshot.data as List<dynamic>? ?? [];
-                    final filteredItems = _searchQuery.isEmpty
-                        ? items
-                        : items.where((item) {
-                            return item.title.toLowerCase().contains(_searchQuery) ||
-                                   item.url.toLowerCase().contains(_searchQuery);
-                          }).toList();
-
-                    if (filteredItems.isEmpty) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              CupertinoIcons.time,
-                              size: 64,
-                              color: Colors.white.withOpacity(0.3),
+                ),
+                
+                // Liste avec dimensions adaptatives
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: _refresh,
+                    color: accentColor,
+                    child: FutureBuilder(
+                      future: _historyFuture,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return Center(
+                            child: GxFuturisticSpinner(
+                              accentColor: accentColor,
+                              message: 'Chargement...',
                             ),
-                            const SizedBox(height: 16),
-                            Text(
-                              _searchQuery.isEmpty
-                                  ? 'Aucun historique'
-                                  : 'Aucun résultat',
-                              style: NotilusFonts.rajdhani(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white.withOpacity(0.7),
+                          );
+                        }
+
+                        final items = snapshot.data as List<dynamic>? ?? [];
+                        final filteredItems = _searchQuery.isEmpty
+                            ? items
+                            : items.where((item) {
+                                return item.title.toLowerCase().contains(_searchQuery) ||
+                                       item.url.toLowerCase().contains(_searchQuery);
+                              }).toList();
+
+                        // Grouper les items par période
+                        final groupedItems = _groupItemsByPeriod(filteredItems);
+
+                        if (filteredItems.isEmpty) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  CupertinoIcons.time,
+                                  size: isCompact ? 48 : isMedium ? 56 : 64,
+                                  color: Colors.white.withOpacity(0.3),
+                                ),
+                                SizedBox(height: isCompact ? 12 : 16),
+                                Text(
+                                  _searchQuery.isEmpty
+                                      ? 'Aucun historique'
+                                      : 'Aucun résultat',
+                                  style: NotilusFonts.rajdhani(
+                                    fontSize: isCompact ? 13 : isMedium ? 14 : 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white.withOpacity(0.7),
+                                  ),
+                                ),
+                                SizedBox(height: isCompact ? 6 : 8),
+                                Text(
+                                  _searchQuery.isEmpty
+                                      ? 'Votre historique apparaîtra ici'
+                                      : 'Aucun élément ne correspond',
+                                  style: NotilusFonts.rajdhani(
+                                    fontSize: isCompact ? 10 : isMedium ? 11 : 12,
+                                    color: Colors.white.withOpacity(0.5),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
+                        // Construire la liste avec séparateurs
+                        final List<Widget> listItems = [];
+                        int itemIndex = 0;
+                        
+                        groupedItems.forEach((period, periodItems) {
+                          // Ajouter le séparateur avec label
+                          if (listItems.isNotEmpty) {
+                            listItems.add(
+                              Padding(
+                                padding: EdgeInsets.symmetric(vertical: itemSpacing * 2),
+                                child: GxFuturisticSeparator(
+                                  label: period,
+                                  accentColor: accentColor,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              _searchQuery.isEmpty
-                                  ? 'Votre historique de navigation apparaîtra ici'
-                                  : 'Aucun élément ne correspond à votre recherche',
-                              style: NotilusFonts.rajdhani(
-                                fontSize: 12,
-                                color: Colors.white.withOpacity(0.5),
+                            );
+                          }
+                          
+                          // Ajouter les items de cette période
+                          for (final item in periodItems) {
+                            listItems.add(
+                              RepaintBoundary(
+                                child: _HistoryListItem(
+                                  item: item,
+                                  accentColor: accentColor,
+                                  bgColor: bgColor,
+                                  panelOpacity: panelOpacity,
+                                  isCompact: isCompact,
+                                  isMedium: isMedium,
+                                  titleFontSize: titleFontSize,
+                                  urlFontSize: urlFontSize,
+                                  metaFontSize: metaFontSize,
+                                  itemHeight: itemHeight,
+                                  faviconSize: faviconSize,
+                                  index: itemIndex++,
+                                  onTap: () {
+                                    final tabManager = Provider.of<TabManager>(context, listen: false);
+                                    tabManager.addTab(url: item.url);
+                                  },
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
+                            );
+                          }
+                        });
 
-                    final dateFormat = DateFormat('dd/MM/yyyy HH:mm');
-
-                    return ListView.separated(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                      itemCount: filteredItems.length,
-                      separatorBuilder: (_, __) => GxFuturisticDivider(
-                        accentColor: accentColor,
-                        height: 0.5,
-                      ),
-                      itemBuilder: (context, index) {
-                        final item = filteredItems[index];
-                        return RepaintBoundary(
-                          child: _HistoryListItem(
-                            item: item,
-                            accentColor: accentColor,
-                            bgColor: bgColor,
-                            panelOpacity: panelOpacity,
-                            dateFormat: dateFormat,
-                            onTap: () {
-                              final tabManager = Provider.of<TabManager>(context, listen: false);
-                              tabManager.addTab(url: item.url);
-                            },
+                        return ListView(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: horizontalPadding,
+                            vertical: itemSpacing,
                           ),
+                          children: listItems,
                         );
                       },
-                    );
-                  },
+                    ),
+                  ),
                 ),
-              ),
-            ),
-          ],
+              ],
+            );
+          },
         ),
       ),
     );
   }
 }
 
-class _HistoryListItem extends StatelessWidget {
+class _HistoryListItem extends StatefulWidget {
   final dynamic item;
   final Color accentColor;
   final Color? bgColor;
   final double panelOpacity;
-  final DateFormat dateFormat;
+  final bool isCompact;
+  final bool isMedium;
+  final double titleFontSize;
+  final double urlFontSize;
+  final double metaFontSize;
+  final double itemHeight;
+  final double faviconSize;
+  final int index;
   final VoidCallback onTap;
 
   const _HistoryListItem({
@@ -281,95 +369,248 @@ class _HistoryListItem extends StatelessWidget {
     required this.accentColor,
     required this.bgColor,
     required this.panelOpacity,
-    required this.dateFormat,
+    required this.isCompact,
+    required this.isMedium,
+    required this.titleFontSize,
+    required this.urlFontSize,
+    required this.metaFontSize,
+    required this.itemHeight,
+    required this.faviconSize,
+    required this.index,
     required this.onTap,
   });
 
   @override
+  State<_HistoryListItem> createState() => _HistoryListItemState();
+}
+
+class _HistoryListItemState extends State<_HistoryListItem> {
+  bool _isHovered = false;
+  bool _isPressed = false;
+  
+  /// Extrait le domaine de l'URL
+  String _extractDomain(String url) {
+    try {
+      final uri = Uri.parse(url);
+      if (uri.host.isNotEmpty) {
+        return uri.host.replaceFirst(RegExp(r'^www\.'), '');
+      }
+    } catch (_) {}
+    return url.length > 30 ? '${url.substring(0, 30)}...' : url;
+  }
+  
+  /// Formate le temps relatif (il y a X minutes/heures/jours)
+  String _formatRelativeTime(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+    
+    if (difference.inDays > 7) {
+      return DateFormat('dd/MM/yyyy').format(dateTime);
+    } else if (difference.inDays > 0) {
+      return 'Il y a ${difference.inDays} jour${difference.inDays > 1 ? 's' : ''}';
+    } else if (difference.inHours > 0) {
+      return 'Il y a ${difference.inHours} heure${difference.inHours > 1 ? 's' : ''}';
+    } else if (difference.inMinutes > 0) {
+      return 'Il y a ${difference.inMinutes} min';
+    } else {
+      return 'À l\'instant';
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final domain = _extractDomain(widget.item.url);
+    final relativeTime = _formatRelativeTime(widget.item.visitedAt ?? DateTime.now());
+    final visitCount = widget.item.visitCount ?? 1;
+    
     return FutureBuilder<String?>(
-      future: FaviconService.getFaviconWithCache(item.url),
+      future: FaviconService.getFaviconWithCache(widget.item.url),
       builder: (context, faviconSnapshot) {
+        final itemPadding = widget.isCompact ? 8.0 : widget.isMedium ? 10.0 : 12.0;
+        final itemHorizontalPadding = widget.isCompact ? 12.0 : widget.isMedium ? 14.0 : 16.0;
+        
         return RepaintBoundary(
-          child: GxFuturisticListItem(
-          leading: Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: accentColor.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: accentColor.withOpacity(0.3),
-                width: 1,
-              ),
-            ),
-            child: faviconSnapshot.hasData && faviconSnapshot.data != null
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(6),
-                    child: Image.network(
-                      faviconSnapshot.data!,
-                      width: 20,
-                      height: 20,
-                      errorBuilder: (_, __, ___) => Icon(
-                        CupertinoIcons.globe,
-                        size: 18,
-                        color: accentColor,
-                      ),
-                    ),
-                  )
-                : Icon(
-                    CupertinoIcons.globe,
-                    size: 18,
-                    color: accentColor,
+          child: MouseRegion(
+            onEnter: (_) => setState(() => _isHovered = true),
+            onExit: (_) => setState(() => _isHovered = false),
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTapDown: (_) => setState(() => _isPressed = true),
+              onTapUp: (_) {
+                setState(() => _isPressed = false);
+                widget.onTap();
+              },
+              onTapCancel: () => setState(() => _isPressed = false),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOutCubic,
+                transform: Matrix4.identity()
+                  ..scale(_isPressed ? 0.98 : (_isHovered ? 1.02 : 1.0)),
+                decoration: BoxDecoration(
+                  color: _isHovered
+                      ? widget.accentColor.withOpacity(0.08)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(widget.isCompact ? 6 : 8),
+                  border: _isHovered
+                      ? Border.all(
+                          color: widget.accentColor.withOpacity(0.3),
+                          width: 1,
+                        )
+                      : null,
+                ),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: itemHorizontalPadding,
+                    vertical: itemPadding,
                   ),
-          ),
-          title: Text(
-            item.title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: NotilusFonts.rajdhani(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: Colors.white,
+                  child: Row(
+                    children: [
+                      // Favicon avec animation
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: widget.faviconSize + 8,
+                        height: widget.faviconSize + 8,
+                        decoration: BoxDecoration(
+                          color: widget.accentColor.withOpacity(
+                            _isHovered ? 0.25 : 0.15,
+                          ),
+                          borderRadius: BorderRadius.circular(widget.isCompact ? 6 : 8),
+                          border: Border.all(
+                            color: widget.accentColor.withOpacity(
+                              _isHovered ? 0.5 : 0.3,
+                            ),
+                            width: _isHovered ? 1.5 : 1,
+                          ),
+                        ),
+                        child: faviconSnapshot.hasData && faviconSnapshot.data != null
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(widget.isCompact ? 4 : 6),
+                                child: Image.network(
+                                  faviconSnapshot.data!,
+                                  width: widget.faviconSize - 4,
+                                  height: widget.faviconSize - 4,
+                                  errorBuilder: (_, __, ___) => Icon(
+                                    CupertinoIcons.globe,
+                                    size: widget.faviconSize - 6,
+                                    color: widget.accentColor,
+                                  ),
+                                ),
+                              )
+                            : Icon(
+                                CupertinoIcons.globe,
+                                size: widget.faviconSize - 6,
+                                color: widget.accentColor,
+                              ),
+                      ),
+                      SizedBox(width: widget.isCompact ? 10 : 12),
+                      // Contenu
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Titre
+                            Text(
+                              widget.item.title,
+                              maxLines: widget.isCompact ? 1 : 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: NotilusFonts.rajdhani(
+                                fontSize: widget.titleFontSize,
+                                fontWeight: FontWeight.w600,
+                                color: _isHovered
+                                    ? Colors.white
+                                    : Colors.white.withOpacity(0.95),
+                                height: 1.2,
+                              ),
+                            ),
+                            SizedBox(height: widget.isCompact ? 2 : 4),
+                            // Domaine
+                            Text(
+                              domain,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: NotilusFonts.rajdhani(
+                                fontSize: widget.urlFontSize,
+                                color: Colors.white.withOpacity(
+                                  _isHovered ? 0.7 : 0.6,
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: widget.isCompact ? 3 : 4),
+                            // Métadonnées (temps + visites)
+                            Row(
+                              children: [
+                                Icon(
+                                  CupertinoIcons.time,
+                                  size: widget.metaFontSize + 2,
+                                  color: Colors.white.withOpacity(0.4),
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  relativeTime,
+                                  style: NotilusFonts.rajdhani(
+                                    fontSize: widget.metaFontSize,
+                                    color: Colors.white.withOpacity(0.4),
+                                  ),
+                                ),
+                                if (visitCount > 1) ...[
+                                  SizedBox(width: 8),
+                                  Icon(
+                                    CupertinoIcons.arrow_counterclockwise,
+                                    size: widget.metaFontSize + 2,
+                                    color: widget.accentColor.withOpacity(0.7),
+                                  ),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    '$visitCount',
+                                    style: NotilusFonts.rajdhani(
+                                      fontSize: widget.metaFontSize,
+                                      color: widget.accentColor.withOpacity(0.7),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(width: widget.isCompact ? 8 : 12),
+                      // Bouton action avec animation
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        transform: Matrix4.identity()
+                          ..translate(_isHovered ? 2.0 : 0.0),
+                        child: GxFuturisticButton(
+                          label: '',
+                          icon: CupertinoIcons.arrow_right,
+                          variant: GxFuturisticButtonVariant.ghost,
+                          accentColor: widget.accentColor,
+                          width: widget.isCompact ? 28 : 32,
+                          height: widget.isCompact ? 28 : 32,
+                          padding: EdgeInsets.zero,
+                          onPressed: widget.onTap,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                item.url,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: NotilusFonts.rajdhani(
-                  fontSize: 11,
-                  color: Colors.white.withOpacity(0.6),
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                dateFormat.format(item.visitedAt ?? DateTime.now()),
-                style: NotilusFonts.rajdhani(
-                  fontSize: 10,
-                  color: Colors.white.withOpacity(0.4),
-                ),
-              ),
-            ],
-          ),
-          trailing: GxFuturisticButton(
-            label: '',
-            icon: CupertinoIcons.arrow_right,
-            variant: GxFuturisticButtonVariant.ghost,
-            accentColor: accentColor,
-            width: 32,
-            height: 32,
-            padding: EdgeInsets.zero,
-            onPressed: onTap,
-          ),
-          onTap: onTap,
-          accentColor: accentColor,
-        ),
-        );
+        )
+          .animate()
+          .fadeIn(
+            duration: 300.ms,
+            delay: (widget.index * 30).ms,
+            curve: Curves.easeOut,
+          )
+          .slideX(
+            begin: 0.1,
+            duration: 300.ms,
+            delay: (widget.index * 30).ms,
+            curve: Curves.easeOutCubic,
+          );
       },
     );
   }
