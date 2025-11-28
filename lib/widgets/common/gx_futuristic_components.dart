@@ -1216,17 +1216,21 @@ class GxFuturisticChip extends StatelessWidget {
 // GX Futuristic Tooltip
 // ============================================================================
 
-/// Tooltip futuriste
+/// Tooltip futuriste avec contours géométriques
 class GxFuturisticTooltip extends StatelessWidget {
   final String message;
   final Widget child;
   final Color? accentColor;
+  final Duration waitDuration;
+  final Duration showDuration;
 
   const GxFuturisticTooltip({
     super.key,
     required this.message,
     required this.child,
     this.accentColor,
+    this.waitDuration = const Duration(milliseconds: 500),
+    this.showDuration = const Duration(seconds: 2),
   });
 
   @override
@@ -1240,20 +1244,364 @@ class GxFuturisticTooltip extends StatelessWidget {
     return Tooltip(
       message: message,
       preferBelow: false,
+      waitDuration: waitDuration,
+      showDuration: showDuration,
       decoration: BoxDecoration(
         color: bgColor.withOpacity(panelOpacity.clamp(0.0, 1.0)),
         border: Border.all(
           color: accent.withOpacity(0.4),
-          width: 1,
+          width: 1.5,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: accent.withOpacity(0.2),
+            blurRadius: 8,
+            spreadRadius: 0,
+          ),
+        ],
       ),
       textStyle: NotilusFonts.rajdhani(
         fontSize: 12,
+        fontWeight: FontWeight.w600,
         color: Colors.white,
       ),
       child: child,
     );
   }
+}
+
+/// Tooltip futuriste personnalisé avec overlay (plus de contrôle)
+class GxFuturisticTooltipOverlay extends StatefulWidget {
+  final String message;
+  final Widget child;
+  final Color? accentColor;
+  final Duration delay;
+  final TooltipPosition position;
+
+  const GxFuturisticTooltipOverlay({
+    super.key,
+    required this.message,
+    required this.child,
+    this.accentColor,
+    this.delay = const Duration(milliseconds: 500),
+    this.position = TooltipPosition.bottom,
+  });
+
+  @override
+  State<GxFuturisticTooltipOverlay> createState() => _GxFuturisticTooltipOverlayState();
+}
+
+enum TooltipPosition {
+  top,
+  bottom,
+  left,
+  right,
+}
+
+class _GxFuturisticTooltipOverlayState extends State<GxFuturisticTooltipOverlay>
+    with SingleTickerProviderStateMixin {
+  OverlayEntry? _overlayEntry;
+  bool _isVisible = false;
+  late AnimationController _controller;
+  late Animation<double> _fadeAnimation;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 200),
+      vsync: this,
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
+    );
+  }
+
+  @override
+  void dispose() {
+    _hideTooltip();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _showTooltip() {
+    if (_isVisible) return;
+    _isVisible = true;
+
+    final accent = widget.accentColor ?? NotilusColors.getSecondaryColor(context);
+    final themeManager = Provider.of<ColorThemeManager>(context, listen: false);
+    final bgColor = themeManager.nativeBackgroundColor;
+    final settings = SettingsService();
+    final panelOpacity = 1.0 - settings.panelTransparency;
+
+    final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
+    if (renderBox == null) return;
+
+    final size = renderBox.size;
+    final offset = renderBox.localToGlobal(Offset.zero);
+
+    _overlayEntry = OverlayEntry(
+      builder: (context) => _GxFuturisticTooltipWidget(
+        message: widget.message,
+        position: widget.position,
+        childPosition: offset,
+        childSize: size,
+        accentColor: accent,
+        bgColor: bgColor.withOpacity(panelOpacity.clamp(0.0, 1.0)),
+        fadeAnimation: _fadeAnimation,
+        scaleAnimation: _scaleAnimation,
+      ),
+    );
+
+    Overlay.of(context).insert(_overlayEntry!);
+    _controller.forward();
+  }
+
+  void _hideTooltip() {
+    if (!_isVisible) return;
+    _controller.reverse().then((_) {
+      _overlayEntry?.remove();
+      _overlayEntry = null;
+      _isVisible = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => Future.delayed(widget.delay, _showTooltip),
+      onExit: (_) => _hideTooltip(),
+      child: widget.child,
+    );
+  }
+}
+
+class _GxFuturisticTooltipWidget extends StatelessWidget {
+  final String message;
+  final TooltipPosition position;
+  final Offset childPosition;
+  final Size childSize;
+  final Color accentColor;
+  final Color bgColor;
+  final Animation<double> fadeAnimation;
+  final Animation<double> scaleAnimation;
+
+  const _GxFuturisticTooltipWidget({
+    required this.message,
+    required this.position,
+    required this.childPosition,
+    required this.childSize,
+    required this.accentColor,
+    required this.bgColor,
+    required this.fadeAnimation,
+    required this.scaleAnimation,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    const tooltipPadding = 8.0;
+    const arrowSize = 8.0;
+    const spacing = 4.0;
+
+    // Calculer la position du tooltip
+    double tooltipX = 0;
+    double tooltipY = 0;
+    Offset arrowOffset = Offset.zero;
+
+    switch (position) {
+      case TooltipPosition.top:
+        tooltipX = childPosition.dx + (childSize.width / 2);
+        tooltipY = childPosition.dy - spacing;
+        arrowOffset = Offset(0, arrowSize);
+        break;
+      case TooltipPosition.bottom:
+        tooltipX = childPosition.dx + (childSize.width / 2);
+        tooltipY = childPosition.dy + childSize.height + spacing;
+        arrowOffset = Offset(0, -arrowSize);
+        break;
+      case TooltipPosition.left:
+        tooltipX = childPosition.dx - spacing;
+        tooltipY = childPosition.dy + (childSize.height / 2);
+        arrowOffset = Offset(arrowSize, 0);
+        break;
+      case TooltipPosition.right:
+        tooltipX = childPosition.dx + childSize.width + spacing;
+        tooltipY = childPosition.dy + (childSize.height / 2);
+        arrowOffset = Offset(-arrowSize, 0);
+        break;
+    }
+
+    return Positioned(
+      left: tooltipX,
+      top: tooltipY,
+      child: FadeTransition(
+        opacity: fadeAnimation,
+        child: ScaleTransition(
+          scale: scaleAnimation,
+          child: Material(
+            color: Colors.transparent,
+            child: CustomPaint(
+              painter: _GxFuturisticTooltipPainter(
+                accentColor: accentColor,
+                bgColor: bgColor,
+                position: position,
+                arrowOffset: arrowOffset,
+              ),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                constraints: BoxConstraints(
+                  maxWidth: screenSize.width * 0.3,
+                ),
+                child: Text(
+                  message,
+                  style: NotilusFonts.rajdhani(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GxFuturisticTooltipPainter extends CustomPainter {
+  final Color accentColor;
+  final Color bgColor;
+  final TooltipPosition position;
+  final Offset arrowOffset;
+
+  _GxFuturisticTooltipPainter({
+    required this.accentColor,
+    required this.bgColor,
+    required this.position,
+    required this.arrowOffset,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = accentColor.withOpacity(0.4)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+
+    final glowPaint = Paint()
+      ..color = accentColor.withOpacity(0.2)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+
+    final bgPaint = Paint()
+      ..color = bgColor
+      ..style = PaintingStyle.fill;
+
+    // Dessiner le fond
+    final path = Path();
+    const cornerSize = 4.0;
+    const arrowSize = 8.0;
+
+    // Calculer la position de la flèche
+    Offset arrowStart = Offset.zero;
+    Offset arrowEnd = Offset.zero;
+    Offset arrowTip = Offset.zero;
+
+    switch (position) {
+      case TooltipPosition.top:
+        arrowStart = Offset(size.width / 2 - arrowSize, size.height);
+        arrowEnd = Offset(size.width / 2 + arrowSize, size.height);
+        arrowTip = Offset(size.width / 2, size.height + arrowSize);
+        break;
+      case TooltipPosition.bottom:
+        arrowStart = Offset(size.width / 2 - arrowSize, 0);
+        arrowEnd = Offset(size.width / 2 + arrowSize, 0);
+        arrowTip = Offset(size.width / 2, -arrowSize);
+        break;
+      case TooltipPosition.left:
+        arrowStart = Offset(size.width, size.height / 2 - arrowSize);
+        arrowEnd = Offset(size.width, size.height / 2 + arrowSize);
+        arrowTip = Offset(size.width + arrowSize, size.height / 2);
+        break;
+      case TooltipPosition.right:
+        arrowStart = Offset(0, size.height / 2 - arrowSize);
+        arrowEnd = Offset(0, size.height / 2 + arrowSize);
+        arrowTip = Offset(-arrowSize, size.height / 2);
+        break;
+    }
+
+    // Dessiner le rectangle avec coins arrondis
+    if (position == TooltipPosition.bottom) {
+      path.moveTo(cornerSize, 0);
+      path.lineTo(arrowStart.dx, 0);
+      path.lineTo(arrowTip.dx, arrowTip.dy);
+      path.lineTo(arrowEnd.dx, 0);
+      path.lineTo(size.width - cornerSize, 0);
+      path.quadraticBezierTo(size.width, 0, size.width, cornerSize);
+      path.lineTo(size.width, size.height - cornerSize);
+      path.quadraticBezierTo(size.width, size.height, size.width - cornerSize, size.height);
+      path.lineTo(cornerSize, size.height);
+      path.quadraticBezierTo(0, size.height, 0, size.height - cornerSize);
+      path.lineTo(0, cornerSize);
+      path.quadraticBezierTo(0, 0, cornerSize, 0);
+    } else if (position == TooltipPosition.top) {
+      path.moveTo(cornerSize, size.height);
+      path.lineTo(arrowStart.dx, size.height);
+      path.lineTo(arrowTip.dx, arrowTip.dy);
+      path.lineTo(arrowEnd.dx, size.height);
+      path.lineTo(size.width - cornerSize, size.height);
+      path.quadraticBezierTo(size.width, size.height, size.width, size.height - cornerSize);
+      path.lineTo(size.width, cornerSize);
+      path.quadraticBezierTo(size.width, 0, size.width - cornerSize, 0);
+      path.lineTo(cornerSize, 0);
+      path.quadraticBezierTo(0, 0, 0, cornerSize);
+      path.lineTo(0, size.height - cornerSize);
+      path.quadraticBezierTo(0, size.height, cornerSize, size.height);
+    } else {
+      // Pour left et right, on simplifie sans flèche pour l'instant
+      path.addRRect(RRect.fromRectAndRadius(
+        Rect.fromLTWH(0, 0, size.width, size.height),
+        const Radius.circular(cornerSize),
+      ));
+    }
+
+    canvas.drawPath(path, bgPaint);
+    canvas.drawPath(path, glowPaint);
+    canvas.drawPath(path, paint);
+
+    // Contours géométriques aux coins
+    const lineLength = 8.0;
+    paint.strokeWidth = 1;
+
+    // Coin supérieur gauche
+    canvas.drawLine(Offset(0, cornerSize), Offset(0, cornerSize + lineLength), paint);
+    canvas.drawLine(Offset(cornerSize, 0), Offset(cornerSize + lineLength, 0), paint);
+
+    // Coin supérieur droit
+    canvas.drawLine(Offset(size.width, cornerSize), Offset(size.width, cornerSize + lineLength), paint);
+    canvas.drawLine(Offset(size.width - cornerSize, 0), Offset(size.width - cornerSize - lineLength, 0), paint);
+
+    // Coin inférieur gauche
+    canvas.drawLine(Offset(0, size.height - cornerSize), Offset(0, size.height - cornerSize - lineLength), paint);
+    canvas.drawLine(Offset(cornerSize, size.height), Offset(cornerSize + lineLength, size.height), paint);
+
+    // Coin inférieur droit
+    canvas.drawLine(Offset(size.width, size.height - cornerSize), Offset(size.width, size.height - cornerSize - lineLength), paint);
+    canvas.drawLine(Offset(size.width - cornerSize, size.height), Offset(size.width - cornerSize - lineLength, size.height), paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 // ============================================================================
@@ -2080,6 +2428,11 @@ class GxFuturisticTextArea extends StatelessWidget {
         color: Colors.white,
       ),
       decoration: InputDecoration(
+        labelText: hint,
+        labelStyle: NotilusFonts.rajdhani(
+          fontSize: 14,
+          color: Colors.white.withOpacity(0.6),
+        ),
         hintText: hint,
         hintStyle: NotilusFonts.rajdhani(
           fontSize: 14,
@@ -2099,7 +2452,10 @@ class GxFuturisticTextArea extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide(color: accent, width: 1),
         ),
-        contentPadding: const EdgeInsets.all(16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
       ),
     );
 
