@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../../core/services/color_theme_manager.dart';
 import '../../services/tab_manager.dart';
@@ -40,6 +41,8 @@ class GXAddressBar extends StatefulWidget {
 class _GXAddressBarState extends State<GXAddressBar> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
+  final LayerLink _layerLink = LayerLink();
+  OverlayEntry? _overlayEntry;
   bool _isFocused = false;
   bool _isSecure = false;
   bool _showSuggestions = false;
@@ -61,11 +64,117 @@ class _GXAddressBarState extends State<GXAddressBar> {
           extentOffset: _controller.text.length,
         );
       }
+      
+      // Afficher/masquer les suggestions
+      if (_focusNode.hasFocus) {
+        _showSuggestionsOverlay();
+      } else {
+        _hideSuggestionsOverlay();
+      }
     });
+    
+    _controller.addListener(() {
+      if (_isFocused) {
+        _updateSuggestionsOverlay();
+      }
+    });
+  }
+  
+  void _showSuggestionsOverlay() {
+    if (_overlayEntry != null || !mounted) return;
+    
+    _overlayEntry = _createOverlayEntry();
+    Overlay.of(context, rootOverlay: false).insert(_overlayEntry!);
+  }
+  
+  void _hideSuggestionsOverlay() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+    setState(() {
+      _showSuggestions = false;
+    });
+  }
+  
+  void _updateSuggestionsOverlay() {
+    if (!_isFocused || !mounted) {
+      _hideSuggestionsOverlay();
+      return;
+    }
+    
+    if (_overlayEntry == null) {
+      _showSuggestionsOverlay();
+    } else {
+      _overlayEntry!.markNeedsBuild();
+    }
+  }
+  
+  OverlayEntry _createOverlayEntry() {
+    return OverlayEntry(
+      builder: (overlayContext) {
+        if (!mounted) return const SizedBox.shrink();
+        
+        final colorThemeManager = Provider.of<ColorThemeManager>(overlayContext, listen: false);
+        final gxRed = colorThemeManager.nativeSecondaryColor;
+        final query = _controller.text;
+        
+        return Positioned(
+          width: MediaQuery.of(overlayContext).size.width * 0.5,
+          child: CompositedTransformFollower(
+            link: _layerLink,
+            showWhenUnlinked: false,
+            offset: const Offset(0, 32),
+            child: Material(
+              color: Colors.transparent,
+              elevation: 8,
+              shadowColor: gxRed.withValues(alpha: 0.3),
+              child: FutureBuilder<List<SuggestionItem>>(
+                future: _getSuggestions(query),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1A1A1A),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: gxRed.withValues(alpha: 0.3)),
+                      ),
+                      child: Center(
+                        child: SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: gxRed,
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+                  
+                  if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+                    return AddressSuggestions(
+                      items: snapshot.data!,
+                      onSelect: (item) {
+                        _controller.text = item.url;
+                        _navigateToUrl(item.url);
+                        _hideSuggestionsOverlay();
+                      },
+                    );
+                  }
+                  
+                  return const SizedBox.shrink();
+                },
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
   void dispose() {
+    _hideSuggestionsOverlay();
     _controller.dispose();
     _focusNode.dispose();
     super.dispose();
@@ -513,24 +622,24 @@ class _GXAddressBarState extends State<GXAddressBar> {
 
                         // URL field
                         Expanded(
-                          child: Stack(
-                            children: [
-                              TextSelectionTheme(
-                                data: TextSelectionThemeData(
-                                  selectionColor: gxRed.withValues(alpha: 0.3),
-                                  selectionHandleColor: gxRed,
-                                  cursorColor: gxRed,
+                          child: CompositedTransformTarget(
+                            link: _layerLink,
+                            child: TextSelectionTheme(
+                              data: TextSelectionThemeData(
+                                selectionColor: gxRed.withValues(alpha: 0.3),
+                                selectionHandleColor: gxRed,
+                                cursorColor: gxRed,
+                              ),
+                              child: TextField(
+                                controller: _controller,
+                                focusNode: _focusNode,
+                                cursorColor: gxRed,
+                                selectionControls: MaterialTextSelectionControls(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w400,
                                 ),
-                                child: TextField(
-                                  controller: _controller,
-                                  focusNode: _focusNode,
-                                  cursorColor: gxRed,
-                                  selectionControls: MaterialTextSelectionControls(),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w400,
-                                  ),
                                 decoration: InputDecoration(
                                   hintText: 'Enter search or web address',
                                   hintStyle: TextStyle(
@@ -545,17 +654,12 @@ class _GXAddressBarState extends State<GXAddressBar> {
                                   fillColor: Colors.transparent,
                                   filled: true,
                                 ),
-                                onSubmitted: _navigateToUrl,
+                                onSubmitted: (value) {
+                                  _hideSuggestionsOverlay();
+                                  _navigateToUrl(value);
+                                },
                                 onChanged: (value) {
-                                  if (value.isNotEmpty && _isFocused) {
-                                    setState(() {
-                                      _showSuggestions = true;
-                                    });
-                                  } else {
-                                    setState(() {
-                                      _showSuggestions = false;
-                                    });
-                                  }
+                                  _updateSuggestionsOverlay();
                                 },
                                 onTap: () {
                                   // Sélectionner tout le texte au clic
@@ -565,37 +669,10 @@ class _GXAddressBarState extends State<GXAddressBar> {
                                       extentOffset: _controller.text.length,
                                     );
                                   }
-                                  setState(() {
-                                    if (_controller.text.isNotEmpty) {
-                                      _showSuggestions = true;
-                                    }
-                                  });
+                                  _updateSuggestionsOverlay();
                                 },
-                                ),
                               ),
-                              // Suggestions dropdown
-                              if (_showSuggestions && _isFocused)
-                                Positioned(
-                                  top: 32,
-                                  left: 0,
-                                  right: 0,
-                                  child: FutureBuilder<List<SuggestionItem>>(
-                                    future: _getSuggestions(_controller.text),
-                                    builder: (context, snapshot) {
-                                      if (snapshot.hasData && snapshot.data!.isNotEmpty) {
-                                        return AddressSuggestions(
-                                          items: snapshot.data!,
-                                          onSelect: (item) {
-                                            _controller.text = item.url;
-                                            _navigateToUrl(item.url);
-                                          },
-                                        );
-                                      }
-                                      return const SizedBox.shrink();
-                                    },
-                                  ),
-                                ),
-                            ],
+                            ),
                           ),
                         ),
 
