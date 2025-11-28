@@ -7,6 +7,7 @@ import '../../core/utils/url_validator.dart';
 import '../../services/history_service.dart';
 import '../../services/bookmark_service.dart';
 import '../../services/favicon_service.dart';
+import '../../services/adblocker_service.dart';
 import '../../models/bookmark.dart';
 import '../../models/tab_model.dart';
 
@@ -301,9 +302,15 @@ class _ModernAddressBarState extends State<ModernAddressBar> {
               // Actions supplémentaires
               Row(
                 children: [
-                  _NavigationButton(
-                    icon: CupertinoIcons.shield,
-                    onPressed: () {},
+                  Consumer<AdBlockerService>(
+                    builder: (context, adBlocker, _) {
+                      return _NavigationButton(
+                        icon: adBlocker.isEnabled 
+                            ? CupertinoIcons.shield_fill 
+                            : CupertinoIcons.shield,
+                        onPressed: () => adBlocker.setEnabled(!adBlocker.isEnabled),
+                      );
+                    },
                   ),
                   const SizedBox(width: 4),
                   _NavigationButton(

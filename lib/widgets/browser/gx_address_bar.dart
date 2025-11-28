@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../../core/constants/notilus_colors.dart';
 import '../../core/services/color_theme_manager.dart';
 import '../../services/tab_manager.dart';
 import '../../services/tab_webview_manager.dart';
@@ -15,6 +14,7 @@ import '../../models/tab_model.dart';
 import '../common/notilus_tooltip.dart';
 import '../../services/auth/firebase_auth_service.dart';
 import '../../widgets/auth/auth_dialog.dart';
+import '../../services/adblocker_service.dart';
 
 // La couleur rouge est maintenant gérée par ColorThemeManager
 
@@ -497,25 +497,41 @@ class _GXAddressBarState extends State<GXAddressBar> {
                         ),
 
                         const SizedBox(width: 4),
-                        NotilusTooltip(
-                          message: 'Lancer la navigation',
-                          child: Container(
-                            margin: const EdgeInsets.only(right: 2),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(14),
-                              color: gxRed.withValues(alpha:0.15),
-                            ),
-                            child: IconButton(
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(minHeight: 26, minWidth: 26),
-                              icon: Icon(
-                                CupertinoIcons.arrow_right,
-                                size: 16,
-                                color: gxRed,
+                        Consumer<AdBlockerService>(
+                          builder: (context, adBlocker, _) {
+                            return NotilusTooltip(
+                              message: adBlocker.isEnabled 
+                                  ? 'Bloqueur de pubs activé (${adBlocker.blockedCount} bloquées)\nCliquer pour désactiver'
+                                  : 'Bloqueur de pubs désactivé\nCliquer pour activer',
+                              child: GestureDetector(
+                                onTap: () => adBlocker.setEnabled(!adBlocker.isEnabled),
+                                child: Container(
+                                  margin: const EdgeInsets.only(right: 2),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(14),
+                                    color: adBlocker.isEnabled 
+                                        ? gxRed.withValues(alpha: 0.25)
+                                        : gxRed.withValues(alpha: 0.1),
+                                    border: adBlocker.isEnabled
+                                        ? Border.all(color: gxRed, width: 1.5)
+                                        : null,
+                                  ),
+                                  child: IconButton(
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(minHeight: 26, minWidth: 26),
+                                    icon: Icon(
+                                      adBlocker.isEnabled 
+                                          ? CupertinoIcons.shield_fill
+                                          : CupertinoIcons.shield,
+                                      size: 16,
+                                      color: gxRed,
+                                    ),
+                                    onPressed: () => adBlocker.setEnabled(!adBlocker.isEnabled),
+                                  ),
+                                ),
                               ),
-                              onPressed: () => _navigateToUrl(_controller.text),
-                            ),
-                          ),
+                            );
+                          },
                         ),
                       ],
                     ),

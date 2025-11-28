@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:webview_windows/webview_windows.dart';
 import 'browser_engine.dart';
 import '../models/tab_model.dart';
+import 'adblocker_service.dart';
 
 /// Implémentation réelle du moteur de rendu avec WebView2 (Option #1 - Production-ready)
 /// WebView2 est le moteur moderne de Microsoft basé sur Chromium
@@ -43,9 +44,19 @@ class WebView2BrowserEngine extends BrowserEngine {
   /// ID du tab associé (pour DevTools)
   String? tabId;
 
+  /// Service de blocage de publicités
+  AdBlockerService? _adBlockerService;
+
   bool _isInitialized = false;
   Timer? _newWindowPollingTimer;
   Timer? _downloadPollingTimer;
+  Timer? _adBlockPollingTimer;
+  int _lastKnownAdBlockCount = 0; // Compteur de blocages de la page actuelle
+  
+  /// Configure le service de blocage de publicités
+  void setAdBlockerService(AdBlockerService? service) {
+    _adBlockerService = service;
+  }
 
   @override
   Future<void> initialize() async {
@@ -58,14 +69,29 @@ class WebView2BrowserEngine extends BrowserEngine {
       
       // Configurer les callbacks WebView2 via les streams
       _webView!.url.listen((url) {
+        final previousUrl = _currentUrl;
         _currentUrl = url;
         onStateChanged?.call(TabState.loaded);
         onUrlChanged?.call(url);
+        
+        // Réinitialiser le compteur de page si on change d'URL
+        if (previousUrl != null && previousUrl != url) {
+          _lastKnownAdBlockCount = 0;
+          _stopAdBlockPolling();
+        }
         
         // Injecter les handlers après chaque navigation
         if (url.isNotEmpty && url != 'about:blank') {
           Future.delayed(const Duration(milliseconds: 1500), () async {
             try {
+              // Injecter le script de blocage de publicités
+              if (_adBlockerService != null) {
+                final adBlockScript = _adBlockerService!.generateBlockingScript();
+                if (adBlockScript.isNotEmpty) {
+                  await _webView!.executeScript(adBlockScript);
+                }
+              }
+              
               // Injecter le handler pour les nouvelles fenêtres
               if (onNewWindowRequest != null) {
                 await _webView!.executeScript('''
@@ -217,6 +243,24 @@ class WebView2BrowserEngine extends BrowserEngine {
       
       try {
         await _webView!.loadUrl(url);
+        
+        // Injecter le script de blocage de publicités après le chargement
+        if (_adBlockerService != null) {
+          Future.delayed(const Duration(milliseconds: 1000), () async {
+            final adBlockScript = _adBlockerService!.generateBlockingScript();
+            if (adBlockScript.isNotEmpty) {
+              try {
+                await _webView!.executeScript(adBlockScript);
+                debugPrint('🛡️ [AdBlocker] Script injecté avec succès');
+                
+                // Polling pour récupérer le compteur de blocages
+                _startAdBlockPolling();
+              } catch (e) {
+                debugPrint('Erreur injection AdBlocker: $e');
+              }
+            }
+          });
+        }
       } catch (e) {
         debugPrint('Navigation error: $e');
         onStateChanged?.call(TabState.error);
@@ -666,8 +710,50 @@ class WebView2BrowserEngine extends BrowserEngine {
     }
   }
 
+  /// Démarre le polling pour récupérer le compteur de blocages
+  void _startAdBlockPolling() {
+    _adBlockPollingTimer?.cancel();
+    _lastKnownAdBlockCount = 0; // Réinitialiser pour la nouvelle page
+    
+    _adBlockPollingTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
+      if (_webView == null || _adBlockerService == null || !_adBlockerService!.isEnabled) return;
+      
+      try {
+        final result = await _webView!.executeScript('''
+          (function() {
+            if (!document.body) return null;
+            const count = document.body.getAttribute('data-adblock-count');
+            return count ? parseInt(count) : null;
+          })();
+        ''');
+        
+        if (result != null && result is int) {
+          // Calculer la différence depuis le dernier check
+          final currentPageCount = result;
+          final newBlocked = currentPageCount - _lastKnownAdBlockCount;
+          
+          if (newBlocked > 0) {
+            // Ajouter les nouveaux blocages au compteur global
+            _adBlockerService!.addBlockedCount(newBlocked);
+            debugPrint('🛡️ [AdBlocker] +$newBlocked nouveau(x) blocage(s) (Total: ${_adBlockerService!.blockedCount})');
+            _lastKnownAdBlockCount = currentPageCount;
+          }
+        }
+      } catch (e) {
+        // Ignorer les erreurs silencieusement
+      }
+    });
+  }
+  
+  /// Arrête le polling AdBlock
+  void _stopAdBlockPolling() {
+    _adBlockPollingTimer?.cancel();
+    _adBlockPollingTimer = null;
+  }
+
   void dispose() {
     _stopNewWindowPolling();
+    _stopAdBlockPolling();
     _downloadPollingTimer?.cancel();
     _downloadPollingTimer = null;
     _webView?.dispose();

@@ -443,7 +443,6 @@ class _GoogleDeviceFlowDialogState extends State<_GoogleDeviceFlowDialog> {
                   ),
                 ],
               ),
->>>>>>> cursor/build-native-nautilus-devtools-module-claude-4.5-opus-high-thinking-091d
             ),
             const SizedBox(height: 16),
             const Text(
