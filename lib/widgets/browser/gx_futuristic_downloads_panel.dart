@@ -924,7 +924,7 @@ class _FilterDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
         borderRadius: BorderRadius.circular(6),
@@ -938,7 +938,7 @@ class _FilterDropdown extends StatelessWidget {
           Text(
             '$label: ',
             style: NotilusFonts.rajdhani(
-              fontSize: 11,
+              fontSize: 10,
               color: Colors.white.withOpacity(0.7),
             ),
           ),
@@ -947,20 +947,23 @@ class _FilterDropdown extends StatelessWidget {
               child: DropdownButton<String>(
                 value: value,
                 isExpanded: true,
-                dropdownColor: const Color(0xFF1A1A1F),
+                dropdownColor: Colors.black.withOpacity(0.85),
                 style: NotilusFonts.rajdhani(
-                  fontSize: 11,
+                  fontSize: 10,
                   color: Colors.white,
                 ),
                 icon: Icon(
                   CupertinoIcons.chevron_down,
-                  size: 14,
+                  size: 12,
                   color: accentColor,
                 ),
                 items: items.map((item) {
                   return DropdownMenuItem<String>(
                     value: item,
-                    child: Text(item),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Text(item),
+                    ),
                   );
                 }).toList(),
                 onChanged: onChanged,
