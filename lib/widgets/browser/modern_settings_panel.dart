@@ -17,6 +17,7 @@ import '../../widgets/auth/sync_status_widget.dart';
 import '../../widgets/auth/auth_dialog.dart';
 import '../common/color_picker_dialog.dart';
 import '../common/gx_futuristic_dialog.dart';
+import '../common/gx_futuristic_components.dart';
 import '../../core/constants/notilus_fonts.dart';
 import '../../services/gx_notification_service.dart';
 

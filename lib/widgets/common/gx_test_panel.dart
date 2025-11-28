@@ -20,12 +20,19 @@ class GxTestPanel extends StatefulWidget {
 
 class _GxTestPanelState extends State<GxTestPanel> {
   final TextEditingController _inputController = TextEditingController();
+  final TextEditingController _textareaController = TextEditingController();
   bool _switchValue = false;
   double _progressValue = 0.65;
+  double _sliderValue = 50.0;
+  bool _checkboxValue = false;
+  String? _radioValue = 'option1';
+  int _selectedTab = 0;
+  String? _dropdownValue;
 
   @override
   void dispose() {
     _inputController.dispose();
+    _textareaController.dispose();
     super.dispose();
   }
 
@@ -361,6 +368,397 @@ class _GxTestPanelState extends State<GxTestPanel> {
                           ],
                         );
                       },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+
+            // Labels
+            _buildSection(
+              context,
+              'Labels',
+              accentColor,
+              [
+                GxFuturisticLabel(text: 'Label simple'),
+                const SizedBox(height: 8),
+                GxFuturisticLabel(
+                  text: 'Label avec icône',
+                  icon: Icons.label_rounded,
+                ),
+                const SizedBox(height: 8),
+                GxFuturisticLabel(
+                  text: 'Label requis',
+                  required: true,
+                ),
+              ],
+            ),
+
+            // Lists
+            _buildSection(
+              context,
+              'Listes',
+              accentColor,
+              [
+                GxFuturisticList(
+                  items: [
+                    GxFuturisticListItem(
+                      leading: Icon(Icons.person_rounded, color: accentColor),
+                      title: const Text('Utilisateur 1'),
+                      subtitle: const Text('user1@example.com'),
+                      trailing: GxFuturisticBadge(label: 'Actif', color: const Color(0xFF22C55E)),
+                      onTap: () {},
+                    ),
+                    GxFuturisticListItem(
+                      leading: Icon(Icons.person_rounded, color: accentColor),
+                      title: const Text('Utilisateur 2'),
+                      subtitle: const Text('user2@example.com'),
+                      trailing: GxFuturisticBadge(label: 'Inactif', color: const Color(0xFFEF4444)),
+                      onTap: () {},
+                    ),
+                  ],
+                  accentColor: accentColor,
+                ),
+              ],
+            ),
+
+            // Tables
+            _buildSection(
+              context,
+              'Tableaux',
+              accentColor,
+              [
+                GxFuturisticTable(
+                  headers: ['Nom', 'Email', 'Statut'],
+                  rows: [
+                    [
+                      const Text('John Doe'),
+                      const Text('john@example.com'),
+                      GxFuturisticBadge(label: 'Actif', color: const Color(0xFF22C55E)),
+                    ],
+                    [
+                      const Text('Jane Smith'),
+                      const Text('jane@example.com'),
+                      GxFuturisticBadge(label: 'Inactif', color: const Color(0xFFEF4444)),
+                    ],
+                    [
+                      const Text('Bob Johnson'),
+                      const Text('bob@example.com'),
+                      GxFuturisticBadge(label: 'En attente', color: const Color(0xFFF59E0B)),
+                    ],
+                  ],
+                  accentColor: accentColor,
+                ),
+              ],
+            ),
+
+            // Chips
+            _buildSection(
+              context,
+              'Chips / Tags',
+              accentColor,
+              [
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    GxFuturisticChip(
+                      label: 'Tag 1',
+                      icon: Icons.tag_rounded,
+                    ),
+                    GxFuturisticChip(
+                      label: 'Tag sélectionné',
+                      selected: true,
+                      accentColor: accentColor,
+                    ),
+                    GxFuturisticChip(
+                      label: 'Tag supprimable',
+                      onDelete: () {},
+                    ),
+                  ],
+                ),
+              ],
+            ),
+
+            // Dropdowns
+            _buildSection(
+              context,
+              'Menus Déroulants',
+              accentColor,
+              [
+                GxFuturisticDropdown<String>(
+                  value: _dropdownValue,
+                  hint: 'Sélectionnez une option',
+                  label: 'Options',
+                  items: const [
+                    DropdownMenuItem(value: 'option1', child: Text('Option 1')),
+                    DropdownMenuItem(value: 'option2', child: Text('Option 2')),
+                    DropdownMenuItem(value: 'option3', child: Text('Option 3')),
+                  ],
+                  onChanged: (value) => setState(() => _dropdownValue = value),
+                  accentColor: accentColor,
+                ),
+              ],
+            ),
+
+            // Sliders
+            _buildSection(
+              context,
+              'Sliders',
+              accentColor,
+              [
+                GxFuturisticSlider(
+                  value: _sliderValue,
+                  min: 0,
+                  max: 100,
+                  label: 'Volume',
+                  labelBuilder: (value) => '${value.toInt()}%',
+                  onChanged: (value) => setState(() => _sliderValue = value),
+                  accentColor: accentColor,
+                ),
+              ],
+            ),
+
+            // Checkboxes & Radios
+            _buildSection(
+              context,
+              'Cases à Cocher & Boutons Radio',
+              accentColor,
+              [
+                GxFuturisticCheckbox(
+                  value: _checkboxValue,
+                  onChanged: (value) => setState(() => _checkboxValue = value ?? false),
+                  label: 'Accepter les conditions',
+                  accentColor: accentColor,
+                ),
+                const SizedBox(height: 16),
+                GxFuturisticRadio<String>(
+                  value: 'option1',
+                  groupValue: _radioValue,
+                  onChanged: (value) => setState(() => _radioValue = value),
+                  label: 'Option 1',
+                  accentColor: accentColor,
+                ),
+                const SizedBox(height: 8),
+                GxFuturisticRadio<String>(
+                  value: 'option2',
+                  groupValue: _radioValue,
+                  onChanged: (value) => setState(() => _radioValue = value),
+                  label: 'Option 2',
+                  accentColor: accentColor,
+                ),
+              ],
+            ),
+
+            // Tabs
+            _buildSection(
+              context,
+              'Onglets',
+              accentColor,
+              [
+                GxFuturisticTabs(
+                  tabs: const ['Onglet 1', 'Onglet 2', 'Onglet 3'],
+                  selectedIndex: _selectedTab,
+                  onTap: (index) => setState(() => _selectedTab = index),
+                  accentColor: accentColor,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Contenu de l\'onglet ${_selectedTab + 1}',
+                  style: NotilusFonts.rajdhani(
+                    fontSize: 13,
+                    color: Colors.white.withOpacity(0.7),
+                  ),
+                ),
+              ],
+            ),
+
+            // Accordion
+            _buildSection(
+              context,
+              'Accordéons',
+              accentColor,
+              [
+                GxFuturisticAccordion(
+                  title: 'Section 1',
+                  icon: Icons.folder_rounded,
+                  accentColor: accentColor,
+                  child: Text(
+                    'Contenu de la section 1',
+                    style: NotilusFonts.rajdhani(
+                      fontSize: 13,
+                      color: Colors.white.withOpacity(0.8),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                GxFuturisticAccordion(
+                  title: 'Section 2',
+                  icon: Icons.folder_rounded,
+                  accentColor: accentColor,
+                  initiallyExpanded: true,
+                  child: Text(
+                    'Contenu de la section 2 (déjà ouvert)',
+                    style: NotilusFonts.rajdhani(
+                      fontSize: 13,
+                      color: Colors.white.withOpacity(0.8),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            // Skeleton
+            _buildSection(
+              context,
+              'Skeleton Loaders',
+              accentColor,
+              [
+                Row(
+                  children: [
+                    GxFuturisticSkeleton(
+                      width: 40,
+                      height: 40,
+                      borderRadius: BorderRadius.circular(20),
+                      accentColor: accentColor,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          GxFuturisticSkeleton(
+                            width: double.infinity,
+                            height: 12,
+                            accentColor: accentColor,
+                          ),
+                          const SizedBox(height: 8),
+                          GxFuturisticSkeleton(
+                            width: 150,
+                            height: 12,
+                            accentColor: accentColor,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+
+            // Avatars
+            _buildSection(
+              context,
+              'Avatars',
+              accentColor,
+              [
+                Wrap(
+                  spacing: 16,
+                  runSpacing: 16,
+                  children: [
+                    GxFuturisticAvatar(
+                      initials: 'JD',
+                      accentColor: accentColor,
+                    ),
+                    GxFuturisticAvatar(
+                      icon: Icons.person_rounded,
+                      accentColor: accentColor,
+                    ),
+                    GxFuturisticAvatar(
+                      size: 60,
+                      initials: 'AB',
+                      accentColor: accentColor,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+
+            // Separators
+            _buildSection(
+              context,
+              'Séparateurs',
+              accentColor,
+              [
+                GxFuturisticSeparator(accentColor: accentColor),
+                const SizedBox(height: 16),
+                GxFuturisticSeparator(
+                  label: 'Séparateur avec label',
+                  accentColor: accentColor,
+                ),
+              ],
+            ),
+
+            // TextArea
+            _buildSection(
+              context,
+              'Zone de Texte Multiligne',
+              accentColor,
+              [
+                GxFuturisticTextArea(
+                  controller: _textareaController,
+                  label: 'Description',
+                  hint: 'Tapez votre description...',
+                  accentColor: accentColor,
+                ),
+              ],
+            ),
+
+            // Alerts
+            _buildSection(
+              context,
+              'Alertes',
+              accentColor,
+              [
+                GxFuturisticAlert(
+                  title: 'Succès',
+                  message: 'L\'opération a été effectuée avec succès',
+                  type: GxFuturisticAlertType.success,
+                  onClose: () {},
+                ),
+                const SizedBox(height: 12),
+                GxFuturisticAlert(
+                  title: 'Erreur',
+                  message: 'Une erreur est survenue',
+                  type: GxFuturisticAlertType.error,
+                  onClose: () {},
+                ),
+                const SizedBox(height: 12),
+                GxFuturisticAlert(
+                  title: 'Avertissement',
+                  message: 'Attention à cette action',
+                  type: GxFuturisticAlertType.warning,
+                  onClose: () {},
+                ),
+                const SizedBox(height: 12),
+                GxFuturisticAlert(
+                  title: 'Information',
+                  message: 'Voici une information importante',
+                  type: GxFuturisticAlertType.info,
+                  accentColor: accentColor,
+                  onClose: () {},
+                ),
+              ],
+            ),
+
+            // Spinner
+            _buildSection(
+              context,
+              'Spinners',
+              accentColor,
+              [
+                Row(
+                  children: [
+                    GxFuturisticSpinner(accentColor: accentColor),
+                    const SizedBox(width: 24),
+                    GxFuturisticSpinner(
+                      size: 60,
+                      accentColor: accentColor,
+                    ),
+                    const SizedBox(width: 24),
+                    GxFuturisticSpinner(
+                      accentColor: accentColor,
+                      message: 'Chargement...',
                     ),
                   ],
                 ),

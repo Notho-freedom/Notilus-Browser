@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/constants/notilus_colors.dart';
 import '../../core/constants/notilus_fonts.dart';
 import 'gx_futuristic_dialog.dart';
+import 'gx_futuristic_components.dart';
 
 /// Dialog de sélection de couleur personnalisé pour Notilus
 class ColorPickerDialog extends StatefulWidget {
