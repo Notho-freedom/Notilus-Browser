@@ -1,7 +1,6 @@
 /// Panel de téléchargements futuriste Notilus GX
 library gx_futuristic_downloads_panel;
 
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
@@ -13,7 +12,6 @@ import '../../services/download_service.dart';
 import '../../models/download_model.dart';
 import '../../services/settings_service.dart';
 import '../common/gx_futuristic_components.dart';
-import '../common/gx_futuristic_dialog.dart';
 import '../../services/gx_notification_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:io';
