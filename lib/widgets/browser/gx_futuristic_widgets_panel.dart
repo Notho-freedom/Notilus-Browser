@@ -123,8 +123,13 @@ class GxFuturisticWidgetsPanel extends StatelessWidget {
             Expanded(
               child: Consumer<SystemMetricsService>(
                 builder: (context, metrics, _) {
-                  final tabManager = Provider.of<TabManager>(context);
-                  metrics.updateTabCount(tabManager.tabs.length);
+                  // Mettre à jour le nombre d'onglets sans déclencher de rebuild
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    final tabManager = Provider.of<TabManager>(context, listen: false);
+                    if (metrics.tabCount != tabManager.tabs.length) {
+                      metrics.updateTabCount(tabManager.tabs.length);
+                    }
+                  });
                   
                   final widgets = [
                     _WidgetData('CPU', '${metrics.cpuUsage.toStringAsFixed(0)}%', 'Utilisation processeur', CupertinoIcons.gauge, _getUsageColor(metrics.cpuUsage)),
@@ -143,9 +148,11 @@ class GxFuturisticWidgetsPanel extends StatelessWidget {
                     separatorBuilder: (_, __) => const SizedBox(height: 12),
                     itemBuilder: (context, index) {
                       final widget = widgets[index];
-                      return _SystemWidgetCard(
-                        widget: widget,
-                        accentColor: accentColor,
+                      return RepaintBoundary(
+                        child: _SystemWidgetCard(
+                          widget: widget,
+                          accentColor: accentColor,
+                        ),
                       );
                     },
                   );

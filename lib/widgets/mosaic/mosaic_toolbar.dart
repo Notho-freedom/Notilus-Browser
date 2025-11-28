@@ -10,6 +10,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../models/mosaic_models.dart';
 import '../../services/mosaic_service.dart';
 import '../../core/services/color_theme_manager.dart';
+import '../common/gx_futuristic_dialog.dart';
+import '../common/gx_futuristic_components.dart';
 
 class MosaicToolbar extends StatefulWidget {
   const MosaicToolbar({super.key});
@@ -299,57 +301,40 @@ class _MosaicToolbarState extends State<MosaicToolbar> {
   void _showNewWorkspaceDialog(BuildContext context, Color accentColor) {
     final controller = TextEditingController();
     
-    showDialog(
+    GxFuturisticDialog.show<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF15151A),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: accentColor.withOpacity(0.5)),
-        ),
-        title: Text(
-          'Nouveau Workspace',
-          style: TextStyle(color: accentColor, fontSize: 16),
-        ),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          style: const TextStyle(color: Colors.white),
-          decoration: InputDecoration(
-            hintText: 'Nom du workspace',
-            hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: accentColor.withOpacity(0.3)),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: accentColor),
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Annuler', style: TextStyle(color: Colors.white.withOpacity(0.6))),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (controller.text.isNotEmpty) {
-                context.read<NotilusMosaicService>().createWorkspace(controller.text);
-                Navigator.pop(context);
-                HapticFeedback.mediumImpact();
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: accentColor,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            child: const Text('Créer'),
-          ),
-        ],
+      title: 'Nouveau Workspace',
+      titleIcon: CupertinoIcons.square_grid_2x2_fill,
+      accentColor: accentColor,
+      width: 450,
+      child: GxFuturisticInput(
+        controller: controller,
+        hint: 'Nom du workspace',
+        prefixIcon: CupertinoIcons.folder,
+        accentColor: accentColor,
+        autofocus: true,
       ),
+      actions: [
+        GxFuturisticButton(
+          label: 'Annuler',
+          variant: GxFuturisticButtonVariant.secondary,
+          accentColor: accentColor,
+          onPressed: () => Navigator.pop(context),
+        ),
+        GxFuturisticButton(
+          label: 'Créer',
+          icon: CupertinoIcons.check_mark,
+          variant: GxFuturisticButtonVariant.primary,
+          accentColor: accentColor,
+          onPressed: () {
+            if (controller.text.isNotEmpty) {
+              context.read<NotilusMosaicService>().createWorkspace(controller.text);
+              Navigator.pop(context);
+              HapticFeedback.mediumImpact();
+            }
+          },
+        ),
+      ],
     );
   }
 }

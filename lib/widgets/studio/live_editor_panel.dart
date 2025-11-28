@@ -10,6 +10,8 @@ import '../../services/studio/studio_service.dart';
 import '../../services/studio/live_editor_service.dart';
 import '../../models/studio/studio_models.dart';
 import '../../core/services/color_theme_manager.dart';
+import '../common/gx_futuristic_dialog.dart';
+import '../common/gx_futuristic_components.dart';
 
 /// Panneau Live Editor
 class LiveEditorPanel extends StatefulWidget {
@@ -803,31 +805,39 @@ class _StyleRow extends StatelessWidget {
 
   void _showEditDialog(BuildContext context) {
     final controller = TextEditingController(text: value);
-    showDialog(
+    final accentColor = Provider.of<ColorThemeManager>(context, listen: false).nativeSecondaryColor;
+    
+    GxFuturisticDialog.show(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Éditer $property'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Annuler'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              onEdit(controller.text);
-              Navigator.pop(context);
-            },
-            child: const Text('Appliquer'),
-          ),
-        ],
+      title: 'Éditer $property',
+      titleIcon: CupertinoIcons.pencil,
+      accentColor: accentColor,
+      width: 450,
+      child: GxFuturisticInput(
+        controller: controller,
+        hint: 'Valeur',
+        prefixIcon: CupertinoIcons.textformat,
+        accentColor: accentColor,
+        autofocus: true,
       ),
+      actions: [
+        GxFuturisticButton(
+          label: 'Annuler',
+          variant: GxFuturisticButtonVariant.secondary,
+          accentColor: accentColor,
+          onPressed: () => Navigator.pop(context),
+        ),
+        GxFuturisticButton(
+          label: 'Appliquer',
+          icon: CupertinoIcons.check_mark,
+          variant: GxFuturisticButtonVariant.primary,
+          accentColor: accentColor,
+          onPressed: () {
+            onEdit(controller.text);
+            Navigator.pop(context);
+          },
+        ),
+      ],
     );
   }
 }
@@ -965,31 +975,39 @@ class _AttributeRow extends StatelessWidget {
 
   void _showEditDialog(BuildContext context) {
     final controller = TextEditingController(text: value);
-    showDialog(
+    final accentColor = Provider.of<ColorThemeManager>(context, listen: false).nativeSecondaryColor;
+    
+    GxFuturisticDialog.show(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Éditer $name'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Annuler'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              onEdit(controller.text);
-              Navigator.pop(context);
-            },
-            child: const Text('Appliquer'),
-          ),
-        ],
+      title: 'Éditer $name',
+      titleIcon: CupertinoIcons.pencil,
+      accentColor: accentColor,
+      width: 450,
+      child: GxFuturisticInput(
+        controller: controller,
+        hint: 'Valeur',
+        prefixIcon: CupertinoIcons.textformat,
+        accentColor: accentColor,
+        autofocus: true,
       ),
+      actions: [
+        GxFuturisticButton(
+          label: 'Annuler',
+          variant: GxFuturisticButtonVariant.secondary,
+          accentColor: accentColor,
+          onPressed: () => Navigator.pop(context),
+        ),
+        GxFuturisticButton(
+          label: 'Appliquer',
+          icon: CupertinoIcons.check_mark,
+          variant: GxFuturisticButtonVariant.primary,
+          accentColor: accentColor,
+          onPressed: () {
+            onEdit(controller.text);
+            Navigator.pop(context);
+          },
+        ),
+      ],
     );
   }
 }

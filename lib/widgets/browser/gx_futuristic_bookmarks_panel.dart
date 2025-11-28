@@ -362,16 +362,18 @@ class _GxFuturisticBookmarksPanelState extends State<GxFuturisticBookmarksPanel>
                       ),
                       itemBuilder: (context, index) {
                         final bookmark = filteredBookmarks[index];
-                        return _BookmarkListItem(
-                          bookmark: bookmark,
-                          accentColor: accentColor,
-                          bgColor: bgColor,
-                          panelOpacity: panelOpacity,
-                          onTap: () {
-                            final tabManager = Provider.of<TabManager>(context, listen: false);
-                            tabManager.addTab(url: bookmark.url);
-                          },
-                          onDelete: () => _deleteBookmark(bookmark),
+                        return RepaintBoundary(
+                          child: _BookmarkListItem(
+                            bookmark: bookmark,
+                            accentColor: accentColor,
+                            bgColor: bgColor,
+                            panelOpacity: panelOpacity,
+                            onTap: () {
+                              final tabManager = Provider.of<TabManager>(context, listen: false);
+                              tabManager.addTab(url: bookmark.url);
+                            },
+                            onDelete: () => _deleteBookmark(bookmark),
+                          ),
                         );
                       },
                     );

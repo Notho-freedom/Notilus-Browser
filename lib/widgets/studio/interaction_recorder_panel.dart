@@ -10,6 +10,9 @@ import '../../services/studio/studio_service.dart';
 import '../../services/studio/interaction_recorder_service.dart';
 import '../../models/studio/studio_models.dart';
 import '../../core/services/color_theme_manager.dart';
+import '../common/gx_futuristic_dialog.dart';
+import '../common/gx_futuristic_components.dart';
+import '../../core/constants/notilus_fonts.dart';
 
 /// Panneau Interaction Recorder
 class InteractionRecorderPanel extends StatefulWidget {
@@ -660,46 +663,54 @@ class _InteractionRecorderPanelState extends State<InteractionRecorderPanel> {
     final selectorController = TextEditingController();
     final textController = TextEditingController();
 
-    showDialog(
+    GxFuturisticDialog.show(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Ajouter une assertion'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: selectorController,
-              decoration: const InputDecoration(
-                labelText: 'Sélecteur CSS',
-                hintText: '#my-element',
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: textController,
-              decoration: const InputDecoration(
-                labelText: 'Texte attendu (optionnel)',
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Annuler'),
+      title: 'Ajouter une assertion',
+      titleIcon: CupertinoIcons.checkmark_circle_fill,
+      accentColor: accentColor,
+      width: 500,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          GxFuturisticInput(
+            controller: selectorController,
+            label: 'Sélecteur CSS',
+            hint: '#my-element',
+            prefixIcon: Icons.code,
+            accentColor: accentColor,
+            autofocus: true,
           ),
-          ElevatedButton(
-            onPressed: () {
-              recorder.addAssertion(
-                selectorController.text,
-                expectedText: textController.text.isNotEmpty ? textController.text : null,
-              );
-              Navigator.pop(context);
-            },
-            child: const Text('Ajouter'),
+          const SizedBox(height: 16),
+          GxFuturisticInput(
+            controller: textController,
+            label: 'Texte attendu (optionnel)',
+            hint: 'Texte à vérifier',
+            prefixIcon: CupertinoIcons.textformat,
+            accentColor: accentColor,
           ),
         ],
       ),
+      actions: [
+        GxFuturisticButton(
+          label: 'Annuler',
+          variant: GxFuturisticButtonVariant.secondary,
+          accentColor: accentColor,
+          onPressed: () => Navigator.pop(context),
+        ),
+        GxFuturisticButton(
+          label: 'Ajouter',
+          icon: CupertinoIcons.check_mark,
+          variant: GxFuturisticButtonVariant.primary,
+          accentColor: accentColor,
+          onPressed: () {
+            recorder.addAssertion(
+              selectorController.text,
+              expectedText: textController.text.isNotEmpty ? textController.text : null,
+            );
+            Navigator.pop(context);
+          },
+        ),
+      ],
     );
   }
 
@@ -710,39 +721,54 @@ class _InteractionRecorderPanelState extends State<InteractionRecorderPanel> {
   ) {
     int seconds = 1;
 
-    showDialog(
+    GxFuturisticDialog.show(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Ajouter une attente'),
-        content: StatefulBuilder(
-          builder: (context, setState) => Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('$seconds seconde(s)'),
-              Slider(
-                value: seconds.toDouble(),
-                min: 1,
-                max: 10,
-                divisions: 9,
-                onChanged: (v) => setState(() => seconds = v.round()),
+      title: 'Ajouter une attente',
+      titleIcon: CupertinoIcons.time,
+      accentColor: accentColor,
+      width: 450,
+      child: StatefulBuilder(
+        builder: (context, setState) => Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '$seconds seconde(s)',
+              style: NotilusFonts.rajdhani(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 16),
+            GxFuturisticSlider(
+              value: seconds.toDouble(),
+              min: 1,
+              max: 10,
+              divisions: 9,
+              accentColor: accentColor,
+              onChanged: (v) => setState(() => seconds = v.round()),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Annuler'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              recorder.addWait(Duration(seconds: seconds));
-              Navigator.pop(context);
-            },
-            child: const Text('Ajouter'),
-          ),
-        ],
       ),
+      actions: [
+        GxFuturisticButton(
+          label: 'Annuler',
+          variant: GxFuturisticButtonVariant.secondary,
+          accentColor: accentColor,
+          onPressed: () => Navigator.pop(context),
+        ),
+        GxFuturisticButton(
+          label: 'Ajouter',
+          icon: CupertinoIcons.check_mark,
+          variant: GxFuturisticButtonVariant.primary,
+          accentColor: accentColor,
+          onPressed: () {
+            recorder.addWait(Duration(seconds: seconds));
+            Navigator.pop(context);
+          },
+        ),
+      ],
     );
   }
 }

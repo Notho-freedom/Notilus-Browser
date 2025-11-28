@@ -40,13 +40,14 @@ class _GxTestPanelState extends State<GxTestPanel> {
   Widget build(BuildContext context) {
     final accentColor = NotilusColors.getSecondaryColor(context);
 
-    return Container(
-      color: NotilusColors.getNativeBackgroundColor(context),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    return RepaintBoundary(
+      child: Container(
+        color: NotilusColors.getNativeBackgroundColor(context),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             // Header
             Row(
               children: [
@@ -835,6 +836,7 @@ class _GxTestPanelState extends State<GxTestPanel> {
             const SizedBox(height: 32),
           ],
         ),
+      ),
       ),
     );
   }
