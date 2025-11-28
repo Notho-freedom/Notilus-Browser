@@ -167,6 +167,73 @@ class _GroupedTabBarState extends State<GroupedTabBar> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        // Construire la liste des widgets à afficher
+        final List<Widget> tabBarItems = [];
+        
+        for (final group in groups) {
+          // Si le groupe est expandé, insérer ses onglets avant le groupe
+          if (group.isExpanded) {
+            final selectedGroupId = groupService.selectedGroupId;
+            final isSelected = selectedGroupId == group.id;
+            
+            // Si un groupe est sélectionné et ce n'est pas celui-ci, ne pas afficher les onglets
+            if (selectedGroupId != null && !isSelected) {
+              // Ne rien ajouter, juste le groupe
+            } else {
+              // Ajouter les onglets du groupe
+              for (final tabId in group.tabIds) {
+                try {
+                  final tab = tabManager.tabs.firstWhere((t) => t.id == tabId);
+                  final isActive = tab.id == tabManager.activeTab?.id;
+                  
+                  // Si le groupe est sélectionné, n'afficher que l'onglet actif
+                  if (isSelected && !isActive) {
+                    continue;
+                  }
+                  
+                  tabBarItems.add(
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        minWidth: 100,
+                        maxWidth: 200,
+                      ),
+                      child: _ExpandedTabItem(
+                        tab: tab,
+                        isActive: isActive,
+                        colorCode: group.colorCode,
+                        accentColor: accentColor,
+                        onClose: () => tabManager.closeTab(tab.id),
+                        onSelect: () {
+                          tabManager.selectTab(tab.id);
+                          groupService.selectGroup(group.id);
+                        },
+                      ),
+                    ),
+                  );
+                } catch (e) {
+                  // Onglet introuvable, ignorer
+                }
+              }
+            }
+          }
+          
+          // Ajouter le widget du groupe
+          tabBarItems.add(
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: constraints.maxWidth * 0.4,
+                minWidth: 150,
+              ),
+              child: _GroupWidget(
+                group: group,
+                tabManager: tabManager,
+                groupService: groupService,
+                accentColor: accentColor,
+              ),
+            ),
+          );
+        }
+        
         return Scrollbar(
           controller: _scrollController,
           thickness: 2,
@@ -177,20 +244,7 @@ class _GroupedTabBarState extends State<GroupedTabBar> {
             scrollDirection: Axis.horizontal,
             child: Row(
               mainAxisSize: MainAxisSize.min,
-              children: groups.map((group) {
-                return ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: constraints.maxWidth * 0.4, // Limiter à 40% de la largeur disponible
-                    minWidth: 150,
-                  ),
-                  child: _GroupWidget(
-                    group: group,
-                    tabManager: tabManager,
-                    groupService: groupService,
-                    accentColor: accentColor,
-                  ),
-                );
-              }).toList(),
+              children: tabBarItems,
             ),
           ),
         );
@@ -233,61 +287,17 @@ class _GroupWidget extends StatelessWidget {
           width: isGroupActive ? 1.5 : 1,
         ),
       ),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(
-          maxHeight: 32, // Limiter à 32px pour tenir dans 36px (avec margin 1px)
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            // En-tête du groupe
-            _GroupHeader(
-              group: group,
-              isActive: isGroupActive,
-              groupService: groupService,
-              accentColor: accentColor,
-              colorCode: group.colorCode,
-            ),
-            // Onglets du groupe (si expandé) - Afficher seulement si on a de la place
-            if (group.isExpanded)
-              Flexible(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(
-                    maxHeight: 12, // Hauteur réduite pour les onglets (32 - 20 = 12)
-                    maxWidth: 400,
-                  ),
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    physics: const ClampingScrollPhysics(),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: group.tabIds.map((tabId) {
-                    try {
-                      final tab = tabManager.tabs.firstWhere(
-                        (t) => t.id == tabId,
-                      );
-                      
-                      final isActive = tab.id == activeTab?.id;
-                      
-                      return _GroupedTabItem(
-                        tab: tab,
-                        isActive: isActive,
-                        colorCode: group.colorCode,
-                        accentColor: accentColor,
-                        onClose: () => tabManager.closeTab(tab.id),
-                        onSelect: () => tabManager.selectTab(tab.id),
-                      );
-                    } catch (e) {
-                      return const SizedBox.shrink();
-                    }
-                  }).toList(),
-                    ),
-                  ),
-                ),
-              ),
-          ],
+      child: Container(
+        height: 28, // Hauteur fixe pour le groupe
+        child: _GroupHeader(
+          group: group,
+          isActive: isGroupActive,
+          groupService: groupService,
+          accentColor: accentColor,
+          colorCode: group.colorCode,
+          onToggle: () {
+            groupService.toggleGroup(group.id);
+          },
         ),
       ),
     );
@@ -301,18 +311,21 @@ class _GroupHeader extends StatelessWidget {
   final Color accentColor;
   final int colorCode;
 
+  final VoidCallback? onToggle;
+
   const _GroupHeader({
     required this.group,
     required this.isActive,
     required this.groupService,
     required this.accentColor,
     required this.colorCode,
+    this.onToggle,
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => groupService.toggleGroup(group.id),
+      onTap: onToggle ?? () => groupService.toggleGroup(group.id),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
         height: 18, // Hauteur fixe pour l'en-tête
@@ -393,6 +406,129 @@ class _GroupHeader extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Widget pour les onglets insérés dans la tab bar quand un groupe est expandé
+class _ExpandedTabItem extends StatelessWidget {
+  final TabModel tab;
+  final bool isActive;
+  final int colorCode;
+  final Color accentColor;
+  final VoidCallback onClose;
+  final VoidCallback onSelect;
+
+  const _ExpandedTabItem({
+    required this.tab,
+    required this.isActive,
+    required this.colorCode,
+    required this.accentColor,
+    required this.onClose,
+    required this.onSelect,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onSelect,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        height: 28,
+        decoration: BoxDecoration(
+          color: isActive
+              ? Color(colorCode).withOpacity(0.3)
+              : Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: isActive
+                ? Color(colorCode).withOpacity(0.6)
+                : Color(colorCode).withOpacity(0.2),
+            width: isActive ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Favicon ou icône
+            _buildFavicon(),
+            const SizedBox(width: 6),
+            // Titre (tronqué)
+            Flexible(
+              child: Text(
+                tab.title ?? tab.url ?? 'Nouvel onglet',
+                style: TextStyle(
+                  color: isActive ? Colors.white : Colors.white70,
+                  fontSize: 11,
+                  fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 4),
+            // Bouton fermer
+            GestureDetector(
+              onTap: onClose,
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                child: Icon(
+                  CupertinoIcons.xmark,
+                  size: 12,
+                  color: Colors.white.withOpacity(0.4),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFavicon() {
+    if (tab.favicon != null && tab.favicon!.isNotEmpty) {
+      try {
+        // TabModel utilise String? pour favicon (base64 ou URL)
+        // Essayer de décoder en base64 d'abord
+        try {
+          final faviconBytes = base64Decode(tab.favicon!);
+          return Image.memory(
+            faviconBytes,
+            width: 16,
+            height: 16,
+            errorBuilder: (context, error, stackTrace) {
+              return Icon(
+                CupertinoIcons.globe,
+                size: 14,
+                color: Color(colorCode),
+              );
+            },
+          );
+        } catch (e) {
+          // Si ce n'est pas du base64, c'est probablement une URL
+          return Image.network(
+            tab.favicon!,
+            width: 16,
+            height: 16,
+            errorBuilder: (context, error, stackTrace) {
+              return Icon(
+                CupertinoIcons.globe,
+                size: 14,
+                color: Color(colorCode),
+              );
+            },
+          );
+        }
+      } catch (e) {
+        // En cas d'erreur, afficher l'icône par défaut
+      }
+    }
+    
+    return Icon(
+      CupertinoIcons.globe,
+      size: 14,
+      color: Color(colorCode),
     );
   }
 }

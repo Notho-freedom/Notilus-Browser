@@ -52,6 +52,7 @@ class TabGroupService extends ChangeNotifier {
   final Map<String, TabGroup> _groups = {};
   final Map<String, String> _tabToGroup = {}; // tabId -> groupId
   final List<String> _groupOrder = [];
+  String? _selectedGroupId; // Groupe dont un onglet a été sélectionné
   
   // Couleurs prédéfinies pour les domaines
   static final List<int> _domainColors = [
@@ -147,6 +148,16 @@ class TabGroupService extends ChangeNotifier {
     final newGroupOrder = <String>[];
     final processedTabs = <String>{};
     
+    // Vérifier si l'onglet actif a changé de groupe
+    final activeTab = _tabManager.activeTab;
+    if (activeTab != null && _selectedGroupId != null) {
+      final currentGroupId = _tabToGroup[activeTab.id];
+      if (currentGroupId != _selectedGroupId) {
+        // L'onglet actif n'est plus dans le groupe sélectionné, réinitialiser
+        _selectedGroupId = null;
+      }
+    }
+    
     // Grouper les onglets par domaine
     final domainGroups = <String, List<TabModel>>{};
     
@@ -214,10 +225,31 @@ class TabGroupService extends ChangeNotifier {
   void toggleGroup(String groupId) {
     final group = _groups[groupId];
     if (group != null) {
-      _groups[groupId] = group.copyWith(isExpanded: !group.isExpanded);
+      final newExpanded = !group.isExpanded;
+      _groups[groupId] = group.copyWith(isExpanded: newExpanded);
+      
+      // Réinitialiser la sélection si on ferme le groupe
+      if (!newExpanded && _selectedGroupId == groupId) {
+        _selectedGroupId = null;
+      }
+      
       notifyListeners();
     }
   }
+  
+  /// Marquer un groupe comme sélectionné (un de ses onglets a été choisi)
+  void selectGroup(String groupId) {
+    _selectedGroupId = groupId;
+    notifyListeners();
+  }
+  
+  /// Vérifier si un groupe est sélectionné
+  bool isGroupSelected(String groupId) {
+    return _selectedGroupId == groupId;
+  }
+  
+  /// Obtenir le groupe sélectionné
+  String? get selectedGroupId => _selectedGroupId;
   
   /// Épingler/désépingler un groupe
   void togglePinGroup(String groupId) {
