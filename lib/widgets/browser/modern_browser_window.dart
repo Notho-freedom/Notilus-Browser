@@ -10,6 +10,7 @@ import '../../services/update_service.dart';
 import '../../core/animations/notilus_animations.dart';
 import 'gx_address_bar.dart';
 import 'gx_tab_bar.dart';
+import 'grouped_tab_bar.dart';
 import 'gx_sidebar.dart';
 import 'web_content_view.dart';
 import 'home_pages/home_page_factory.dart';
@@ -267,11 +268,11 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
               children: [
                 Column(
                   children: [
-                    GXTabBar(
+                    GroupedTabBar(
                       onMenuTap: _toggleSidebar,
                       onGroupsPressed: () {
                         setState(() {
-                          _currentSection = SidebarSection.favorites; // Les groupes sont dans favorites pour l'instant
+                          _currentSection = SidebarSection.favorites;
                           _isSidebarVisible = true;
                         });
                       },

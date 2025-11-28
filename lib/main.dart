@@ -9,6 +9,7 @@ import 'core/services/color_theme_manager.dart';
 import 'screens/home_screen.dart';
 import 'screens/splash_screen.dart';
 import 'services/tab_manager.dart';
+import 'services/tab_group_service.dart';
 import 'services/tab_webview_manager.dart';
 import 'services/side_webview_manager.dart';
 import 'services/system_metrics_service.dart';
@@ -187,6 +188,10 @@ class NotilusApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => WallpaperManager()),
         ChangeNotifierProvider(create: (_) => DownloadService()),
         ChangeNotifierProvider(create: (_) => TabManager()),
+        ChangeNotifierProvider(create: (context) {
+          final tabManager = context.read<TabManager>();
+          return TabGroupService(tabManager);
+        }),
         ChangeNotifierProvider(create: (_) => DevToolsService()),
         ChangeNotifierProvider(create: (_) => StudioService()),
         ChangeNotifierProvider(create: (_) => LighthouseService()),
