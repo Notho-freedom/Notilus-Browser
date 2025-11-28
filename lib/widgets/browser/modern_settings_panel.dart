@@ -2346,137 +2346,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
               style: TextStyle(color: Colors.white60, fontSize: 11),
             ),
             const SizedBox(height: 12),
-            StatefulBuilder(
-              builder: (context, setState) {
-                final aiService = AiService();
-                return FutureBuilder<List<String>?>(
-                  future: aiService.getModels(),
-                  builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: Center(child: CircularProgressIndicator()),
-                  );
-                }
-                
-                final models = snapshot.data ?? [];
-                final currentModel = _settings.aiPreferredModel;
-                
-                if (models.isEmpty) {
-                  return Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.orange.withOpacity(0.3)),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(CupertinoIcons.exclamationmark_triangle, size: 16, color: Colors.orange),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Impossible de charger les modèles. Vérifiez la connexion au backend.',
-                            style: TextStyle(color: Colors.white70, fontSize: 10),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-                
-                return Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.white24),
-                      ),
-                      child: DropdownButton<String>(
-                        value: currentModel.isEmpty ? null : (models.contains(currentModel) ? currentModel : null),
-                        isExpanded: true,
-                        hint: const Text(
-                          'Auto-sélection (recommandé)',
-                          style: TextStyle(color: Colors.white70, fontSize: 12),
-                        ),
-                        dropdownColor: const Color(0xFF1A1A1A),
-                        style: const TextStyle(color: Colors.white, fontSize: 12),
-                        underline: const SizedBox(),
-                        items: [
-                          const DropdownMenuItem<String>(
-                            value: '',
-                            child: Text('Auto-sélection (recommandé)'),
-                          ),
-                          ...models.map((model) {
-                            return DropdownMenuItem<String>(
-                              value: model,
-                              child: Text(model),
-                            );
-                          }),
-                        ],
-                        onChanged: (value) {
-                          _settings.setAiPreferredModel(value ?? '');
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    if (models.isNotEmpty) ...[
-                      Text(
-                        'Modèles disponibles:',
-                        style: TextStyle(color: Colors.white60, fontSize: 10),
-                      ),
-                      const SizedBox(height: 6),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: models.take(4).map((model) {
-                          final shortName = model.split('-').take(2).join('-');
-                          final isSelected = currentModel == model;
-                          return ChoiceChip(
-                            label: Text(shortName, style: const TextStyle(fontSize: 10)),
-                            selected: isSelected,
-                            onSelected: (_) {
-                              _settings.setAiPreferredModel(isSelected ? '' : model);
-                            },
-                            selectedColor: gxRed.withOpacity(0.2),
-                            backgroundColor: Colors.white.withOpacity(0.05),
-                            side: BorderSide(
-                              color: isSelected ? gxRed : Colors.white24,
-                            ),
-                            labelStyle: TextStyle(
-                              color: isSelected ? gxRed : Colors.white70,
-                              fontSize: 10,
-                            ),
-                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            visualDensity: VisualDensity.compact,
-                          );
-                        }).toList(),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          TextButton.icon(
-                            onPressed: () {
-                              setState(() {});
-                            },
-                            icon: const Icon(CupertinoIcons.arrow_clockwise, size: 14),
-                            label: const Text('Actualiser', style: TextStyle(fontSize: 10)),
-                            style: TextButton.styleFrom(
-                              foregroundColor: Colors.white70,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ],
-                );
-                  },
-                );
-              },
-            ),
+            _AiModelsSelector(gxRed: gxRed),
             const SizedBox(height: 28),
             
             // Fonctionnalités AI
@@ -3415,6 +3285,166 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
           ),
         ],
       ),
+    );
+  }
+}
+
+// Widget pour sélectionner les modèles AI avec rafraîchissement
+class _AiModelsSelector extends StatefulWidget {
+  final Color gxRed;
+  
+  const _AiModelsSelector({required this.gxRed});
+  
+  @override
+  State<_AiModelsSelector> createState() => _AiModelsSelectorState();
+}
+
+class _AiModelsSelectorState extends State<_AiModelsSelector> {
+  final AiService _aiService = AiService();
+  final SettingsService _settings = SettingsService();
+  Future<List<String>?>? _modelsFuture;
+  
+  @override
+  void initState() {
+    super.initState();
+    _loadModels();
+  }
+  
+  void _loadModels() {
+    setState(() {
+      _modelsFuture = _aiService.getModels();
+    });
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<String>?>(
+      future: _modelsFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        
+        final models = snapshot.data ?? [];
+        final currentModel = _settings.aiPreferredModel;
+        
+        if (models.isEmpty) {
+          return Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.orange.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.orange.withOpacity(0.3)),
+            ),
+            child: Row(
+              children: [
+                Icon(CupertinoIcons.exclamationmark_triangle, size: 16, color: Colors.orange),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Impossible de charger les modèles. Vérifiez la connexion au backend.',
+                    style: TextStyle(color: Colors.white70, fontSize: 10),
+                  ),
+                ),
+                TextButton(
+                  onPressed: _loadModels,
+                  child: const Text('Réessayer', style: TextStyle(fontSize: 10)),
+                ),
+              ],
+            ),
+          );
+        }
+        
+        return Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.white24),
+              ),
+              child: DropdownButton<String>(
+                value: currentModel.isEmpty ? null : (models.contains(currentModel) ? currentModel : null),
+                isExpanded: true,
+                hint: const Text(
+                  'Auto-sélection (recommandé)',
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+                dropdownColor: const Color(0xFF1A1A1A),
+                style: const TextStyle(color: Colors.white, fontSize: 12),
+                underline: const SizedBox(),
+                items: [
+                  const DropdownMenuItem<String>(
+                    value: '',
+                    child: Text('Auto-sélection (recommandé)'),
+                  ),
+                  ...models.map((model) {
+                    return DropdownMenuItem<String>(
+                      value: model,
+                      child: Text(model),
+                    );
+                  }),
+                ],
+                onChanged: (value) {
+                  _settings.setAiPreferredModel(value ?? '');
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (models.isNotEmpty) ...[
+              Text(
+                'Modèles disponibles (${models.length}):',
+                style: TextStyle(color: Colors.white60, fontSize: 10),
+              ),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: models.map((model) {
+                  final shortName = model.split('-').take(2).join('-');
+                  final isSelected = currentModel == model;
+                  return ChoiceChip(
+                    label: Text(shortName, style: const TextStyle(fontSize: 10)),
+                    selected: isSelected,
+                    onSelected: (_) {
+                      _settings.setAiPreferredModel(isSelected ? '' : model);
+                    },
+                    selectedColor: widget.gxRed.withOpacity(0.2),
+                    backgroundColor: Colors.white.withOpacity(0.05),
+                    side: BorderSide(
+                      color: isSelected ? widget.gxRed : Colors.white24,
+                    ),
+                    labelStyle: TextStyle(
+                      color: isSelected ? widget.gxRed : Colors.white70,
+                      fontSize: 10,
+                    ),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: VisualDensity.compact,
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton.icon(
+                    onPressed: _loadModels,
+                    icon: const Icon(CupertinoIcons.arrow_clockwise, size: 14),
+                    label: const Text('Actualiser la liste', style: TextStyle(fontSize: 10)),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.white70,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        );
+      },
     );
   }
 }

@@ -15,11 +15,18 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # Liste des modèles Groq avec priorité (du plus performant au moins performant)
+# Modèles mis à jour - llama-3.1-70b-versatile a été décommissionné
+# Cette liste est utilisée pour l'auto-switch en cas d'erreur
 GROQ_MODELS = [
-    "llama-3.1-70b-versatile",  # Modèle principal - très performant
-    "llama-3.1-8b-instant",     # Fallback rapide
-    "mixtral-8x7b-32768",      # Alternative puissante
-    "gemma-7b-it",             # Fallback léger
+    "llama-3.3-70b-versatile",      # Modèle principal - très performant (remplacement de 3.1-70b)
+    "llama-3.1-405b-reasoning",     # Modèle de raisonnement avancé
+    "llama-3.1-8b-instant",          # Fallback rapide
+    "llama-3.2-11b-vision-preview",  # Modèle avec vision
+    "mixtral-8x7b-32768",           # Alternative puissante
+    "gemma2-9b-it",                  # Modèle Gemma 2
+    "llama-3.2-3b-preview",          # Modèle léger
+    "gemma-7b-it",                   # Fallback léger
+    "llama-3.2-1b-preview",          # Modèle très léger
 ]
 
 # Modèle actuel utilisé
@@ -435,13 +442,32 @@ async def get_suggestions(request: SuggestionRequest, http_request: Request):
 
 
 @router.get("/models")
-async def list_models():
-    """Retourne la liste des modèles disponibles."""
+async def list_models(http_request: Request):
+    """
+    Retourne la liste complète des modèles Groq disponibles.
+    
+    Retourne tous les modèles Groq connus. Les modèles décommissionnés seront
+    automatiquement ignorés lors de l'utilisation grâce à l'auto-switch.
+    """
+    # Liste complète des modèles Groq (mis à jour - excluant les modèles décommissionnés)
+    all_groq_models = [
+        "llama-3.3-70b-versatile",      # Modèle principal - très performant
+        "llama-3.1-405b-reasoning",      # Modèle de raisonnement avancé
+        "llama-3.1-8b-instant",          # Fallback rapide
+        "llama-3.2-11b-vision-preview",  # Modèle avec vision
+        "llama-3.2-3b-preview",          # Modèle léger
+        "llama-3.2-1b-preview",          # Modèle très léger
+        "mixtral-8x7b-32768",           # Alternative puissante
+        "gemma2-9b-it",                  # Modèle Gemma 2
+        "gemma-7b-it",                   # Fallback léger
+    ]
+    
     return {
         "status": "ok",
-        "models": GROQ_MODELS,
-        "current_model": GROQ_MODELS[_current_model_index],
+        "models": all_groq_models,
+        "current_model": GROQ_MODELS[_current_model_index] if GROQ_MODELS else all_groq_models[0],
         "auto_switch": True,
+        "source": "static",
     }
 
 
