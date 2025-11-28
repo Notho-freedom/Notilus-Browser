@@ -226,6 +226,20 @@ class TabGroupService extends ChangeNotifier {
     final group = _groups[groupId];
     if (group != null) {
       final newExpanded = !group.isExpanded;
+      
+      // Si on expand un groupe, fermer tous les autres
+      if (newExpanded) {
+        for (final otherGroupId in _groups.keys) {
+          if (otherGroupId != groupId && _groups[otherGroupId]!.isExpanded) {
+            _groups[otherGroupId] = _groups[otherGroupId]!.copyWith(isExpanded: false);
+          }
+        }
+        // Réinitialiser la sélection des autres groupes
+        if (_selectedGroupId != null && _selectedGroupId != groupId) {
+          _selectedGroupId = null;
+        }
+      }
+      
       _groups[groupId] = group.copyWith(isExpanded: newExpanded);
       
       // Réinitialiser la sélection si on ferme le groupe
@@ -233,6 +247,18 @@ class TabGroupService extends ChangeNotifier {
         _selectedGroupId = null;
       }
       
+      notifyListeners();
+    }
+  }
+  
+  /// Fermer un groupe (utilisé quand on sélectionne un onglet)
+  void collapseGroup(String groupId) {
+    final group = _groups[groupId];
+    if (group != null && group.isExpanded) {
+      _groups[groupId] = group.copyWith(isExpanded: false);
+      if (_selectedGroupId == groupId) {
+        _selectedGroupId = null;
+      }
       notifyListeners();
     }
   }
