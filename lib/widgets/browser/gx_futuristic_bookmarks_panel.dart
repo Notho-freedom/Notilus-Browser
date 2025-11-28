@@ -179,7 +179,9 @@ class _GxFuturisticBookmarksPanelState extends State<GxFuturisticBookmarksPanel>
         url: activeTab.url!,
         favicon: activeTab.favicon,
         description: result['description'],
-        tags: (result['tags'] as String?)?.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList() ?? [],
+        tags: result['tags'] != null 
+            ? (result['tags'] as String).split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList()
+            : [],
         createdAt: DateTime.now(),
       );
       await _bookmarkService.addBookmark(bookmark);
@@ -335,8 +337,8 @@ class _GxFuturisticBookmarksPanelState extends State<GxFuturisticBookmarksPanel>
                           filteredBookmarks = _searchQuery.isEmpty
                               ? bookmarks
                               : bookmarks.where((bookmark) {
-                                  final title = (bookmark.title ?? '').toLowerCase();
-                                  final url = (bookmark.url ?? '').toLowerCase();
+                                  final title = bookmark.title.toLowerCase();
+                                  final url = bookmark.url.toLowerCase();
                                   final desc = (bookmark.description ?? '').toLowerCase();
                                   return title.contains(_searchQuery) ||
                                          url.contains(_searchQuery) ||
