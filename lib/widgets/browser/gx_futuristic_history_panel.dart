@@ -29,7 +29,12 @@ class _GxFuturisticHistoryPanelState extends State<GxFuturisticHistoryPanel> {
   final HistoryService _historyService = HistoryService();
   late Future _historyFuture;
   final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _filterController = TextEditingController();
   String _searchQuery = '';
+  String _selectedPeriodFilter = 'Toutes';
+  String _selectedDomainFilter = 'Tous';
+  final Map<String, bool> _expandedPeriods = {};
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -40,12 +45,33 @@ class _GxFuturisticHistoryPanelState extends State<GxFuturisticHistoryPanel> {
         _searchQuery = _searchController.text.toLowerCase();
       });
     });
+    _filterController.addListener(() {
+      setState(() {
+        // Le filtre sera géré par les sélecteurs
+      });
+    });
+    // Initialiser toutes les périodes comme expandées
+    _expandedPeriods.addAll({
+      'Aujourd\'hui': true,
+      'Hier': true,
+      'Cette semaine': true,
+      'Ce mois': true,
+      'Plus ancien': true,
+    });
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _filterController.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+  
+  void _togglePeriod(String period) {
+    setState(() {
+      _expandedPeriods[period] = !(_expandedPeriods[period] ?? true);
+    });
   }
 
   Future<void> _refresh() async {
@@ -171,7 +197,6 @@ class _GxFuturisticHistoryPanelState extends State<GxFuturisticHistoryPanel> {
             // Dimensions adaptatives selon la taille du panel
             final isCompact = constraints.maxWidth < 400;
             final isMedium = constraints.maxWidth >= 400 && constraints.maxWidth < 600;
-            final isLarge = constraints.maxWidth >= 600;
             
             // Padding adaptatif
             final horizontalPadding = isCompact ? 12.0 : isMedium ? 16.0 : 20.0;
@@ -247,6 +272,13 @@ class _GxFuturisticHistoryPanelState extends State<GxFuturisticHistoryPanel> {
 
                         // Grouper les items par période
                         final groupedItems = _groupItemsByPeriod(filteredItems);
+                        
+                        // Filtrer par période si sélectionnée
+                        final filteredGroupedItems = _selectedPeriodFilter == 'Toutes'
+                            ? groupedItems
+                            : groupedItems.containsKey(_selectedPeriodFilter)
+                                ? {_selectedPeriodFilter: groupedItems[_selectedPeriodFilter]!}
+                                : <String, List<dynamic>>{};
 
                         if (filteredItems.isEmpty) {
                           return Center(
@@ -284,57 +316,138 @@ class _GxFuturisticHistoryPanelState extends State<GxFuturisticHistoryPanel> {
                           );
                         }
 
-                        // Construire la liste avec séparateurs
+                        // Extraire les domaines uniques pour le filtre
+                        final uniqueDomains = <String>{};
+                        for (final item in filteredItems) {
+                          uniqueDomains.add(_extractDomainFromUrl(item.url));
+                        }
+                        final sortedDomains = uniqueDomains.toList()..sort();
+
+                        // Construire la liste avec séparateurs et sticky headers
                         final List<Widget> listItems = [];
                         int itemIndex = 0;
                         
-                        groupedItems.forEach((period, periodItems) {
-                          // Ajouter le séparateur avec label
+                        filteredGroupedItems.forEach((period, periodItems) {
+                          final isExpanded = _expandedPeriods[period] ?? true;
+                          
+                          // Ajouter le séparateur avec label cliquable
                           if (listItems.isNotEmpty) {
                             listItems.add(
                               Padding(
                                 padding: EdgeInsets.symmetric(vertical: itemSpacing * 2),
-                                child: GxFuturisticSeparator(
+                                child: _PeriodSeparator(
                                   label: period,
                                   accentColor: accentColor,
+                                  isExpanded: isExpanded,
+                                  onTap: () => _togglePeriod(period),
+                                ),
+                              ),
+                            );
+                          } else {
+                            // Premier séparateur
+                            listItems.add(
+                              Padding(
+                                padding: EdgeInsets.only(bottom: itemSpacing * 2),
+                                child: _PeriodSeparator(
+                                  label: period,
+                                  accentColor: accentColor,
+                                  isExpanded: isExpanded,
+                                  onTap: () => _togglePeriod(period),
                                 ),
                               ),
                             );
                           }
                           
-                          // Ajouter les items de cette période
-                          for (final item in periodItems) {
-                            listItems.add(
-                              RepaintBoundary(
-                                child: _HistoryListItem(
-                                  item: item,
-                                  accentColor: accentColor,
-                                  bgColor: bgColor,
-                                  panelOpacity: panelOpacity,
-                                  isCompact: isCompact,
-                                  isMedium: isMedium,
-                                  titleFontSize: titleFontSize,
-                                  urlFontSize: urlFontSize,
-                                  metaFontSize: metaFontSize,
-                                  itemHeight: itemHeight,
-                                  faviconSize: faviconSize,
-                                  index: itemIndex++,
-                                  onTap: () {
-                                    final tabManager = Provider.of<TabManager>(context, listen: false);
-                                    tabManager.addTab(url: item.url);
-                                  },
+                          // Ajouter les items de cette période si expandée
+                          if (isExpanded) {
+                            for (final item in periodItems) {
+                              // Filtrer par domaine si sélectionné
+                              if (_selectedDomainFilter != 'Tous') {
+                                final domain = _extractDomainFromUrl(item.url);
+                                if (domain != _selectedDomainFilter) {
+                                  continue;
+                                }
+                              }
+                              
+                              listItems.add(
+                                RepaintBoundary(
+                                  child: _HistoryListItem(
+                                    item: item,
+                                    accentColor: accentColor,
+                                    bgColor: bgColor,
+                                    panelOpacity: panelOpacity,
+                                    isCompact: isCompact,
+                                    isMedium: isMedium,
+                                    titleFontSize: titleFontSize,
+                                    urlFontSize: urlFontSize,
+                                    metaFontSize: metaFontSize,
+                                    itemHeight: itemHeight,
+                                    faviconSize: faviconSize,
+                                    index: itemIndex++,
+                                    onTap: () {
+                                      final tabManager = Provider.of<TabManager>(context, listen: false);
+                                      tabManager.addTab(url: item.url);
+                                    },
+                                  ),
                                 ),
-                              ),
-                            );
+                              );
+                            }
                           }
                         });
 
-                        return ListView(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: horizontalPadding,
-                            vertical: itemSpacing,
-                          ),
-                          children: listItems,
+                        return Column(
+                          children: [
+                            // Filtres
+                            if (!isCompact) ...[
+                              Padding(
+                                padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: itemSpacing),
+                                child: Row(
+                                  children: [
+                                    // Filtre par période
+                                    Expanded(
+                                      child: _FilterDropdown(
+                                        label: 'Période',
+                                        value: _selectedPeriodFilter,
+                                        items: ['Toutes', ...groupedItems.keys.toList()],
+                                        accentColor: accentColor,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            _selectedPeriodFilter = value ?? 'Toutes';
+                                          });
+                                        },
+                                      ),
+                                    ),
+                                    SizedBox(width: itemSpacing),
+                                    // Filtre par domaine
+                                    Expanded(
+                                      child: _FilterDropdown(
+                                        label: 'Domaine',
+                                        value: _selectedDomainFilter,
+                                        items: ['Tous', ...sortedDomains],
+                                        accentColor: accentColor,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            _selectedDomainFilter = value ?? 'Tous';
+                                          });
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                            // Liste avec scroll
+                            Expanded(
+                              child: ListView(
+                                controller: _scrollController,
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: horizontalPadding,
+                                  vertical: itemSpacing,
+                                ),
+                                children: listItems,
+                              ),
+                            ),
+                          ],
                         );
                       },
                     ),
@@ -344,6 +457,130 @@ class _GxFuturisticHistoryPanelState extends State<GxFuturisticHistoryPanel> {
             );
           },
         ),
+      ),
+    );
+  }
+  
+  String _extractDomainFromUrl(String url) {
+    try {
+      final uri = Uri.parse(url);
+      if (uri.host.isNotEmpty) {
+        return uri.host.replaceFirst(RegExp(r'^www\.'), '');
+      }
+    } catch (_) {}
+    return 'unknown';
+  }
+}
+
+/// Séparateur de période avec collapse/expand
+class _PeriodSeparator extends StatelessWidget {
+  final String label;
+  final Color accentColor;
+  final bool isExpanded;
+  final VoidCallback onTap;
+
+  const _PeriodSeparator({
+    required this.label,
+    required this.accentColor,
+    required this.isExpanded,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: Row(
+          children: [
+            AnimatedRotation(
+              turns: isExpanded ? 0.25 : 0.0,
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeInOut,
+              child: Icon(
+                CupertinoIcons.chevron_right,
+                size: 14,
+                color: accentColor.withOpacity(0.7),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: GxFuturisticSeparator(
+                label: label,
+                accentColor: accentColor,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Dropdown de filtre
+class _FilterDropdown extends StatelessWidget {
+  final String label;
+  final String value;
+  final List<String> items;
+  final Color accentColor;
+  final ValueChanged<String?> onChanged;
+
+  const _FilterDropdown({
+    required this.label,
+    required this.value,
+    required this.items,
+    required this.accentColor,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: accentColor.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Text(
+            '$label: ',
+            style: NotilusFonts.rajdhani(
+              fontSize: 11,
+              color: Colors.white.withOpacity(0.7),
+            ),
+          ),
+          Expanded(
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: value,
+                isExpanded: true,
+                dropdownColor: const Color(0xFF1A1A1F),
+                style: NotilusFonts.rajdhani(
+                  fontSize: 11,
+                  color: Colors.white,
+                ),
+                icon: Icon(
+                  CupertinoIcons.chevron_down,
+                  size: 14,
+                  color: accentColor,
+                ),
+                items: items.map((item) {
+                  return DropdownMenuItem<String>(
+                    value: item,
+                    child: Text(item),
+                  );
+                }).toList(),
+                onChanged: onChanged,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -452,9 +689,11 @@ class _HistoryListItemState extends State<_HistoryListItem> {
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(widget.isCompact ? 6 : 8),
                   border: _isHovered
-                      ? Border.all(
-                          color: widget.accentColor.withOpacity(0.3),
-                          width: 1,
+                      ? Border(
+                          left: BorderSide(
+                            color: widget.accentColor,
+                            width: 2,
+                          ),
                         )
                       : null,
                 ),
@@ -509,20 +748,20 @@ class _HistoryListItemState extends State<_HistoryListItem> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            // Titre
-                            Text(
-                              widget.item.title,
-                              maxLines: widget.isCompact ? 1 : 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: NotilusFonts.rajdhani(
-                                fontSize: widget.titleFontSize,
-                                fontWeight: FontWeight.w600,
-                                color: _isHovered
-                                    ? Colors.white
-                                    : Colors.white.withOpacity(0.95),
-                                height: 1.2,
-                              ),
-                            ),
+                        // Titre
+                        Text(
+                          widget.item.title ?? '',
+                          maxLines: widget.isCompact ? 1 : 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: NotilusFonts.rajdhani(
+                            fontSize: widget.titleFontSize,
+                            fontWeight: FontWeight.w600,
+                            color: _isHovered
+                                ? Colors.white
+                                : Colors.white.withOpacity(0.95),
+                            height: 1.2,
+                          ),
+                        ),
                             SizedBox(height: widget.isCompact ? 2 : 4),
                             // Domaine
                             Text(
@@ -536,61 +775,73 @@ class _HistoryListItemState extends State<_HistoryListItem> {
                                 ),
                               ),
                             ),
-                            SizedBox(height: widget.isCompact ? 3 : 4),
-                            // Métadonnées (temps + visites)
-                            Row(
-                              children: [
-                                Icon(
-                                  CupertinoIcons.time,
-                                  size: widget.metaFontSize + 2,
-                                  color: Colors.white.withOpacity(0.4),
-                                ),
-                                SizedBox(width: 4),
-                                Text(
+                          ],
+                        ),
+                      ),
+                      SizedBox(width: widget.isCompact ? 8 : 12),
+                      // Colonne droite : horloge + flèche
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          // Horloge
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                CupertinoIcons.time,
+                                size: widget.metaFontSize + 2,
+                                color: Colors.white.withOpacity(0.4),
+                              ),
+                              SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
                                   relativeTime,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   style: NotilusFonts.rajdhani(
                                     fontSize: widget.metaFontSize,
                                     color: Colors.white.withOpacity(0.4),
                                   ),
                                 ),
-                                if (visitCount > 1) ...[
-                                  SizedBox(width: 8),
-                                  Icon(
-                                    CupertinoIcons.arrow_counterclockwise,
-                                    size: widget.metaFontSize + 2,
+                              ),
+                              if (visitCount > 1) ...[
+                                SizedBox(width: 6),
+                                Icon(
+                                  CupertinoIcons.arrow_counterclockwise,
+                                  size: widget.metaFontSize + 2,
+                                  color: widget.accentColor.withOpacity(0.7),
+                                ),
+                                SizedBox(width: 2),
+                                Text(
+                                  '$visitCount',
+                                  style: NotilusFonts.rajdhani(
+                                    fontSize: widget.metaFontSize,
                                     color: widget.accentColor.withOpacity(0.7),
+                                    fontWeight: FontWeight.w600,
                                   ),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    '$visitCount',
-                                    style: NotilusFonts.rajdhani(
-                                      fontSize: widget.metaFontSize,
-                                      color: widget.accentColor.withOpacity(0.7),
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
+                                ),
                               ],
+                            ],
+                          ),
+                          SizedBox(height: 4),
+                          // Bouton action avec flèche sans queue
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            transform: Matrix4.identity()
+                              ..translate(_isHovered ? 2.0 : 0.0),
+                            child: GxFuturisticButton(
+                              label: '',
+                              icon: CupertinoIcons.chevron_right,
+                              variant: GxFuturisticButtonVariant.ghost,
+                              accentColor: widget.accentColor,
+                              width: widget.isCompact ? 28 : 32,
+                              height: widget.isCompact ? 28 : 32,
+                              padding: EdgeInsets.zero,
+                              onPressed: widget.onTap,
                             ),
-                          ],
-                        ),
-                      ),
-                      SizedBox(width: widget.isCompact ? 8 : 12),
-                      // Bouton action avec animation
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        transform: Matrix4.identity()
-                          ..translate(_isHovered ? 2.0 : 0.0),
-                        child: GxFuturisticButton(
-                          label: '',
-                          icon: CupertinoIcons.arrow_right,
-                          variant: GxFuturisticButtonVariant.ghost,
-                          accentColor: widget.accentColor,
-                          width: widget.isCompact ? 28 : 32,
-                          height: widget.isCompact ? 28 : 32,
-                          padding: EdgeInsets.zero,
-                          onPressed: widget.onTap,
-                        ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
