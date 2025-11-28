@@ -70,22 +70,72 @@ class WebView2BrowserEngine extends BrowserEngine {
               if (onNewWindowRequest != null) {
                 await _webView!.executeScript('''
                   (function() {
-                    // Intercepter les clics sur les liens target="_blank"
+                    // Intercepter window.open() pour ouvrir dans Notilus
+                    var originalOpen = window.open;
+                    window.open = function(url, target, features) {
+                      // Si target est _blank ou undefined, ouvrir dans Notilus
+                      if (!target || target === '_blank' || target === 'blank') {
+                        if (url && typeof url === 'string') {
+                          if (document.body) {
+                            document.body.setAttribute('data-new-window-url', url);
+                          }
+                          return null; // Empêcher l'ouverture dans un navigateur externe
+                        }
+                      }
+                      // Pour les autres cas, utiliser l'original (mais ne devrait pas arriver)
+                      return originalOpen.apply(window, arguments);
+                    };
+                    
+                    // Intercepter les clics sur les liens target="_blank" et liens externes
                     var handler = function(e) {
                       var target = e.target;
                       while (target && target.tagName !== 'A') {
                         target = target.parentElement;
                       }
-                      if (target && (target.target === '_blank' || target.getAttribute('target') === '_blank')) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        // Stocker l'URL dans un attribut data pour récupération
-                        if (document.body) {
-                          document.body.setAttribute('data-new-window-url', target.href);
+                      
+                      if (target && target.tagName === 'A') {
+                        var href = target.getAttribute('href');
+                        var targetAttr = target.getAttribute('target');
+                        var rel = target.getAttribute('rel') || '';
+                        
+                        // Vérifier si c'est un lien externe ou target="_blank"
+                        var isExternal = false;
+                        var isBlank = targetAttr === '_blank' || targetAttr === 'blank';
+                        
+                        // Vérifier si c'est un lien externe (différent domaine)
+                        if (href && href.startsWith('http')) {
+                          try {
+                            var currentDomain = window.location.hostname;
+                            var linkUrl = new URL(href, window.location.href);
+                            isExternal = linkUrl.hostname !== currentDomain;
+                          } catch(e) {
+                            // URL invalide, ignorer
+                          }
                         }
-                        return false;
+                        
+                        // Vérifier rel="external"
+                        if (rel.toLowerCase().includes('external')) {
+                          isExternal = true;
+                        }
+                        
+                        // Intercepter si target="_blank" ou lien externe
+                        if (isBlank || isExternal) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          // Stocker l'URL dans un attribut data pour récupération
+                          if (document.body && href) {
+                            try {
+                              var fullUrl = new URL(href, window.location.href).href;
+                              document.body.setAttribute('data-new-window-url', fullUrl);
+                            } catch(e) {
+                              document.body.setAttribute('data-new-window-url', href);
+                            }
+                          }
+                          return false;
+                        }
                       }
                     };
+                    
                     // Supprimer l'ancien handler s'il existe
                     if (window._flutterNewWindowHandler) {
                       document.removeEventListener('click', window._flutterNewWindowHandler, true);

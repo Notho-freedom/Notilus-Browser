@@ -61,8 +61,8 @@ class _WebContentViewState extends State<WebContentView> {
     
     // Configurer les callbacks
     engine.onNewWindowRequest = (url) {
-      // Créer un nouvel onglet pour les liens target="_blank"
-      tabManager.createNewTab(url: url);
+      // Créer un nouvel onglet dans Notilus pour tous les liens externes et target="_blank"
+      tabManager.addTab(url: url);
     };
     
     engine.onUrlChanged = (url) {
