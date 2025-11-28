@@ -206,6 +206,8 @@ class _GroupedTabBarState extends State<GroupedTabBar> {
                         onSelect: () {
                           tabManager.selectTab(tab.id);
                           groupService.selectGroup(group.id);
+                          // Fermer le groupe après sélection pour économiser l'espace
+                          groupService.collapseGroup(group.id);
                         },
                       ),
                     ),
@@ -296,6 +298,7 @@ class _GroupWidget extends StatelessWidget {
           accentColor: accentColor,
           colorCode: group.colorCode,
           onToggle: () {
+            // toggleGroup ferme déjà automatiquement les autres groupes
             groupService.toggleGroup(group.id);
           },
         ),
