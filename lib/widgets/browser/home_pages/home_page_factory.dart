@@ -12,6 +12,7 @@ export 'minimal_home_page.dart';
 import 'package:flutter/material.dart';
 import '../modern_home_page.dart';
 import '../notilus_dev_home_page.dart';
+import '../gx_futuristic_home_page.dart';
 import 'frontend_home_page.dart';
 import 'backend_home_page.dart';
 import 'devops_home_page.dart';
@@ -96,6 +97,14 @@ class HomePageProfiles {
       accentColor: Color(0xFFFFFFFF),
       keywords: ['simple', 'clean', 'minimaliste', 'zen'],
     ),
+    HomePageProfile(
+      id: 'gx_futuristic',
+      name: 'GX Futuristic',
+      description: 'Design ultra-futuriste avec contours géométriques façon OS Science-Fiction',
+      emoji: '🚀',
+      accentColor: Color(0xFFFF2D55),
+      keywords: ['futuriste', 'sci-fi', 'gx', 'géométrique', 'os', 'science-fiction'],
+    ),
   ];
 
   /// Trouve un profil par son ID
@@ -172,6 +181,11 @@ class HomePageFactory {
         return NotilusDevHomePage(
           onTerminalSelected: onTerminalSelected,
           onDevToolsSelected: onDevToolsSelected,
+        );
+      
+      case 'gx_futuristic':
+        return GxFuturisticHomePage(
+          onTerminalSelected: onTerminalSelected,
         );
       
       case 'modern':
