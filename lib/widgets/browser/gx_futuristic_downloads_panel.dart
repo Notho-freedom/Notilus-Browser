@@ -4,6 +4,7 @@ library gx_futuristic_downloads_panel;
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../../core/services/wallpaper_manager.dart';
 import '../../core/services/color_theme_manager.dart';
 import '../../core/constants/notilus_colors.dart';
@@ -235,6 +236,35 @@ class _DownloadListItem extends StatefulWidget {
 class _DownloadListItemState extends State<_DownloadListItem> {
   bool _isHovered = false;
   bool _isPressed = false;
+  
+  /// Extrait le domaine de l'URL
+  String _extractDomain(String url) {
+    try {
+      final uri = Uri.parse(url);
+      if (uri.host.isNotEmpty) {
+        return uri.host.replaceFirst(RegExp(r'^www\.'), '');
+      }
+    } catch (_) {}
+    return url.length > 30 ? '${url.substring(0, 30)}...' : url;
+  }
+  
+  /// Formate le temps relatif (il y a X minutes/heures/jours)
+  String _formatRelativeTime(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+    
+    if (difference.inDays > 7) {
+      return DateFormat('dd/MM/yyyy').format(dateTime);
+    } else if (difference.inDays > 0) {
+      return 'Il y a ${difference.inDays} jour${difference.inDays > 1 ? 's' : ''}';
+    } else if (difference.inHours > 0) {
+      return 'Il y a ${difference.inHours} heure${difference.inHours > 1 ? 's' : ''}';
+    } else if (difference.inMinutes > 0) {
+      return 'Il y a ${difference.inMinutes} min';
+    } else {
+      return 'À l\'instant';
+    }
+  }
 
   IconData _getStatusIcon() {
     switch (widget.download.status) {
@@ -278,7 +308,11 @@ class _DownloadListItemState extends State<_DownloadListItem> {
     final itemHorizontalPadding = widget.isCompact ? 12.0 : widget.isMedium ? 14.0 : 16.0;
     final iconSize = widget.isCompact ? 20.0 : widget.isMedium ? 24.0 : 28.0;
     final titleFontSize = widget.isCompact ? 11.0 : widget.isMedium ? 12.0 : 13.0;
-    final metaFontSize = widget.isCompact ? 9.0 : widget.isMedium ? 10.0 : 11.0;
+    final urlFontSize = widget.isCompact ? 9.0 : widget.isMedium ? 10.0 : 11.0;
+    final metaFontSize = widget.isCompact ? 8.0 : widget.isMedium ? 9.0 : 10.0;
+    
+    final domain = _extractDomain(widget.download.url);
+    final relativeTime = _formatRelativeTime(widget.download.startTime);
 
     return RepaintBoundary(
       child: MouseRegion(
@@ -361,27 +395,21 @@ class _DownloadListItemState extends State<_DownloadListItem> {
                               overflow: TextOverflow.ellipsis,
                               style: NotilusFonts.rajdhani(
                                 fontSize: titleFontSize,
-                                fontWeight: FontWeight.w700,
+                                fontWeight: FontWeight.w600,
                                 color: _isHovered
                                     ? Colors.white
                                     : Colors.white.withOpacity(0.95),
                                 height: 1.2,
                               ),
                             ),
-                            SizedBox(height: widget.isCompact ? 4 : 6),
-                            // Barre de progression ou texte de statut
-                            if (widget.download.status == DownloadStatus.downloading) ...[
-                              GxFuturisticProgress(
-                                value: widget.download.progress,
-                                accentColor: widget.accentColor,
-                                height: 2,
-                              ),
-                              SizedBox(height: widget.isCompact ? 4 : 6),
-                            ],
+                            SizedBox(height: widget.isCompact ? 2 : 4),
+                            // Domaine
                             Text(
-                              widget.download.progressText,
+                              domain,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: NotilusFonts.rajdhani(
-                                fontSize: metaFontSize,
+                                fontSize: urlFontSize,
                                 color: Colors.white.withOpacity(
                                   _isHovered ? 0.7 : 0.6,
                                 ),
@@ -391,37 +419,84 @@ class _DownloadListItemState extends State<_DownloadListItem> {
                         ),
                       ),
                       SizedBox(width: widget.isCompact ? 8 : 12),
-                      // Bouton action : flèche par défaut, X en hover pour supprimer
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        transform: Matrix4.identity()
-                          ..translate(_isHovered ? 2.0 : 0.0),
-                        child: GxFuturisticButton(
-                          label: '',
-                          icon: _isHovered
-                              ? CupertinoIcons.xmark
-                              : (widget.download.status == DownloadStatus.downloading
+                      // Colonne droite : horloge + flèche (comme historique)
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          // Horloge avec temps relatif
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                CupertinoIcons.time,
+                                size: metaFontSize + 2,
+                                color: Colors.white.withOpacity(0.4),
+                              ),
+                              SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  relativeTime,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: NotilusFonts.rajdhani(
+                                    fontSize: metaFontSize,
+                                    color: Colors.white.withOpacity(0.4),
+                                  ),
+                                ),
+                              ),
+                              // Afficher la taille si disponible
+                              if (widget.download.totalBytes != null && widget.download.totalBytes! > 0) ...[
+                                SizedBox(width: 6),
+                                Icon(
+                                  CupertinoIcons.doc,
+                                  size: metaFontSize + 2,
+                                  color: widget.accentColor.withOpacity(0.7),
+                                ),
+                                SizedBox(width: 2),
+                                Text(
+                                  '${(widget.download.totalBytes! / 1024 / 1024).toStringAsFixed(1)} MB',
+                                  style: NotilusFonts.rajdhani(
+                                    fontSize: metaFontSize,
+                                    color: widget.accentColor.withOpacity(0.7),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          SizedBox(height: 4),
+                          // Bouton action : flèche par défaut, X en hover pour supprimer
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            transform: Matrix4.identity()
+                              ..translate(_isHovered ? 2.0 : 0.0),
+                            child: GxFuturisticButton(
+                              label: '',
+                              icon: _isHovered && widget.download.status != DownloadStatus.downloading
                                   ? CupertinoIcons.xmark
-                                  : widget.download.status == DownloadStatus.completed
-                                      ? CupertinoIcons.chevron_right
+                                  : (widget.download.status == DownloadStatus.downloading
+                                      ? CupertinoIcons.xmark
                                       : CupertinoIcons.chevron_right),
-                          variant: GxFuturisticButtonVariant.ghost,
-                          accentColor: _isHovered
-                              ? const Color(0xFFEF4444)
-                              : (widget.download.status == DownloadStatus.downloading
+                              variant: GxFuturisticButtonVariant.ghost,
+                              accentColor: _isHovered && widget.download.status != DownloadStatus.downloading
                                   ? const Color(0xFFEF4444)
-                                  : widget.accentColor),
-                          width: widget.isCompact ? 28 : 32,
-                          height: widget.isCompact ? 28 : 32,
-                          padding: EdgeInsets.zero,
-                          onPressed: _isHovered
-                              ? widget.onRemove
-                              : (widget.download.status == DownloadStatus.downloading
-                                  ? widget.onCancel
-                                  : widget.download.status == DownloadStatus.completed
-                                      ? widget.onOpen
-                                      : widget.onRemove),
-                        ),
+                                  : (widget.download.status == DownloadStatus.downloading
+                                      ? const Color(0xFFEF4444)
+                                      : widget.accentColor),
+                              width: widget.isCompact ? 28 : 32,
+                              height: widget.isCompact ? 28 : 32,
+                              padding: EdgeInsets.zero,
+                              onPressed: _isHovered && widget.download.status != DownloadStatus.downloading
+                                  ? widget.onRemove
+                                  : (widget.download.status == DownloadStatus.downloading
+                                      ? widget.onCancel
+                                      : widget.download.status == DownloadStatus.completed
+                                          ? widget.onOpen
+                                          : widget.onRemove),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
