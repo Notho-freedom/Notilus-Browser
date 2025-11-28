@@ -20,6 +20,12 @@ import '../common/gx_futuristic_dialog.dart';
 import '../common/gx_futuristic_components.dart';
 import '../../core/constants/notilus_fonts.dart';
 import '../../services/gx_notification_service.dart';
+import '../../services/tts_service.dart';
+import '../../services/ai_service.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:flutter/foundation.dart' show Platform;
 
 class ModernSettingsPanel extends StatefulWidget {
   final VoidCallback? onClose;
@@ -105,9 +111,11 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                         _buildSectionItem('webservices', 'Services Web', CupertinoIcons.globe, gxRed),
                         _buildSectionItem('privacy', 'Confidentialité', CupertinoIcons.shield, gxRed),
                         _buildSectionItem('account', 'Compte', CupertinoIcons.person_circle, gxRed),
+                        _buildSectionItem('ai', 'Assistant IA', CupertinoIcons.sparkles, gxRed),
                         _buildSectionItem('devtools', 'DevTools', CupertinoIcons.ant, gxRed),
                         _buildSectionItem('gxComponents', 'Composants GX', CupertinoIcons.square_grid_2x2, gxRed),
                         _buildSectionItem('notifications', 'Notifications', CupertinoIcons.bell, gxRed),
+                        _buildSectionItem('tts', 'Synthèse vocale', CupertinoIcons.speaker_2, gxRed),
                         _buildSectionItem('about', 'À propos', CupertinoIcons.info_circle, gxRed),
                       ],
                     ),
@@ -184,7 +192,9 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
             'privacy' => _buildPrivacySection(context, theme, gxRed),
             'gxComponents' => _buildGxComponentsSection(context, theme, gxRed),
             'notifications' => _buildNotificationsSection(context, theme, gxRed),
+            'tts' => _buildTtsSection(context, theme, gxRed),
             'account' => _buildAccountSection(context, theme, gxRed),
+            'ai' => _buildAiSection(context, theme, gxRed),
             'devtools' => _buildDevToolsSection(context, theme, gxRed),
             'about' => _buildAboutSection(context, theme, gxRed),
             _ => const SizedBox.shrink(),
@@ -2216,6 +2226,334 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
   }
 
   // ============================================
+  // SECTION ASSISTANT IA
+  // ============================================
+  
+  Widget _buildAiSection(BuildContext context, ThemeData theme, Color gxRed) {
+    return ListenableBuilder(
+      listenable: _settings,
+      builder: (context, _) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSubsectionTitle('Configuration Groq', gxRed),
+            const SizedBox(height: 12),
+            Text(
+              'Configurez votre clé API Groq pour utiliser l\'assistant IA. L\'auto-switch de modèles est activé par défaut pour éviter les limites de quota.',
+              style: TextStyle(color: Colors.white60, fontSize: 11),
+            ),
+            const SizedBox(height: 20),
+            
+            // Clé API
+            _buildSubsectionTitle('Clé API Groq', gxRed),
+            const SizedBox(height: 12),
+            TextField(
+              controller: TextEditingController(text: _settings.groqApiKey),
+              style: const TextStyle(color: Colors.white, fontSize: 12),
+              obscureText: true,
+              decoration: InputDecoration(
+                labelText: 'Clé API Groq',
+                labelStyle: const TextStyle(color: Colors.white70, fontSize: 11),
+                hintText: 'gsk_...',
+                hintStyle: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 11),
+                filled: true,
+                fillColor: Colors.white.withOpacity(0.05),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Colors.white24),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Colors.white24),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: gxRed),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                suffixIcon: _settings.groqApiKey.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(CupertinoIcons.check_mark_circled, size: 18),
+                        color: Colors.green,
+                        onPressed: () {},
+                        tooltip: 'Clé API configurée',
+                      )
+                    : null,
+              ),
+              onChanged: (value) => _settings.setGroqApiKey(value),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(CupertinoIcons.info, size: 14, color: Colors.white60),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Obtenez votre clé API sur https://console.groq.com',
+                    style: TextStyle(color: Colors.white60, fontSize: 10),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    // Ouvrir le lien dans le navigateur
+                  },
+                  child: const Text('Ouvrir', style: TextStyle(fontSize: 10)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 28),
+            
+            // Auto-switch
+            _buildSubsectionTitle('Auto-switch de modèles', gxRed),
+            const SizedBox(height: 12),
+            _buildSettingSwitch(
+              title: 'Activer l\'auto-switch',
+              subtitle: 'Change automatiquement de modèle en cas de limite de quota',
+              value: _settings.aiAutoSwitch,
+              onChanged: (value) => _settings.setAiAutoSwitch(value),
+              gxRed: gxRed,
+            ),
+            const SizedBox(height: 16),
+            if (_settings.aiAutoSwitch) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(CupertinoIcons.info, size: 16, color: Colors.blue),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Les modèles seront automatiquement changés en cas de rate limit ou quota dépassé.',
+                        style: TextStyle(color: Colors.white70, fontSize: 10),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 28),
+            
+            // Modèle préféré
+            _buildSubsectionTitle('Modèle préféré', gxRed),
+            const SizedBox(height: 12),
+            Text(
+              'Sélectionnez un modèle spécifique ou laissez vide pour utiliser l\'auto-sélection.',
+              style: TextStyle(color: Colors.white60, fontSize: 11),
+            ),
+            const SizedBox(height: 12),
+            StatefulBuilder(
+              builder: (context, setState) {
+                final aiService = AiService();
+                return FutureBuilder<List<String>?>(
+                  future: aiService.getModels(),
+                  builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
+                
+                final models = snapshot.data ?? [];
+                final currentModel = _settings.aiPreferredModel;
+                
+                if (models.isEmpty) {
+                  return Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(CupertinoIcons.exclamationmark_triangle, size: 16, color: Colors.orange),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Impossible de charger les modèles. Vérifiez la connexion au backend.',
+                            style: TextStyle(color: Colors.white70, fontSize: 10),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+                
+                return Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.white24),
+                      ),
+                      child: DropdownButton<String>(
+                        value: currentModel.isEmpty ? null : (models.contains(currentModel) ? currentModel : null),
+                        isExpanded: true,
+                        hint: const Text(
+                          'Auto-sélection (recommandé)',
+                          style: TextStyle(color: Colors.white70, fontSize: 12),
+                        ),
+                        dropdownColor: const Color(0xFF1A1A1A),
+                        style: const TextStyle(color: Colors.white, fontSize: 12),
+                        underline: const SizedBox(),
+                        items: [
+                          const DropdownMenuItem<String>(
+                            value: '',
+                            child: Text('Auto-sélection (recommandé)'),
+                          ),
+                          ...models.map((model) {
+                            return DropdownMenuItem<String>(
+                              value: model,
+                              child: Text(model),
+                            );
+                          }),
+                        ],
+                        onChanged: (value) {
+                          _settings.setAiPreferredModel(value ?? '');
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    if (models.isNotEmpty) ...[
+                      Text(
+                        'Modèles disponibles:',
+                        style: TextStyle(color: Colors.white60, fontSize: 10),
+                      ),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: models.take(4).map((model) {
+                          final shortName = model.split('-').take(2).join('-');
+                          final isSelected = currentModel == model;
+                          return ChoiceChip(
+                            label: Text(shortName, style: const TextStyle(fontSize: 10)),
+                            selected: isSelected,
+                            onSelected: (_) {
+                              _settings.setAiPreferredModel(isSelected ? '' : model);
+                            },
+                            selectedColor: gxRed.withOpacity(0.2),
+                            backgroundColor: Colors.white.withOpacity(0.05),
+                            side: BorderSide(
+                              color: isSelected ? gxRed : Colors.white24,
+                            ),
+                            labelStyle: TextStyle(
+                              color: isSelected ? gxRed : Colors.white70,
+                              fontSize: 10,
+                            ),
+                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            visualDensity: VisualDensity.compact,
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton.icon(
+                            onPressed: () {
+                              setState(() {});
+                            },
+                            icon: const Icon(CupertinoIcons.arrow_clockwise, size: 14),
+                            label: const Text('Actualiser', style: TextStyle(fontSize: 10)),
+                            style: TextButton.styleFrom(
+                              foregroundColor: Colors.white70,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                );
+                  },
+                );
+              },
+            ),
+            const SizedBox(height: 28),
+            
+            // Fonctionnalités AI
+            _buildSubsectionTitle('Fonctionnalités', gxRed),
+            const SizedBox(height: 12),
+            _buildSettingSwitch(
+              title: 'Assistant contextuel',
+              subtitle: 'Utilise le contexte de la page pour améliorer les réponses',
+              value: _settings.aiContextualEnabled,
+              onChanged: (value) => _settings.setAiContextualEnabled(value),
+              gxRed: gxRed,
+            ),
+            const SizedBox(height: 12),
+            _buildSettingSwitch(
+              title: 'Résumés automatiques',
+              subtitle: 'Génère automatiquement des résumés de contenu',
+              value: _settings.aiSummaryEnabled,
+              onChanged: (value) => _settings.setAiSummaryEnabled(value),
+              gxRed: gxRed,
+            ),
+            const SizedBox(height: 12),
+            _buildSettingSwitch(
+              title: 'Protection IA',
+              subtitle: 'Filtre les contenus sensibles avant l\'envoi à l\'IA',
+              value: _settings.aiProtectionEnabled,
+              onChanged: (value) => _settings.setAiProtectionEnabled(value),
+              gxRed: gxRed,
+            ),
+            const SizedBox(height: 28),
+            
+            // Test de connexion
+            _buildSubsectionTitle('Test', gxRed),
+            const SizedBox(height: 12),
+            ElevatedButton.icon(
+              onPressed: _settings.groqApiKey.isEmpty
+                  ? null
+                  : () async {
+                      final aiService = AiService();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text('Test de connexion en cours...'),
+                          backgroundColor: gxRed,
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                      
+                      final success = await aiService.testConnection();
+                      
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              success 
+                                  ? 'Connexion réussie! L\'assistant IA est opérationnel.'
+                                  : 'Erreur: ${aiService.lastError ?? "Impossible de se connecter"}',
+                            ),
+                            backgroundColor: success ? Colors.green : Colors.red,
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
+                      }
+                    },
+              icon: const Icon(CupertinoIcons.checkmark_circle_fill, size: 16),
+              label: const Text('Tester la connexion', style: TextStyle(fontSize: 11)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: gxRed,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: Colors.white.withOpacity(0.1),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // ============================================
   // SECTION COMPOSANTS GX
   // ============================================
   
@@ -2750,6 +3088,299 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
     );
   }
 
+  // ============================================
+  // SECTION TTS (Text-to-Speech)
+  // ============================================
+  
+  Widget _buildTtsSection(BuildContext context, ThemeData theme, Color gxRed) {
+    final ttsService = TtsService(baseUrl: _settings.ttsBackendUrl);
+    
+    return ListenableBuilder(
+      listenable: _settings,
+      builder: (context, _) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Statut de connexion
+                _buildSubsectionTitle('Connexion', gxRed),
+                const SizedBox(height: 12),
+                FutureBuilder<bool>(
+                  future: ttsService.checkConnection(),
+                  builder: (context, snapshot) {
+                    final isConnected = snapshot.data ?? false;
+                    return Row(
+                      children: [
+                        Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isConnected ? Colors.green : Colors.red,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          isConnected ? 'Backend TTS connecté' : 'Backend TTS non disponible',
+                          style: TextStyle(
+                            color: isConnected ? Colors.green : Colors.red,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const Spacer(),
+                        TextButton(
+                          onPressed: () {
+                            setState(() {});
+                            ttsService.checkConnection();
+                          },
+                          child: const Text('Vérifier', style: TextStyle(fontSize: 11)),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: 28),
+                
+                // Activation du service
+                _buildSubsectionTitle('Activation', gxRed),
+                const SizedBox(height: 12),
+                _buildSettingSwitch(
+                  title: 'Activer la synthèse vocale',
+                  subtitle: 'Permet d\'utiliser le service TTS pour lire du texte',
+                  value: _settings.ttsEnabled,
+                  onChanged: (value) => _settings.setTtsEnabled(value),
+                  gxRed: gxRed,
+                ),
+                const SizedBox(height: 28),
+                
+                if (_settings.ttsEnabled) ...[
+                  // Configuration de la voix
+                  _buildSubsectionTitle('Voix par défaut', gxRed),
+                  const SizedBox(height: 12),
+                  FutureBuilder<List<Map<String, dynamic>>>(
+                    future: ttsService.getVoices(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Padding(
+                          padding: EdgeInsets.all(16.0),
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      }
+                      
+                      final voices = snapshot.data ?? [];
+                      final currentVoice = _settings.ttsDefaultVoice;
+                      
+                      return Column(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.white24),
+                            ),
+                            child: DropdownButton<String>(
+                              value: currentVoice,
+                              isExpanded: true,
+                              dropdownColor: const Color(0xFF1A1A1A),
+                              style: const TextStyle(color: Colors.white, fontSize: 12),
+                              underline: const SizedBox(),
+                              items: voices.map((voice) {
+                                final shortName = voice['ShortName'] as String? ?? '';
+                                final name = voice['Name'] as String? ?? shortName;
+                                final locale = voice['Locale'] as String? ?? '';
+                                final gender = voice['Gender'] as String? ?? '';
+                                
+                                return DropdownMenuItem<String>(
+                                  value: shortName,
+                                  child: Text('$name ($locale, $gender)'),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                if (value != null) {
+                                  _settings.setTtsDefaultVoice(value);
+                                }
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          TextButton.icon(
+                            onPressed: () {
+                              setState(() {});
+                              ttsService.getVoices(forceRefresh: true);
+                            },
+                            icon: const Icon(CupertinoIcons.arrow_clockwise, size: 14),
+                            label: const Text('Actualiser la liste', style: TextStyle(fontSize: 11)),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 28),
+                  
+                  // Détection automatique
+                  _buildSubsectionTitle('Détection automatique', gxRed),
+                  const SizedBox(height: 12),
+                  _buildSettingSwitch(
+                    title: 'Détecter automatiquement la langue',
+                    subtitle: 'Sélectionne automatiquement une voix selon la langue du texte',
+                    value: _settings.ttsAutoDetectLanguage,
+                    onChanged: (value) => _settings.setTtsAutoDetectLanguage(value),
+                    gxRed: gxRed,
+                  ),
+                  const SizedBox(height: 16),
+                  if (_settings.ttsAutoDetectLanguage) ...[
+                    _buildSubsectionTitle('Genre préféré', gxRed),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        ChoiceChip(
+                          label: const Text('Féminin'),
+                          selected: _settings.ttsPreferredGender == 'Female',
+                          onSelected: (_) => _settings.setTtsPreferredGender('Female'),
+                          selectedColor: gxRed.withOpacity(0.2),
+                          backgroundColor: Colors.white.withOpacity(0.05),
+                          side: BorderSide(
+                            color: _settings.ttsPreferredGender == 'Female' ? gxRed : Colors.white24,
+                          ),
+                          labelStyle: TextStyle(
+                            color: _settings.ttsPreferredGender == 'Female' ? gxRed : Colors.white70,
+                            fontSize: 11,
+                          ),
+                        ),
+                        ChoiceChip(
+                          label: const Text('Masculin'),
+                          selected: _settings.ttsPreferredGender == 'Male',
+                          onSelected: (_) => _settings.setTtsPreferredGender('Male'),
+                          selectedColor: gxRed.withOpacity(0.2),
+                          backgroundColor: Colors.white.withOpacity(0.05),
+                          side: BorderSide(
+                            color: _settings.ttsPreferredGender == 'Male' ? gxRed : Colors.white24,
+                          ),
+                          labelStyle: TextStyle(
+                            color: _settings.ttsPreferredGender == 'Male' ? gxRed : Colors.white70,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: 28),
+                  
+                  // Paramètres audio
+                  _buildSubsectionTitle('Paramètres audio', gxRed),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      const Text('Volume', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Slider(
+                          value: _settings.ttsVolume,
+                          min: 0.0,
+                          max: 1.0,
+                          divisions: 10,
+                          activeColor: gxRed,
+                          inactiveColor: Colors.white.withOpacity(0.1),
+                          onChanged: (value) => _settings.setTtsVolume(value),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        '${(_settings.ttsVolume * 100).toInt()}%',
+                        style: const TextStyle(color: Colors.white70, fontSize: 11),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      const Text('Vitesse', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Slider(
+                          value: _settings.ttsSpeed,
+                          min: 0.5,
+                          max: 2.0,
+                          divisions: 15,
+                          activeColor: gxRed,
+                          inactiveColor: Colors.white.withOpacity(0.1),
+                          onChanged: (value) => _settings.setTtsSpeed(value),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        '${_settings.ttsSpeed.toStringAsFixed(1)}x',
+                        style: const TextStyle(color: Colors.white70, fontSize: 11),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 28),
+                  
+                  // Configuration backend
+                  _buildSubsectionTitle('Configuration backend', gxRed),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: TextEditingController(text: _settings.ttsBackendUrl),
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                    decoration: InputDecoration(
+                      labelText: 'URL du backend TTS',
+                      labelStyle: const TextStyle(color: Colors.white70, fontSize: 11),
+                      hintText: 'http://localhost:8000',
+                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 11),
+                      filled: true,
+                      fillColor: Colors.white.withOpacity(0.05),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Colors.white24),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Colors.white24),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: gxRed),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                    onChanged: (value) => _settings.setTtsBackendUrl(value),
+                  ),
+                  const SizedBox(height: 28),
+                  
+                  // Test
+                  _buildSubsectionTitle('Test', gxRed),
+                  const SizedBox(height: 12),
+                  _TtsTestButton(
+                    ttsService: ttsService,
+                    voice: _settings.ttsDefaultVoice,
+                    gxRed: gxRed,
+                  ),
+                ],
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // Widget pour le bouton de test TTS avec lecture audio
+  Widget _TtsTestButton({
+    required TtsService ttsService,
+    required String voice,
+    required Color gxRed,
+  }) {
+    return _TtsTestButtonStateful(
+      ttsService: ttsService,
+      voice: voice,
+      gxRed: gxRed,
+    );
+  }
+
   Widget _buildSettingSwitch({
     required String title,
     required String subtitle,
@@ -2783,6 +3414,122 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
             activeTrackColor: gxRed.withOpacity(0.3),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// Widget Stateful pour le bouton de test TTS avec lecture audio
+class _TtsTestButtonStateful extends StatefulWidget {
+  final TtsService ttsService;
+  final String voice;
+  final Color gxRed;
+  
+  const _TtsTestButtonStateful({
+    required this.ttsService,
+    required this.voice,
+    required this.gxRed,
+  });
+  
+  @override
+  State<_TtsTestButtonStateful> createState() => _TtsTestButtonStatefulState();
+}
+
+class _TtsTestButtonStatefulState extends State<_TtsTestButtonStateful> {
+  bool _isPlaying = false;
+  final AudioPlayer _player = AudioPlayer();
+  
+  @override
+  void dispose() {
+    _player.dispose();
+    super.dispose();
+  }
+  
+  Future<void> _testVoice() async {
+    setState(() => _isPlaying = true);
+    final testText = 'Bonjour, ceci est un test de synthèse vocale.';
+    
+    try {
+      final audioData = await widget.ttsService.generateTts(
+        text: testText,
+        voice: widget.voice,
+      );
+      
+      if (audioData != null && mounted) {
+        // Sauvegarder temporairement le fichier audio
+        final tempDir = await getTemporaryDirectory();
+        final fileName = 'tts_test_${DateTime.now().millisecondsSinceEpoch}.mp3';
+        final file = File('${tempDir.path}/$fileName');
+        await file.writeAsBytes(audioData);
+        
+        // Pour Windows, utiliser le chemin absolu du fichier
+        // Convertir les backslashes en forward slashes pour l'URL
+        final filePath = file.absolute.path.replaceAll('\\', '/');
+        // Utiliser file:/// avec 3 slashes pour Windows
+        final fileUrl = Platform.isWindows 
+            ? 'file:///$filePath' 
+            : 'file://$filePath';
+        
+        await _player.setSource(UrlSource(fileUrl));
+        await _player.resume();
+        
+        // Attendre la fin de la lecture
+        _player.onPlayerComplete.listen((_) {
+          if (mounted) {
+            setState(() => _isPlaying = false);
+          }
+          file.delete(); // Nettoyer le fichier temporaire
+        });
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Lecture de l\'audio en cours...'),
+              backgroundColor: widget.gxRed,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      } else if (mounted) {
+        setState(() => _isPlaying = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur: ${widget.ttsService.lastError ?? "Impossible de générer l\'audio"}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isPlaying = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors de la lecture: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton.icon(
+      onPressed: _isPlaying ? null : _testVoice,
+      icon: Icon(
+        _isPlaying ? CupertinoIcons.stop_circle : CupertinoIcons.play_circle,
+        size: 16,
+      ),
+      label: Text(
+        _isPlaying ? 'Lecture...' : 'Tester la voix actuelle',
+        style: const TextStyle(fontSize: 11),
+      ),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: widget.gxRed,
+        foregroundColor: Colors.white,
+        disabledBackgroundColor: Colors.white.withOpacity(0.1),
       ),
     );
   }

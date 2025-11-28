@@ -9,6 +9,7 @@ import '../../core/services/color_theme_manager.dart';
 import '../../core/constants/notilus_colors.dart';
 import '../../core/constants/notilus_fonts.dart';
 import '../../services/settings_service.dart';
+import '../../services/ai_service.dart';
 import '../common/gx_futuristic_components.dart';
 import '../../services/gx_notification_service.dart';
 
@@ -22,6 +23,9 @@ class GxFuturisticAiPanel extends StatefulWidget {
 class _GxFuturisticAiPanelState extends State<GxFuturisticAiPanel> {
   final TextEditingController _promptController = TextEditingController();
   final SettingsService _settings = SettingsService();
+  final AiService _aiService = AiService();
+  bool _isLoading = false;
+  String? _lastResponse;
 
   @override
   void dispose() {
@@ -287,25 +291,184 @@ class _GxFuturisticAiPanelState extends State<GxFuturisticAiPanel> {
                                 ),
                                 const SizedBox(width: 12),
                                 GxFuturisticButton(
-                                  label: 'Envoyer',
-                                  icon: CupertinoIcons.paperplane_fill,
+                                  label: _isLoading ? 'Envoi...' : 'Envoyer',
+                                  icon: _isLoading 
+                                      ? CupertinoIcons.hourglass 
+                                      : CupertinoIcons.paperplane_fill,
                                   variant: GxFuturisticButtonVariant.primary,
                                   accentColor: accentColor,
-                                  onPressed: () {
-                                    if (_promptController.text.isNotEmpty) {
-                                      GxNotificationService().showInfo(
-                                        title: 'Fonctionnalité AI',
-                                        message: 'En développement - Bientôt disponible',
-                                        context: context,
-                                      );
-                                    }
-                                  },
+                                  onPressed: _isLoading || _settings.groqApiKey.isEmpty
+                                      ? null
+                                      : () async {
+                                          if (_promptController.text.isEmpty) return;
+                                          
+                                          setState(() {
+                                            _isLoading = true;
+                                            _lastResponse = null;
+                                          });
+                                          
+                                          try {
+                                            final result = await _aiService.chat(
+                                              prompt: _promptController.text,
+                                              type: 'general',
+                                            );
+                                            
+                                            if (mounted) {
+                                              setState(() {
+                                                _isLoading = false;
+                                                if (result != null) {
+                                                  _lastResponse = result['response'] as String? ?? 'Aucune réponse';
+                                                } else {
+                                                  _lastResponse = 'Erreur: ${_aiService.lastError ?? "Impossible de générer une réponse"}';
+                                                }
+                                              });
+                                              
+                                              if (result != null) {
+                                                GxNotificationService().showSuccess(
+                                                  title: 'Réponse générée',
+                                                  message: 'Modèle utilisé: ${result['model_used'] ?? "N/A"}',
+                                                  context: context,
+                                                );
+                                              } else {
+                                                GxNotificationService().showError(
+                                                  title: 'Erreur',
+                                                  message: _aiService.lastError ?? 'Impossible de générer une réponse',
+                                                  context: context,
+                                                );
+                                              }
+                                            }
+                                          } catch (e) {
+                                            if (mounted) {
+                                              setState(() {
+                                                _isLoading = false;
+                                                _lastResponse = 'Erreur: $e';
+                                              });
+                                              GxNotificationService().showError(
+                                                title: 'Erreur',
+                                                message: 'Erreur lors de la communication avec l\'IA: $e',
+                                                context: context,
+                                              );
+                                            }
+                                          }
+                                        },
                                 ),
                               ],
                             ),
                           ],
                         ),
                       ),
+                      // Affichage de la réponse
+                      if (_lastResponse != null) ...[
+                        const SizedBox(height: 24),
+                        GxFuturisticCard(
+                          accentColor: accentColor,
+                          padding: const EdgeInsets.all(20),
+                          margin: EdgeInsets.zero,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    CupertinoIcons.chat_bubble_2,
+                                    color: accentColor,
+                                    size: 16,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'RÉPONSE',
+                                    style: NotilusFonts.orbitron(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                      color: accentColor,
+                                      letterSpacing: 1,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.05),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: accentColor.withOpacity(0.3),
+                                  ),
+                                ),
+                                child: Text(
+                                  _lastResponse!,
+                                  style: NotilusFonts.rajdhani(
+                                    fontSize: 12,
+                                    color: Colors.white.withOpacity(0.9),
+                                    height: 1.5,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  TextButton.icon(
+                                    onPressed: () {
+                                      setState(() {
+                                        _lastResponse = null;
+                                      });
+                                    },
+                                    icon: const Icon(CupertinoIcons.xmark_circle, size: 14),
+                                    label: const Text('Fermer', style: TextStyle(fontSize: 10)),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: Colors.white70,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      // Avertissement si pas de clé API
+                      if (_settings.groqApiKey.isEmpty) ...[
+                        const SizedBox(height: 24),
+                        GxFuturisticCard(
+                          accentColor: Colors.orange,
+                          padding: const EdgeInsets.all(16),
+                          margin: EdgeInsets.zero,
+                          child: Row(
+                            children: [
+                              Icon(
+                                CupertinoIcons.exclamationmark_triangle,
+                                color: Colors.orange,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Clé API requise',
+                                      style: NotilusFonts.rajdhani(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Configurez votre clé API Groq dans les paramètres pour utiliser l\'assistant IA.',
+                                      style: NotilusFonts.rajdhani(
+                                        fontSize: 10,
+                                        color: Colors.white.withOpacity(0.7),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   );
                 },

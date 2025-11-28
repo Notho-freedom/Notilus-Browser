@@ -13,3 +13,7 @@ psutil==5.9.6
 jsonpath-ng==1.6.0
 jsonschema==4.20.0
 aiofiles==23.2.1
+
+# TTS Service Dependencies
+edge-tts>=6.1.0
+langdetect>=1.0.9
