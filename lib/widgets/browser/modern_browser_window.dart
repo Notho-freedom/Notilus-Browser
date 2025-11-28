@@ -573,7 +573,14 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
         return _SidebarPanelConfig(
           title: 'Paramètres rapides',
           icon: CupertinoIcons.gear_alt,
-          child: ModernSettingsPanel(),
+          child: ModernSettingsPanel(
+            onClose: () {
+              // Fermer le panel de paramètres
+              setState(() {
+                _currentSection = SidebarSection.home;
+              });
+            },
+          ),
         );
       case SidebarSection.updates:
         return _SidebarPanelConfig(

@@ -2,10 +2,13 @@
 library firebase_auth_service;
 
 import 'dart:io';
+import 'dart:async';
+import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter/foundation.dart' as foundation;
+import 'package:http/http.dart' as http;
 import 'local_oauth_service.dart';
 
 /// Service d'authentification Firebase
@@ -16,6 +19,7 @@ class FirebaseAuthService extends foundation.ChangeNotifier {
   User? _currentUser;
   bool _isLoading = false;
   bool _useLocalBackend = false;
+  final Map<String, Timer> _pollingTimers = {}; // Map pour stocker les timers de polling par state
   
   FirebaseAuthService() {
     // google_sign_in n'est pas supporté sur Windows
@@ -212,6 +216,9 @@ class FirebaseAuthService extends foundation.ChangeNotifier {
       // Générer un state pour la sécurité (utiliser un token sécurisé)
       final state = _generateSecureState();
       
+      // Démarrer le polling automatiquement pour ce state
+      _startGitHubPolling(state);
+      
       // Retourner l'URL d'autorisation pour que l'UI puisse ouvrir une WebView
       final authUrl = _localOAuth.getGitHubAuthUrl(state);
       throw GitHubOAuthUrlException(authUrl, state);
@@ -227,32 +234,200 @@ class FirebaseAuthService extends foundation.ChangeNotifier {
     }
   }
   
+  /// Démarre le polling pour récupérer le token GitHub
+  void _startGitHubPolling(String state) {
+    // Annuler le polling précédent pour ce state s'il existe
+    _pollingTimers[state]?.cancel();
+    
+    debugPrint('🔄 Démarrage du polling GitHub pour state: $state');
+    
+    _pollingTimers[state] = Timer.periodic(
+      const Duration(seconds: 2),
+      (timer) async {
+        try {
+          final result = await getGitHubTokenAfterAuth(state);
+          
+          if (result != null) {
+            // Authentification réussie, arrêter le polling
+            timer.cancel();
+            _pollingTimers.remove(state);
+            debugPrint('✅ Polling GitHub arrêté avec succès pour state: $state');
+            return;
+          }
+          
+          // Continuer le polling si le résultat est null (en attente)
+        } catch (e) {
+          debugPrint('❌ Erreur lors du polling GitHub: $e');
+          // Continuer le polling même en cas d'erreur (sauf si c'est une erreur fatale)
+          // Ne pas arrêter le polling si c'est juste une erreur temporaire
+        }
+        
+        // Limiter le polling à 5 minutes maximum (150 tentatives)
+        // Pour éviter un polling infini
+        if (timer.tick > 150) {
+          timer.cancel();
+          _pollingTimers.remove(state);
+          debugPrint('⏱️ Polling GitHub arrêté après timeout (5 minutes) pour state: $state');
+        }
+      },
+    );
+  }
+  
+  /// Arrête le polling pour un state donné
+  void stopGitHubPolling(String state) {
+    _pollingTimers[state]?.cancel();
+    _pollingTimers.remove(state);
+    debugPrint('🛑 Polling GitHub arrêté pour state: $state');
+  }
+  
   /// Récupère le token GitHub après autorisation dans WebView
   Future<UserCredential?> getGitHubTokenAfterAuth(String state) async {
     try {
+      debugPrint('🔍 getGitHubTokenAfterAuth appelé avec state: $state');
       final token = await _localOAuth.getGitHubToken(state);
       
       if (token == null) {
         // En attente
+        debugPrint('⏳ Token GitHub en attente...');
         return null;
       }
       
-      // Utiliser le token pour créer un credential Firebase
-      final credential = OAuthProvider('github.com').credential(
-        accessToken: token.accessToken,
-      );
+      debugPrint('✅ Token GitHub reçu, récupération des infos utilisateur...');
       
-      final userCredential = await _auth.signInWithCredential(credential);
-      _currentUser = userCredential.user;
-      _isLoading = false;
-      notifyListeners();
+      // Obtenir les informations utilisateur depuis l'API GitHub
+      final userInfo = await _getGitHubUserInfo(token.accessToken!);
+      if (userInfo == null) {
+        throw Exception('Impossible de récupérer les informations utilisateur GitHub');
+      }
       
-      return userCredential;
+      final email = userInfo['email'] as String?;
+      final login = userInfo['login'] as String?;
+      final name = userInfo['name'] as String?;
+      
+      if (email == null || email.isEmpty) {
+        // Si l'email n'est pas public, essayer de récupérer les emails privés
+        final emails = await _getGitHubUserEmails(token.accessToken!);
+        if (emails != null && emails.isNotEmpty) {
+          final primaryEmail = emails.firstWhere(
+            (e) => e['primary'] == true,
+            orElse: () => emails.first,
+          );
+          final userEmail = primaryEmail['email'] as String?;
+          if (userEmail != null && userEmail.isNotEmpty) {
+            return await _signInOrCreateWithEmail(userEmail, name ?? login ?? 'GitHub User', token.accessToken!);
+          }
+        }
+        throw Exception('Aucun email trouvé pour le compte GitHub');
+      }
+      
+      // Créer ou connecter avec l'email
+      return await _signInOrCreateWithEmail(email, name ?? login ?? 'GitHub User', token.accessToken!);
     } catch (e) {
-      debugPrint('Erreur lors de la récupération du token GitHub: $e');
+      debugPrint('❌ Erreur lors de la récupération du token GitHub: $e');
       _isLoading = false;
       notifyListeners();
       return null;
+    }
+  }
+  
+  /// Récupère les informations utilisateur depuis l'API GitHub
+  Future<Map<String, dynamic>?> _getGitHubUserInfo(String accessToken) async {
+    try {
+      final response = await http.get(
+        Uri.parse('https://api.github.com/user'),
+        headers: {
+          'Authorization': 'Bearer $accessToken',
+          'Accept': 'application/vnd.github.v3+json',
+        },
+      );
+      
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        debugPrint('❌ Erreur API GitHub: ${response.statusCode} - ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('❌ Erreur lors de la récupération des infos GitHub: $e');
+      return null;
+    }
+  }
+  
+  /// Récupère les emails de l'utilisateur GitHub (y compris privés)
+  Future<List<Map<String, dynamic>>?> _getGitHubUserEmails(String accessToken) async {
+    try {
+      final response = await http.get(
+        Uri.parse('https://api.github.com/user/emails'),
+        headers: {
+          'Authorization': 'Bearer $accessToken',
+          'Accept': 'application/vnd.github.v3+json',
+        },
+      );
+      
+      if (response.statusCode == 200) {
+        return List<Map<String, dynamic>>.from(jsonDecode(response.body));
+      } else {
+        debugPrint('❌ Erreur API GitHub emails: ${response.statusCode} - ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('❌ Erreur lors de la récupération des emails GitHub: $e');
+      return null;
+    }
+  }
+  
+  /// Crée ou connecte un compte Firebase avec l'email GitHub
+  Future<UserCredential> _signInOrCreateWithEmail(String email, String displayName, String githubToken) async {
+    try {
+      // Essayer de se connecter avec l'email
+      try {
+        // Générer un mot de passe temporaire basé sur le token GitHub
+        // Note: Ce n'est pas idéal, mais Firebase nécessite un mot de passe pour email/password
+        // Une meilleure solution serait d'utiliser un custom token généré par le backend
+        final userCredential = await _auth.signInWithEmailAndPassword(
+          email: email,
+          password: githubToken.substring(0, 20), // Utiliser les 20 premiers caractères comme mot de passe temporaire
+        );
+        
+        _currentUser = userCredential.user;
+        if (_currentUser != null && _currentUser!.displayName != displayName) {
+          await _currentUser!.updateDisplayName(displayName);
+        }
+        
+        debugPrint('✅ Connexion GitHub réussie (compte existant): $email');
+        _isLoading = false;
+        notifyListeners();
+        
+        return userCredential;
+      } on FirebaseAuthException catch (e) {
+        if (e.code == 'user-not-found') {
+          // Créer un nouveau compte
+          final userCredential = await _auth.createUserWithEmailAndPassword(
+            email: email,
+            password: githubToken.substring(0, 20), // Mot de passe temporaire
+          );
+          
+          _currentUser = userCredential.user;
+          if (_currentUser != null) {
+            await _currentUser!.updateDisplayName(displayName);
+          }
+          
+          debugPrint('✅ Compte GitHub créé avec succès: $email');
+          _isLoading = false;
+          notifyListeners();
+          
+          return userCredential;
+        } else if (e.code == 'wrong-password') {
+          // Le compte existe mais avec un autre mot de passe
+          // Dans ce cas, on ne peut pas se connecter automatiquement
+          throw Exception('Un compte existe déjà avec cet email mais avec un autre mot de passe. Veuillez utiliser la connexion par email.');
+        } else {
+          rethrow;
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Erreur lors de la création/connexion avec email: $e');
+      rethrow;
     }
   }
   
