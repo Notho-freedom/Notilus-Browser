@@ -145,6 +145,7 @@ class GxFuturisticInput extends StatefulWidget {
   final Color? accentColor;
   final ValueChanged<String>? onChanged;
   final String? Function(String?)? validator;
+  final bool autofocus;
 
   const GxFuturisticInput({
     super.key,
@@ -159,6 +160,7 @@ class GxFuturisticInput extends StatefulWidget {
     this.accentColor,
     this.onChanged,
     this.validator,
+    this.autofocus = false,
   });
 
   @override
@@ -194,6 +196,7 @@ class _GxFuturisticInputState extends State<GxFuturisticInput> {
           keyboardType: widget.keyboardType,
           onChanged: widget.onChanged,
           validator: widget.validator,
+          autofocus: widget.autofocus,
           style: NotilusFonts.rajdhani(
             fontSize: 14,
             color: Colors.white,
@@ -704,6 +707,8 @@ class GxFuturisticList extends StatelessWidget {
     final panelOpacity = 1.0 - settings.panelTransparency;
 
     return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       padding: padding ?? const EdgeInsets.all(8),
       itemCount: items.length,
       separatorBuilder: (context, index) {
@@ -790,23 +795,25 @@ class GxFuturisticListItem extends StatelessWidget {
     );
 
     if (onTap != null) {
-      return InkWell(
-        onTap: onTap,
-        child: Container(
-          decoration: BoxDecoration(
-            border: Border(
-              left: BorderSide(
-                color: accent.withOpacity(0.3),
-                width: 2,
+      return RepaintBoundary(
+        child: InkWell(
+          onTap: onTap,
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border(
+                left: BorderSide(
+                  color: accent.withOpacity(0.3),
+                  width: 2,
+                ),
               ),
             ),
+            child: content,
           ),
-          child: content,
         ),
       );
     }
 
-    return content;
+    return RepaintBoundary(child: content);
   }
 }
 
@@ -2167,26 +2174,28 @@ class _GxFuturisticSkeletonState extends State<GxFuturisticSkeleton>
   Widget build(BuildContext context) {
     final accent = widget.accentColor ?? NotilusColors.getSecondaryColor(context);
 
-    return AnimatedBuilder(
-      animation: _animation,
-      builder: (context, child) {
-        return Container(
-          width: widget.width,
-          height: widget.height,
-          decoration: BoxDecoration(
-            borderRadius: widget.borderRadius ?? BorderRadius.circular(4),
-            gradient: LinearGradient(
-              begin: Alignment(_animation.value - 1, 0),
-              end: Alignment(_animation.value, 0),
-              colors: [
-                Colors.white.withOpacity(0.05),
-                Colors.white.withOpacity(0.15),
-                Colors.white.withOpacity(0.05),
-              ],
+    return RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: _animation,
+        builder: (context, child) {
+          return Container(
+            width: widget.width,
+            height: widget.height,
+            decoration: BoxDecoration(
+              borderRadius: widget.borderRadius ?? BorderRadius.circular(4),
+              gradient: LinearGradient(
+                begin: Alignment(_animation.value - 1, 0),
+                end: Alignment(_animation.value, 0),
+                colors: [
+                  Colors.white.withOpacity(0.05),
+                  Colors.white.withOpacity(0.15),
+                  Colors.white.withOpacity(0.05),
+                ],
+              ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 }

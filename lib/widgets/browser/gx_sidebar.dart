@@ -22,6 +22,7 @@ enum SidebarSection {
   ai,
   settings,
   updates,
+  extensions,
   terminal,
   nativeDevtools,
   mosaic,
@@ -95,6 +96,11 @@ class _GXSidebarState extends State<GXSidebar> {
       section: SidebarSection.updates,
       icon: CupertinoIcons.arrow_up_circle,
       label: 'Mises à jour',
+    ),
+    _SidebarDestination(
+      section: SidebarSection.extensions,
+      icon: CupertinoIcons.square_grid_2x2,
+      label: 'Extensions',
     ),
     _SidebarDestination(
       section: SidebarSection.terminal,

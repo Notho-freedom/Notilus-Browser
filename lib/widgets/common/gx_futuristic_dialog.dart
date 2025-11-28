@@ -91,65 +91,67 @@ class GxFuturisticDialog extends StatelessWidget {
             ),
           );
         },
-        child: Container(
-          width: width ?? 500,
-          height: height,
-          constraints: BoxConstraints(
-            maxWidth: MediaQuery.of(context).size.width * 0.9,
-            maxHeight: MediaQuery.of(context).size.height * 0.9,
-          ),
-          child: ClipRect(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: bgColor.withOpacity(panelOpacity.clamp(0.0, 1.0)),
-                  border: Border.all(
-                    color: accent.withOpacity(0.4),
-                    width: 1.5,
-                  ),
-                ),
-                child: Stack(
-                  children: [
-                    // Contours géométriques
-                    _GeometricBorders(accentColor: accent),
-                    
-                    // Contenu
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Header avec titre
-                        if (title != null || titleIcon != null)
-                          _DialogHeader(
-                            title: title,
-                            icon: titleIcon,
-                            accentColor: accent,
-                            showCloseButton: showCloseButton,
-                            onClose: () => Navigator.of(context).pop(),
-                          ),
-                        
-                        // Contenu principal
-                        Flexible(
-                          child: SingleChildScrollView(
-                            padding: EdgeInsets.only(
-                              top: title != null ? 0 : 24,
-                              left: 24,
-                              right: 24,
-                              bottom: actions != null ? 0 : 24,
-                            ),
-                            child: child,
-                          ),
-                        ),
-                        
-                        // Actions
-                        if (actions != null)
-                          _DialogActions(
-                            actions: actions!,
-                            accentColor: accent,
-                          ),
-                      ],
+        child: RepaintBoundary(
+          child: Container(
+            width: width ?? 500,
+            height: height,
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.9,
+              maxHeight: MediaQuery.of(context).size.height * 0.9,
+            ),
+            child: ClipRect(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: bgColor.withOpacity(panelOpacity.clamp(0.0, 1.0)),
+                    border: Border.all(
+                      color: accent.withOpacity(0.4),
+                      width: 1.5,
                     ),
-                  ],
+                  ),
+                  child: Stack(
+                    children: [
+                      // Contours géométriques
+                      _GeometricBorders(accentColor: accent),
+                      
+                      // Contenu
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Header avec titre
+                          if (title != null || titleIcon != null)
+                            _DialogHeader(
+                              title: title,
+                              icon: titleIcon,
+                              accentColor: accent,
+                              showCloseButton: showCloseButton,
+                              onClose: () => Navigator.of(context).pop(),
+                            ),
+                          
+                          // Contenu principal
+                          Flexible(
+                            child: SingleChildScrollView(
+                              padding: EdgeInsets.only(
+                                top: title != null ? 0 : 24,
+                                left: 24,
+                                right: 24,
+                                bottom: actions != null ? 0 : 24,
+                              ),
+                              child: child,
+                            ),
+                          ),
+                          
+                          // Actions
+                          if (actions != null)
+                            _DialogActions(
+                              actions: actions!,
+                              accentColor: accent,
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

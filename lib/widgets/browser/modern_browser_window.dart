@@ -23,6 +23,7 @@ import 'gx_futuristic_widgets_panel.dart';
 import 'gx_futuristic_ai_panel.dart';
 import 'gx_futuristic_updates_panel.dart';
 import 'modern_settings_panel.dart';
+import 'extensions_panel.dart';
 import 'webview_service_panel.dart';
 import '../../core/services/wallpaper_manager.dart';
 import '../../core/services/color_theme_manager.dart';
@@ -587,6 +588,12 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
           title: 'Mises à jour',
           icon: CupertinoIcons.arrow_up_circle,
           child: const GxFuturisticUpdatesPanel(),
+        );
+      case SidebarSection.extensions:
+        return _SidebarPanelConfig(
+          title: 'Extensions',
+          icon: CupertinoIcons.square_grid_2x2,
+          child: ExtensionsPanel(isVisible: true),
         );
       case SidebarSection.terminal:
         return _SidebarPanelConfig(
