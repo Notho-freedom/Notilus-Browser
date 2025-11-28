@@ -17,6 +17,9 @@ import 'home_pages/home_page_factory.dart';
 import 'modern_history_panel.dart';
 import 'modern_bookmarks_panel.dart';
 import 'modern_downloads_panel.dart';
+import 'gx_futuristic_history_panel.dart';
+import 'gx_futuristic_bookmarks_panel.dart';
+import 'gx_futuristic_downloads_panel.dart';
 import 'modern_settings_panel.dart';
 import 'webview_service_panel.dart';
 import '../../core/services/wallpaper_manager.dart';
@@ -546,19 +549,19 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
         return _SidebarPanelConfig(
           title: 'Favoris',
           icon: CupertinoIcons.bookmark,
-          child: ModernBookmarksPanel(),
+          child: GxFuturisticBookmarksPanel(),
         );
       case SidebarSection.history:
         return _SidebarPanelConfig(
           title: 'Historique',
           icon: CupertinoIcons.time,
-          child: ModernHistoryPanel(),
+          child: GxFuturisticHistoryPanel(),
         );
       case SidebarSection.downloads:
         return _SidebarPanelConfig(
           title: 'Téléchargements',
           icon: CupertinoIcons.arrow_down_to_line,
-          child: ModernDownloadsPanel(),
+          child: GxFuturisticDownloadsPanel(),
         );
       case SidebarSection.widgets:
         return _SidebarPanelConfig(
