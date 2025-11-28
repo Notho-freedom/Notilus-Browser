@@ -9,6 +9,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter/foundation.dart' as foundation;
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'local_oauth_service.dart';
 
 /// Service d'authentification Firebase
@@ -20,6 +21,10 @@ class FirebaseAuthService extends foundation.ChangeNotifier {
   bool _isLoading = false;
   bool _useLocalBackend = false;
   final Map<String, Timer> _pollingTimers = {}; // Map pour stocker les timers de polling par state
+  
+  // Stockage local pour GitHub (sans Firebase)
+  GitHubUser? _githubUser;
+  SharedPreferences? _prefs;
   
   FirebaseAuthService() {
     // google_sign_in n'est pas supporté sur Windows
@@ -38,6 +43,73 @@ class FirebaseAuthService extends foundation.ChangeNotifier {
     
     // Vérifier si le backend local est disponible
     _checkLocalBackend();
+    
+    // Charger l'utilisateur GitHub depuis le stockage local
+    _loadGitHubUser();
+  }
+  
+  /// Charge l'utilisateur GitHub depuis le stockage local
+  Future<void> _loadGitHubUser() async {
+    try {
+      _prefs = await SharedPreferences.getInstance();
+      final githubUserJson = _prefs?.getString('github_user');
+      if (githubUserJson != null) {
+        final Map<String, dynamic> userMap = jsonDecode(githubUserJson);
+        _githubUser = GitHubUser.fromJson(userMap);
+        notifyListeners();
+        debugPrint('✅ Utilisateur GitHub chargé depuis le stockage local');
+      }
+    } catch (e) {
+      debugPrint('❌ Erreur lors du chargement de l\'utilisateur GitHub: $e');
+    }
+  }
+  
+  /// Sauvegarde l'utilisateur GitHub dans le stockage local
+  Future<void> _saveGitHubUser(GitHubUser user) async {
+    try {
+      _prefs ??= await SharedPreferences.getInstance();
+      await _prefs!.setString('github_user', jsonEncode(user.toJson()));
+      _githubUser = user;
+      notifyListeners();
+      debugPrint('✅ Utilisateur GitHub sauvegardé localement');
+    } catch (e) {
+      debugPrint('❌ Erreur lors de la sauvegarde de l\'utilisateur GitHub: $e');
+    }
+  }
+  
+  /// Supprime l'utilisateur GitHub du stockage local
+  Future<void> _clearGitHubUser() async {
+    try {
+      _prefs ??= await SharedPreferences.getInstance();
+      await _prefs!.remove('github_user');
+      _githubUser = null;
+      notifyListeners();
+      debugPrint('✅ Utilisateur GitHub supprimé du stockage local');
+    } catch (e) {
+      debugPrint('❌ Erreur lors de la suppression de l\'utilisateur GitHub: $e');
+    }
+  }
+  
+  /// Envoie un lien de connexion par email (Email Link Auth)
+  Future<void> _sendEmailLink(String email) async {
+    try {
+      final actionCodeSettings = ActionCodeSettings(
+        url: 'notilus://auth',
+        handleCodeInApp: true,
+        androidPackageName: 'com.notilus.browser',
+        iOSBundleId: 'com.notilus.browser',
+      );
+      
+      await _auth.sendSignInLinkToEmail(
+        email: email,
+        actionCodeSettings: actionCodeSettings,
+      );
+      
+      debugPrint('✅ Lien de connexion envoyé à: $email');
+    } catch (e) {
+      debugPrint('❌ Erreur lors de l\'envoi du lien email: $e');
+      rethrow;
+    }
   }
   
   /// Vérifie si le backend local OAuth est disponible
@@ -57,9 +129,18 @@ class FirebaseAuthService extends foundation.ChangeNotifier {
 
   /// Utilisateur actuel
   User? get currentUser => _currentUser;
+  
+  /// Utilisateur GitHub actuel (stocké localement)
+  GitHubUser? get githubUser => _githubUser;
 
-  /// Vérifie si l'utilisateur est connecté
+  /// Vérifie si l'utilisateur est connecté (Firebase)
   bool get isSignedIn => _currentUser != null;
+  
+  /// Vérifie si l'utilisateur est connecté via GitHub (local)
+  bool get isGitHubSignedIn => _githubUser != null;
+  
+  /// Vérifie si l'utilisateur est connecté (Firebase ou GitHub local)
+  bool get isAnySignedIn => _currentUser != null || _githubUser != null;
 
   /// État de chargement
   bool get isLoading => _isLoading;
@@ -303,8 +384,11 @@ class FirebaseAuthService extends foundation.ChangeNotifier {
       final email = userInfo['email'] as String?;
       final login = userInfo['login'] as String?;
       final name = userInfo['name'] as String?;
+      final avatarUrl = userInfo['avatar_url'] as String?;
       
-      if (email == null || email.isEmpty) {
+      String? userEmail = email;
+      
+      if (userEmail == null || userEmail.isEmpty) {
         // Si l'email n'est pas public, essayer de récupérer les emails privés
         final emails = await _getGitHubUserEmails(token.accessToken!);
         if (emails != null && emails.isNotEmpty) {
@@ -312,16 +396,34 @@ class FirebaseAuthService extends foundation.ChangeNotifier {
             (e) => e['primary'] == true,
             orElse: () => emails.first,
           );
-          final userEmail = primaryEmail['email'] as String?;
-          if (userEmail != null && userEmail.isNotEmpty) {
-            return await _signInOrCreateWithEmail(userEmail, name ?? login ?? 'GitHub User', token.accessToken!);
-          }
+          userEmail = primaryEmail['email'] as String?;
         }
+      }
+      
+      if (userEmail == null || userEmail.isEmpty) {
         throw Exception('Aucun email trouvé pour le compte GitHub');
       }
       
-      // Créer ou connecter avec l'email
-      return await _signInOrCreateWithEmail(email, name ?? login ?? 'GitHub User', token.accessToken!);
+      // Stocker l'utilisateur GitHub localement (sans Firebase)
+      final githubUser = GitHubUser(
+        email: userEmail,
+        login: login ?? '',
+        name: name ?? login ?? 'GitHub User',
+        avatarUrl: avatarUrl,
+        accessToken: token.accessToken!,
+      );
+      await _saveGitHubUser(githubUser);
+      
+      // Optionnel : utiliser Firebase Email Link Auth si configuré
+      try {
+        await _sendEmailLink(userEmail);
+      } catch (e) {
+        debugPrint('⚠️ Impossible d\'envoyer le lien email: $e');
+      }
+      
+      _isLoading = false;
+      notifyListeners();
+      return null; // Pas de UserCredential car on n'utilise pas Firebase pour GitHub
     } catch (e) {
       debugPrint('❌ Erreur lors de la récupération du token GitHub: $e');
       _isLoading = false;
@@ -458,6 +560,32 @@ class FirebaseAuthService extends foundation.ChangeNotifier {
     }
   }
 
+  /// Vérifie si un lien de connexion email est valide et connecte l'utilisateur
+  Future<UserCredential?> signInWithEmailLink(String email, String link) async {
+    try {
+      if (_auth.isSignInWithEmailLink(link)) {
+        final userCredential = await _auth.signInWithEmailLink(
+          email: email,
+          emailLink: link,
+        );
+        
+        _currentUser = userCredential.user;
+        _isLoading = false;
+        notifyListeners();
+        
+        debugPrint('✅ Connexion avec lien email réussie: $email');
+        return userCredential;
+      }
+      debugPrint('⚠️ Le lien email n\'est pas valide');
+      return null;
+    } catch (e) {
+      debugPrint('❌ Erreur lors de la connexion avec lien email: $e');
+      _isLoading = false;
+      notifyListeners();
+      return null;
+    }
+  }
+  
   /// Déconnexion
   Future<void> signOut() async {
     try {
@@ -472,6 +600,10 @@ class FirebaseAuthService extends foundation.ChangeNotifier {
       await Future.wait(futures);
 
       _currentUser = null;
+      
+      // Déconnexion GitHub (local)
+      await _clearGitHubUser();
+      
       _isLoading = false;
       notifyListeners();
     } catch (e) {
@@ -573,6 +705,43 @@ class GitHubOAuthUrlException implements Exception {
   
   @override
   String toString() => 'GitHub OAuth URL: $authUrl';
+}
+
+/// Modèle pour stocker les informations utilisateur GitHub localement
+class GitHubUser {
+  final String email;
+  final String login;
+  final String name;
+  final String? avatarUrl;
+  final String accessToken;
+  
+  GitHubUser({
+    required this.email,
+    required this.login,
+    required this.name,
+    this.avatarUrl,
+    required this.accessToken,
+  });
+  
+  Map<String, dynamic> toJson() {
+    return {
+      'email': email,
+      'login': login,
+      'name': name,
+      'avatarUrl': avatarUrl,
+      'accessToken': accessToken,
+    };
+  }
+  
+  factory GitHubUser.fromJson(Map<String, dynamic> json) {
+    return GitHubUser(
+      email: json['email'] as String,
+      login: json['login'] as String,
+      name: json['name'] as String,
+      avatarUrl: json['avatarUrl'] as String?,
+      accessToken: json['accessToken'] as String,
+    );
+  }
 }
 
 

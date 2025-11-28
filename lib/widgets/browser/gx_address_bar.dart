@@ -629,10 +629,11 @@ class _GXAccountButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<FirebaseAuthService?>(
       builder: (context, authService, _) {
-        final isSignedIn = authService?.isSignedIn ?? false;
+        final isSignedIn = authService?.isAnySignedIn ?? false;
         final user = authService?.currentUser;
-        final displayName = user?.displayName ?? user?.email ?? 'Utilisateur';
-        final photoUrl = user?.photoURL;
+        final githubUser = authService?.githubUser;
+        final displayName = user?.displayName ?? user?.email ?? githubUser?.name ?? githubUser?.email ?? 'Utilisateur';
+        final photoUrl = user?.photoURL ?? githubUser?.avatarUrl;
         
         final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: true);
         final gxRed = colorThemeManager.nativeSecondaryColor;
