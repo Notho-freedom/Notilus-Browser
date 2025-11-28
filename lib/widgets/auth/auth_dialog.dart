@@ -4,7 +4,7 @@ library auth_dialog;
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
+// import 'package:url_launcher/url_launcher.dart'; // Plus utilisé, on ouvre tout dans Notilus
 import 'dart:async';
 import '../../services/auth/firebase_auth_service.dart';
 import '../../services/auth/local_oauth_service.dart';
@@ -392,12 +392,11 @@ class _GoogleDeviceFlowDialogState extends State<_GoogleDeviceFlowDialog> {
     super.dispose();
   }
   
-  void _openVerificationUrl() async {
-    final uri = Uri.parse(widget.deviceFlow.verificationUriComplete);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
-  }
+      void _openVerificationUrl() {
+        // Ouvrir l'URL dans un nouvel onglet Notilus au lieu d'un navigateur externe
+        final tabManager = Provider.of<TabManager>(context, listen: false);
+        tabManager.addTab(url: widget.deviceFlow.verificationUriComplete);
+      }
   
   void _startPolling() {
     setState(() => _isPolling = true);

@@ -4,7 +4,8 @@ import 'package:provider/provider.dart';
 import '../../services/github/github_repos_service.dart';
 import '../../services/auth/firebase_auth_service.dart';
 import '../../core/services/color_theme_manager.dart';
-import 'package:url_launcher/url_launcher.dart';
+// import 'package:url_launcher/url_launcher.dart'; // Plus utilisé - tout est géré dans Notilus
+import '../../services/tab_manager.dart';
 
 /// Panneau pour afficher les dépôts GitHub
 class GitHubReposPanel extends StatefulWidget {
@@ -331,11 +332,10 @@ class _RepoCard extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: repo.url != null
-              ? () async {
-                  final uri = Uri.parse(repo.url!);
-                  if (await canLaunchUrl(uri)) {
-                    await launchUrl(uri, mode: LaunchMode.externalApplication);
-                  }
+              ? () {
+                  // Ouvrir dans un nouvel onglet Notilus au lieu d'un navigateur externe
+                  final tabManager = Provider.of<TabManager>(context, listen: false);
+                  tabManager.addTab(url: repo.url!);
                 }
               : null,
           borderRadius: BorderRadius.circular(12),
