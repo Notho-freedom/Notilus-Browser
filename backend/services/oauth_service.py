@@ -262,8 +262,15 @@ async def github_callback(
     if not code or not state:
         raise HTTPException(status_code=400, detail="Code ou state manquant")
     
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"🔍 Callback GitHub reçu - code: {code[:10]}..., state: {state}")
+    logger.info(f"📋 States disponibles: {list(_oauth_codes.keys())}")
+    
+    # Si le state n'existe pas, le créer (peut arriver si le callback est appelé avant que l'app ne poll)
     if state not in _oauth_codes:
-        raise HTTPException(status_code=400, detail="State invalide")
+        logger.warning(f"⚠️ State '{state}' non trouvé, création d'une nouvelle entrée")
+        _oauth_codes[state] = {"status": "pending"}
     
     try:
         # Échanger le code contre un access token
@@ -285,11 +292,13 @@ async def github_callback(
             data = response.json()
             
             if "error" in data:
+                logger.error(f"❌ Erreur OAuth: {data.get('error_description', 'Erreur inconnue')}")
                 raise HTTPException(status_code=400, detail=data.get("error_description", "Erreur OAuth"))
             
             # Stocker le token
             _oauth_codes[state]["status"] = "completed"
             _oauth_codes[state]["access_token"] = data["access_token"]
+            logger.info(f"✅ Token stocké avec succès pour state: {state}")
             
             # Afficher une page de succès
             html = """
@@ -339,20 +348,31 @@ async def github_get_token(state: str):
     """
     Récupère le token GitHub après autorisation
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info(f"🔍 Tentative de récupération du token pour state: {state}")
+    logger.info(f"📋 States disponibles: {list(_oauth_codes.keys())}")
+    
     if state not in _oauth_codes:
-        raise HTTPException(status_code=404, detail="State invalide")
+        logger.warning(f"❌ State '{state}' non trouvé dans _oauth_codes")
+        raise HTTPException(status_code=404, detail=f"State invalide: {state}. States disponibles: {list(_oauth_codes.keys())[:3]}")
     
     oauth_data = _oauth_codes[state]
+    logger.info(f"✅ State trouvé, status: {oauth_data.get('status')}")
     
     if oauth_data["status"] != "completed":
+        logger.info(f"⏳ Status: {oauth_data['status']}, en attente...")
         return JSONResponse(
             status_code=202,
             content={"status": "pending", "message": "En attente d'autorisation"}
         )
     
     if "access_token" not in oauth_data:
+        logger.error(f"❌ Token non disponible pour state: {state}")
         raise HTTPException(status_code=404, detail="Token non disponible")
     
+    logger.info(f"✅ Token récupéré avec succès pour state: {state}")
     return TokenResponse(
         access_token=oauth_data["access_token"],
         token_type="Bearer",

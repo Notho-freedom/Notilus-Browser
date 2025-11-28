@@ -13,6 +13,8 @@ import '../../services/favicon_service.dart';
 import '../../models/bookmark.dart';
 import '../../models/tab_model.dart';
 import '../common/notilus_tooltip.dart';
+import '../../services/auth/firebase_auth_service.dart';
+import '../../widgets/auth/auth_dialog.dart';
 
 // La couleur rouge est maintenant gérée par ColorThemeManager
 
@@ -100,34 +102,60 @@ class _GXAddressBarState extends State<GXAddressBar> {
   void _showAccountDialog(BuildContext context, Color accentColor) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A20),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [accentColor, accentColor.withValues(alpha: 0.7)],
-                ),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(CupertinoIcons.person_fill, color: Colors.white, size: 24),
-            ),
+      builder: (dialogContext) {
+        final authService = Provider.of<FirebaseAuthService?>(dialogContext, listen: true);
+        final isSignedIn = authService?.isSignedIn ?? false;
+        final user = authService?.currentUser;
+        
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1A1A20),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              isSignedIn && user?.photoURL != null
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.network(
+                      user!.photoURL!,
+                      width: 48,
+                      height: 48,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [accentColor, accentColor.withValues(alpha: 0.7)],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(CupertinoIcons.person_fill, color: Colors.white, size: 24),
+                      ),
+                    ),
+                  )
+                : Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [accentColor, accentColor.withValues(alpha: 0.7)],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(CupertinoIcons.person_fill, color: Colors.white, size: 24),
+                  ),
             const SizedBox(width: 12),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Compte Notilus',
-                    style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+                    isSignedIn ? (user?.displayName ?? user?.email ?? 'Compte Notilus') : 'Compte Notilus',
+                    style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                   Text(
-                    'Non connecté',
-                    style: TextStyle(color: Colors.white54, fontSize: 12),
+                    isSignedIn ? 'Connecté' : 'Non connecté',
+                    style: TextStyle(color: isSignedIn ? accentColor : Colors.white54, fontSize: 12),
                   ),
                 ],
               ),
@@ -143,26 +171,44 @@ class _GXAddressBarState extends State<GXAddressBar> {
             _buildAccountOption(CupertinoIcons.gear, 'Paramètres du compte', accentColor, () {}),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Fermer', style: TextStyle(color: accentColor)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('Connexion au compte Notilus à venir'),
-                  backgroundColor: accentColor,
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: accentColor),
-            child: const Text('Se connecter', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text('Fermer', style: TextStyle(color: accentColor)),
+            ),
+            if (!isSignedIn)
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(dialogContext);
+                  // Ouvrir le dialog d'authentification
+                  showDialog(
+                    context: context,
+                    builder: (ctx) => AuthDialog(authService: authService!),
+                  );
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: accentColor),
+                child: const Text('Se connecter', style: TextStyle(color: Colors.white)),
+              )
+            else
+              ElevatedButton(
+                onPressed: () async {
+                  await authService?.signOut();
+                  if (dialogContext.mounted) {
+                    Navigator.pop(dialogContext);
+                    ScaffoldMessenger.of(dialogContext).showSnackBar(
+                      SnackBar(
+                        content: const Text('Déconnexion réussie'),
+                        backgroundColor: accentColor,
+                      ),
+                    );
+                  }
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red.withOpacity(0.2)),
+                child: const Text('Se déconnecter', style: TextStyle(color: Colors.red)),
+              ),
+          ],
+        );
+      },
     );
   }
 
@@ -482,9 +528,7 @@ class _GXAddressBarState extends State<GXAddressBar> {
               // Right side buttons
               Row(
                 children: [
-                  _GXActionButton(
-                    icon: CupertinoIcons.person_crop_circle,
-                    tooltip: 'Compte Notilus',
+                  _GXAccountButton(
                     onPressed: widget.onAccountPressed ?? () => _showAccountDialog(context, gxRed),
                   ),
                   const SizedBox(width: 4),
@@ -570,6 +614,84 @@ class _GXNavButtonState extends State<_GXNavButton> {
         message: widget.tooltip,
         child: button,
       ),
+    );
+  }
+}
+
+class _GXAccountButton extends StatelessWidget {
+  final VoidCallback? onPressed;
+
+  const _GXAccountButton({
+    this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<FirebaseAuthService?>(
+      builder: (context, authService, _) {
+        final isSignedIn = authService?.isSignedIn ?? false;
+        final user = authService?.currentUser;
+        final displayName = user?.displayName ?? user?.email ?? 'Utilisateur';
+        final photoUrl = user?.photoURL;
+        
+        final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: true);
+        final gxRed = colorThemeManager.nativeSecondaryColor;
+        
+        Widget accountWidget;
+        
+        if (isSignedIn && photoUrl != null) {
+          // Afficher l'avatar si connecté avec photo
+          accountWidget = Tooltip(
+            message: displayName,
+            child: GestureDetector(
+              onTap: onPressed,
+              child: Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: gxRed, width: 2),
+                  image: DecorationImage(
+                    image: NetworkImage(photoUrl),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+            ),
+          );
+        } else if (isSignedIn) {
+          // Afficher l'icône avec indicateur si connecté sans photo
+          accountWidget = Tooltip(
+            message: displayName,
+            child: GestureDetector(
+              onTap: onPressed,
+              child: Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: gxRed.withOpacity(0.2),
+                  border: Border.all(color: gxRed, width: 2),
+                ),
+                child: Icon(
+                  CupertinoIcons.person_crop_circle_fill,
+                  size: 18,
+                  color: gxRed,
+                ),
+              ),
+            ),
+          );
+        } else {
+          // Afficher l'icône normale si non connecté
+          accountWidget = _GXActionButton(
+            icon: CupertinoIcons.person_crop_circle,
+            tooltip: 'Compte Notilus',
+            onPressed: onPressed,
+          );
+        }
+        
+        return accountWidget;
+      },
     );
   }
 }

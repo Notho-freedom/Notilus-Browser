@@ -32,7 +32,10 @@ class NativeTerminalService extends ChangeNotifier {
     );
 
     _sessions[sessionId] = session;
-    notifyListeners();
+    // Utiliser Future.microtask pour éviter notifyListeners pendant le build
+    Future.microtask(() {
+      notifyListeners();
+    });
     return session;
   }
 

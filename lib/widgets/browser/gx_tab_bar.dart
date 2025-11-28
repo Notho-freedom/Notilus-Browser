@@ -595,7 +595,7 @@ class _GXTabItemState extends State<_GXTabItem>
                     duration: const Duration(milliseconds: 250),
                     curve: Curves.easeOutCubic,
                     height: 3,
-                    width: widget.isActive ? double.infinity : (_isHovered ? widget.width * 0.6 : 0),
+                    width: widget.isActive ? widget.width : (_isHovered ? widget.width * 0.6 : 0),
                     decoration: BoxDecoration(
                       gradient: widget.isActive || _isHovered ? activeGradient : null,
                       borderRadius: BorderRadius.circular(2),

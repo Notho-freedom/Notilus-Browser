@@ -18,7 +18,12 @@ import '../../widgets/auth/auth_dialog.dart';
 import '../common/color_picker_dialog.dart';
 
 class ModernSettingsPanel extends StatefulWidget {
-  const ModernSettingsPanel({super.key});
+  final VoidCallback? onClose;
+  
+  const ModernSettingsPanel({
+    super.key,
+    this.onClose,
+  });
 
   @override
   State<ModernSettingsPanel> createState() => _ModernSettingsPanelState();
@@ -2054,7 +2059,13 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                       onPressed: () async {
                         final result = await showDialog<bool>(
                           context: context,
-                          builder: (ctx) => AuthDialog(authService: authService),
+                          builder: (ctx) => AuthDialog(
+                            authService: authService,
+                            onAuthStarted: () {
+                              // Fermer le panel de paramètres quand l'auth démarre
+                              widget.onClose?.call();
+                            },
+                          ),
                         );
                         if (result == true && context.mounted) {
                           await syncService!.restoreConfigs();

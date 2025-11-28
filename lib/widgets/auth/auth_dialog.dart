@@ -14,10 +14,12 @@ import '../../services/tab_manager.dart';
 /// Dialog d'authentification
 class AuthDialog extends StatelessWidget {
   final FirebaseAuthService authService;
+  final VoidCallback? onAuthStarted; // Callback appelé quand l'auth démarre
 
   const AuthDialog({
     super.key,
     required this.authService,
+    this.onAuthStarted,
   });
 
   @override
@@ -340,11 +342,21 @@ class AuthDialog extends StatelessWidget {
   ) {
     showDialog(
       context: context,
-      barrierDismissible: false,
-      builder: (context) => _GitHubOAuthDialog(
+      barrierDismissible: false, // Ne pas permettre de fermer pendant l'auth
+      builder: (dialogContext) => _GitHubOAuthDialog(
         authService: authService,
         authUrl: authUrl,
         state: state,
+        onTabOpened: () {
+          // Appeler le callback pour fermer le panel de paramètres
+          onAuthStarted?.call();
+          // NE PAS fermer le dialog ici - il se fermera automatiquement quand l'auth réussit
+        },
+        onAuthSuccess: () {
+          // Fermer les dialogs seulement quand l'auth réussit
+          Navigator.of(dialogContext).pop(); // Fermer le dialog GitHub
+          Navigator.of(dialogContext).pop(true); // Fermer le dialog principal
+        },
       ),
     );
   }
@@ -486,11 +498,15 @@ class _GitHubOAuthDialog extends StatefulWidget {
   final FirebaseAuthService authService;
   final String authUrl;
   final String state;
+  final VoidCallback? onTabOpened;
+  final VoidCallback? onAuthSuccess;
   
   const _GitHubOAuthDialog({
     required this.authService,
     required this.authUrl,
     required this.state,
+    this.onTabOpened,
+    this.onAuthSuccess,
   });
   
   @override
@@ -498,46 +514,54 @@ class _GitHubOAuthDialog extends StatefulWidget {
 }
 
 class _GitHubOAuthDialogState extends State<_GitHubOAuthDialog> {
-  Timer? _pollTimer;
-  bool _isPolling = false;
+  bool _tabOpened = false;
   
   @override
   void initState() {
     super.initState();
-    _openAuthUrl();
-    _startPolling();
+    // Utiliser addPostFrameCallback pour éviter setState pendant le build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _openAuthUrl();
+      // Le polling est maintenant géré par FirebaseAuthService
+      // On écoute juste les changements d'état
+      _listenToAuthChanges();
+    });
+  }
+  
+  void _listenToAuthChanges() {
+    // Écouter les changements d'authentification
+    widget.authService.addListener(() {
+      if (widget.authService.isSignedIn && mounted) {
+        // Authentification réussie, fermer le dialog
+        widget.onAuthSuccess?.call();
+      }
+    });
   }
   
   @override
   void dispose() {
-    _pollTimer?.cancel();
+    // Le polling est géré par le service, pas besoin d'annuler ici
     super.dispose();
   }
   
   void _openAuthUrl() {
+    if (_tabOpened) return;
+    _tabOpened = true;
+    
     // Ouvrir dans un nouvel onglet Notilus au lieu du navigateur externe
     final tabManager = Provider.of<TabManager>(context, listen: false);
     tabManager.addTab(url: widget.authUrl);
+    
+    // Fermer les dialogs et le panel de paramètres après un court délai
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        widget.onTabOpened?.call();
+      }
+    });
   }
   
-  void _startPolling() {
-    setState(() => _isPolling = true);
-    
-    _pollTimer = Timer.periodic(
-      const Duration(seconds: 2),
-      (timer) async {
-        final result = await widget.authService.getGitHubTokenAfterAuth(
-          widget.state,
-        );
-        
-        if (result != null && mounted) {
-          timer.cancel();
-          Navigator.of(context).pop(); // Fermer ce dialog
-          Navigator.of(context).pop(true); // Fermer le dialog principal
-        }
-      },
-    );
-  }
+  // Le polling est maintenant géré par FirebaseAuthService
+  // Cette méthode n'est plus nécessaire
   
   @override
   Widget build(BuildContext context) {
@@ -562,21 +586,27 @@ class _GitHubOAuthDialogState extends State<_GitHubOAuthDialog> {
             ),
             const SizedBox(height: 16),
             const Text(
-              'Une fenêtre de votre navigateur va s\'ouvrir.\n'
-              'Connectez-vous avec GitHub et autorisez l\'application.',
+              'Un nouvel onglet Notilus va s\'ouvrir.\n'
+              'Connectez-vous avec GitHub et autorisez l\'application.\n'
+              'Le dialog se fermera automatiquement une fois l\'authentification réussie.',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.white60, fontSize: 12),
             ),
             const SizedBox(height: 16),
-            if (_isPolling)
-              const CircularProgressIndicator(),
+            const CircularProgressIndicator(),
             const SizedBox(height: 16),
-            TextButton(
-              onPressed: () {
-                _pollTimer?.cancel();
-                Navigator.of(context).pop();
-              },
-              child: const Text('Annuler', style: TextStyle(color: Colors.white60)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () {
+                    // Arrêter le polling dans le service
+                    widget.authService.stopGitHubPolling(widget.state);
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('Annuler', style: TextStyle(color: Colors.white60)),
+                ),
+              ],
             ),
           ],
         ),

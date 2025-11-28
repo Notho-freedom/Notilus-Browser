@@ -73,22 +73,27 @@ class LocalOAuthService {
   /// Récupère le token GitHub après autorisation
   Future<OAuthToken?> getGitHubToken(String state) async {
     try {
+      debugPrint('🔍 Tentative de récupération du token GitHub pour state: $state');
       final response = await http.get(
         Uri.parse('$_baseUrl/github/token/$state'),
       );
       
+      debugPrint('📡 Réponse backend: ${response.statusCode} - ${response.body}');
+      
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        debugPrint('✅ Token GitHub récupéré avec succès');
         return OAuthToken.fromJson(data);
       } else if (response.statusCode == 202) {
         // En attente
+        debugPrint('⏳ Token GitHub en attente...');
         return null;
       } else {
-        debugPrint('Erreur récupération token GitHub: ${response.statusCode} - ${response.body}');
+        debugPrint('❌ Erreur récupération token GitHub: ${response.statusCode} - ${response.body}');
         return null;
       }
     } catch (e) {
-      debugPrint('Erreur lors de la récupération du token GitHub: $e');
+      debugPrint('❌ Erreur lors de la récupération du token GitHub: $e');
       return null;
     }
   }
