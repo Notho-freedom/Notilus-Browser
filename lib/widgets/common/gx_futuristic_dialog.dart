@@ -9,6 +9,7 @@ import '../../core/constants/notilus_colors.dart';
 import '../../core/constants/notilus_fonts.dart';
 import '../../core/services/color_theme_manager.dart';
 import '../../services/settings_service.dart';
+import 'gx_futuristic_components.dart';
 
 /// Dialog futuriste avec contours géométriques façon OS SF
 class GxFuturisticDialog extends StatelessWidget {
@@ -486,100 +487,4 @@ class _GeometricBordersPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// Bouton futuriste pour les dialogs
-class GxFuturisticButton extends StatefulWidget {
-  final String label;
-  final VoidCallback? onPressed;
-  final IconData? icon;
-  final GxFuturisticButtonVariant variant;
-  final Color? accentColor;
-
-  const GxFuturisticButton({
-    super.key,
-    required this.label,
-    this.onPressed,
-    this.icon,
-    this.variant = GxFuturisticButtonVariant.primary,
-    this.accentColor,
-  });
-
-  @override
-  State<GxFuturisticButton> createState() => _GxFuturisticButtonState();
-}
-
-class _GxFuturisticButtonState extends State<GxFuturisticButton> {
-  bool _isHovered = false;
-  bool _isPressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final accent = widget.accentColor ?? NotilusColors.getSecondaryColor(context);
-    final isPrimary = widget.variant == GxFuturisticButtonVariant.primary;
-    
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTapDown: (_) => setState(() => _isPressed = true),
-        onTapUp: (_) {
-          setState(() => _isPressed = false);
-          widget.onPressed?.call();
-        },
-        onTapCancel: () => setState(() => _isPressed = false),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          decoration: BoxDecoration(
-            color: isPrimary
-                ? (_isHovered ? accent : accent.withOpacity(0.15))
-                : Colors.transparent,
-            border: Border.all(
-              color: isPrimary
-                  ? accent
-                  : accent.withOpacity(_isHovered ? 0.8 : 0.4),
-              width: _isHovered ? 1.5 : 1,
-            ),
-            boxShadow: _isHovered && isPrimary
-                ? [
-                    BoxShadow(
-                      color: accent.withOpacity(0.5),
-                      blurRadius: 8,
-                      spreadRadius: 2,
-                    ),
-                  ]
-                : null,
-          ),
-          transform: Matrix4.identity()
-            ..scale(_isPressed ? 0.95 : 1.0),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (widget.icon != null) ...[
-                Icon(
-                  widget.icon,
-                  size: 16,
-                  color: isPrimary ? Colors.white : accent,
-                ),
-                const SizedBox(width: 8),
-              ],
-              Text(
-                widget.label,
-                style: NotilusFonts.rajdhani(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: isPrimary ? Colors.white : accent,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-enum GxFuturisticButtonVariant {
-  primary,
-  secondary,
-}
 
