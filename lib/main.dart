@@ -28,6 +28,7 @@ import 'firebase_options.dart';
 import 'services/auth/firebase_auth_service.dart';
 import 'services/auth/config_sync_service.dart';
 import 'services/github/github_repos_service.dart';
+import 'services/service_factory.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -45,12 +46,15 @@ void main() async {
   // Supprime le halo bleu Windows autour des champs focus
   FocusManager.instance.highlightStrategy = FocusHighlightStrategy.alwaysTouch;
   
-  // Initialisation des services centralisés
+  // Initialisation des services centralisés en parallèle
   final settingsService = SettingsService();
-  await settingsService.initialize();
-  
   final mosaicService = NotilusMosaicService();
-  await mosaicService.initialize();
+  
+  // Paralléliser les initialisations pour accélérer le démarrage
+  await Future.wait([
+    settingsService.initialize(),
+    mosaicService.initialize(),
+  ]);
 
   // Initialiser Firebase Auth et Config Sync (si Firebase est configuré)
   FirebaseAuthService? authService;
@@ -193,8 +197,9 @@ class NotilusApp extends StatelessWidget {
           return TabGroupService(tabManager);
         }),
         ChangeNotifierProvider(create: (_) => DevToolsService()),
-        ChangeNotifierProvider(create: (_) => StudioService()),
-        ChangeNotifierProvider(create: (_) => LighthouseService()),
+        // Services lourds avec lazy loading
+        ChangeNotifierProvider(create: (_) => ServiceFactory.getStudioService()),
+        ChangeNotifierProvider(create: (_) => ServiceFactory.getLighthouseService()),
         ChangeNotifierProvider.value(value: mosaicService),
             ChangeNotifierProvider(
               create: (context) {

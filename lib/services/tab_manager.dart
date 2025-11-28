@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 import '../models/tab_model.dart';
 import '../models/tab_group_model.dart';
 import 'storage_service.dart';
@@ -29,7 +30,17 @@ class TabManager extends ChangeNotifier {
   }
 
   TabManager() {
-    _initialize();
+    // Initialiser de manière asynchrone après le premier frame
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      _initialize();
+    });
+    // Configurer les callbacks de performance
+    _performanceManager.onSuspendTab = (tabId, suspend) {
+      // Le TabWebViewManager gérera la suspension
+    };
+    _performanceManager.onPreloadTab = (tabId) {
+      // Le TabWebViewManager gérera le préchargement
+    };
   }
 
   Future<void> _initialize() async {
@@ -42,18 +53,20 @@ class TabManager extends ChangeNotifier {
 
     if (savedTabs.isNotEmpty) {
       _tabs.addAll(savedTabs);
+      // Précharger uniquement l'onglet actif au démarrage
       if (savedActiveTab != null && _tabs.any((t) => t.id == savedActiveTab)) {
         _activeTabId = savedActiveTab;
-        selectTab(savedActiveTab);
+        // Sélectionner sans sauvegarder immédiatement (évite les I/O au démarrage)
+        _selectTabWithoutSave(savedActiveTab);
       } else if (_tabs.isNotEmpty) {
-        selectTab(_tabs.first.id);
+        _selectTabWithoutSave(_tabs.first.id);
       }
     } else {
       // Create initial tab with home page if no saved data
       _createNewTab(url: 'about:newtab');
       if (_tabs.isNotEmpty) {
         _activeTabId = _tabs.first.id;
-        selectTab(_tabs.first.id);
+        _selectTabWithoutSave(_tabs.first.id);
       }
     }
 
@@ -63,9 +76,48 @@ class TabManager extends ChangeNotifier {
 
     _isInitialized = true;
     notifyListeners();
+    
+    // Sauvegarder après un délai pour éviter les I/O au démarrage
+    Future.delayed(const Duration(seconds: 2), () {
+      _save();
+    });
+  }
+  
+  /// Sélectionne un onglet sans sauvegarder (pour le démarrage)
+  void _selectTabWithoutSave(String tabId) {
+    // Deselect all tabs
+    for (int i = 0; i < _tabs.length; i++) {
+      if (_tabs[i].id != tabId) {
+        _tabs[i] = _tabs[i].copyWith(isSelected: false);
+      }
+    }
+    
+    // Select the new tab
+    final index = _tabs.indexWhere((tab) => tab.id == tabId);
+    if (index != -1) {
+      _tabs[index] = _tabs[index].copyWith(isSelected: true);
+      _activeTabId = tabId;
+      
+      // Marquer comme actif pour la performance
+      _performanceManager.markTabAsActive(tabId, _tabs[index]);
+      _performanceManager.optimizeMemory(_tabs.length);
+      
+      notifyListeners();
+      // Pas de _save() ici pour accélérer le démarrage
+    }
   }
 
   Future<void> _save() async {
+    // Utiliser les méthodes debounced pour optimiser les performances
+    await Future.wait([
+      _storage.saveTabsDebounced(_tabs),
+      _storage.saveGroupsDebounced(_groups),
+      _storage.saveActiveTabDebounced(_activeTabId),
+    ]);
+  }
+  
+  /// Sauvegarde immédiate (pour les cas critiques comme la fermeture de l'app)
+  Future<void> saveImmediately() async {
     await Future.wait([
       _storage.saveTabs(_tabs),
       _storage.saveGroups(_groups),
@@ -281,8 +333,27 @@ class TabManager extends ChangeNotifier {
 
   // Gestion automatique des groupes
   void autoGroupTabs() {
+    // Utiliser la version synchrone pour compatibilité
+    // Pour de grandes listes, utiliser autoGroupTabsAsync()
     final suggestions = TabGroupingService.suggestGroups(_tabs);
+    _applyGroupSuggestions(suggestions);
+  }
+  
+  /// Version asynchrone avec compute() pour grandes listes
+  Future<void> autoGroupTabsAsync() async {
+    if (_tabs.length < 50) {
+      // Pour petites listes, utiliser la version synchrone
+      autoGroupTabs();
+      return;
+    }
     
+    // Pour grandes listes, utiliser compute() dans un isolate
+    final suggestions = await TabGroupingService.suggestGroupsAsync(_tabs);
+    _applyGroupSuggestions(suggestions);
+  }
+  
+  /// Applique les suggestions de groupes
+  void _applyGroupSuggestions(List<TabGroupSuggestion> suggestions) {
     for (final suggestion in suggestions) {
       // Vérifier si un groupe avec ce nom existe déjà
       var existingGroup = _groups.firstWhere(

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:webview_windows/webview_windows.dart';
 import 'browser_engine.dart';
 import '../models/tab_model.dart';
+import 'error_handler.dart';
 
 /// Implémentation réelle du moteur de rendu avec WebView2 (Option #1 - Production-ready)
 /// WebView2 est le moteur moderne de Microsoft basé sur Chromium
@@ -46,6 +47,17 @@ class WebView2BrowserEngine extends BrowserEngine {
   bool _isInitialized = false;
   Timer? _newWindowPollingTimer;
   Timer? _downloadPollingTimer;
+  
+  // État de visibilité pour adapter la fréquence du polling
+  bool _isTabActive = true;
+  bool _isPageLoaded = false;
+  
+  // Cache des résultats de polling pour éviter les appels répétés
+  String? _lastNewWindowUrl;
+  
+  // Script JavaScript minifié et cache pour éviter la réinjection
+  bool _scriptInjected = false;
+  static const String _minifiedNewWindowScript = '''(function(){var o=window.open;window.open=function(u,t,f){if(!t||t==="_blank"||t==="blank"){if(u&&typeof u==="string"){if(document.body){document.body.setAttribute("data-new-window-url",u);document.body.dispatchEvent(new Event("notilus-new-window"));}}return null;}return o.apply(window,arguments);};var h=function(e){var t=e.target;while(t&&t.tagName!=="A"){t=t.parentElement;}if(t&&t.tagName==="A"){var h=t.getAttribute("href"),a=t.getAttribute("target"),r=(t.getAttribute("rel")||"").toLowerCase(),e=!1,n=a==="_blank"||a==="blank";if(h&&h.startsWith("http")){try{var i=window.location.hostname,c=new URL(h,window.location.href);e=c.hostname!==i;}catch(e){}}if(r.includes("external")){e=!0;}if(n||e){e.preventDefault();e.stopPropagation();if(document.body&&h){try{var u=new URL(h,window.location.href).href;document.body.setAttribute("data-new-window-url",u);document.body.dispatchEvent(new Event("notilus-new-window"));}catch(e){document.body.setAttribute("data-new-window-url",h);document.body.dispatchEvent(new Event("notilus-new-window"));}}return!1;}}};if(window._flutterNewWindowHandler){document.removeEventListener("click",window._flutterNewWindowHandler,!0);}window._flutterNewWindowHandler=h;document.addEventListener("click",h,!0);if(!window._flutterMutationObserver){window._flutterMutationObserver=new MutationObserver(function(e){e.forEach(function(e){e.addedNodes.forEach(function(e){if(1===e.nodeType){var t=e.querySelectorAll?e.querySelectorAll('a[target="_blank"],a[rel*="external"]'):[];t.forEach(function(e){e.addEventListener("click",h,!0);});}});});});window._flutterMutationObserver.observe(document.body,{childList:!0,subtree:!0});}})();''';
 
   @override
   Future<void> initialize() async {
@@ -62,89 +74,13 @@ class WebView2BrowserEngine extends BrowserEngine {
         onStateChanged?.call(TabState.loaded);
         onUrlChanged?.call(url);
         
-        // Injecter les handlers après chaque navigation
-        if (url.isNotEmpty && url != 'about:blank') {
+        // Injecter les handlers après chaque navigation (une seule fois)
+        if (url.isNotEmpty && url != 'about:blank' && !_scriptInjected) {
           Future.delayed(const Duration(milliseconds: 1500), () async {
             try {
-              // Injecter le handler pour les nouvelles fenêtres
+              // Injecter le handler pour les nouvelles fenêtres (script minifié)
               if (onNewWindowRequest != null) {
-                await _webView!.executeScript('''
-                  (function() {
-                    // Intercepter window.open() pour ouvrir dans Notilus
-                    var originalOpen = window.open;
-                    window.open = function(url, target, features) {
-                      // Si target est _blank ou undefined, ouvrir dans Notilus
-                      if (!target || target === '_blank' || target === 'blank') {
-                        if (url && typeof url === 'string') {
-                          if (document.body) {
-                            document.body.setAttribute('data-new-window-url', url);
-                          }
-                          return null; // Empêcher l'ouverture dans un navigateur externe
-                        }
-                      }
-                      // Pour les autres cas, utiliser l'original (mais ne devrait pas arriver)
-                      return originalOpen.apply(window, arguments);
-                    };
-                    
-                    // Intercepter les clics sur les liens target="_blank" et liens externes
-                    var handler = function(e) {
-                      var target = e.target;
-                      while (target && target.tagName !== 'A') {
-                        target = target.parentElement;
-                      }
-                      
-                      if (target && target.tagName === 'A') {
-                        var href = target.getAttribute('href');
-                        var targetAttr = target.getAttribute('target');
-                        var rel = target.getAttribute('rel') || '';
-                        
-                        // Vérifier si c'est un lien externe ou target="_blank"
-                        var isExternal = false;
-                        var isBlank = targetAttr === '_blank' || targetAttr === 'blank';
-                        
-                        // Vérifier si c'est un lien externe (différent domaine)
-                        if (href && href.startsWith('http')) {
-                          try {
-                            var currentDomain = window.location.hostname;
-                            var linkUrl = new URL(href, window.location.href);
-                            isExternal = linkUrl.hostname !== currentDomain;
-                          } catch(e) {
-                            // URL invalide, ignorer
-                          }
-                        }
-                        
-                        // Vérifier rel="external"
-                        if (rel.toLowerCase().includes('external')) {
-                          isExternal = true;
-                        }
-                        
-                        // Intercepter si target="_blank" ou lien externe
-                        if (isBlank || isExternal) {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          // Stocker l'URL dans un attribut data pour récupération
-                          if (document.body && href) {
-                            try {
-                              var fullUrl = new URL(href, window.location.href).href;
-                              document.body.setAttribute('data-new-window-url', fullUrl);
-                            } catch(e) {
-                              document.body.setAttribute('data-new-window-url', href);
-                            }
-                          }
-                          return false;
-                        }
-                      }
-                    };
-                    
-                    // Supprimer l'ancien handler s'il existe
-                    if (window._flutterNewWindowHandler) {
-                      document.removeEventListener('click', window._flutterNewWindowHandler, true);
-                    }
-                    window._flutterNewWindowHandler = handler;
-                    document.addEventListener('click', handler, true);
-                  })();
-                ''');
-                
+                await _injectScriptOnce();
                 // Démarrer le polling pour détecter les nouvelles fenêtres
                 _startNewWindowPolling();
               }
@@ -185,6 +121,14 @@ class WebView2BrowserEngine extends BrowserEngine {
         onCanGoForwardChanged?.call(_canGoForward);
       });
       
+      // Marquer la page comme chargée
+      _webView!.loadingState.listen((state) {
+        _isPageLoaded = state == LoadingState.navigationCompleted;
+        if (_isPageLoaded) {
+          _startNewWindowPolling(); // Ajuster la fréquence après chargement
+        }
+      });
+      
       // Gérer les erreurs de chargement
       _webView!.onLoadError.listen((error) {
         onStateChanged?.call(TabState.error);
@@ -212,15 +156,59 @@ class WebView2BrowserEngine extends BrowserEngine {
     }
     
     if (_webView != null) {
+      // Réinitialiser le flag d'injection pour la nouvelle page
+      _scriptInjected = false;
+      _isPageLoaded = false;
+      
       onStateChanged?.call(TabState.loading);
       onUrlChanged?.call(url);
       
+      // Utiliser retry avec fallback gracieux
       try {
-        await _webView!.loadUrl(url);
+        await ErrorHandler.withRetry(
+          fn: () => _webView!.loadUrl(url),
+          maxRetries: 2,
+          initialDelay: const Duration(milliseconds: 500),
+          shouldRetry: (error) {
+            // Réessayer seulement pour les erreurs réseau
+            return error.toString().contains('network') || 
+                   error.toString().contains('timeout');
+          },
+        );
       } catch (e) {
-        debugPrint('Navigation error: $e');
-        onStateChanged?.call(TabState.error);
+        ErrorHandler.logError(
+          context: 'WebView2BrowserEngine.navigate',
+          error: e,
+          additionalData: {'url': url},
+        );
+        
+        // Tentative de récupération
+        final recovered = await WebViewRecovery.recoverWebView(
+          recreateWebView: () async {
+            await _webView!.dispose();
+            _webView = WebviewController();
+            await _webView!.initialize();
+            await _webView!.loadUrl(url);
+          },
+        );
+        
+        if (!recovered) {
+          onStateChanged?.call(TabState.error);
+        }
       }
+    }
+  }
+  
+  /// Injecte le script une seule fois (évite la réinjection)
+  Future<void> _injectScriptOnce() async {
+    if (_scriptInjected || _webView == null || onNewWindowRequest == null) return;
+    
+    try {
+      await _webView!.executeScript(_minifiedNewWindowScript);
+      _scriptInjected = true;
+      debugPrint('✅ Script JavaScript injecté (minifié)');
+    } catch (e) {
+      debugPrint('Erreur injection script: $e');
     }
   }
 
@@ -348,12 +336,28 @@ class WebView2BrowserEngine extends BrowserEngine {
     return _webView;
   }
 
-  /// Démarre le polling pour détecter les nouvelles fenêtres
+  /// Démarre le polling pour détecter les nouvelles fenêtres avec fréquence adaptative
   void _startNewWindowPolling() {
     _newWindowPollingTimer?.cancel();
-    _newWindowPollingTimer = Timer.periodic(const Duration(milliseconds: 500), (_) {
-      _checkForNewWindowRequests();
+    
+    // Fréquence adaptative : plus lent si l'onglet est inactif
+    final interval = _isTabActive && _isPageLoaded
+        ? const Duration(milliseconds: 500)
+        : const Duration(seconds: 2);
+    
+    _newWindowPollingTimer = Timer.periodic(interval, (_) {
+      if (_isTabActive) {
+        _checkForNewWindowRequests();
+      }
     });
+  }
+  
+  /// Définit l'état actif/inactif de l'onglet
+  void setTabActive(bool isActive) {
+    if (_isTabActive != isActive) {
+      _isTabActive = isActive;
+      _startNewWindowPolling(); // Redémarrer avec la nouvelle fréquence
+    }
   }
   
   /// Arrête le polling
@@ -365,7 +369,7 @@ class WebView2BrowserEngine extends BrowserEngine {
   /// Vérifie périodiquement si une nouvelle fenêtre a été demandée
   /// (utilisé comme fallback si onNewWindowRequest n'est pas disponible)
   Future<void> _checkForNewWindowRequests() async {
-    if (_webView == null || onNewWindowRequest == null) return;
+    if (_webView == null || onNewWindowRequest == null || !_isTabActive) return;
     
     try {
       // Vérifier si une URL a été stockée dans l'attribut data
@@ -382,8 +386,16 @@ class WebView2BrowserEngine extends BrowserEngine {
       ''');
       
       if (result != null && result is String && result.isNotEmpty) {
-        debugPrint('Nouvelle fenêtre détectée via JavaScript: $result');
-        onNewWindowRequest?.call(result);
+        // Éviter les appels répétés pour la même URL
+        if (result != _lastNewWindowUrl) {
+          _lastNewWindowUrl = result;
+          debugPrint('Nouvelle fenêtre détectée via JavaScript: $result');
+          onNewWindowRequest?.call(result);
+          // Réinitialiser le cache après un délai
+          Future.delayed(const Duration(seconds: 1), () {
+            _lastNewWindowUrl = null;
+          });
+        }
       }
     } catch (e) {
       // Ignorer les erreurs silencieusement

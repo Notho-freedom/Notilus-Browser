@@ -15,6 +15,9 @@ class TabWebViewManager extends ChangeNotifier {
   StudioService? _studioService;
   LighthouseService? _lighthouseService;
   
+  // État de suspension des onglets
+  final Set<String> _suspendedTabs = {};
+  
   void setDownloadService(DownloadService service) {
     _downloadService = service;
   }
@@ -181,6 +184,56 @@ class TabWebViewManager extends ChangeNotifier {
   /// Récupère le moteur d'un onglet (peut être null)
   BrowserEngine? getEngine(String tabId) {
     return _activeEngines[tabId];
+  }
+  
+  /// Suspend un onglet (arrête le polling, réduit l'activité)
+  void suspendTab(String tabId) {
+    if (_suspendedTabs.contains(tabId)) return;
+    
+    final engine = _activeEngines[tabId];
+    if (engine is WebView2BrowserEngine) {
+      _suspendedTabs.add(tabId);
+      // Arrêter le polling JavaScript (sera implémenté dans WebView2BrowserEngine)
+      // Pour l'instant, on marque juste comme suspendu
+      debugPrint('⏸️ Onglet suspendu: $tabId');
+    }
+  }
+  
+  /// Reprend un onglet suspendu
+  void resumeTab(String tabId) {
+    if (!_suspendedTabs.contains(tabId)) return;
+    
+    _suspendedTabs.remove(tabId);
+    final engine = _activeEngines[tabId];
+    if (engine is WebView2BrowserEngine) {
+      // Reprendre le polling si nécessaire
+      debugPrint('▶️ Onglet repris: $tabId');
+    }
+  }
+  
+  /// Précharge un onglet (crée l'engine mais ne l'affiche pas)
+  void preloadTab(String tabId, String url) {
+    if (_activeEngines.containsKey(tabId)) return;
+    
+    // Créer l'engine et le mettre en cache
+    BrowserEngine? engine;
+    if (Platform.isWindows) {
+      engine = WebView2BrowserEngine();
+    } else {
+      engine = BrowserEngineFactory.create();
+    }
+    
+    _activeEngines[tabId] = engine;
+    _tabUrlMap[tabId] = url;
+    
+    // Initialiser mais ne pas naviguer encore
+    engine.initialize();
+    debugPrint('📦 Onglet préchargé: $tabId ($url)');
+  }
+  
+  /// Vérifie si un onglet est suspendu
+  bool isTabSuspended(String tabId) {
+    return _suspendedTabs.contains(tabId);
   }
   
   /// Nettoie tous les moteurs (actifs et cache)

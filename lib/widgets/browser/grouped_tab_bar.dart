@@ -30,6 +30,11 @@ class GroupedTabBar extends StatefulWidget {
 
 class _GroupedTabBarState extends State<GroupedTabBar> {
   final ScrollController _scrollController = ScrollController();
+  
+  // Cache pour éviter de reconstruire la liste à chaque rebuild
+  List<Widget>? _cachedTabBarItems;
+  int? _lastTabCount;
+  String? _lastActiveTabId;
 
   @override
   void dispose() {
@@ -156,6 +161,7 @@ class _GroupedTabBarState extends State<GroupedTabBar> {
   ) {
     final groups = groupService.orderedGroups;
     final allTabs = tabManager.tabs;
+    final activeTabId = tabManager.activeTab?.id;
     
     // Vérifier s'il y a des onglets (groupés ou non)
     if (allTabs.isEmpty) {
@@ -169,18 +175,41 @@ class _GroupedTabBarState extends State<GroupedTabBar> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Construire la liste des widgets à afficher
-        final List<Widget> tabBarItems = [];
-        
-        // Identifier les onglets qui sont dans un groupe
-        final tabsInGroups = <String>{};
-        for (final group in groups) {
-          tabsInGroups.addAll(group.tabIds);
+        // Utiliser le cache si rien n'a changé
+        final tabCount = allTabs.length;
+        if (_cachedTabBarItems != null && 
+            _lastTabCount == tabCount && 
+            _lastActiveTabId == activeTabId) {
+          // Reconstruire seulement si nécessaire (changement de groupes)
+          if (groups.length == (_cachedTabBarItems!.length - tabCount + groups.length)) {
+            // Utiliser le cache
+          } else {
+            _cachedTabBarItems = null; // Invalider le cache
+          }
         }
         
-        // Afficher les onglets non groupés (domaines avec un seul onglet)
-        for (final tab in allTabs) {
-          if (!tabsInGroups.contains(tab.id)) {
+        // Construire la liste des widgets à afficher (ou utiliser le cache)
+        List<Widget> tabBarItems;
+        
+        if (_cachedTabBarItems == null) {
+          tabBarItems = [];
+          _cachedTabBarItems = [];
+          _lastTabCount = tabCount;
+          _lastActiveTabId = activeTabId;
+        } else {
+          tabBarItems = List.from(_cachedTabBarItems!);
+        }
+        
+        if (_cachedTabBarItems == null || _cachedTabBarItems!.isEmpty) {
+          // Identifier les onglets qui sont dans un groupe
+          final tabsInGroups = <String>{};
+          for (final group in groups) {
+            tabsInGroups.addAll(group.tabIds);
+          }
+          
+          // Afficher les onglets non groupés (domaines avec un seul onglet)
+          for (final tab in allTabs) {
+            if (!tabsInGroups.contains(tab.id)) {
             final isActive = tab.id == tabManager.activeTab?.id;
             // Obtenir la couleur du domaine même pour les onglets non groupés
             // Extraire le domaine de l'URL
@@ -220,12 +249,12 @@ class _GroupedTabBarState extends State<GroupedTabBar> {
               ),
             );
           }
-        }
-        
-        // Afficher les groupes (domaines avec plusieurs onglets)
-        for (final group in groups) {
-          // Si le groupe est expandé, insérer ses onglets avant le groupe
-          if (group.isExpanded) {
+          }
+          
+          // Afficher les groupes (domaines avec plusieurs onglets)
+          for (final group in groups) {
+            // Si le groupe est expandé, insérer ses onglets avant le groupe
+            if (group.isExpanded) {
             final selectedGroupId = groupService.selectedGroupId;
             final isSelected = selectedGroupId == group.id;
             
@@ -270,41 +299,78 @@ class _GroupedTabBarState extends State<GroupedTabBar> {
                 }
               }
             }
+            }
+            
+            // Ajouter le widget du groupe
+            tabBarItems.add(
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: constraints.maxWidth * 0.4,
+                  minWidth: 150,
+                ),
+                child: _GroupWidget(
+                  group: group,
+                  tabManager: tabManager,
+                  groupService: groupService,
+                  accentColor: accentColor,
+                ),
+              ),
+            );
           }
           
-          // Ajouter le widget du groupe
-          tabBarItems.add(
-            ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: constraints.maxWidth * 0.4,
-                minWidth: 150,
-              ),
-              child: _GroupWidget(
-                group: group,
-                tabManager: tabManager,
-                groupService: groupService,
-                accentColor: accentColor,
-              ),
-            ),
-          );
+          // Mettre à jour le cache
+          _cachedTabBarItems = List.from(tabBarItems);
         }
         
+        // Virtualisation avec ListView.builder pour optimiser les performances
+        // Ne rend que les éléments visibles + 2 de chaque côté
         return Scrollbar(
           controller: _scrollController,
           thickness: 2,
           radius: const Radius.circular(1),
           thumbVisibility: false,
-          child: SingleChildScrollView(
+          child: ListView.builder(
             controller: _scrollController,
             scrollDirection: Axis.horizontal,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: tabBarItems,
-            ),
+            itemCount: tabBarItems.length,
+            // Cache optimisé : ne garder que 2 éléments de chaque côté (200px)
+            cacheExtent: 200,
+            itemBuilder: (context, index) {
+              if (index >= tabBarItems.length) return const SizedBox.shrink();
+              // Utiliser AutomaticKeepAliveClientMixin pour les onglets fréquemment utilisés
+              return _VirtualizedTabItem(
+                key: ValueKey('tab_$index'),
+                child: tabBarItems[index],
+              );
+            },
           ),
         );
       },
     );
+  }
+}
+
+/// Widget wrapper pour virtualisation avec AutomaticKeepAliveClientMixin
+class _VirtualizedTabItem extends StatefulWidget {
+  final Widget child;
+  
+  const _VirtualizedTabItem({
+    super.key,
+    required this.child,
+  });
+  
+  @override
+  State<_VirtualizedTabItem> createState() => _VirtualizedTabItemState();
+}
+
+class _VirtualizedTabItemState extends State<_VirtualizedTabItem> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true; // Garder en mémoire pour éviter les reconstructions
+  
+  @override
+  Widget build(BuildContext context) {
+    super.build(context); // Nécessaire pour AutomaticKeepAliveClientMixin
+    return widget.child;
   }
 }
 

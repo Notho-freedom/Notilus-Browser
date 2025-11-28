@@ -734,8 +734,9 @@ class _NotilusWidgetsPanel extends StatelessWidget {
     final theme = Theme.of(context);
     final gxRed = Provider.of<ColorThemeManager>(context).nativeSecondaryColor;
     
-    return Consumer<SettingsService>(
-      builder: (context, settings, _) => Container(
+    return Selector<SettingsService, double>(
+      selector: (_, settings) => settings.panelTransparency,
+      builder: (context, panelTransparency, _) => Container(
         decoration: BoxDecoration(
           image: DecorationImage(
             image: NetworkImage(context.watch<WallpaperManager>().current),
@@ -747,7 +748,7 @@ class _NotilusWidgetsPanel extends StatelessWidget {
           ),
         ),
         child: Container(
-          color: Colors.black.withValues(alpha: 1.0 - settings.panelTransparency),
+          color: Colors.black.withValues(alpha: 1.0 - panelTransparency),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -790,20 +791,35 @@ class _NotilusWidgetsPanel extends StatelessWidget {
               ),
             ),
             Expanded(
-              child: Consumer<SystemMetricsService>(
-                builder: (context, metrics, _) {
-                  final tabManager = Provider.of<TabManager>(context);
-                  metrics.updateTabCount(tabManager.tabs.length);
+              child: Selector2<SystemMetricsService, TabManager, ({double cpuUsage, double ramUsage, double gpuTemp, String networkStatus, int tabCount, String activeTime, int pagesVisited, double dataUsed})>(
+                selector: (_, metrics, tabManager) => (
+                  cpuUsage: metrics.cpuUsage,
+                  ramUsage: metrics.ramUsage,
+                  gpuTemp: metrics.gpuTemp,
+                  networkStatus: metrics.networkStatus,
+                  tabCount: tabManager.tabs.length,
+                  activeTime: metrics.formatActiveTime(),
+                  pagesVisited: metrics.pagesVisited,
+                  dataUsed: metrics.dataUsed,
+                ),
+                builder: (context, data, _) {
+                  // Mettre à jour le nombre d'onglets sans déclencher de rebuild
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    final metrics = context.read<SystemMetricsService>();
+                    if (metrics.tabCount != data.tabCount) {
+                      metrics.updateTabCount(data.tabCount);
+                    }
+                  });
                   
                   final widgets = [
-                    _WidgetData('CPU', '${metrics.cpuUsage.toStringAsFixed(0)}%', 'Utilisation processeur', CupertinoIcons.gauge, _getUsageColor(metrics.cpuUsage)),
-                    _WidgetData('RAM', '${metrics.ramUsage.toStringAsFixed(0)}%', 'Mémoire utilisée', Icons.memory, _getUsageColor(metrics.ramUsage)),
-                    _WidgetData('GPU', '${metrics.gpuTemp.toStringAsFixed(0)}°C', 'Température graphique', CupertinoIcons.speedometer, _getTempColor(metrics.gpuTemp)),
-                    _WidgetData('Réseau', metrics.networkStatus, 'État connexion', CupertinoIcons.waveform_path, Colors.green),
-                    _WidgetData('Onglets', '${metrics.tabCount}', 'Onglets actifs', CupertinoIcons.square_grid_2x2, gxRed),
-                    _WidgetData('Session', metrics.formatActiveTime(), 'Temps actif', CupertinoIcons.time, gxRed),
-                    _WidgetData('Pages', '${metrics.pagesVisited}', 'Pages visitées', CupertinoIcons.doc_text, gxRed),
-                    _WidgetData('Données', '${metrics.dataUsed.toStringAsFixed(2)} GB', 'Données transférées', CupertinoIcons.arrow_up_arrow_down, gxRed),
+                    _WidgetData('CPU', '${data.cpuUsage.toStringAsFixed(0)}%', 'Utilisation processeur', CupertinoIcons.gauge, _getUsageColor(data.cpuUsage)),
+                    _WidgetData('RAM', '${data.ramUsage.toStringAsFixed(0)}%', 'Mémoire utilisée', Icons.memory, _getUsageColor(data.ramUsage)),
+                    _WidgetData('GPU', '${data.gpuTemp.toStringAsFixed(0)}°C', 'Température graphique', CupertinoIcons.speedometer, _getTempColor(data.gpuTemp)),
+                    _WidgetData('Réseau', data.networkStatus, 'État connexion', CupertinoIcons.waveform_path, Colors.green),
+                    _WidgetData('Onglets', '${data.tabCount}', 'Onglets actifs', CupertinoIcons.square_grid_2x2, gxRed),
+                    _WidgetData('Session', data.activeTime, 'Temps actif', CupertinoIcons.time, gxRed),
+                    _WidgetData('Pages', '${data.pagesVisited}', 'Pages visitées', CupertinoIcons.doc_text, gxRed),
+                    _WidgetData('Données', '${data.dataUsed.toStringAsFixed(2)} GB', 'Données transférées', CupertinoIcons.arrow_up_arrow_down, gxRed),
                   ];
                   
                   return ListView.builder(
