@@ -412,45 +412,43 @@ class _GxFuturisticHistoryPanelState extends State<GxFuturisticHistoryPanel> {
 
                         return Column(
                           children: [
-                            // Filtres
-                            if (!isCompact) ...[
-                              Padding(
-                                padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: itemSpacing),
-                                child: Row(
-                                  children: [
-                                    // Filtre par période
-                                    Expanded(
-                                      child: _FilterDropdown(
-                                        label: 'Période',
-                                        value: _selectedPeriodFilter,
-                                        items: ['Toutes', ...groupedItems.keys.toList()],
-                                        accentColor: accentColor,
-                                        onChanged: (value) {
-                                          setState(() {
-                                            _selectedPeriodFilter = value ?? 'Toutes';
-                                          });
-                                        },
-                                      ),
+                            // Filtres (toujours visibles)
+                            Padding(
+                              padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: itemSpacing),
+                              child: Row(
+                                children: [
+                                  // Filtre par période
+                                  Expanded(
+                                    child: _FilterDropdown(
+                                      label: 'Période',
+                                      value: _selectedPeriodFilter,
+                                      items: ['Toutes', ...groupedItems.keys.toList()],
+                                      accentColor: accentColor,
+                                      onChanged: (value) {
+                                        setState(() {
+                                          _selectedPeriodFilter = value ?? 'Toutes';
+                                        });
+                                      },
                                     ),
-                                    SizedBox(width: itemSpacing),
-                                    // Filtre par domaine
-                                    Expanded(
-                                      child: _FilterDropdown(
-                                        label: 'Domaine',
-                                        value: _selectedDomainFilter,
-                                        items: ['Tous', ...sortedDomains],
-                                        accentColor: accentColor,
-                                        onChanged: (value) {
-                                          setState(() {
-                                            _selectedDomainFilter = value ?? 'Tous';
-                                          });
-                                        },
-                                      ),
+                                  ),
+                                  SizedBox(width: itemSpacing),
+                                  // Filtre par domaine
+                                  Expanded(
+                                    child: _FilterDropdown(
+                                      label: 'Domaine',
+                                      value: _selectedDomainFilter,
+                                      items: ['Tous', ...sortedDomains],
+                                      accentColor: accentColor,
+                                      onChanged: (value) {
+                                        setState(() {
+                                          _selectedDomainFilter = value ?? 'Tous';
+                                        });
+                                      },
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
-                            ],
+                            ),
                             // Liste avec scroll optimisée (ListView.builder pour virtualisation)
                             Expanded(
                               child: ListView.builder(

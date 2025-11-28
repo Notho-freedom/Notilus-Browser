@@ -1,6 +1,7 @@
 /// Panel de téléchargements futuriste Notilus GX
 library gx_futuristic_downloads_panel;
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
@@ -26,14 +27,354 @@ class GxFuturisticDownloadsPanel extends StatefulWidget {
 
 class _GxFuturisticDownloadsPanelState extends State<GxFuturisticDownloadsPanel> {
   final ScrollController _scrollController = ScrollController();
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  String _selectedPeriodFilter = 'Toutes';
+  String _selectedStatusFilter = 'Tous';
+  final Map<String, bool> _expandedPeriods = {};
   
   // Cache pour optimiser les performances
-  List<DownloadModel>? _cachedDownloads;
+  Timer? _searchDebounceTimer;
+  List<DownloadModel>? _cachedFilteredDownloads;
+  Map<String, List<DownloadModel>>? _cachedGroupedDownloads;
+  List<String>? _cachedSortedDomains;
+  String? _lastSearchQuery;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(_onSearchChanged);
+    // Initialiser toutes les périodes comme expandées
+    _expandedPeriods.addAll({
+      'Aujourd\'hui': true,
+      'Hier': true,
+      'Cette semaine': true,
+      'Ce mois': true,
+      'Plus ancien': true,
+    });
+  }
+  
+  void _onSearchChanged() {
+    _searchDebounceTimer?.cancel();
+    _searchDebounceTimer = Timer(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        setState(() {
+          _searchQuery = _searchController.text.toLowerCase();
+          // Invalider le cache
+          _cachedFilteredDownloads = null;
+          _cachedGroupedDownloads = null;
+          _cachedSortedDomains = null;
+        });
+      }
+    });
+  }
 
   @override
   void dispose() {
+    _searchDebounceTimer?.cancel();
+    _searchController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+  
+  void _togglePeriod(String period) {
+    setState(() {
+      _expandedPeriods[period] = !(_expandedPeriods[period] ?? true);
+    });
+  }
+  
+  /// Groupe les téléchargements par période
+  Map<String, List<DownloadModel>> _groupDownloadsByPeriod(List<DownloadModel> downloads) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final weekStart = today.subtract(Duration(days: now.weekday - 1));
+    final monthStart = DateTime(now.year, now.month, 1);
+    
+    final Map<String, List<DownloadModel>> grouped = {};
+    
+    for (final download in downloads) {
+      final startDate = DateTime(download.startTime.year, download.startTime.month, download.startTime.day);
+      
+      String period;
+      if (startDate == today) {
+        period = 'Aujourd\'hui';
+      } else if (startDate == yesterday) {
+        period = 'Hier';
+      } else if (startDate.isAfter(weekStart.subtract(const Duration(days: 1)))) {
+        period = 'Cette semaine';
+      } else if (startDate.isAfter(monthStart.subtract(const Duration(days: 1)))) {
+        period = 'Ce mois';
+      } else {
+        period = 'Plus ancien';
+      }
+      
+      grouped.putIfAbsent(period, () => []).add(download);
+    }
+    
+    // Trier les périodes dans l'ordre chronologique
+    final orderedPeriods = ['Aujourd\'hui', 'Hier', 'Cette semaine', 'Ce mois', 'Plus ancien'];
+    final Map<String, List<DownloadModel>> orderedGrouped = {};
+    
+    for (final period in orderedPeriods) {
+      if (grouped.containsKey(period)) {
+        orderedGrouped[period] = grouped[period]!;
+      }
+    }
+    
+    return orderedGrouped;
+  }
+  
+  String _extractDomainFromUrl(String url) {
+    try {
+      final uri = Uri.parse(url);
+      if (uri.host.isNotEmpty) {
+        return uri.host.replaceFirst(RegExp(r'^www\.'), '');
+      }
+    } catch (_) {}
+    return 'unknown';
+  }
+  
+  Widget _buildDownloadsList({
+    required List<DownloadModel> downloads,
+    required DownloadService downloadService,
+    required Color accentColor,
+    required Color? bgColor,
+    required double panelOpacity,
+    required bool isCompact,
+    required bool isMedium,
+    required double horizontalPadding,
+    required double itemSpacing,
+  }) {
+    // Filtrer par recherche
+    List<DownloadModel> filteredDownloads;
+    if (_cachedFilteredDownloads != null && _lastSearchQuery == _searchQuery) {
+      filteredDownloads = _cachedFilteredDownloads!;
+    } else {
+      filteredDownloads = _searchQuery.isEmpty
+          ? downloads
+          : downloads.where((download) {
+              final fileName = download.fileName.toLowerCase();
+              final url = download.url.toLowerCase();
+              return fileName.contains(_searchQuery) || url.contains(_searchQuery);
+            }).toList();
+      _cachedFilteredDownloads = filteredDownloads;
+      _lastSearchQuery = _searchQuery;
+    }
+    
+    // Filtrer par statut
+    if (_selectedStatusFilter != 'Tous') {
+      filteredDownloads = filteredDownloads.where((download) {
+        switch (_selectedStatusFilter) {
+          case 'En cours':
+            return download.status == DownloadStatus.downloading || download.status == DownloadStatus.pending;
+          case 'Terminés':
+            return download.status == DownloadStatus.completed;
+          case 'Échoués':
+            return download.status == DownloadStatus.failed || download.status == DownloadStatus.cancelled;
+          default:
+            return true;
+        }
+      }).toList();
+    }
+    
+    // Grouper par période
+    Map<String, List<DownloadModel>> groupedDownloads;
+    if (_cachedGroupedDownloads != null && _lastSearchQuery == _searchQuery) {
+      groupedDownloads = _cachedGroupedDownloads!;
+    } else {
+      groupedDownloads = _groupDownloadsByPeriod(filteredDownloads);
+      _cachedGroupedDownloads = groupedDownloads;
+    }
+    
+    // Filtrer par période
+    final filteredGroupedDownloads = _selectedPeriodFilter == 'Toutes'
+        ? groupedDownloads
+        : groupedDownloads.containsKey(_selectedPeriodFilter)
+            ? {_selectedPeriodFilter: groupedDownloads[_selectedPeriodFilter]!}
+            : <String, List<DownloadModel>>{};
+    
+    // Extraire les domaines uniques
+    List<String> sortedDomains;
+    if (_cachedSortedDomains != null && _lastSearchQuery == _searchQuery) {
+      sortedDomains = _cachedSortedDomains!;
+    } else {
+      final uniqueDomains = <String>{};
+      for (final download in filteredDownloads) {
+        uniqueDomains.add(_extractDomainFromUrl(download.url));
+      }
+      sortedDomains = uniqueDomains.toList()..sort();
+      _cachedSortedDomains = sortedDomains;
+    }
+    
+    // Préparer la liste avec séparateurs
+    final List<_DownloadListItemData> flatItems = [];
+    
+    filteredGroupedDownloads.forEach((period, periodDownloads) {
+      final isExpanded = _expandedPeriods[period] ?? true;
+      
+      // Ajouter le séparateur
+      flatItems.add(_DownloadListItemData(
+        type: _DownloadListItemType.separator,
+        period: period,
+        isExpanded: isExpanded,
+        isFirst: flatItems.isEmpty,
+      ));
+      
+      // Ajouter les téléchargements de cette période si expandée
+      if (isExpanded) {
+        for (final download in periodDownloads) {
+          flatItems.add(_DownloadListItemData(
+            type: _DownloadListItemType.item,
+            download: download,
+          ));
+        }
+      }
+    });
+    
+    if (filteredDownloads.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              CupertinoIcons.arrow_down_circle,
+              size: isCompact ? 48 : isMedium ? 56 : 64,
+              color: Colors.white.withOpacity(0.3),
+            ),
+            SizedBox(height: isCompact ? 12 : 16),
+            Text(
+              _searchQuery.isEmpty
+                  ? 'Aucun téléchargement'
+                  : 'Aucun résultat',
+              style: NotilusFonts.rajdhani(
+                fontSize: isCompact ? 13 : isMedium ? 14 : 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.white.withOpacity(0.7),
+              ),
+            ),
+            SizedBox(height: isCompact ? 6 : 8),
+            Text(
+              _searchQuery.isEmpty
+                  ? 'Les fichiers téléchargés apparaîtront ici'
+                  : 'Aucun téléchargement ne correspond',
+              style: NotilusFonts.rajdhani(
+                fontSize: isCompact ? 10 : isMedium ? 11 : 12,
+                color: Colors.white.withOpacity(0.5),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    return Column(
+      children: [
+        // Filtres
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: itemSpacing),
+          child: Row(
+            children: [
+              // Filtre par période
+              Expanded(
+                child: _FilterDropdown(
+                  label: 'Période',
+                  value: _selectedPeriodFilter,
+                  items: ['Toutes', ...groupedDownloads.keys.toList()],
+                  accentColor: accentColor,
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedPeriodFilter = value ?? 'Toutes';
+                    });
+                  },
+                ),
+              ),
+              SizedBox(width: itemSpacing),
+              // Filtre par statut
+              Expanded(
+                child: _FilterDropdown(
+                  label: 'Statut',
+                  value: _selectedStatusFilter,
+                  items: ['Tous', 'En cours', 'Terminés', 'Échoués'],
+                  accentColor: accentColor,
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedStatusFilter = value ?? 'Tous';
+                    });
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Liste avec scroll
+        Expanded(
+          child: ListView.builder(
+            controller: _scrollController,
+            padding: EdgeInsets.symmetric(
+              horizontal: horizontalPadding,
+              vertical: itemSpacing,
+            ),
+            itemCount: flatItems.length,
+            cacheExtent: 500,
+            addAutomaticKeepAlives: false,
+            addRepaintBoundaries: true,
+            itemBuilder: (context, index) {
+              final itemData = flatItems[index];
+              
+              if (itemData.type == _DownloadListItemType.separator) {
+                return Padding(
+                  padding: EdgeInsets.symmetric(
+                    vertical: itemData.isFirst ? 0 : itemSpacing * 2,
+                    horizontal: 0,
+                  ),
+                  child: _PeriodSeparator(
+                    label: itemData.period!,
+                    accentColor: accentColor,
+                    isExpanded: itemData.isExpanded!,
+                    onTap: () => _togglePeriod(itemData.period!),
+                  ),
+                );
+              } else {
+                final download = itemData.download!;
+                return Padding(
+                  padding: EdgeInsets.only(bottom: itemSpacing),
+                  child: RepaintBoundary(
+                    key: ValueKey('download_${download.id}'),
+                    child: _DownloadListItem(
+                      download: download,
+                      accentColor: accentColor,
+                      bgColor: bgColor,
+                      panelOpacity: panelOpacity,
+                      isCompact: isCompact,
+                      isMedium: isMedium,
+                      onCancel: () => downloadService.cancelDownload(download.id),
+                      onRemove: () {
+                        downloadService.removeDownload(download.id);
+                        _cachedFilteredDownloads = null;
+                        _cachedGroupedDownloads = null;
+                        _cachedSortedDomains = null;
+                      },
+                      onOpen: () async {
+                        if (download.filePath != null) {
+                          final file = File(download.filePath!);
+                          if (await file.exists()) {
+                            final uri = Uri.file(download.filePath!);
+                            if (await canLaunchUrl(uri)) {
+                              await launchUrl(uri);
+                            }
+                          }
+                        }
+                      },
+                    ),
+                  ),
+                );
+              }
+            },
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -62,11 +403,6 @@ class _GxFuturisticDownloadsPanelState extends State<GxFuturisticDownloadsPanel>
           builder: (context, downloadService, _) {
             final downloads = downloadService.downloads;
             
-            // Utiliser le cache si disponible
-            if (_cachedDownloads == null || _cachedDownloads!.length != downloads.length) {
-              _cachedDownloads = List.from(downloads);
-            }
-            
             return LayoutBuilder(
               builder: (context, constraints) {
                 // Dimensions adaptatives selon la taille du panel
@@ -81,12 +417,22 @@ class _GxFuturisticDownloadsPanelState extends State<GxFuturisticDownloadsPanel>
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Header compact (sans titre répété)
+                    // Header compact avec recherche
                     Padding(
                       padding: EdgeInsets.fromLTRB(horizontalPadding, verticalPadding, horizontalPadding, itemSpacing),
                       child: Row(
                         children: [
-                          const Spacer(),
+                          // Barre de recherche compacte
+                          Expanded(
+                            child: GxFuturisticInput(
+                              controller: _searchController,
+                              hint: isCompact ? 'Rechercher...' : 'Rechercher dans les téléchargements...',
+                              prefixIcon: CupertinoIcons.search,
+                              accentColor: accentColor,
+                            ),
+                          ),
+                          SizedBox(width: itemSpacing),
+                          // Bouton effacer terminés
                           if (downloads.isNotEmpty)
                             GxFuturisticButton(
                               label: isCompact ? '' : 'Effacer terminés',
@@ -104,7 +450,9 @@ class _GxFuturisticDownloadsPanelState extends State<GxFuturisticDownloadsPanel>
                                     downloadService.removeDownload(download.id);
                                   }
                                 }
-                                _cachedDownloads = null; // Invalider le cache
+                                _cachedFilteredDownloads = null;
+                                _cachedGroupedDownloads = null;
+                                _cachedSortedDomains = null;
                                 if (mounted) {
                                   GxNotificationService().showSuccess(
                                     title: 'Nettoyage effectué',
@@ -150,49 +498,16 @@ class _GxFuturisticDownloadsPanelState extends State<GxFuturisticDownloadsPanel>
                                 ],
                               ),
                             )
-                          : ListView.builder(
-                              controller: _scrollController,
-                              padding: EdgeInsets.symmetric(
-                                horizontal: horizontalPadding,
-                                vertical: itemSpacing,
-                              ),
-                              itemCount: downloads.length,
-                              cacheExtent: 500, // Cache optimisé
-                              addAutomaticKeepAlives: false,
-                              addRepaintBoundaries: true,
-                              itemBuilder: (context, index) {
-                                final download = downloads[index];
-                                return Padding(
-                                  padding: EdgeInsets.only(bottom: itemSpacing),
-                                  child: RepaintBoundary(
-                                    key: ValueKey('download_${download.id}'),
-                                    child: _DownloadListItem(
-                                      download: download,
-                                      accentColor: accentColor,
-                                      bgColor: bgColor,
-                                      panelOpacity: panelOpacity,
-                                      isCompact: isCompact,
-                                      isMedium: isMedium,
-                                      onCancel: () => downloadService.cancelDownload(download.id),
-                                      onRemove: () {
-                                        downloadService.removeDownload(download.id);
-                                        _cachedDownloads = null; // Invalider le cache
-                                      },
-                                      onOpen: () async {
-                                        if (download.filePath != null) {
-                                          final file = File(download.filePath!);
-                                          if (await file.exists()) {
-                                            final uri = Uri.file(download.filePath!);
-                                            if (await canLaunchUrl(uri)) {
-                                              await launchUrl(uri);
-                                            }
-                                          }
-                                        }
-                                      },
-                                    ),
-                                  ),
-                                );
-                              },
+                          : _buildDownloadsList(
+                              downloads: downloads,
+                              downloadService: downloadService,
+                              accentColor: accentColor,
+                              bgColor: bgColor,
+                              panelOpacity: panelOpacity,
+                              isCompact: isCompact,
+                              isMedium: isMedium,
+                              horizontalPadding: horizontalPadding,
+                              itemSpacing: itemSpacing,
                             ),
                     ),
                   ],
@@ -403,17 +718,35 @@ class _DownloadListItemState extends State<_DownloadListItem> {
                               ),
                             ),
                             SizedBox(height: widget.isCompact ? 2 : 4),
-                            // Domaine
-                            Text(
-                              domain,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: NotilusFonts.rajdhani(
-                                fontSize: urlFontSize,
-                                color: Colors.white.withOpacity(
-                                  _isHovered ? 0.7 : 0.6,
+                            // Domaine avec taille à la suite
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    domain,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: NotilusFonts.rajdhani(
+                                      fontSize: urlFontSize,
+                                      color: Colors.white.withOpacity(
+                                        _isHovered ? 0.7 : 0.6,
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                              ),
+                                if (widget.download.totalBytes != null && widget.download.totalBytes! > 0) ...[
+                                  SizedBox(width: 6),
+                                  Text(
+                                    '• ${(widget.download.totalBytes! / 1024 / 1024).toStringAsFixed(1)} MB',
+                                    style: NotilusFonts.rajdhani(
+                                      fontSize: urlFontSize,
+                                      color: widget.accentColor.withOpacity(0.7),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                           ],
                         ),
@@ -445,24 +778,6 @@ class _DownloadListItemState extends State<_DownloadListItem> {
                                   ),
                                 ),
                               ),
-                              // Afficher la taille si disponible
-                              if (widget.download.totalBytes != null && widget.download.totalBytes! > 0) ...[
-                                SizedBox(width: 6),
-                                Icon(
-                                  CupertinoIcons.doc,
-                                  size: metaFontSize + 2,
-                                  color: widget.accentColor.withOpacity(0.7),
-                                ),
-                                SizedBox(width: 2),
-                                Text(
-                                  '${(widget.download.totalBytes! / 1024 / 1024).toStringAsFixed(1)} MB',
-                                  style: NotilusFonts.rajdhani(
-                                    fontSize: metaFontSize,
-                                    color: widget.accentColor.withOpacity(0.7),
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
                             ],
                           ),
                           SizedBox(height: 4),
@@ -520,3 +835,140 @@ class _DownloadListItemState extends State<_DownloadListItem> {
   }
 }
 
+
+/// Type d'élément dans la liste
+enum _DownloadListItemType {
+  separator,
+  item,
+}
+
+/// Données pour un élément de la liste
+class _DownloadListItemData {
+  final _DownloadListItemType type;
+  final DownloadModel? download;
+  final String? period;
+  final bool? isExpanded;
+  final bool isFirst;
+
+  _DownloadListItemData({
+    required this.type,
+    this.download,
+    this.period,
+    this.isExpanded,
+    this.isFirst = false,
+  });
+}
+
+/// Séparateur de période avec collapse/expand
+class _PeriodSeparator extends StatelessWidget {
+  final String label;
+  final Color accentColor;
+  final bool isExpanded;
+  final VoidCallback onTap;
+
+  const _PeriodSeparator({
+    required this.label,
+    required this.accentColor,
+    required this.isExpanded,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: Row(
+          children: [
+            AnimatedRotation(
+              turns: isExpanded ? 0.25 : 0.0,
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeInOut,
+              child: Icon(
+                CupertinoIcons.chevron_right,
+                size: 14,
+                color: accentColor.withOpacity(0.7),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: GxFuturisticSeparator(
+                label: label,
+                accentColor: accentColor,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Dropdown de filtre
+class _FilterDropdown extends StatelessWidget {
+  final String label;
+  final String value;
+  final List<String> items;
+  final Color accentColor;
+  final ValueChanged<String?> onChanged;
+
+  const _FilterDropdown({
+    required this.label,
+    required this.value,
+    required this.items,
+    required this.accentColor,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: accentColor.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Text(
+            '$label: ',
+            style: NotilusFonts.rajdhani(
+              fontSize: 11,
+              color: Colors.white.withOpacity(0.7),
+            ),
+          ),
+          Expanded(
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: value,
+                isExpanded: true,
+                dropdownColor: const Color(0xFF1A1A1F),
+                style: NotilusFonts.rajdhani(
+                  fontSize: 11,
+                  color: Colors.white,
+                ),
+                icon: Icon(
+                  CupertinoIcons.chevron_down,
+                  size: 14,
+                  color: accentColor,
+                ),
+                items: items.map((item) {
+                  return DropdownMenuItem<String>(
+                    value: item,
+                    child: Text(item),
+                  );
+                }).toList(),
+                onChanged: onChanged,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

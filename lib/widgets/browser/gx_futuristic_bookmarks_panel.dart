@@ -31,11 +31,23 @@ class _GxFuturisticBookmarksPanelState extends State<GxFuturisticBookmarksPanel>
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   String _searchQuery = '';
+  String _selectedDomainFilter = 'Tous';
   
   // Cache pour optimiser les performances
   Timer? _searchDebounceTimer;
   List<Bookmark>? _cachedFilteredBookmarks;
+  List<String>? _cachedSortedDomains;
   String? _lastSearchQuery;
+  
+  String _extractDomainFromUrl(String url) {
+    try {
+      final uri = Uri.parse(url);
+      if (uri.host.isNotEmpty) {
+        return uri.host.replaceFirst(RegExp(r'^www\.'), '');
+      }
+    } catch (_) {}
+    return 'unknown';
+  }
 
   @override
   void initState() {
@@ -51,10 +63,11 @@ class _GxFuturisticBookmarksPanelState extends State<GxFuturisticBookmarksPanel>
         setState(() {
           _searchQuery = _searchController.text.toLowerCase();
           // Invalider le cache
-          _cachedFilteredBookmarks = null;
-        });
-      }
-    });
+                          _cachedFilteredBookmarks = null;
+                          _cachedSortedDomains = null;
+                        });
+                      }
+                    });
   }
 
   @override
@@ -348,6 +361,27 @@ class _GxFuturisticBookmarksPanelState extends State<GxFuturisticBookmarksPanel>
                           _cachedFilteredBookmarks = filteredBookmarks;
                           _lastSearchQuery = _searchQuery;
                         }
+                        
+                        // Filtrer par domaine si sélectionné
+                        if (_selectedDomainFilter != 'Tous') {
+                          filteredBookmarks = filteredBookmarks.where((bookmark) {
+                            final domain = _extractDomainFromUrl(bookmark.url);
+                            return domain == _selectedDomainFilter;
+                          }).toList();
+                        }
+                        
+                        // Extraire les domaines uniques pour le filtre
+                        List<String> sortedDomains;
+                        if (_cachedSortedDomains != null && _lastSearchQuery == _searchQuery) {
+                          sortedDomains = _cachedSortedDomains!;
+                        } else {
+                          final uniqueDomains = <String>{};
+                          for (final bookmark in bookmarks) {
+                            uniqueDomains.add(_extractDomainFromUrl(bookmark.url));
+                          }
+                          sortedDomains = uniqueDomains.toList()..sort();
+                          _cachedSortedDomains = sortedDomains;
+                        }
 
                         if (filteredBookmarks.isEmpty) {
                           return Center(
@@ -386,38 +420,67 @@ class _GxFuturisticBookmarksPanelState extends State<GxFuturisticBookmarksPanel>
                         }
 
                         // Utiliser ListView.builder pour virtualisation avec espacement comme historique
-                        return ListView.builder(
-                          controller: _scrollController,
-                          padding: EdgeInsets.symmetric(
-                            horizontal: horizontalPadding,
-                            vertical: itemSpacing,
-                          ),
-                          itemCount: filteredBookmarks.length,
-                          cacheExtent: 500, // Cache optimisé
-                          addAutomaticKeepAlives: false,
-                          addRepaintBoundaries: true,
-                          itemBuilder: (context, index) {
-                            final bookmark = filteredBookmarks[index];
-                            return Padding(
-                              padding: EdgeInsets.only(bottom: itemSpacing),
-                              child: RepaintBoundary(
-                                key: ValueKey('bookmark_${bookmark.id}'),
-                                child: _BookmarkListItem(
-                                  bookmark: bookmark,
-                                  accentColor: accentColor,
-                                  bgColor: bgColor,
-                                  panelOpacity: panelOpacity,
-                                  isCompact: isCompact,
-                                  isMedium: isMedium,
-                                  onTap: () {
-                                    final tabManager = Provider.of<TabManager>(context, listen: false);
-                                    tabManager.addTab(url: bookmark.url);
-                                  },
-                                  onDelete: () => _deleteBookmark(bookmark),
-                                ),
+                        return Column(
+                          children: [
+                            // Filtres
+                            Padding(
+                              padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: itemSpacing),
+                              child: Row(
+                                children: [
+                                  // Filtre par domaine
+                                  Expanded(
+                                    child: _FilterDropdown(
+                                      label: 'Domaine',
+                                      value: _selectedDomainFilter,
+                                      items: ['Tous', ...sortedDomains],
+                                      accentColor: accentColor,
+                                      onChanged: (value) {
+                                        setState(() {
+                                          _selectedDomainFilter = value ?? 'Tous';
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                ],
                               ),
-                            );
-                          },
+                            ),
+                            // Liste
+                            Expanded(
+                              child: ListView.builder(
+                                controller: _scrollController,
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: horizontalPadding,
+                                  vertical: itemSpacing,
+                                ),
+                                itemCount: filteredBookmarks.length,
+                                cacheExtent: 500, // Cache optimisé
+                                addAutomaticKeepAlives: false,
+                                addRepaintBoundaries: true,
+                                itemBuilder: (context, index) {
+                                  final bookmark = filteredBookmarks[index];
+                                  return Padding(
+                                    padding: EdgeInsets.only(bottom: itemSpacing),
+                                    child: RepaintBoundary(
+                                      key: ValueKey('bookmark_${bookmark.id}'),
+                                      child: _BookmarkListItem(
+                                        bookmark: bookmark,
+                                        accentColor: accentColor,
+                                        bgColor: bgColor,
+                                        panelOpacity: panelOpacity,
+                                        isCompact: isCompact,
+                                        isMedium: isMedium,
+                                        onTap: () {
+                                          final tabManager = Provider.of<TabManager>(context, listen: false);
+                                          tabManager.addTab(url: bookmark.url);
+                                        },
+                                        onDelete: () => _deleteBookmark(bookmark),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
                         );
                       },
                     ),
@@ -427,6 +490,74 @@ class _GxFuturisticBookmarksPanelState extends State<GxFuturisticBookmarksPanel>
             );
           },
         ),
+      ),
+    );
+  }
+}
+
+/// Dropdown de filtre
+class _FilterDropdown extends StatelessWidget {
+  final String label;
+  final String value;
+  final List<String> items;
+  final Color accentColor;
+  final ValueChanged<String?> onChanged;
+
+  const _FilterDropdown({
+    required this.label,
+    required this.value,
+    required this.items,
+    required this.accentColor,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: accentColor.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Text(
+            '$label: ',
+            style: NotilusFonts.rajdhani(
+              fontSize: 11,
+              color: Colors.white.withOpacity(0.7),
+            ),
+          ),
+          Expanded(
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: value,
+                isExpanded: true,
+                dropdownColor: const Color(0xFF1A1A1F),
+                style: NotilusFonts.rajdhani(
+                  fontSize: 11,
+                  color: Colors.white,
+                ),
+                icon: Icon(
+                  CupertinoIcons.chevron_down,
+                  size: 14,
+                  color: accentColor,
+                ),
+                items: items.map((item) {
+                  return DropdownMenuItem<String>(
+                    value: item,
+                    child: Text(item),
+                  );
+                }).toList(),
+                onChanged: onChanged,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
