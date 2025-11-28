@@ -20,6 +20,9 @@ import 'modern_downloads_panel.dart';
 import 'gx_futuristic_history_panel.dart';
 import 'gx_futuristic_bookmarks_panel.dart';
 import 'gx_futuristic_downloads_panel.dart';
+import 'gx_futuristic_widgets_panel.dart';
+import 'gx_futuristic_ai_panel.dart';
+import 'gx_futuristic_updates_panel.dart';
 import 'modern_settings_panel.dart';
 import 'webview_service_panel.dart';
 import '../../core/services/wallpaper_manager.dart';
@@ -567,13 +570,13 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
         return _SidebarPanelConfig(
           title: 'Widgets dynamiques',
           icon: CupertinoIcons.layers_alt,
-          child: const _NotilusWidgetsPanel(),
+          child: const GxFuturisticWidgetsPanel(),
         );
       case SidebarSection.ai:
         return _SidebarPanelConfig(
           title: 'Hyper Assistant',
           icon: CupertinoIcons.sparkles,
-          child: const _NotilusAiPanel(),
+          child: const GxFuturisticAiPanel(),
         );
       case SidebarSection.settings:
         return _SidebarPanelConfig(
@@ -592,7 +595,7 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
         return _SidebarPanelConfig(
           title: 'Mises à jour',
           icon: CupertinoIcons.arrow_up_circle,
-          child: const _NotilusUpdatesPanel(),
+          child: const GxFuturisticUpdatesPanel(),
         );
       case SidebarSection.terminal:
         return _SidebarPanelConfig(
