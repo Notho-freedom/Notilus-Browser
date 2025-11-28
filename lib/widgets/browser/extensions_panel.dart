@@ -9,6 +9,10 @@ import '../../models/extension.dart';
 import '../../widgets/common/glassmorphic_container.dart';
 import '../../widgets/common/neon_button.dart';
 import '../../core/services/color_theme_manager.dart';
+import '../../widgets/common/gx_futuristic_dialog.dart';
+import '../../widgets/common/gx_futuristic_components.dart';
+import '../../core/constants/notilus_fonts.dart';
+import '../../services/gx_notification_service.dart';
 import 'package:provider/provider.dart';
 
 class ExtensionsPanel extends StatefulWidget {
@@ -227,23 +231,27 @@ class _ExtensionsPanelState extends State<ExtensionsPanel> {
   void _showInstallDialog(BuildContext context) {
     final accentColor = Provider.of<ColorThemeManager>(context, listen: false).nativeSecondaryColor;
     
-    showDialog(
+    GxFuturisticDialog.show(
       context: context,
-      builder: (context) => _InstallExtensionDialog(accentColor: accentColor),
+      title: 'Installer une extension',
+      titleIcon: CupertinoIcons.square_grid_2x2,
+      accentColor: accentColor,
+      width: 500,
+      child: _InstallExtensionDialogContent(accentColor: accentColor),
     );
   }
 }
 
-class _InstallExtensionDialog extends StatefulWidget {
+class _InstallExtensionDialogContent extends StatefulWidget {
   final Color accentColor;
 
-  const _InstallExtensionDialog({required this.accentColor});
+  const _InstallExtensionDialogContent({required this.accentColor});
 
   @override
-  State<_InstallExtensionDialog> createState() => _InstallExtensionDialogState();
+  State<_InstallExtensionDialogContent> createState() => _InstallExtensionDialogContentState();
 }
 
-class _InstallExtensionDialogState extends State<_InstallExtensionDialog> {
+class _InstallExtensionDialogContentState extends State<_InstallExtensionDialogContent> {
   final ExtensionService _extensionService = ExtensionService();
   final TextEditingController _urlController = TextEditingController();
   bool _isInstalling = false;
@@ -279,11 +287,10 @@ class _InstallExtensionDialogState extends State<_InstallExtensionDialog> {
           
           if (mounted) {
             Navigator.pop(context);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Extension "${extension.name}" installée'),
-                backgroundColor: widget.accentColor,
-              ),
+            GxNotificationService().showSuccess(
+              title: 'Extension installée',
+              message: 'Extension "${extension.name}" installée avec succès',
+              context: context,
             );
           }
         } catch (e) {
@@ -326,11 +333,10 @@ class _InstallExtensionDialogState extends State<_InstallExtensionDialog> {
           
           if (mounted) {
             Navigator.pop(context);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Extension "${extension.name}" installée'),
-                backgroundColor: widget.accentColor,
-              ),
+            GxNotificationService().showSuccess(
+              title: 'Extension installée',
+              message: 'Extension "${extension.name}" installée avec succès',
+              context: context,
             );
           }
         } catch (e) {
@@ -356,157 +362,89 @@ class _InstallExtensionDialogState extends State<_InstallExtensionDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      backgroundColor: const Color(0xFF1A1A20),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: Row(
-        children: [
-          Icon(CupertinoIcons.square_grid_2x2, color: widget.accentColor, size: 24),
-          const SizedBox(width: 12),
-          const Text(
-            'Installer une extension',
-            style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
-          ),
-        ],
-      ),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Sélection méthode
+        Row(
           children: [
-            // Sélection méthode
-            Row(
-              children: [
-                Expanded(
-                  child: _MethodButton(
-                    label: 'Fichier',
-                    icon: CupertinoIcons.doc,
-                    isSelected: _installMethod == 'file',
-                    accentColor: widget.accentColor,
-                    onTap: () => setState(() => _installMethod = 'file'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _MethodButton(
-                    label: 'URL',
-                    icon: CupertinoIcons.link,
-                    isSelected: _installMethod == 'url',
-                    accentColor: widget.accentColor,
-                    onTap: () => setState(() => _installMethod = 'url'),
-                  ),
-                ),
-              ],
+            Expanded(
+              child: _MethodButton(
+                label: 'Fichier',
+                icon: CupertinoIcons.doc,
+                isSelected: _installMethod == 'file',
+                accentColor: widget.accentColor,
+                onTap: () => setState(() => _installMethod = 'file'),
+              ),
             ),
-            const SizedBox(height: 20),
-            
-            // Contenu selon méthode
-            if (_installMethod == 'file') ...[
-              Text(
-                'Sélectionnez un fichier manifest.json',
-                style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _MethodButton(
+                label: 'URL',
+                icon: CupertinoIcons.link,
+                isSelected: _installMethod == 'url',
+                accentColor: widget.accentColor,
+                onTap: () => setState(() => _installMethod = 'url'),
               ),
-              const SizedBox(height: 12),
-              ElevatedButton.icon(
-                onPressed: _isInstalling ? null : _installFromFile,
-                icon: _isInstalling
-                    ? SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation(widget.accentColor),
-                        ),
-                      )
-                    : Icon(CupertinoIcons.folder, size: 16),
-                label: Text(_isInstalling ? 'Installation...' : 'Choisir un fichier'),
-                style: ElevatedButton.styleFrom(backgroundColor: widget.accentColor),
-              ),
-            ] else ...[
-              Text(
-                'Entrez l\'URL du manifest.json',
-                style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _urlController,
-                style: const TextStyle(color: Colors.white, fontSize: 13),
-                decoration: InputDecoration(
-                  hintText: 'https://example.com/manifest.json',
-                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 12),
-                  filled: true,
-                  fillColor: Colors.white.withOpacity(0.05),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: Colors.white24),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: Colors.white24),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: widget.accentColor),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                ),
-              ),
-              const SizedBox(height: 12),
-              ElevatedButton(
-                onPressed: _isInstalling ? null : _installFromUrl,
-                style: ElevatedButton.styleFrom(backgroundColor: widget.accentColor),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (_isInstalling)
-                      SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation(Colors.white),
-                        ),
-                      )
-                    else
-                      const Icon(CupertinoIcons.arrow_down_circle, size: 16),
-                    const SizedBox(width: 8),
-                    Text(_isInstalling ? 'Installation...' : 'Installer depuis URL'),
-                  ],
-                ),
-              ),
-            ],
-            
-            if (_errorMessage != null) ...[
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.red.withOpacity(0.3)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(CupertinoIcons.exclamationmark_triangle, color: Colors.red, size: 18),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        _errorMessage!,
-                        style: const TextStyle(color: Colors.red, fontSize: 12),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            ),
           ],
         ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text('Annuler', style: TextStyle(color: Colors.white.withOpacity(0.6))),
-        ),
+        const SizedBox(height: 20),
+        
+        // Contenu selon méthode
+        if (_installMethod == 'file') ...[
+          Text(
+            'Sélectionnez un fichier manifest.json',
+            style: NotilusFonts.rajdhani(
+              fontSize: 12,
+              color: Colors.white.withOpacity(0.7),
+            ),
+          ),
+          const SizedBox(height: 12),
+          GxFuturisticButton(
+            label: _isInstalling ? 'Installation...' : 'Choisir un fichier',
+            icon: _isInstalling ? null : CupertinoIcons.folder,
+            variant: GxFuturisticButtonVariant.primary,
+            accentColor: widget.accentColor,
+            isLoading: _isInstalling,
+            onPressed: _isInstalling ? null : _installFromFile,
+          ),
+        ] else ...[
+          Text(
+            'Entrez l\'URL du manifest.json',
+            style: NotilusFonts.rajdhani(
+              fontSize: 12,
+              color: Colors.white.withOpacity(0.7),
+            ),
+          ),
+          const SizedBox(height: 12),
+          GxFuturisticInput(
+            controller: _urlController,
+            hint: 'https://example.com/manifest.json',
+            prefixIcon: CupertinoIcons.link,
+            accentColor: widget.accentColor,
+          ),
+          const SizedBox(height: 12),
+          GxFuturisticButton(
+            label: _isInstalling ? 'Installation...' : 'Installer depuis URL',
+            icon: _isInstalling ? null : CupertinoIcons.arrow_down_circle,
+            variant: GxFuturisticButtonVariant.primary,
+            accentColor: widget.accentColor,
+            isLoading: _isInstalling,
+            onPressed: _isInstalling ? null : _installFromUrl,
+          ),
+        ],
+        
+        if (_errorMessage != null) ...[
+          const SizedBox(height: 16),
+          GxFuturisticAlert(
+            title: 'Erreur',
+            message: _errorMessage!,
+            type: GxFuturisticAlertType.error,
+            accentColor: widget.accentColor,
+          ),
+        ],
       ],
     );
   }

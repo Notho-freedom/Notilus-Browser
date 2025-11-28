@@ -242,16 +242,18 @@ class _GxFuturisticHistoryPanelState extends State<GxFuturisticHistoryPanel> {
                       ),
                       itemBuilder: (context, index) {
                         final item = filteredItems[index];
-                        return _HistoryListItem(
-                          item: item,
-                          accentColor: accentColor,
-                          bgColor: bgColor,
-                          panelOpacity: panelOpacity,
-                          dateFormat: dateFormat,
-                          onTap: () {
-                            final tabManager = Provider.of<TabManager>(context, listen: false);
-                            tabManager.addTab(url: item.url);
-                          },
+                        return RepaintBoundary(
+                          child: _HistoryListItem(
+                            item: item,
+                            accentColor: accentColor,
+                            bgColor: bgColor,
+                            panelOpacity: panelOpacity,
+                            dateFormat: dateFormat,
+                            onTap: () {
+                              final tabManager = Provider.of<TabManager>(context, listen: false);
+                              tabManager.addTab(url: item.url);
+                            },
+                          ),
                         );
                       },
                     );
@@ -288,7 +290,8 @@ class _HistoryListItem extends StatelessWidget {
     return FutureBuilder<String?>(
       future: FaviconService.getFaviconWithCache(item.url),
       builder: (context, faviconSnapshot) {
-        return GxFuturisticListItem(
+        return RepaintBoundary(
+          child: GxFuturisticListItem(
           leading: Container(
             width: 32,
             height: 32,
@@ -365,6 +368,7 @@ class _HistoryListItem extends StatelessWidget {
           ),
           onTap: onTap,
           accentColor: accentColor,
+        ),
         );
       },
     );

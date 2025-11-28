@@ -188,13 +188,15 @@ class _GxFuturisticUpdatesPanelState extends State<GxFuturisticUpdatesPanel> {
                     separatorBuilder: (_, __) => const SizedBox(height: 12),
                     itemBuilder: (context, index) {
                       final update = updates[index];
-                      return _UpdateCard(
-                        title: update.title,
-                        description: update.description,
-                        date: _updateService.formatRelativeDate(update.date),
-                        isNew: update.isNew,
-                        category: update.category,
-                        accentColor: accentColor,
+                      return RepaintBoundary(
+                        child: _UpdateCard(
+                          title: update.title,
+                          description: update.description,
+                          date: _updateService.formatRelativeDate(update.date),
+                          isNew: update.isNew,
+                          category: update.category,
+                          accentColor: accentColor,
+                        ),
                       );
                     },
                   );

@@ -133,24 +133,26 @@ class GxFuturisticDownloadsPanel extends StatelessWidget {
                           separatorBuilder: (_, __) => const SizedBox(height: 12),
                           itemBuilder: (context, index) {
                             final download = downloads[index];
-                            return _DownloadListItem(
-                              download: download,
-                              accentColor: accentColor,
-                              bgColor: bgColor,
-                              panelOpacity: panelOpacity,
-                              onCancel: () => downloadService.cancelDownload(download.id),
-                              onRemove: () => downloadService.removeDownload(download.id),
-                              onOpen: () async {
-                                if (download.filePath != null) {
-                                  final file = File(download.filePath!);
-                                  if (await file.exists()) {
-                                    final uri = Uri.file(download.filePath!);
-                                    if (await canLaunchUrl(uri)) {
-                                      await launchUrl(uri);
+                            return RepaintBoundary(
+                              child: _DownloadListItem(
+                                download: download,
+                                accentColor: accentColor,
+                                bgColor: bgColor,
+                                panelOpacity: panelOpacity,
+                                onCancel: () => downloadService.cancelDownload(download.id),
+                                onRemove: () => downloadService.removeDownload(download.id),
+                                onOpen: () async {
+                                  if (download.filePath != null) {
+                                    final file = File(download.filePath!);
+                                    if (await file.exists()) {
+                                      final uri = Uri.file(download.filePath!);
+                                      if (await canLaunchUrl(uri)) {
+                                        await launchUrl(uri);
+                                      }
                                     }
                                   }
-                                }
-                              },
+                                },
+                              ),
                             );
                           },
                         ),
