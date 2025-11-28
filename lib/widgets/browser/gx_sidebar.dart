@@ -29,6 +29,7 @@ enum SidebarSection {
   docs,
   studio,
   lighthouse,
+  github,
   testPanel,
   youtubeMusic,
   youtube,
@@ -126,6 +127,11 @@ class _GXSidebarState extends State<GXSidebar> {
       section: SidebarSection.lighthouse,
       icon: CupertinoIcons.gauge,
       label: 'Lighthouse (Analyse)',
+    ),
+    _SidebarDestination(
+      section: SidebarSection.github,
+      icon: Icons.code,
+      label: 'Mes Dépôts GitHub',
     ),
     _SidebarDestination(
       section: SidebarSection.docs,

@@ -134,7 +134,7 @@ class TabWebViewManager extends ChangeNotifier {
       notifyListeners();
     };
     
-    // Configurer l'interception des téléchargements et DevTools
+    // Configurer l'interception des téléchargements, nouvelles fenêtres et DevTools
     if (engine is WebView2BrowserEngine) {
       if (_downloadService != null) {
         engine.onDownloadRequested = (url, fileName) {
@@ -143,6 +143,10 @@ class TabWebViewManager extends ChangeNotifier {
         };
       }
       
+      // Configurer l'interception des nouvelles fenêtres (liens externes, target="_blank", window.open())
+      // Le callback sera configuré dans web_content_view.dart avec le TabManager
+      // Mais on peut aussi le configurer ici si on a accès au TabManager
+      // Pour l'instant, on laisse web_content_view.dart le faire car il a accès au contexte
     }
     
     return engine;

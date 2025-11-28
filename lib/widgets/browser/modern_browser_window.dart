@@ -10,6 +10,7 @@ import '../../services/update_service.dart';
 import '../../core/animations/notilus_animations.dart';
 import 'gx_address_bar.dart';
 import 'gx_tab_bar.dart';
+import 'grouped_tab_bar.dart';
 import 'gx_sidebar.dart';
 import 'web_content_view.dart';
 import 'home_pages/home_page_factory.dart';
@@ -35,6 +36,7 @@ import '../../widgets/mosaic/mosaic_container.dart';
 import '../../services/mosaic_service.dart';
 import '../../widgets/studio/studio_panel.dart';
 import '../../widgets/lighthouse/lighthouse_panel.dart';
+import '../../widgets/github/github_repos_panel.dart';
 import '../../services/lighthouse/lighthouse_service.dart';
 import '../../services/studio/studio_service.dart';
 import '../../widgets/common/gx_test_panel.dart';
@@ -274,11 +276,11 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
               children: [
                 Column(
                   children: [
-                    GXTabBar(
+                    GroupedTabBar(
                       onMenuTap: _toggleSidebar,
                       onGroupsPressed: () {
                         setState(() {
-                          _currentSection = SidebarSection.favorites; // Les groupes sont dans favorites pour l'instant
+                          _currentSection = SidebarSection.favorites;
                           _isSidebarVisible = true;
                         });
                       },
@@ -581,7 +583,14 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
         return _SidebarPanelConfig(
           title: 'Paramètres rapides',
           icon: CupertinoIcons.gear_alt,
-          child: ModernSettingsPanel(),
+          child: ModernSettingsPanel(
+            onClose: () {
+              // Fermer le panel de paramètres
+              setState(() {
+                _currentSection = SidebarSection.home;
+              });
+            },
+          ),
         );
       case SidebarSection.updates:
         return _SidebarPanelConfig(
@@ -682,6 +691,12 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
           title: 'Notilus Lighthouse',
           icon: CupertinoIcons.gauge,
           child: const LighthousePanel(),
+        );
+      case SidebarSection.github:
+        return _SidebarPanelConfig(
+          title: 'Mes Dépôts GitHub',
+          icon: Icons.code,
+          child: const GitHubReposPanel(),
         );
       case SidebarSection.docs:
         return _SidebarPanelConfig(

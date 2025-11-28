@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
+// import 'package:url_launcher/url_launcher.dart'; // Plus utilisé - tout est géré dans Notilus
 import 'browser_engine.dart';
 import '../models/tab_model.dart';
 
@@ -39,19 +40,17 @@ class WindowsBrowserEngine extends BrowserEngine {
     onStateChanged?.call(TabState.loading);
     onUrlChanged?.call(url);
     
-    // Ouvrir dans le navigateur par défaut
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-      // Simuler le chargement
-      Future.delayed(const Duration(seconds: 1), () {
-        _currentTitle = _extractDomain(url) ?? url;
-        onStateChanged?.call(TabState.loaded);
-        onTitleChanged?.call(_currentTitle ?? url);
-      });
-    } else {
-      onStateChanged?.call(TabState.error);
-    }
+    // NOTE: Ce moteur ne devrait plus être utilisé car il ouvre dans un navigateur externe.
+    // Si ce code est appelé, c'est une erreur. On simule juste le chargement.
+    // Toutes les URLs doivent être gérées par WebView2BrowserEngine dans Notilus.
+    debugPrint('⚠️ WindowsBrowserEngine.navigate appelé pour $url - Ce moteur ne devrait plus être utilisé');
+    
+    // Simuler le chargement (mais ne pas ouvrir dans un navigateur externe)
+    Future.delayed(const Duration(seconds: 1), () {
+      _currentTitle = _extractDomain(url) ?? url;
+      onStateChanged?.call(TabState.loaded);
+      onTitleChanged?.call(_currentTitle ?? url);
+    });
   }
 
   @override

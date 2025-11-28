@@ -9,6 +9,7 @@ import 'core/services/color_theme_manager.dart';
 import 'screens/home_screen.dart';
 import 'screens/splash_screen.dart';
 import 'services/tab_manager.dart';
+import 'services/tab_group_service.dart';
 import 'services/tab_webview_manager.dart';
 import 'services/side_webview_manager.dart';
 import 'services/system_metrics_service.dart';
@@ -26,6 +27,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'services/auth/firebase_auth_service.dart';
 import 'services/auth/config_sync_service.dart';
+import 'services/github/github_repos_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -53,9 +55,11 @@ void main() async {
   // Initialiser Firebase Auth et Config Sync (si Firebase est configuré)
   FirebaseAuthService? authService;
   ConfigSyncService? syncService;
+  GitHubReposService? githubReposService;
   try {
     authService = FirebaseAuthService();
     syncService = ConfigSyncService(authService, settingsService);
+    githubReposService = GitHubReposService(authService);
   } catch (e) {
     debugPrint('Services Firebase non initialisés: $e');
   }
@@ -95,6 +99,7 @@ void main() async {
     mosaicService: mosaicService,
     authService: authService,
     syncService: syncService,
+    githubReposService: githubReposService,
   ));
 }
 
@@ -162,6 +167,7 @@ class NotilusApp extends StatelessWidget {
   final NotilusMosaicService mosaicService;
   final FirebaseAuthService? authService;
   final ConfigSyncService? syncService;
+  final GitHubReposService? githubReposService;
   
   const NotilusApp({
     super.key,
@@ -169,6 +175,7 @@ class NotilusApp extends StatelessWidget {
     required this.mosaicService,
     this.authService,
     this.syncService,
+    this.githubReposService,
   });
 
   @override
@@ -181,6 +188,10 @@ class NotilusApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => WallpaperManager()),
         ChangeNotifierProvider(create: (_) => DownloadService()),
         ChangeNotifierProvider(create: (_) => TabManager()),
+        ChangeNotifierProvider(create: (context) {
+          final tabManager = context.read<TabManager>();
+          return TabGroupService(tabManager);
+        }),
         ChangeNotifierProvider(create: (_) => DevToolsService()),
         ChangeNotifierProvider(create: (_) => StudioService()),
         ChangeNotifierProvider(create: (_) => LighthouseService()),
@@ -209,6 +220,8 @@ class NotilusApp extends StatelessWidget {
           ChangeNotifierProvider.value(value: authService),
         if (syncService != null)
           ChangeNotifierProvider.value(value: syncService),
+        if (githubReposService != null)
+          ChangeNotifierProvider<GitHubReposService>.value(value: githubReposService!),
       ],
       child: Consumer<ThemeModeNotifier>(
         builder: (context, themeModeNotifier, _) {

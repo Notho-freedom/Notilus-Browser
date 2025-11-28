@@ -22,7 +22,12 @@ import '../../core/constants/notilus_fonts.dart';
 import '../../services/gx_notification_service.dart';
 
 class ModernSettingsPanel extends StatefulWidget {
-  const ModernSettingsPanel({super.key});
+  final VoidCallback? onClose;
+  
+  const ModernSettingsPanel({
+    super.key,
+    this.onClose,
+  });
 
   @override
   State<ModernSettingsPanel> createState() => _ModernSettingsPanelState();
@@ -2032,8 +2037,9 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
           );
         }
 
-        final isSignedIn = authService.isSignedIn;
+        final isSignedIn = authService.isAnySignedIn;
         final user = authService.currentUser;
+        final githubUser = authService.githubUser;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2059,7 +2065,13 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                       onPressed: () async {
                         final result = await showDialog<bool>(
                           context: context,
-                          builder: (ctx) => AuthDialog(authService: authService),
+                          builder: (ctx) => AuthDialog(
+                            authService: authService,
+                            onAuthStarted: () {
+                              // Fermer le panel de paramètres quand l'auth démarre
+                              widget.onClose?.call();
+                            },
+                          ),
                         );
                         if (result == true && context.mounted) {
                           await syncService!.restoreConfigs();
@@ -2089,10 +2101,10 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                   children: [
                     Row(
                       children: [
-                        if (user?.photoURL != null)
+                        if ((user?.photoURL ?? githubUser?.avatarUrl) != null)
                           CircleAvatar(
                             radius: 20,
-                            backgroundImage: NetworkImage(user!.photoURL!),
+                            backgroundImage: NetworkImage((user?.photoURL ?? githubUser?.avatarUrl)!),
                           )
                         else
                           CircleAvatar(
@@ -2105,11 +2117,11 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                user?.displayName ?? user?.email ?? 'Utilisateur',
+                                user?.displayName ?? user?.email ?? githubUser?.name ?? githubUser?.email ?? 'Utilisateur',
                                 style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
                               ),
                               Text(
-                                user?.email ?? '',
+                                user?.email ?? githubUser?.email ?? '',
                                 style: TextStyle(color: Colors.white60, fontSize: 11),
                               ),
                             ],
