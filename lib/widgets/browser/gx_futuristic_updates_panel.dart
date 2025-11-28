@@ -4,7 +4,6 @@ library gx_futuristic_updates_panel;
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../core/services/wallpaper_manager.dart';
 import '../../core/services/color_theme_manager.dart';
@@ -258,8 +257,8 @@ class _GxFuturisticUpdatesPanelState extends State<GxFuturisticUpdatesPanel> {
                   padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
                   child: GxFuturisticInput(
                     controller: _searchController,
-                    hintText: 'Rechercher...',
-                    icon: CupertinoIcons.search,
+                    hint: 'Rechercher...',
+                    prefixIcon: CupertinoIcons.search,
                     accentColor: accentColor,
                   ),
                 ),
@@ -388,7 +387,7 @@ class _GxFuturisticUpdatesPanelState extends State<GxFuturisticUpdatesPanel> {
                               Text(
                                 'Notilus v${_updateService.version}',
                                 style: NotilusFonts.rajdhani(
-                                  fontSize: isCompact ? 10 : 11 : 12,
+                                  fontSize: isCompact ? 10 : (isMedium ? 11 : 12),
                                   color: Colors.white.withOpacity(0.5),
                                 ),
                               ),
@@ -650,7 +649,6 @@ class _UpdateListItem extends StatefulWidget {
 
 class _UpdateListItemState extends State<_UpdateListItem> {
   bool _isHovered = false;
-  bool _isPressed = false;
 
   @override
   Widget build(BuildContext context) {
@@ -662,91 +660,86 @@ class _UpdateListItemState extends State<_UpdateListItem> {
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTapDown: (_) => setState(() => _isPressed = true),
-        onTapUp: (_) => setState(() => _isPressed = false),
-        onTapCancel: () => setState(() => _isPressed = false),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOutCubic,
-          margin: EdgeInsets.only(bottom: itemSpacing),
-          padding: EdgeInsets.all(itemPadding),
-          decoration: BoxDecoration(
-            color: widget.bgColor.withOpacity(widget.panelOpacity * 0.3),
-            borderRadius: BorderRadius.circular(8),
-            border: Border(
-              left: BorderSide(
-                color: widget.update.isNew 
-                    ? widget.accentColor 
-                    : Colors.white.withOpacity(0.1),
-                width: _isHovered ? 4 : 2,
-              ),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        margin: EdgeInsets.only(bottom: itemSpacing),
+        padding: EdgeInsets.all(itemPadding),
+        decoration: BoxDecoration(
+          color: widget.bgColor.withOpacity(widget.panelOpacity * 0.3),
+          borderRadius: BorderRadius.circular(8),
+          border: Border(
+            left: BorderSide(
+              color: widget.update.isNew 
+                  ? widget.accentColor 
+                  : Colors.white.withOpacity(0.1),
+              width: _isHovered ? 4 : 2,
             ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  Text(
-                    widget.update.category.icon,
-                    style: TextStyle(fontSize: widget.isCompact ? 14 : 16),
-                  ),
-                  SizedBox(width: itemPadding),
-                  if (widget.update.isNew)
-                    GxFuturisticBadge(
-                      label: 'NOUVEAU',
-                      color: widget.accentColor,
-                    ),
-                  const Spacer(),
-                  GxFuturisticChip(
-                    label: widget.update.category.label,
-                    accentColor: widget.accentColor,
-                  ),
-                ],
-              ),
-              SizedBox(height: itemSpacing),
-              Text(
-                widget.update.title,
-                style: NotilusFonts.rajdhani(
-                  fontSize: titleFontSize,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Text(
+                  widget.update.category.icon,
+                  style: TextStyle(fontSize: widget.isCompact ? 14 : 16),
                 ),
-                maxLines: widget.isCompact ? 1 : 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              SizedBox(height: itemPadding / 2),
-              Text(
-                widget.update.description,
-                style: NotilusFonts.rajdhani(
-                  fontSize: descFontSize,
-                  color: Colors.white.withOpacity(0.6),
+                SizedBox(width: itemPadding),
+                if (widget.update.isNew)
+                  GxFuturisticBadge(
+                    label: 'NOUVEAU',
+                    color: widget.accentColor,
+                  ),
+                const Spacer(),
+                GxFuturisticChip(
+                  label: widget.update.category.label,
+                  accentColor: widget.accentColor,
                 ),
-                maxLines: widget.isCompact ? 2 : 3,
-                overflow: TextOverflow.ellipsis,
+              ],
+            ),
+            SizedBox(height: itemSpacing),
+            Text(
+              widget.update.title,
+              style: NotilusFonts.rajdhani(
+                fontSize: titleFontSize,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
               ),
-              SizedBox(height: itemSpacing),
-              Row(
-                children: [
-                  Icon(
-                    CupertinoIcons.time,
-                    size: widget.isCompact ? 10 : 12,
+              maxLines: widget.isCompact ? 1 : 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            SizedBox(height: itemPadding / 2),
+            Text(
+              widget.update.description,
+              style: NotilusFonts.rajdhani(
+                fontSize: descFontSize,
+                color: Colors.white.withOpacity(0.6),
+              ),
+              maxLines: widget.isCompact ? 2 : 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+            SizedBox(height: itemSpacing),
+            Row(
+              children: [
+                Icon(
+                  CupertinoIcons.time,
+                  size: widget.isCompact ? 10 : 12,
+                  color: Colors.white.withOpacity(0.4),
+                ),
+                SizedBox(width: 4),
+                Text(
+                  widget.relativeDate,
+                  style: NotilusFonts.rajdhani(
+                    fontSize: widget.isCompact ? 9 : 10,
                     color: Colors.white.withOpacity(0.4),
                   ),
-                  SizedBox(width: 4),
-                  Text(
-                    widget.relativeDate,
-                    style: NotilusFonts.rajdhani(
-                      fontSize: widget.isCompact ? 9 : 10,
-                      color: Colors.white.withOpacity(0.4),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
