@@ -639,6 +639,9 @@ class _MediaPreviewState extends State<_MediaPreview> {
 
   @override
   Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final previewHeight = screenSize.height * 0.4; // 40% de la hauteur de l'écran
+    
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -653,11 +656,14 @@ class _MediaPreviewState extends State<_MediaPreview> {
               color: widget.gxRed,
             ),
             textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
           ),
           const SizedBox(height: 20),
           
-          // Contenu selon le type
-          Expanded(
+          // Contenu selon le type avec hauteur contrainte
+          SizedBox(
+            height: previewHeight.clamp(200.0, 400.0), // Entre 200 et 400px
             child: widget.resourceType == CloudinaryResourceType.image
                 ? _buildImagePreview()
                 : widget.resourceType == CloudinaryResourceType.video
@@ -672,22 +678,25 @@ class _MediaPreviewState extends State<_MediaPreview> {
   Widget _buildImagePreview() {
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
-      child: CachedNetworkImage(
-        imageUrl: widget.media.secureUrl,
-        fit: BoxFit.contain,
-        placeholder: (context, url) => Container(
-          color: widget.bgColor.withOpacity(0.3),
-          child: Center(
-            child: CircularProgressIndicator(color: widget.gxRed),
+      child: Container(
+        constraints: const BoxConstraints.expand(),
+        child: CachedNetworkImage(
+          imageUrl: widget.media.secureUrl,
+          fit: BoxFit.contain,
+          placeholder: (context, url) => Container(
+            color: widget.bgColor.withOpacity(0.3),
+            child: Center(
+              child: CircularProgressIndicator(color: widget.gxRed),
+            ),
           ),
-        ),
-        errorWidget: (context, url, error) => Container(
-          color: widget.bgColor.withOpacity(0.3),
-          child: Center(
-            child: Icon(
-              CupertinoIcons.photo,
-              size: 64,
-              color: widget.gxRed.withOpacity(0.5),
+          errorWidget: (context, url, error) => Container(
+            color: widget.bgColor.withOpacity(0.3),
+            child: Center(
+              child: Icon(
+                CupertinoIcons.photo,
+                size: 64,
+                color: widget.gxRed.withOpacity(0.5),
+              ),
             ),
           ),
         ),
@@ -697,6 +706,7 @@ class _MediaPreviewState extends State<_MediaPreview> {
 
   Widget _buildVideoPreview() {
     return Container(
+      width: double.infinity,
       decoration: BoxDecoration(
         color: widget.bgColor.withOpacity(0.3),
         borderRadius: BorderRadius.circular(12),
@@ -704,6 +714,7 @@ class _MediaPreviewState extends State<_MediaPreview> {
       ),
       child: Center(
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
@@ -736,6 +747,7 @@ class _MediaPreviewState extends State<_MediaPreview> {
 
   Widget _buildAudioPreview() {
     return Container(
+      width: double.infinity,
       decoration: BoxDecoration(
         color: widget.bgColor.withOpacity(0.3),
         borderRadius: BorderRadius.circular(12),
@@ -743,6 +755,7 @@ class _MediaPreviewState extends State<_MediaPreview> {
       ),
       padding: const EdgeInsets.all(24),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(

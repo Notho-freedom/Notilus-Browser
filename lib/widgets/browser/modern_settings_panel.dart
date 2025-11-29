@@ -4074,14 +4074,14 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
         ),
         const SizedBox(height: 32),
         
-        // Bouton pour ouvrir la page full-screen
+        // Bouton pour ouvrir la carte avec le logo
         Center(
           child: GxFuturisticButton(
-            label: 'Voir la page complète',
-            icon: CupertinoIcons.fullscreen,
+            label: 'Voir le logo',
+            icon: CupertinoIcons.info_circle,
             variant: GxFuturisticButtonVariant.primary,
             onPressed: () {
-              NotilusAboutPage.showFullScreen(context);
+              NotilusAboutCard.show(context);
             },
           ),
         ),
