@@ -23,12 +23,12 @@ import 'services/mosaic_service.dart';
 import 'services/studio/studio_service.dart';
 import 'services/lighthouse/lighthouse_service.dart';
 import 'services/documentation_service.dart';
+import 'services/adblocker_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'services/auth/firebase_auth_service.dart';
 import 'services/auth/config_sync_service.dart';
 import 'services/github/github_repos_service.dart';
-import 'services/service_factory.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -197,9 +197,15 @@ class NotilusApp extends StatelessWidget {
           return TabGroupService(tabManager);
         }),
         ChangeNotifierProvider(create: (_) => DevToolsService()),
+<<<<<<< HEAD
         // Services lourds avec lazy loading
         ChangeNotifierProvider(create: (_) => ServiceFactory.getStudioService()),
         ChangeNotifierProvider(create: (_) => ServiceFactory.getLighthouseService()),
+=======
+        ChangeNotifierProvider(create: (_) => StudioService()),
+        ChangeNotifierProvider(create: (_) => LighthouseService()),
+        ChangeNotifierProvider(create: (_) => AdBlockerService()),
+>>>>>>> origin/ai-tts
         ChangeNotifierProvider.value(value: mosaicService),
             ChangeNotifierProvider(
               create: (context) {
@@ -207,9 +213,17 @@ class NotilusApp extends StatelessWidget {
                 final downloadService = context.read<DownloadService>();
                 final studioService = context.read<StudioService>();
                 final lighthouseService = context.read<LighthouseService>();
+<<<<<<< HEAD
                 tabWebViewManager.setDownloadService(downloadService);
                 tabWebViewManager.setStudioService(studioService);
                 tabWebViewManager.setLighthouseService(lighthouseService);
+=======
+                final adBlockerService = context.read<AdBlockerService>();
+                tabWebViewManager.setDownloadService(downloadService);
+                tabWebViewManager.setStudioService(studioService);
+                tabWebViewManager.setLighthouseService(lighthouseService);
+                tabWebViewManager.setAdBlockerService(adBlockerService);
+>>>>>>> origin/ai-tts
                 return tabWebViewManager;
               },
             ),

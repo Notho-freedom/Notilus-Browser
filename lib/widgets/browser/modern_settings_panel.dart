@@ -21,6 +21,12 @@ import '../common/gx_futuristic_dialog.dart';
 import '../common/gx_futuristic_components.dart';
 import '../../core/constants/notilus_fonts.dart';
 import '../../services/gx_notification_service.dart';
+import '../../services/tts_service.dart';
+import '../../services/ai_service.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:flutter/foundation.dart' show Platform;
 
 class ModernSettingsPanel extends StatefulWidget {
   final VoidCallback? onClose;

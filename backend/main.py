@@ -18,6 +18,7 @@ from services.injection import router as injection_router
 from services.automation import router as automation_router
 from services.ai_service import router as ai_router
 from services.oauth_service import router as oauth_router
+from services.tts import router as tts_router
 
 # Backend Lab - Le système de tests backend le plus avancé
 from backend_lab.server_discovery import router as server_discovery_router
@@ -54,6 +55,11 @@ app = FastAPI(
     - ⚡ **Performance Lab**: Tests de charge et stress
     - 🎭 **Mock Server**: Simulation d'APIs
     - 📊 **Analytics**: Dashboards et rapports
+    
+    ### 🔊 Services TTS
+    - **Text-to-Speech**: Synthèse vocale avec Microsoft Edge TTS
+    - Détection automatique de langue
+    - Support multi-langues et multi-voix
     """,
     version="2.0.0",
     docs_url="/docs",
@@ -81,6 +87,7 @@ app.include_router(injection_router, prefix="/api/injection", tags=["Injection"]
 app.include_router(automation_router, prefix="/api/automation", tags=["Automation"])
 app.include_router(ai_router, prefix="/api/ai", tags=["AI"])
 app.include_router(oauth_router, prefix="/api/oauth", tags=["🔐 OAuth"])
+app.include_router(tts_router, prefix="/api/tts", tags=["🔊 TTS"])
 
 # ============================================================================
 # Backend Lab - Le système de tests backend inégalable

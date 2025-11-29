@@ -56,6 +56,9 @@ dependencies:
   # Markdown (pour documentation)
   flutter_markdown: ^0.6.18
   markdown: ^7.0.0
+  
+  # Audio
+  audioplayers: ^5.2.1
 
 dev_dependencies:
   flutter_test:

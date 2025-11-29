@@ -161,7 +161,10 @@ class _GroupedTabBarState extends State<GroupedTabBar> {
   ) {
     final groups = groupService.orderedGroups;
     final allTabs = tabManager.tabs;
+<<<<<<< HEAD
     final activeTabId = tabManager.activeTab?.id;
+=======
+>>>>>>> origin/ai-tts
     
     // Vérifier s'il y a des onglets (groupés ou non)
     if (allTabs.isEmpty) {
@@ -175,6 +178,7 @@ class _GroupedTabBarState extends State<GroupedTabBar> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
+<<<<<<< HEAD
         // Utiliser le cache si rien n'a changé
         final tabCount = allTabs.length;
         if (_cachedTabBarItems != null && 
@@ -210,6 +214,20 @@ class _GroupedTabBarState extends State<GroupedTabBar> {
           // Afficher les onglets non groupés (domaines avec un seul onglet)
           for (final tab in allTabs) {
             if (!tabsInGroups.contains(tab.id)) {
+=======
+        // Construire la liste des widgets à afficher
+        final List<Widget> tabBarItems = [];
+        
+        // Identifier les onglets qui sont dans un groupe
+        final tabsInGroups = <String>{};
+        for (final group in groups) {
+          tabsInGroups.addAll(group.tabIds);
+        }
+        
+        // Afficher les onglets non groupés (domaines avec un seul onglet)
+        for (final tab in allTabs) {
+          if (!tabsInGroups.contains(tab.id)) {
+>>>>>>> origin/ai-tts
             final isActive = tab.id == tabManager.activeTab?.id;
             // Obtenir la couleur du domaine même pour les onglets non groupés
             // Extraire le domaine de l'URL
@@ -249,12 +267,21 @@ class _GroupedTabBarState extends State<GroupedTabBar> {
               ),
             );
           }
+<<<<<<< HEAD
           }
           
           // Afficher les groupes (domaines avec plusieurs onglets)
           for (final group in groups) {
             // Si le groupe est expandé, insérer ses onglets avant le groupe
             if (group.isExpanded) {
+=======
+        }
+        
+        // Afficher les groupes (domaines avec plusieurs onglets)
+        for (final group in groups) {
+          // Si le groupe est expandé, insérer ses onglets avant le groupe
+          if (group.isExpanded) {
+>>>>>>> origin/ai-tts
             final selectedGroupId = groupService.selectedGroupId;
             final isSelected = selectedGroupId == group.id;
             
@@ -299,6 +326,7 @@ class _GroupedTabBarState extends State<GroupedTabBar> {
                 }
               }
             }
+<<<<<<< HEAD
             }
             
             // Ajouter le widget du groupe
@@ -324,11 +352,33 @@ class _GroupedTabBarState extends State<GroupedTabBar> {
         
         // Virtualisation avec ListView.builder pour optimiser les performances
         // Ne rend que les éléments visibles + 2 de chaque côté
+=======
+          }
+          
+          // Ajouter le widget du groupe
+          tabBarItems.add(
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: constraints.maxWidth * 0.4,
+                minWidth: 150,
+              ),
+              child: _GroupWidget(
+                group: group,
+                tabManager: tabManager,
+                groupService: groupService,
+                accentColor: accentColor,
+              ),
+            ),
+          );
+        }
+        
+>>>>>>> origin/ai-tts
         return Scrollbar(
           controller: _scrollController,
           thickness: 2,
           radius: const Radius.circular(1),
           thumbVisibility: false,
+<<<<<<< HEAD
           child: ListView.builder(
             controller: _scrollController,
             scrollDirection: Axis.horizontal,
@@ -343,6 +393,15 @@ class _GroupedTabBarState extends State<GroupedTabBar> {
                 child: tabBarItems[index],
               );
             },
+=======
+          child: SingleChildScrollView(
+            controller: _scrollController,
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: tabBarItems,
+            ),
+>>>>>>> origin/ai-tts
           ),
         );
       },
@@ -350,6 +409,7 @@ class _GroupedTabBarState extends State<GroupedTabBar> {
   }
 }
 
+<<<<<<< HEAD
 /// Widget wrapper pour virtualisation avec AutomaticKeepAliveClientMixin
 class _VirtualizedTabItem extends StatefulWidget {
   final Widget child;
@@ -374,6 +434,8 @@ class _VirtualizedTabItemState extends State<_VirtualizedTabItem> with Automatic
   }
 }
 
+=======
+>>>>>>> origin/ai-tts
 class _GroupWidget extends StatelessWidget {
   final TabGroup group;
   final TabManager tabManager;
