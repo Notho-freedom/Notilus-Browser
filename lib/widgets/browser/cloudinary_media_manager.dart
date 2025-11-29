@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:video_player/video_player.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../services/cloudinary_service.dart';
 import '../../services/settings_service.dart';
@@ -168,7 +169,8 @@ class _CloudinaryMediaManagerState extends State<CloudinaryMediaManager> {
               : CupertinoIcons.music_note,
       accentColor: gxRed,
       width: 700,
-      height: widget.resourceType == CloudinaryResourceType.image ? 600 : 400,
+      height: null, // Hauteur automatique basée sur le contenu
+      disableScroll: true, // Pas de scroll, la modal s'adapte au contenu
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
@@ -569,7 +571,9 @@ class _MediaPreview extends StatefulWidget {
 
 class _MediaPreviewState extends State<_MediaPreview> {
   AudioPlayer? _audioPlayer;
+  VideoPlayerController? _videoPlayerController;
   bool _isPlaying = false;
+  bool _isVideoInitialized = false;
   Duration _duration = Duration.zero;
   Duration _position = Duration.zero;
 
@@ -579,6 +583,52 @@ class _MediaPreviewState extends State<_MediaPreview> {
     if (widget.resourceType == CloudinaryResourceType.raw) {
       _audioPlayer = AudioPlayer();
       _initAudioPlayer();
+    } else if (widget.resourceType == CloudinaryResourceType.video) {
+      _initVideoPlayer();
+    }
+  }
+
+  Future<void> _initVideoPlayer() async {
+    try {
+      _videoPlayerController = VideoPlayerController.networkUrl(
+        Uri.parse(widget.media.secureUrl),
+      );
+      
+      await _videoPlayerController!.initialize();
+      
+      _videoPlayerController!.addListener(() {
+        if (mounted) {
+          setState(() {
+            _isVideoInitialized = _videoPlayerController!.value.isInitialized;
+            _isPlaying = _videoPlayerController!.value.isPlaying;
+            _duration = _videoPlayerController!.value.duration;
+            _position = _videoPlayerController!.value.position;
+          });
+        }
+      });
+      
+      if (mounted) {
+        setState(() {
+          _isVideoInitialized = true;
+        });
+      }
+    } catch (e) {
+      debugPrint('Erreur lors de l\'initialisation du lecteur vidéo: $e');
+      if (mounted) {
+        setState(() {
+          _isVideoInitialized = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _toggleVideoPlayPause() async {
+    if (_videoPlayerController == null || !_isVideoInitialized) return;
+
+    if (_videoPlayerController!.value.isPlaying) {
+      await _videoPlayerController!.pause();
+    } else {
+      await _videoPlayerController!.play();
     }
   }
 
@@ -634,13 +684,19 @@ class _MediaPreviewState extends State<_MediaPreview> {
   @override
   void dispose() {
     _audioPlayer?.dispose();
+    _videoPlayerController?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
-    final previewHeight = screenSize.height * 0.4; // 40% de la hauteur de l'écran
+    // Hauteur adaptative selon le type de média
+    final previewHeight = widget.resourceType == CloudinaryResourceType.image
+        ? (screenSize.height * 0.6).clamp(400.0, 600.0) // Images : 60% de l'écran, max 600px
+        : widget.resourceType == CloudinaryResourceType.video
+            ? 300.0 // Vidéos : hauteur fixe
+            : 250.0; // Audio : hauteur fixe
     
     return Padding(
       padding: const EdgeInsets.all(24),
@@ -661,9 +717,9 @@ class _MediaPreviewState extends State<_MediaPreview> {
           ),
           const SizedBox(height: 20),
           
-          // Contenu selon le type avec hauteur contrainte
+          // Contenu selon le type avec hauteur adaptative
           SizedBox(
-            height: previewHeight.clamp(200.0, 400.0), // Entre 200 et 400px
+            height: previewHeight,
             child: widget.resourceType == CloudinaryResourceType.image
                 ? _buildImagePreview()
                 : widget.resourceType == CloudinaryResourceType.video
@@ -705,42 +761,129 @@ class _MediaPreviewState extends State<_MediaPreview> {
   }
 
   Widget _buildVideoPreview() {
+    if (!_isVideoInitialized || _videoPlayerController == null) {
+      return Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: widget.bgColor.withOpacity(0.3),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: widget.gxRed.withOpacity(0.3)),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: widget.gxRed),
+              const SizedBox(height: 16),
+              Text(
+                'Chargement de la vidéo...',
+                style: NotilusFonts.rajdhani(
+                  fontSize: 14,
+                  color: Colors.white.withOpacity(0.8),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: widget.bgColor.withOpacity(0.3),
+        color: Colors.black,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: widget.gxRed.withOpacity(0.3)),
       ),
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              CupertinoIcons.play_circle_fill,
-              size: 64,
-              color: widget.gxRed,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Lecteur vidéo
+          ClipRRect(
+            borderRadius: BorderRadius.circular(11),
+            child: AspectRatio(
+              aspectRatio: _videoPlayerController!.value.aspectRatio,
+              child: VideoPlayer(_videoPlayerController!),
             ),
-            const SizedBox(height: 16),
-            Text(
-              'Vidéo',
-              style: NotilusFonts.rajdhani(
-                fontSize: 18,
-                color: Colors.white.withOpacity(0.8),
+          ),
+          
+          // Contrôles overlay
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: _toggleVideoPlayPause,
+              child: Container(
+                color: Colors.transparent,
+                child: Center(
+                  child: Icon(
+                    _isPlaying ? CupertinoIcons.pause_circle_fill : CupertinoIcons.play_circle_fill,
+                    size: 64,
+                    color: Colors.white.withOpacity(0.8),
+                  ),
+                ),
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Cliquez sur "Appliquer" pour utiliser cette vidéo',
-              style: NotilusFonts.rajdhani(
-                fontSize: 12,
-                color: Colors.white.withOpacity(0.6),
+          ),
+          
+          // Barre de progression en bas
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withOpacity(0.7),
+                  ],
+                ),
               ),
-              textAlign: TextAlign.center,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Slider de progression
+                  if (_duration != Duration.zero)
+                    Slider(
+                      value: _position.inSeconds.toDouble().clamp(0.0, _duration.inSeconds.toDouble()),
+                      min: 0,
+                      max: _duration.inSeconds.toDouble(),
+                      activeColor: widget.gxRed,
+                      inactiveColor: widget.gxRed.withOpacity(0.3),
+                      onChanged: (value) {
+                        _videoPlayerController?.seekTo(Duration(seconds: value.toInt()));
+                      },
+                    ),
+                  
+                  // Temps
+                  if (_duration != Duration.zero)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          _formatDuration(_position),
+                          style: NotilusFonts.rajdhani(
+                            fontSize: 12,
+                            color: Colors.white.withOpacity(0.9),
+                          ),
+                        ),
+                        Text(
+                          _formatDuration(_duration),
+                          style: NotilusFonts.rajdhani(
+                            fontSize: 12,
+                            color: Colors.white.withOpacity(0.9),
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

@@ -21,6 +21,7 @@ class GxFuturisticDialog extends StatelessWidget {
   final double? height;
   final Color? accentColor;
   final bool showCloseButton;
+  final bool disableScroll;
 
   const GxFuturisticDialog({
     super.key,
@@ -32,6 +33,7 @@ class GxFuturisticDialog extends StatelessWidget {
     this.height,
     this.accentColor,
     this.showCloseButton = true,
+    this.disableScroll = false,
   });
 
   /// Affiche un dialog futuriste (méthode statique pour faciliter l'utilisation)
@@ -46,6 +48,7 @@ class GxFuturisticDialog extends StatelessWidget {
     Color? accentColor,
     bool showCloseButton = true,
     bool barrierDismissible = true,
+    bool disableScroll = false,
   }) {
     return showDialog<T>(
       context: context,
@@ -59,6 +62,7 @@ class GxFuturisticDialog extends StatelessWidget {
         height: height,
         accentColor: accentColor,
         showCloseButton: showCloseButton,
+        disableScroll: disableScroll,
         child: child,
       ),
     );
@@ -94,10 +98,9 @@ class GxFuturisticDialog extends StatelessWidget {
         child: RepaintBoundary(
           child: Container(
             width: width ?? 500,
-            height: height,
             constraints: BoxConstraints(
               maxWidth: MediaQuery.of(context).size.width * 0.9,
-              maxHeight: MediaQuery.of(context).size.height * 0.9,
+              maxHeight: height ?? MediaQuery.of(context).size.height * 0.9,
             ),
             child: ClipRect(
               child: BackdropFilter(
@@ -130,17 +133,27 @@ class GxFuturisticDialog extends StatelessWidget {
                             ),
                           
                           // Contenu principal
-                          Flexible(
-                            child: SingleChildScrollView(
-                              padding: EdgeInsets.only(
-                                top: title != null ? 0 : 24,
-                                left: 24,
-                                right: 24,
-                                bottom: actions != null ? 0 : 24,
-                              ),
-                              child: child,
-                            ),
-                          ),
+                          disableScroll
+                              ? Padding(
+                                  padding: EdgeInsets.only(
+                                    top: title != null ? 0 : 24,
+                                    left: 24,
+                                    right: 24,
+                                    bottom: actions != null ? 0 : 24,
+                                  ),
+                                  child: child,
+                                )
+                              : Flexible(
+                                  child: SingleChildScrollView(
+                                    padding: EdgeInsets.only(
+                                      top: title != null ? 0 : 24,
+                                      left: 24,
+                                      right: 24,
+                                      bottom: actions != null ? 0 : 24,
+                                    ),
+                                    child: child,
+                                  ),
+                                ),
                           
                           // Actions
                           if (actions != null)
