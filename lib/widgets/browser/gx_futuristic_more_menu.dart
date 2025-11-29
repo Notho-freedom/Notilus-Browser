@@ -18,12 +18,16 @@ class GXFuturisticMoreMenu extends StatefulWidget {
   final Color accentColor;
   final VoidCallback onClose;
   final LayerLink layerLink;
+  final VoidCallback? onMiniDevToolsToggle;
+  final bool isMiniDevToolsVisible;
 
   const GXFuturisticMoreMenu({
     super.key,
     required this.accentColor,
     required this.onClose,
     required this.layerLink,
+    this.onMiniDevToolsToggle,
+    this.isMiniDevToolsVisible = false,
   });
 
   @override
@@ -82,11 +86,13 @@ class _GXFuturisticMoreMenuState extends State<GXFuturisticMoreMenu>
             child: Container(color: Colors.transparent),
           ),
         ),
-        // Menu positionné - aligné avec le bord droit de l'écran
+        // Menu positionné - sur le bord droit, en dessous de la barre d'adresse
         CompositedTransformFollower(
           link: widget.layerLink,
-          showWhenUnlinked: true, // Afficher même si le lien n'est pas connecté (pour debug)
-          offset: const Offset(-200, 30), // Positionner à gauche du bouton, en dessous
+          showWhenUnlinked: true,
+          followerAnchor: Alignment.topRight,
+          targetAnchor: Alignment.bottomRight,
+          offset: const Offset(0, 4), // Légèrement en dessous de la barre d'adresse
           child: FadeTransition(
             opacity: _fadeAnimation,
             child: SlideTransition(
@@ -226,6 +232,18 @@ class _GXFuturisticMoreMenuState extends State<GXFuturisticMoreMenu>
                                 },
                               ),
                               _buildDivider(accentColor),
+                              _buildMenuItem(
+                                context,
+                                CupertinoIcons.rectangle_badge_checkmark,
+                                widget.isMiniDevToolsVisible ? 'Masquer Mini DevTools' : 'Mini DevTools',
+                                accentColor,
+                                () {
+                                  widget.onClose();
+                                  if (widget.onMiniDevToolsToggle != null) {
+                                    widget.onMiniDevToolsToggle!();
+                                  }
+                                },
+                              ),
                               _buildMenuItem(
                                 context,
                                 CupertinoIcons.ant,

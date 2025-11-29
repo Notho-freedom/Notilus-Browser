@@ -19,8 +19,11 @@ import '../../widgets/auth/auth_dialog.dart';
 import '../../services/adblocker_service.dart';
 import '../../services/settings_service.dart';
 import '../../core/animations/notilus_animations.dart';
+import '../../core/constants/notilus_fonts.dart';
+import '../../services/gx_notification_service.dart';
 import 'address_suggestions.dart';
 import 'gx_address_suggestions.dart';
+import 'gx_futuristic_more_menu.dart';
 
 // La couleur rouge est maintenant gérée par ColorThemeManager
 
@@ -29,6 +32,8 @@ class GXAddressBar extends StatefulWidget {
   final VoidCallback? onWidgetsPressed;
   final VoidCallback? onDownloadsPressed;
   final VoidCallback? onMoreToolsPressed;
+  final VoidCallback? onMiniDevToolsToggle;
+  final bool isMiniDevToolsVisible;
   
   const GXAddressBar({
     super.key,
@@ -36,6 +41,8 @@ class GXAddressBar extends StatefulWidget {
     this.onWidgetsPressed,
     this.onDownloadsPressed,
     this.onMoreToolsPressed,
+    this.onMiniDevToolsToggle,
+    this.isMiniDevToolsVisible = false,
   });
 
   @override
@@ -46,13 +53,16 @@ class _GXAddressBarState extends State<GXAddressBar> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   final LayerLink _layerLink = LayerLink();
+  final LayerLink _moreMenuLayerLink = LayerLink();
   final GlobalKey _inputAreaKey = GlobalKey();
   OverlayEntry? _overlayEntry;
+  OverlayEntry? _moreMenuOverlayEntry;
   bool _isFirstOverlayShow = true; // Pour éviter les animations à chaque ouverture
   bool _isFocused = false;
   bool _isSecure = false;
   bool _showSuggestions = false;
   bool _isSelectingItem = false; // Flag pour empêcher la fermeture pendant la sélection
+  bool _isMoreMenuOpen = false;
   final HistoryService _historyService = HistoryService();
   final BookmarkService _bookmarkService = BookmarkService();
 
@@ -259,8 +269,61 @@ class _GXAddressBarState extends State<GXAddressBar> {
   }
 
   @override
+  void _showMoreToolsMenu() {
+    if (_moreMenuOverlayEntry != null || !mounted) return;
+    
+    setState(() {
+      _isMoreMenuOpen = true;
+    });
+    
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      
+      final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: false);
+      final accentColor = colorThemeManager.nativeSecondaryColor;
+      
+      final overlay = Overlay.maybeOf(context);
+      if (overlay == null) {
+        setState(() {
+          _isMoreMenuOpen = false;
+        });
+        return;
+      }
+      
+      _moreMenuOverlayEntry = OverlayEntry(
+        builder: (overlayContext) => GXFuturisticMoreMenu(
+          accentColor: accentColor,
+          onClose: _hideMoreToolsMenu,
+          layerLink: _moreMenuLayerLink,
+          onMiniDevToolsToggle: widget.onMiniDevToolsToggle,
+          isMiniDevToolsVisible: widget.isMiniDevToolsVisible,
+        ),
+      );
+      
+      overlay.insert(_moreMenuOverlayEntry!);
+    });
+  }
+  
+  void _hideMoreToolsMenu() {
+    _moreMenuOverlayEntry?.remove();
+    _moreMenuOverlayEntry = null;
+    setState(() {
+      _isMoreMenuOpen = false;
+    });
+  }
+  
+  void _toggleMoreMenu() {
+    if (_isMoreMenuOpen) {
+      _hideMoreToolsMenu();
+    } else {
+      _showMoreToolsMenu();
+    }
+  }
+  
+  @override
   void dispose() {
     _hideSuggestionsOverlay();
+    _hideMoreToolsMenu();
     _controller.dispose();
     _focusNode.dispose();
     super.dispose();
@@ -487,103 +550,6 @@ class _GXAddressBarState extends State<GXAddressBar> {
     );
   }
 
-  void _showMoreToolsMenu(BuildContext context, Color accentColor) {
-    final RenderBox button = context.findRenderObject() as RenderBox;
-    final RenderBox overlay = Navigator.of(context).overlay!.context.findRenderObject() as RenderBox;
-    final Offset position = button.localToGlobal(
-      Offset(button.size.width - 200, button.size.height),
-      ancestor: overlay,
-    );
-
-    showMenu(
-      context: context,
-      position: RelativeRect.fromLTRB(
-        position.dx,
-        position.dy,
-        overlay.size.width - position.dx - 200,
-        overlay.size.height - position.dy,
-      ),
-      color: const Color(0xFF1A1A20),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      items: <PopupMenuEntry<void>>[
-        _buildMenuItem(CupertinoIcons.camera, 'Capturer la page', accentColor, () {
-          Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: const Text('Capture d\'écran à venir'), backgroundColor: accentColor),
-          );
-        }),
-        _buildMenuItem(CupertinoIcons.printer, 'Imprimer', accentColor, () {
-          Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: const Text('Impression à venir'), backgroundColor: accentColor),
-          );
-        }),
-        _buildMenuItem(CupertinoIcons.share, 'Partager', accentColor, () {
-          Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: const Text('Partage à venir'), backgroundColor: accentColor),
-          );
-        }),
-        _buildMenuItem(CupertinoIcons.doc_on_clipboard, 'Copier l\'URL', accentColor, () async {
-          Navigator.pop(context);
-          final tabManager = Provider.of<TabManager>(context, listen: false);
-          final url = tabManager.activeTab?.url;
-          if (url != null && url.isNotEmpty) {
-            await Clipboard.setData(ClipboardData(text: url));
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: const Text('URL copiée'), backgroundColor: accentColor),
-            );
-          }
-        }),
-        const PopupMenuDivider(),
-        _buildMenuItem(CupertinoIcons.textformat, 'Mode lecture', accentColor, () {
-          Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: const Text('Mode lecture à venir'), backgroundColor: accentColor),
-          );
-        }),
-        _buildMenuItem(CupertinoIcons.moon, 'Mode sombre forcé', accentColor, () {
-          Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: const Text('Mode sombre forcé à venir'), backgroundColor: accentColor),
-          );
-        }),
-        const PopupMenuDivider(),
-        _buildMenuItem(CupertinoIcons.ant, 'DevTools (F12)', accentColor, () {
-          Navigator.pop(context);
-          // Simuler la touche F12
-          final tabManager = Provider.of<TabManager>(context, listen: false);
-          final activeTab = tabManager.activeTab;
-          if (activeTab != null) {
-            final webViewManager = Provider.of<TabWebViewManager>(context, listen: false);
-            final engine = webViewManager.getEngineForTab(activeTab.id);
-            engine.openDevTools();
-          }
-        }),
-        _buildMenuItem(CupertinoIcons.doc_text, 'Code source', accentColor, () {
-          Navigator.pop(context);
-          final tabManager = Provider.of<TabManager>(context, listen: false);
-          final url = tabManager.activeTab?.url;
-          if (url != null && url.isNotEmpty && !url.startsWith('view-source:')) {
-            tabManager.addTab(url: 'view-source:$url');
-          }
-        }),
-      ],
-    );
-  }
-
-  PopupMenuItem<void> _buildMenuItem(IconData icon, String label, Color color, VoidCallback onTap) {
-    return PopupMenuItem<void>(
-      onTap: onTap,
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 18),
-          const SizedBox(width: 12),
-          Text(label, style: const TextStyle(color: Colors.white, fontSize: 12)),
-        ],
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -837,6 +803,13 @@ class _GXAddressBarState extends State<GXAddressBar> {
                   ),
                   const SizedBox(width: 4),
                   _GXActionButton(
+                    icon: CupertinoIcons.rectangle_badge_checkmark,
+                    tooltip: widget.isMiniDevToolsVisible ? 'Masquer Mini DevTools' : 'Mini DevTools',
+                    onPressed: widget.onMiniDevToolsToggle,
+                    isActive: widget.isMiniDevToolsVisible,
+                  ),
+                  const SizedBox(width: 4),
+                  _GXActionButton(
                     icon: CupertinoIcons.layers_alt,
                     tooltip: 'Panneau widgets',
                     onPressed: widget.onWidgetsPressed,
@@ -848,10 +821,13 @@ class _GXAddressBarState extends State<GXAddressBar> {
                     onPressed: widget.onDownloadsPressed,
                   ),
                   const SizedBox(width: 4),
-                  _GXActionButton(
-                    icon: CupertinoIcons.ellipsis_vertical,
-                    tooltip: 'Plus d\'outils',
-                    onPressed: widget.onMoreToolsPressed ?? () => _showMoreToolsMenu(context, gxRed),
+                  CompositedTransformTarget(
+                    link: _moreMenuLayerLink,
+                    child: _GXActionButton(
+                      icon: CupertinoIcons.ellipsis_vertical,
+                      tooltip: 'Plus d\'outils',
+                      onPressed: widget.onMoreToolsPressed ?? _toggleMoreMenu,
+                    ),
                   ),
                 ],
               ),
@@ -1005,11 +981,13 @@ class _GXActionButton extends StatefulWidget {
   final IconData icon;
   final String tooltip;
   final VoidCallback? onPressed;
+  final bool isActive;
 
   const _GXActionButton({
     required this.icon,
     required this.tooltip,
     this.onPressed,
+    this.isActive = false,
   });
 
   @override
@@ -1031,16 +1009,19 @@ class _GXActionButtonState extends State<_GXActionButton> {
         width: 28,
         height: 26,
         decoration: BoxDecoration(
-          color: _isHovered && isEnabled
-              ? gxRed.withValues(alpha: 0.14)
+          color: (_isHovered && isEnabled) || widget.isActive
+              ? gxRed.withValues(alpha: widget.isActive ? 0.2 : 0.14)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(6),
+          border: widget.isActive
+              ? Border.all(color: gxRed.withValues(alpha: 0.5), width: 1)
+              : null,
         ),
         child: Icon(
           widget.icon,
           size: 18,
           color: isEnabled
-              ? (_isHovered ? gxRed : gxRed.withValues(alpha: 0.8))
+              ? (widget.isActive || _isHovered ? gxRed : gxRed.withValues(alpha: 0.8))
               : gxRed.withValues(alpha: 0.3),
         ),
       ),

@@ -5,6 +5,7 @@ import 'package:webview_windows/webview_windows.dart';
 import 'browser_engine.dart';
 import '../models/tab_model.dart';
 import 'error_handler.dart';
+import 'adblocker_service.dart';
 
 /// Implémentation réelle du moteur de rendu avec WebView2 (Option #1 - Production-ready)
 /// WebView2 est le moteur moderne de Microsoft basé sur Chromium
@@ -58,6 +59,14 @@ class WebView2BrowserEngine extends BrowserEngine {
   // Script JavaScript minifié et cache pour éviter la réinjection
   bool _scriptInjected = false;
   static const String _minifiedNewWindowScript = '''(function(){var o=window.open;window.open=function(u,t,f){if(!t||t==="_blank"||t==="blank"){if(u&&typeof u==="string"){if(document.body){document.body.setAttribute("data-new-window-url",u);document.body.dispatchEvent(new Event("notilus-new-window"));}}return null;}return o.apply(window,arguments);};var h=function(e){var t=e.target;while(t&&t.tagName!=="A"){t=t.parentElement;}if(t&&t.tagName==="A"){var h=t.getAttribute("href"),a=t.getAttribute("target"),r=(t.getAttribute("rel")||"").toLowerCase(),e=!1,n=a==="_blank"||a==="blank";if(h&&h.startsWith("http")){try{var i=window.location.hostname,c=new URL(h,window.location.href);e=c.hostname!==i;}catch(e){}}if(r.includes("external")){e=!0;}if(n||e){e.preventDefault();e.stopPropagation();if(document.body&&h){try{var u=new URL(h,window.location.href).href;document.body.setAttribute("data-new-window-url",u);document.body.dispatchEvent(new Event("notilus-new-window"));}catch(e){document.body.setAttribute("data-new-window-url",h);document.body.dispatchEvent(new Event("notilus-new-window"));}}return!1;}}};if(window._flutterNewWindowHandler){document.removeEventListener("click",window._flutterNewWindowHandler,!0);}window._flutterNewWindowHandler=h;document.addEventListener("click",h,!0);if(!window._flutterMutationObserver){window._flutterMutationObserver=new MutationObserver(function(e){e.forEach(function(e){e.addedNodes.forEach(function(e){if(1===e.nodeType){var t=e.querySelectorAll?e.querySelectorAll('a[target="_blank"],a[rel*="external"]'):[];t.forEach(function(e){e.addEventListener("click",h,!0);});}});});});window._flutterMutationObserver.observe(document.body,{childList:!0,subtree:!0});}})();''';
+  
+  /// Service de blocage de publicités
+  AdBlockerService? _adBlockerService;
+  
+  /// Définit le service de blocage de publicités
+  void setAdBlockerService(AdBlockerService? service) {
+    _adBlockerService = service;
+  }
 
   @override
   Future<void> initialize() async {

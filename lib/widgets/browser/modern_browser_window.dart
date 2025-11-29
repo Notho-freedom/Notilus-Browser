@@ -31,6 +31,7 @@ import '../../core/services/color_theme_manager.dart';
 import '../../services/settings_service.dart';
 import '../../widgets/terminal/terminal_panel.dart';
 import '../../widgets/dev_tools/notilus_devtools.dart';
+import '../../widgets/dev_tools/notilus_mini_devtools_panel.dart';
 import '../../widgets/documentation/documentation_panel.dart';
 import '../../widgets/mosaic/mosaic_container.dart';
 import '../../services/mosaic_service.dart';
@@ -64,6 +65,7 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
   double _sideMenuWidth = 380.0;
   bool _isResizing = false;
   bool _isDevToolsOpen = false; // État du panneau DevTools en bas
+  bool _isMiniDevToolsVisible = false; // État du mini DevTools flottant
 
   @override
   void initState() {
@@ -299,6 +301,12 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                           _isSidebarVisible = true;
                         });
                       },
+                      onMiniDevToolsToggle: () {
+                        setState(() {
+                          _isMiniDevToolsVisible = !_isMiniDevToolsVisible;
+                        });
+                      },
+                      isMiniDevToolsVisible: _isMiniDevToolsVisible,
                     ),
                     Expanded(
                       child: RepaintBoundary(
@@ -391,12 +399,45 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                               engine: engine,
                               onClose: _closeDevTools,
                               initialHeight: 300,
+                              onDetach: () {
+                                setState(() {
+                                  _isDevToolsOpen = false;
+                                  _isMiniDevToolsVisible = true;
+                                });
+                              },
                             );
                           },
                         ),
                       ),
                   ],
                 ),
+                // Mini DevTools flottant
+                if (_isMiniDevToolsVisible)
+                  Builder(
+                    builder: (context) {
+                      final tabWebViewManager = context.read<TabWebViewManager>();
+                      final tabManager = context.read<TabManager>();
+                      final activeTab = tabManager.activeTab;
+                      final engine = activeTab != null 
+                          ? tabWebViewManager.getEngineForTab(activeTab.id)
+                          : null;
+                      return NotilusMiniDevToolsPanel(
+                        isVisible: _isMiniDevToolsVisible,
+                        engine: engine,
+                        onClose: () {
+                          setState(() {
+                            _isMiniDevToolsVisible = false;
+                          });
+                        },
+                        onSwitchToNative: () {
+                          setState(() {
+                            _isMiniDevToolsVisible = false;
+                            _isDevToolsOpen = true;
+                          });
+                        },
+                      );
+                    },
+                  ),
                 // Menu latéral en position absolue à droite de la sidebar
                 Positioned(
                   left: 0,

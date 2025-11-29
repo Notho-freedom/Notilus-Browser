@@ -55,8 +55,8 @@ class _NotilusMiniDevToolsPanelState extends State<NotilusMiniDevToolsPanel>
   bool _isCollapsed = false;
   Offset _position = const Offset(0, 0);
   bool _isDragging = false;
-  Offset _dragStartPosition = Offset.zero;
-  Offset _dragStartOffset = Offset.zero;
+  Offset _dragStartPosition = Offset.zero; // localPosition du début du drag
+  Offset _dragStartOffset = Offset.zero; // Position initiale du panel
   
   // Constantes pour les dimensions
   static const double _expandedWidth = 320.0;
@@ -85,11 +85,11 @@ class _NotilusMiniDevToolsPanelState extends State<NotilusMiniDevToolsPanel>
       curve: Curves.easeOutCubic,
     ));
 
-    // Position par défaut : coin bas-droite
+    // Position par défaut : coin bas-gauche
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final screenSize = MediaQuery.of(context).size;
       _position = Offset(
-        screenSize.width - _expandedWidth - 12,
+        12, // Coin gauche avec marge de 12px
         screenSize.height - _expandedHeight - 12,
       );
     });
@@ -132,13 +132,13 @@ class _NotilusMiniDevToolsPanelState extends State<NotilusMiniDevToolsPanel>
     setState(() {
       _isCollapsed = !_isCollapsed;
       
-      // Quand on collapse, repositionner dans le coin bas-droite
+      // Quand on collapse, repositionner dans le coin bas-gauche
       if (_isCollapsed) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           final screenSize = MediaQuery.of(context).size;
           setState(() {
             _position = Offset(
-              screenSize.width - _collapsedWidth - 12,
+              12, // Coin gauche avec marge de 12px
               screenSize.height - _collapsedHeight - 12,
             );
           });
@@ -158,7 +158,8 @@ class _NotilusMiniDevToolsPanelState extends State<NotilusMiniDevToolsPanel>
   void _onPanStart(DragStartDetails details) {
     setState(() {
       _isDragging = true;
-      _dragStartPosition = details.globalPosition;
+      // Utiliser localPosition pour éviter les sauts
+      _dragStartPosition = details.localPosition;
       _dragStartOffset = _position;
     });
   }
@@ -166,12 +167,12 @@ class _NotilusMiniDevToolsPanelState extends State<NotilusMiniDevToolsPanel>
   void _onPanUpdate(DragUpdateDetails details) {
     if (_isDragging) {
       setState(() {
-        final delta = details.globalPosition - _dragStartPosition;
+        // Calculer le delta en utilisant localPosition pour éviter les sauts
+        final delta = details.localPosition - _dragStartPosition;
         _position = _dragStartOffset + delta;
         
         // Limiter la position dans les bounds de l'écran
-        final screenSize = WidgetsBinding.instance.platformDispatcher.views.first.physicalSize /
-            WidgetsBinding.instance.platformDispatcher.views.first.devicePixelRatio;
+        final screenSize = MediaQuery.of(context).size;
         final panelWidth = _isCollapsed ? _collapsedWidth : _expandedWidth;
         final panelHeight = _isCollapsed ? _collapsedHeight : _expandedHeight;
         
@@ -529,11 +530,14 @@ class _NotilusMiniDevToolsPanelState extends State<NotilusMiniDevToolsPanel>
                             color: Colors.white.withOpacity(0.4),
                           ),
                           const SizedBox(width: 4),
-                          Text(
-                            log.source!,
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.5),
-                              fontSize: 9,
+                          Flexible(
+                            child: Text(
+                              log.source!,
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.5),
+                                fontSize: 9,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
