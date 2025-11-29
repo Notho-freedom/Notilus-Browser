@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
@@ -36,11 +37,75 @@ class ModernSettingsPanel extends StatefulWidget {
 class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
   final SettingsService _settings = SettingsService();
   String _currentSection = 'appearance';
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  
+  // Cache pour optimiser les performances
+  Timer? _searchDebounceTimer;
+  List<_SectionItem>? _cachedFilteredSections;
+  String? _lastSearchQuery;
+  
+  // Liste des sections
+  final List<_SectionItem> _sections = [
+    _SectionItem('appearance', 'Apparence', CupertinoIcons.paintbrush),
+    _SectionItem('wallpaper', 'Fonds d\'écran', CupertinoIcons.photo),
+    _SectionItem('tabs', 'Onglets', CupertinoIcons.square_on_square),
+    _SectionItem('downloads', 'Téléchargements', CupertinoIcons.arrow_down_circle),
+    _SectionItem('terminal', 'Terminal', CupertinoIcons.square_list),
+    _SectionItem('homepage', 'Page d\'accueil', CupertinoIcons.house),
+    _SectionItem('webservices', 'Services Web', CupertinoIcons.globe),
+    _SectionItem('privacy', 'Confidentialité', CupertinoIcons.shield),
+    _SectionItem('account', 'Compte', CupertinoIcons.person_circle),
+    _SectionItem('devtools', 'DevTools', CupertinoIcons.ant),
+    _SectionItem('gxComponents', 'Composants GX', CupertinoIcons.square_grid_2x2),
+    _SectionItem('notifications', 'Notifications', CupertinoIcons.bell),
+    _SectionItem('about', 'À propos', CupertinoIcons.info_circle),
+  ];
   
   @override
   void initState() {
     super.initState();
     _settings.initialize();
+    _searchController.addListener(_onSearchChanged);
+  }
+  
+  void _onSearchChanged() {
+    _searchDebounceTimer?.cancel();
+    _searchDebounceTimer = Timer(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        setState(() {
+          _searchQuery = _searchController.text.toLowerCase();
+          _cachedFilteredSections = null;
+        });
+      }
+    });
+  }
+  
+  @override
+  void dispose() {
+    _searchDebounceTimer?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
+  
+  List<_SectionItem> _getFilteredSections() {
+    if (_cachedFilteredSections != null && _lastSearchQuery == _searchQuery) {
+      return _cachedFilteredSections!;
+    }
+    
+    List<_SectionItem> filtered;
+    if (_searchQuery.isEmpty) {
+      filtered = _sections;
+    } else {
+      filtered = _sections.where((section) {
+        return section.label.toLowerCase().contains(_searchQuery) ||
+               section.id.toLowerCase().contains(_searchQuery);
+      }).toList();
+    }
+    
+    _cachedFilteredSections = filtered;
+    _lastSearchQuery = _searchQuery;
+    return filtered;
   }
 
   @override
@@ -48,11 +113,14 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
     final theme = Theme.of(context);
     final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: true);
     final gxRed = colorThemeManager.nativeSecondaryColor;
+    final wallpaperManager = context.watch<WallpaperManager>();
+    final settings = SettingsService();
+    final panelOpacity = 1.0 - settings.panelTransparency;
 
     return Container(
       decoration: BoxDecoration(
         image: DecorationImage(
-          image: NetworkImage(context.watch<WallpaperManager>().current),
+          image: NetworkImage(wallpaperManager.current),
           fit: BoxFit.cover,
           colorFilter: ColorFilter.mode(
             Colors.black.withOpacity(0.88),
@@ -63,111 +131,102 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
       child: ListenableBuilder(
         listenable: _settings,
         builder: (context, _) => Container(
-          color: Colors.black.withOpacity(1.0 - _settings.panelTransparency),
-          child: Row(
-          children: [
-            // Navigation latérale des sections
-            Container(
-              width: 180,
-              decoration: BoxDecoration(
-                border: Border(
-                  right: BorderSide(
-                    color: gxRed.withOpacity(0.2),
-                    width: 1,
-                  ),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          color: Colors.black.withOpacity(panelOpacity),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isCompact = constraints.maxWidth < 600;
+              final sidebarWidth = isCompact ? 160.0 : 180.0;
+              final horizontalPadding = isCompact ? 12.0 : 16.0;
+              
+              return Row(
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Text(
-                      'Paramètres',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
+                  // Navigation latérale des sections
+                  Container(
+                    width: sidebarWidth,
+                    decoration: BoxDecoration(
+                      border: Border(
+                        right: BorderSide(
+                          color: gxRed.withOpacity(0.2),
+                          width: 1,
+                        ),
                       ),
                     ),
-                  ),
-                  const Divider(height: 1, color: Colors.white12),
-                  Expanded(
-                    child: ListView(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildSectionItem('appearance', 'Apparence', CupertinoIcons.paintbrush, gxRed),
-                        _buildSectionItem('wallpaper', 'Fonds d\'écran', CupertinoIcons.photo, gxRed),
-                        _buildSectionItem('tabs', 'Onglets', CupertinoIcons.square_on_square, gxRed),
-                        _buildSectionItem('downloads', 'Téléchargements', CupertinoIcons.arrow_down_circle, gxRed),
-                        _buildSectionItem('terminal', 'Terminal', CupertinoIcons.square_list, gxRed),
-                        _buildSectionItem('homepage', 'Page d\'accueil', CupertinoIcons.house, gxRed),
-                        _buildSectionItem('webservices', 'Services Web', CupertinoIcons.globe, gxRed),
-                        _buildSectionItem('privacy', 'Confidentialité', CupertinoIcons.shield, gxRed),
-                        _buildSectionItem('account', 'Compte', CupertinoIcons.person_circle, gxRed),
-                        _buildSectionItem('devtools', 'DevTools', CupertinoIcons.ant, gxRed),
-                        _buildSectionItem('gxComponents', 'Composants GX', CupertinoIcons.square_grid_2x2, gxRed),
-                        _buildSectionItem('notifications', 'Notifications', CupertinoIcons.bell, gxRed),
-                        _buildSectionItem('about', 'À propos', CupertinoIcons.info_circle, gxRed),
+                        Padding(
+                          padding: EdgeInsets.all(horizontalPadding),
+                          child: Text(
+                            'Paramètres',
+                            style: NotilusFonts.orbitron(
+                              fontSize: isCompact ? 12 : 14,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                        ),
+                        Divider(height: 1, color: Colors.white.withOpacity(0.12)),
+                        Padding(
+                          padding: EdgeInsets.all(horizontalPadding),
+                          child: GxFuturisticInput(
+                            controller: _searchController,
+                            hint: 'Rechercher...',
+                            prefixIcon: CupertinoIcons.search,
+                            accentColor: gxRed,
+                          ),
+                        ),
+                        Expanded(
+                          child: RepaintBoundary(
+                            child: ListView.builder(
+                              padding: EdgeInsets.symmetric(vertical: 8),
+                              itemCount: _getFilteredSections().length,
+                              cacheExtent: 500,
+                              addAutomaticKeepAlives: false,
+                              addRepaintBoundaries: true,
+                              itemBuilder: (context, index) {
+                                final section = _getFilteredSections()[index];
+                                return RepaintBoundary(
+                                  key: ValueKey('section_${section.id}'),
+                                  child: _SectionItemWidget(
+                                    section: section,
+                                    isSelected: _currentSection == section.id,
+                                    accentColor: gxRed,
+                                    isCompact: isCompact,
+                                    onTap: () => setState(() => _currentSection = section.id),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
+                  // Contenu de la section
+                  Expanded(
+                    child: RepaintBoundary(
+                      child: _buildSectionContent(context, theme, gxRed),
+                    ),
+                  ),
                 ],
-              ),
-            ),
-            // Contenu de la section
-            Expanded(
-              child: _buildSectionContent(context, theme, gxRed),
-            ),
-          ],
-        ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSectionItem(String id, String label, IconData icon, Color gxRed) {
-    final isSelected = _currentSection == id;
-    return InkWell(
-      onTap: () => setState(() => _currentSection = id),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? gxRed.withOpacity(0.15) : Colors.transparent,
-          border: Border(
-            left: BorderSide(
-              color: isSelected ? gxRed : Colors.transparent,
-              width: 3,
-            ),
+              );
+            },
           ),
         ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              size: 16,
-              color: isSelected ? gxRed : Colors.white60,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  color: isSelected ? gxRed : Colors.white70,
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
 
+
   Widget _buildSectionContent(BuildContext context, ThemeData theme, Color gxRed) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompact = constraints.maxWidth < 600;
+        final padding = isCompact ? 12.0 : 20.0;
+        
+        return SingleChildScrollView(
+          padding: EdgeInsets.all(padding),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -191,6 +250,8 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
           },
         ],
       ),
+    );
+      },
     );
   }
 
@@ -2783,6 +2844,97 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
             activeTrackColor: gxRed.withOpacity(0.3),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ============================================
+// CLASSES UTILITAIRES
+// ============================================
+
+class _SectionItem {
+  final String id;
+  final String label;
+  final IconData icon;
+
+  const _SectionItem(this.id, this.label, this.icon);
+}
+
+class _SectionItemWidget extends StatefulWidget {
+  final _SectionItem section;
+  final bool isSelected;
+  final Color accentColor;
+  final bool isCompact;
+  final VoidCallback onTap;
+
+  const _SectionItemWidget({
+    required this.section,
+    required this.isSelected,
+    required this.accentColor,
+    required this.isCompact,
+    required this.onTap,
+  });
+
+  @override
+  State<_SectionItemWidget> createState() => _SectionItemWidgetState();
+}
+
+class _SectionItemWidgetState extends State<_SectionItemWidget> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          padding: EdgeInsets.symmetric(
+            horizontal: widget.isCompact ? 12 : 16,
+            vertical: widget.isCompact ? 8 : 10,
+          ),
+          decoration: BoxDecoration(
+            color: widget.isSelected
+                ? widget.accentColor.withOpacity(0.15)
+                : (_isHovered ? widget.accentColor.withOpacity(0.08) : Colors.transparent),
+            border: Border(
+              left: BorderSide(
+                color: widget.isSelected
+                    ? widget.accentColor
+                    : (_isHovered ? widget.accentColor.withOpacity(0.5) : Colors.transparent),
+                width: widget.isSelected ? 3 : (_isHovered ? 2 : 0),
+              ),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                widget.section.icon,
+                size: widget.isCompact ? 14 : 16,
+                color: widget.isSelected
+                    ? widget.accentColor
+                    : (_isHovered ? widget.accentColor.withOpacity(0.8) : Colors.white60),
+              ),
+              SizedBox(width: widget.isCompact ? 8 : 10),
+              Expanded(
+                child: Text(
+                  widget.section.label,
+                  style: NotilusFonts.rajdhani(
+                    fontSize: widget.isCompact ? 11 : 12,
+                    fontWeight: widget.isSelected ? FontWeight.w600 : FontWeight.w400,
+                    color: widget.isSelected
+                        ? widget.accentColor
+                        : (_isHovered ? Colors.white : Colors.white70),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
