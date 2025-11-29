@@ -223,39 +223,41 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isCompact = constraints.maxWidth < 600;
-        final padding = isCompact ? 12.0 : 20.0;
+        final isMedium = constraints.maxWidth >= 600 && constraints.maxWidth < 900;
+        final padding = isCompact ? 12.0 : isMedium ? 16.0 : 20.0;
+        final spacing = isCompact ? 8.0 : isMedium ? 12.0 : 16.0;
         
         return SingleChildScrollView(
           padding: EdgeInsets.all(padding),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSectionHeader(gxRed),
-          const SizedBox(height: 20),
-          switch (_currentSection) {
-            'appearance' => _buildAppearanceSection(context, theme, gxRed),
-            'wallpaper' => _buildWallpaperSection(context, theme, gxRed),
-            'tabs' => _buildTabsSection(context, theme, gxRed),
-            'downloads' => _buildDownloadsSection(context, theme, gxRed),
-            'terminal' => _buildTerminalSection(context, theme, gxRed),
-            'homepage' => _buildHomepageSection(context, theme, gxRed),
-            'webservices' => _buildWebServicesSection(context, theme, gxRed),
-            'privacy' => _buildPrivacySection(context, theme, gxRed),
-            'gxComponents' => _buildGxComponentsSection(context, theme, gxRed),
-            'notifications' => _buildNotificationsSection(context, theme, gxRed),
-            'account' => _buildAccountSection(context, theme, gxRed),
-            'devtools' => _buildDevToolsSection(context, theme, gxRed),
-            'about' => _buildAboutSection(context, theme, gxRed),
-            _ => const SizedBox.shrink(),
-          },
-        ],
-      ),
-    );
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionHeader(gxRed, isCompact, isMedium),
+              SizedBox(height: spacing * 1.25),
+              switch (_currentSection) {
+                'appearance' => _buildAppearanceSection(context, theme, gxRed, isCompact, isMedium, spacing),
+                'wallpaper' => _buildWallpaperSection(context, theme, gxRed, isCompact, isMedium, spacing),
+                'tabs' => _buildTabsSection(context, theme, gxRed, isCompact, isMedium, spacing),
+                'downloads' => _buildDownloadsSection(context, theme, gxRed, isCompact, isMedium, spacing),
+                'terminal' => _buildTerminalSection(context, theme, gxRed, isCompact, isMedium, spacing),
+                'homepage' => _buildHomepageSection(context, theme, gxRed, isCompact, isMedium, spacing),
+                'webservices' => _buildWebServicesSection(context, theme, gxRed, isCompact, isMedium, spacing),
+                'privacy' => _buildPrivacySection(context, theme, gxRed, isCompact, isMedium, spacing),
+                'gxComponents' => _buildGxComponentsSection(context, theme, gxRed, isCompact, isMedium, spacing),
+                'notifications' => _buildNotificationsSection(context, theme, gxRed, isCompact, isMedium, spacing),
+                'account' => _buildAccountSection(context, theme, gxRed, isCompact, isMedium, spacing),
+                'devtools' => _buildDevToolsSection(context, theme, gxRed, isCompact, isMedium, spacing),
+                'about' => _buildAboutSection(context, theme, gxRed, isCompact, isMedium, spacing),
+                _ => const SizedBox.shrink(),
+              },
+            ],
+          ),
+        );
       },
     );
   }
 
-  Widget _buildSectionHeader(Color gxRed) {
+  Widget _buildSectionHeader(Color gxRed, bool isCompact, bool isMedium) {
     final titles = {
       'appearance': ('Apparence', 'Personnalisez l\'apparence de Notilus'),
       'wallpaper': ('Fonds d\'écran', 'Gérez les fonds d\'écran dynamiques'),
@@ -270,6 +272,8 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
       'about': ('À propos', 'Informations sur Notilus Browser'),
     };
     final info = titles[_currentSection] ?? ('', '');
+    final titleFontSize = isCompact ? 14.0 : (isMedium ? 16.0 : 18.0);
+    final subtitleFontSize = isCompact ? 10.0 : (isMedium ? 11.0 : 12.0);
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -277,33 +281,36 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
         Row(
           children: [
             Container(
-              width: 4,
-              height: 24,
+              width: isCompact ? 3 : 4,
+              height: isCompact ? 18 : isMedium ? 22 : 24,
               decoration: BoxDecoration(
                 color: gxRed,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            const SizedBox(width: 12),
-            Text(
-              info.$1,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
+            SizedBox(width: isCompact ? 8 : 12),
+            Expanded(
+              child: Text(
+                info.$1,
+                style: NotilusFonts.orbitron(
+                  fontSize: titleFontSize,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  letterSpacing: 1,
+                ),
               ),
             ),
           ],
         ),
         if (info.$2.isNotEmpty) ...[
-          const SizedBox(height: 6),
+          SizedBox(height: isCompact ? 4 : 6),
           Padding(
-            padding: const EdgeInsets.only(left: 16),
+            padding: EdgeInsets.only(left: isCompact ? 11 : 16),
             child: Text(
               info.$2,
-              style: TextStyle(
-                color: Colors.white60,
-                fontSize: 12,
+              style: NotilusFonts.rajdhani(
+                fontSize: subtitleFontSize,
+                color: Colors.white.withOpacity(0.6),
               ),
             ),
           ),
@@ -316,7 +323,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
   // SECTION APPARENCE
   // ============================================
   
-  Widget _buildAppearanceSection(BuildContext context, ThemeData theme, Color gxRed) {
+  Widget _buildAppearanceSection(BuildContext context, ThemeData theme, Color gxRed, bool isCompact, bool isMedium, double spacing) {
     return Consumer<ThemeModeNotifier>(
       builder: (context, themeNotifier, _) {
         final mode = themeNotifier.mode;
@@ -324,8 +331,8 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSubsectionTitle('Mode de thème', gxRed),
-            const SizedBox(height: 12),
+            _buildSubsectionTitle('Mode de thème', gxRed, isCompact: isCompact, isMedium: isMedium),
+            SizedBox(height: spacing),
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -523,37 +530,41 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
   // SECTION FONDS D'ÉCRAN
   // ============================================
   
-  Widget _buildWallpaperSection(BuildContext context, ThemeData theme, Color gxRed) {
+  Widget _buildWallpaperSection(BuildContext context, ThemeData theme, Color gxRed, bool isCompact, bool isMedium, double spacing) {
     return ListenableBuilder(
       listenable: _settings,
       builder: (context, _) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSubsectionTitle('Fond d\'écran dynamique', gxRed),
-            const SizedBox(height: 12),
+            _buildSubsectionTitle('Fond d\'écran dynamique', gxRed, isCompact: isCompact, isMedium: isMedium),
+            SizedBox(height: spacing),
             _buildSettingSwitch(
               title: 'Activer les fonds d\'écran',
               subtitle: 'Affiche un fond d\'écran sur la page d\'accueil et les panneaux',
               value: _settings.wallpaperEnabled,
               onChanged: (v) => _settings.setWallpaperEnabled(v),
               gxRed: gxRed,
+              isCompact: isCompact,
+              isMedium: isMedium,
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: spacing),
             _buildSettingSwitch(
               title: 'Rotation automatique',
               subtitle: 'Change le fond d\'écran périodiquement',
               value: _settings.wallpaperRotationEnabled,
               onChanged: (v) => _settings.setWallpaperRotationEnabled(v),
               gxRed: gxRed,
+              isCompact: isCompact,
+              isMedium: isMedium,
             ),
-            const SizedBox(height: 16),
-            _buildSubsectionTitle('Intervalle de rotation', gxRed),
-            const SizedBox(height: 12),
+            SizedBox(height: spacing * 1.5),
+            _buildSubsectionTitle('Intervalle de rotation', gxRed, isCompact: isCompact, isMedium: isMedium),
+            SizedBox(height: spacing),
             _buildIntervalSelector(gxRed),
-            const SizedBox(height: 24),
-            _buildSubsectionTitle('Aperçu', gxRed),
-            const SizedBox(height: 12),
+            SizedBox(height: spacing * 2),
+            _buildSubsectionTitle('Aperçu', gxRed, isCompact: isCompact, isMedium: isMedium),
+            SizedBox(height: spacing),
             Consumer<WallpaperManager>(
               builder: (context, wallpaperManager, _) {
                 return Column(
@@ -618,33 +629,37 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
   // SECTION ONGLETS
   // ============================================
   
-  Widget _buildTabsSection(BuildContext context, ThemeData theme, Color gxRed) {
+  Widget _buildTabsSection(BuildContext context, ThemeData theme, Color gxRed, bool isCompact, bool isMedium, double spacing) {
     return ListenableBuilder(
       listenable: _settings,
       builder: (context, _) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSubsectionTitle('Démarrage', gxRed),
-            const SizedBox(height: 12),
+            _buildSubsectionTitle('Démarrage', gxRed, isCompact: isCompact, isMedium: isMedium),
+            SizedBox(height: spacing),
             _buildSettingSwitch(
               title: 'Restaurer les onglets',
               subtitle: 'Recharge les onglets ouverts au prochain lancement',
               value: _settings.restoreTabsOnStartup,
               onChanged: (v) => _settings.setRestoreTabsOnStartup(v),
               gxRed: gxRed,
+              isCompact: isCompact,
+              isMedium: isMedium,
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: spacing),
             _buildSettingSwitch(
               title: 'Ouvrir sur la page d\'accueil',
               subtitle: 'Démarre Notilus sur le Speed Dial',
               value: _settings.startOnHomePage,
               onChanged: (v) => _settings.setStartOnHomePage(v),
               gxRed: gxRed,
+              isCompact: isCompact,
+              isMedium: isMedium,
             ),
-            const SizedBox(height: 24),
-            _buildSubsectionTitle('Nouvel onglet', gxRed),
-            const SizedBox(height: 12),
+            SizedBox(height: spacing * 2),
+            _buildSubsectionTitle('Nouvel onglet', gxRed, isCompact: isCompact, isMedium: isMedium),
+            SizedBox(height: spacing),
             _buildNewTabBehaviorSelector(gxRed),
           ],
         );
@@ -715,7 +730,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
   // SECTION TÉLÉCHARGEMENTS
   // ============================================
   
-  Widget _buildDownloadsSection(BuildContext context, ThemeData theme, Color gxRed) {
+  Widget _buildDownloadsSection(BuildContext context, ThemeData theme, Color gxRed, bool isCompact, bool isMedium, double spacing) {
     return ListenableBuilder(
       listenable: _settings,
       builder: (context, _) {
@@ -799,7 +814,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
   // SECTION TERMINAL
   // ============================================
   
-  Widget _buildTerminalSection(BuildContext context, ThemeData theme, Color gxRed) {
+  Widget _buildTerminalSection(BuildContext context, ThemeData theme, Color gxRed, bool isCompact, bool isMedium, double spacing) {
     final terminalService = TerminalService();
     
     return ListenableBuilder(
@@ -1038,7 +1053,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
   // SECTION PAGE D'ACCUEIL
   // ============================================
   
-  Widget _buildHomepageSection(BuildContext context, ThemeData theme, Color gxRed) {
+  Widget _buildHomepageSection(BuildContext context, ThemeData theme, Color gxRed, bool isCompact, bool isMedium, double spacing) {
     return ListenableBuilder(
       listenable: _settings,
       builder: (context, _) {
@@ -1456,7 +1471,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
   // SECTION SERVICES WEB
   // ============================================
   
-  Widget _buildWebServicesSection(BuildContext context, ThemeData theme, Color gxRed) {
+  Widget _buildWebServicesSection(BuildContext context, ThemeData theme, Color gxRed, bool isCompact, bool isMedium, double spacing) {
     final services = [
       ('youtubeMusic', 'YouTube Music', CupertinoIcons.music_note),
       ('youtube', 'YouTube', CupertinoIcons.play_circle),
@@ -1525,7 +1540,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
   // SECTION CONFIDENTIALITÉ
   // ============================================
   
-  Widget _buildPrivacySection(BuildContext context, ThemeData theme, Color gxRed) {
+  Widget _buildPrivacySection(BuildContext context, ThemeData theme, Color gxRed, bool isCompact, bool isMedium, double spacing) {
     return ListenableBuilder(
       listenable: _settings,
       builder: (context, _) {
@@ -1731,7 +1746,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
   // SECTION DEVTOOLS
   // ============================================
   
-  Widget _buildDevToolsSection(BuildContext context, ThemeData theme, Color gxRed) {
+  Widget _buildDevToolsSection(BuildContext context, ThemeData theme, Color gxRed, bool isCompact, bool isMedium, double spacing) {
     return ListenableBuilder(
       listenable: _settings,
       builder: (context, _) {
@@ -2065,7 +2080,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
   // SECTION COMPTE
   // ============================================
   
-  Widget _buildAccountSection(BuildContext context, ThemeData theme, Color gxRed) {
+  Widget _buildAccountSection(BuildContext context, ThemeData theme, Color gxRed, bool isCompact, bool isMedium, double spacing) {
     return Consumer2<FirebaseAuthService?, ConfigSyncService?>(
       builder: (context, authService, syncService, _) {
         if (authService == null || syncService == null) {
@@ -2280,7 +2295,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
   // SECTION COMPOSANTS GX
   // ============================================
   
-  Widget _buildGxComponentsSection(BuildContext context, ThemeData theme, Color gxRed) {
+  Widget _buildGxComponentsSection(BuildContext context, ThemeData theme, Color gxRed, bool isCompact, bool isMedium, double spacing) {
     return ListenableBuilder(
       listenable: _settings,
       builder: (context, _) {
@@ -2456,7 +2471,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
   // SECTION NOTIFICATIONS
   // ============================================
   
-  Widget _buildNotificationsSection(BuildContext context, ThemeData theme, Color gxRed) {
+  Widget _buildNotificationsSection(BuildContext context, ThemeData theme, Color gxRed, bool isCompact, bool isMedium, double spacing) {
     return ListenableBuilder(
       listenable: _settings,
       builder: (context, _) {
@@ -2654,7 +2669,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
   // SECTION À PROPOS
   // ============================================
   
-  Widget _buildAboutSection(BuildContext context, ThemeData theme, Color gxRed) {
+  Widget _buildAboutSection(BuildContext context, ThemeData theme, Color gxRed, bool isCompact, bool isMedium, double spacing) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2799,14 +2814,15 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
   // WIDGETS UTILITAIRES
   // ============================================
   
-  Widget _buildSubsectionTitle(String title, Color gxRed) {
+  Widget _buildSubsectionTitle(String title, Color gxRed, {bool isCompact = false, bool isMedium = false}) {
     return Text(
       title,
       style: TextStyle(
-        color: gxRed,
-        fontSize: 12,
+        fontSize: isCompact ? 10 : isMedium ? 11 : 12,
         fontWeight: FontWeight.w600,
+        color: gxRed,
         letterSpacing: 0.5,
+        fontFamily: NotilusFonts.rajdhani().fontFamily,
       ),
     );
   }
@@ -2817,33 +2833,67 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
     required bool value,
     required ValueChanged<bool> onChanged,
     required Color gxRed,
+    bool isCompact = false,
+    bool isMedium = false,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.03),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    final titleFontSize = isCompact ? 10.0 : isMedium ? 11.0 : 12.0;
+    final subtitleFontSize = isCompact ? 9.0 : 10.0;
+    final padding = isCompact ? 8.0 : isMedium ? 10.0 : 12.0;
+    final verticalPadding = isCompact ? 6.0 : 8.0;
+    
+    return RepaintBoundary(
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: () => onChanged(!value),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOutCubic,
+            padding: EdgeInsets.symmetric(horizontal: padding, vertical: verticalPadding),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.03),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.1),
+                width: 1,
+              ),
+            ),
+            child: Row(
               children: [
-                Text(title, style: const TextStyle(color: Colors.white, fontSize: 12)),
-                const SizedBox(height: 2),
-                Text(subtitle, style: TextStyle(color: Colors.white60, fontSize: 10)),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        title,
+                        style: NotilusFonts.rajdhani(
+                          fontSize: titleFontSize,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                      SizedBox(height: isCompact ? 1 : 2),
+                      Text(
+                        subtitle,
+                        style: NotilusFonts.rajdhani(
+                          fontSize: subtitleFontSize,
+                          color: Colors.white.withOpacity(0.6),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(width: padding),
+                GxFuturisticSwitch(
+                  value: value,
+                  onChanged: onChanged,
+                  accentColor: gxRed,
+                ),
               ],
             ),
           ),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            activeColor: gxRed,
-            activeTrackColor: gxRed.withOpacity(0.3),
-          ),
-        ],
+        ),
       ),
     );
   }
