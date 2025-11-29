@@ -7,6 +7,7 @@ import '../../core/theme/app_theme.dart';
 import '../../services/tab_webview_manager.dart';
 import '../../services/tab_manager.dart';
 import '../../services/favicon_service.dart';
+import '../../services/webview2_browser_engine.dart';
 import 'home_page.dart';
 
 /// Widget pour afficher le contenu web avec WebView2
@@ -22,16 +23,93 @@ class WebContentView extends StatefulWidget {
   State<WebContentView> createState() => _WebContentViewState();
 }
 
-class _WebContentViewState extends State<WebContentView> {
+class _WebContentViewState extends State<WebContentView> with WidgetsBindingObserver {
   bool _isLoading = false;
   String? _currentUrl;
   String? _currentTitle;
   WebviewController? _webView;
+  bool _isVisible = true;
+  bool _isTabActive = true;
+  TabWebViewManager? _tabWebViewManager;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initializeEngine();
+    _checkTabVisibility();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Sauvegarder la référence au TabWebViewManager pour l'utiliser dans dispose()
+    _tabWebViewManager = Provider.of<TabWebViewManager>(context, listen: false);
+  }
+  
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    // Suspendre le WebView si nécessaire
+    if (_webView != null && _isTabActive && widget.tab?.id != null && _tabWebViewManager != null) {
+      try {
+        final engine = _tabWebViewManager!.getEngine(widget.tab!.id);
+        if (engine != null && engine is WebView2BrowserEngine) {
+          engine.setTabActive(false);
+        }
+      } catch (e) {
+        // Ignorer les erreurs si le widget est déjà désactivé
+        debugPrint('Erreur lors de la suspension du WebView dans dispose: $e');
+      }
+    }
+    super.dispose();
+  }
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Suspendre le rendu quand l'app est en arrière-plan
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      _setVisibility(false);
+    } else if (state == AppLifecycleState.resumed) {
+      _setVisibility(_isTabActive);
+    }
+  }
+  
+  void _checkTabVisibility() {
+    final tabManager = Provider.of<TabManager>(context, listen: false);
+    final isActive = widget.tab?.id == tabManager.activeTab?.id;
+    if (_isTabActive != isActive) {
+      _isTabActive = isActive;
+      _setVisibility(isActive);
+    }
+  }
+  
+  void _setVisibility(bool isVisible) {
+    if (_isVisible == isVisible) return;
+    
+    _isVisible = isVisible;
+    
+    // Mettre à jour l'état actif du WebView pour ajuster le polling
+    if (_webView != null && widget.tab?.id != null) {
+      final tabManager = Provider.of<TabWebViewManager>(context, listen: false);
+      final engine = tabManager.getEngine(widget.tab!.id);
+      if (engine != null && engine is WebView2BrowserEngine) {
+        engine.setTabActive(isVisible);
+      }
+    }
+    
+    // Désactiver les animations CSS quand en arrière-plan
+    if (_webView != null && !isVisible) {
+      _webView!.executeScript('''
+        document.body.style.animationPlayState = 'paused';
+        document.body.style.transition = 'none';
+      ''');
+    } else if (_webView != null && isVisible) {
+      _webView!.executeScript('''
+        document.body.style.animationPlayState = 'running';
+        document.body.style.transition = '';
+      ''');
+    }
   }
 
   @override
@@ -39,6 +117,9 @@ class _WebContentViewState extends State<WebContentView> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.tab?.id != widget.tab?.id) {
       _initializeEngine();
+      _checkTabVisibility();
+    } else {
+      _checkTabVisibility();
     }
   }
 
@@ -61,8 +142,8 @@ class _WebContentViewState extends State<WebContentView> {
     
     // Configurer les callbacks
     engine.onNewWindowRequest = (url) {
-      // Créer un nouvel onglet pour les liens target="_blank"
-      tabManager.createNewTab(url: url);
+      // Créer un nouvel onglet dans Notilus pour tous les liens externes et target="_blank"
+      tabManager.addTab(url: url);
     };
     
     engine.onUrlChanged = (url) {
@@ -236,9 +317,15 @@ class _WebContentViewState extends State<WebContentView> {
       );
     }
 
-    // Afficher le WebView2
+    // Afficher le WebView2 avec RepaintBoundary pour optimiser le rendu
     if (_webView != null) {
-      return Webview(_webView!);
+      return RepaintBoundary(
+        child: Visibility(
+          visible: _isVisible,
+          maintainState: true, // Garder l'état même si invisible
+          child: Webview(_webView!),
+        ),
+      );
     }
 
     // Fallback si le WebView n'est pas encore initialisé

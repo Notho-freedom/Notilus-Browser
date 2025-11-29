@@ -9,28 +9,24 @@ import '../../models/tab_model.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/utils/url_validator.dart';
 import '../../core/utils/theme_extensions.dart';
-import '../../widgets/common/glassmorphic_container.dart';
 import '../../widgets/common/neon_button.dart';
+import '../../services/adblocker_service.dart';
 import 'address_suggestions.dart';
 
 class AddressBar extends StatefulWidget {
   final VoidCallback? onDevToolsToggle;
-  final VoidCallback? onSplitScreenToggle;
   final VoidCallback? onGroupsToggle;
   final VoidCallback? onExtensionsToggle;
   final bool isDevToolsVisible;
-  final bool isSplitScreenMode;
   final bool isGroupsVisible;
   final bool isExtensionsVisible;
 
   const AddressBar({
     super.key,
     this.onDevToolsToggle,
-    this.onSplitScreenToggle,
     this.onGroupsToggle,
     this.onExtensionsToggle,
     this.isDevToolsVisible = false,
-    this.isSplitScreenMode = false,
     this.isGroupsVisible = false,
     this.isExtensionsVisible = false,
   });
@@ -396,19 +392,6 @@ class AddressBarState extends State<AddressBar> {
               
               const SizedBox(width: 4),
               
-              // SplitScreen toggle
-              NeonButton(
-                text: 'Split',
-                variant: widget.isSplitScreenMode
-                    ? NeonButtonVariant.primary
-                    : NeonButtonVariant.secondary,
-                icon: Icons.splitscreen,
-                onPressed: widget.onSplitScreenToggle,
-                height: 32,
-              ),
-              
-              const SizedBox(width: 4),
-              
               // DevTools toggle
               NeonButton(
                 text: 'DevTools',
@@ -422,23 +405,33 @@ class AddressBarState extends State<AddressBar> {
               
               const SizedBox(width: 4),
               
-              // Security indicator
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: context.successColor.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: context.successColor,
-                    width: 1,
-                  ),
-                ),
-                child: Icon(
-                  Icons.lock,
-                  size: 16,
-                  color: context.successColor,
-                ),
+              // AdBlocker toggle
+              Consumer<AdBlockerService>(
+                builder: (context, adBlocker, _) {
+                  return Tooltip(
+                    message: adBlocker.isEnabled 
+                        ? 'Bloqueur de pubs activé (${adBlocker.blockedCount} bloquées)\nCliquer pour désactiver'
+                        : 'Bloqueur de pubs désactivé\nCliquer pour activer',
+                    child: GestureDetector(
+                      onTap: () => adBlocker.setEnabled(!adBlocker.isEnabled),
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: Colors.transparent,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Icon(
+                          adBlocker.isEnabled ? Icons.shield : Icons.shield_outlined,
+                          size: 16,
+                          color: adBlocker.isEnabled 
+                              ? theme.colorScheme.primary 
+                              : Colors.grey.withOpacity(0.5),
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
             ],
           ),

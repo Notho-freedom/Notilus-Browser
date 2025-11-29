@@ -57,15 +57,15 @@ class DownloadService extends ChangeNotifier {
   /// Démarre un téléchargement
   Future<void> _startDownload(DownloadModel download) async {
     try {
-      final index = _downloads.indexWhere((d) => d.id == download.id);
+      int index = _downloads.indexWhere((d) => d.id == download.id);
       if (index == -1) return;
 
-      _downloads[index] = download.copyWith(status: DownloadStatus.downloading);
+      _downloads[index] = _downloads[index].copyWith(status: DownloadStatus.downloading);
       notifyListeners();
 
       // Vérifier si le téléchargement a été annulé
       if (_cancelledDownloads[download.id] == true) {
-        _downloads[index] = download.copyWith(status: DownloadStatus.cancelled);
+        _downloads[index] = _downloads[index].copyWith(status: DownloadStatus.cancelled);
         notifyListeners();
         _saveDownloads();
         return;
@@ -74,68 +74,119 @@ class DownloadService extends ChangeNotifier {
       final client = http.Client();
       _activeClients[download.id] = client;
 
-      final response = await client.send(http.Request('GET', Uri.parse(download.url)));
+      // Créer la requête avec des headers pour simuler un navigateur
+      final request = http.Request('GET', Uri.parse(download.url));
+      request.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36';
+      request.headers['Accept'] = '*/*';
+      
+      final response = await client.send(request);
 
-      if (response.statusCode != 200) {
-        throw Exception('HTTP ${response.statusCode}');
+      if (response.statusCode != 200 && response.statusCode != 206) {
+        throw Exception('HTTP ${response.statusCode}: ${response.reasonPhrase}');
       }
 
       final totalBytes = response.contentLength;
-      final receivedBytes = <int>[];
+      int receivedBytesCount = 0;
 
       // Obtenir le répertoire de téléchargement
       final directory = await _getDownloadDirectory();
-      final fileName = _sanitizeFileName(download.fileName);
+      
+      // Extraire le nom de fichier depuis Content-Disposition si disponible
+      String fileName = download.fileName;
+      final contentDisposition = response.headers['content-disposition'];
+      if (contentDisposition != null) {
+        final pattern = RegExp('filename[*]?=["\']?([^"\';\\n]+)["\']?');
+        final match = pattern.firstMatch(contentDisposition);
+        if (match != null && match.group(1) != null) {
+          fileName = _sanitizeFileName(Uri.decodeComponent(match.group(1)!.trim()));
+        }
+      } else {
+        fileName = _sanitizeFileName(fileName);
+      }
+      
       final filePath = path.join(directory.path, fileName);
 
-      // Mettre à jour avec le total de bytes
-      _downloads[index] = download.copyWith(
+      // Recalculer l'index car la liste peut avoir changé
+      index = _downloads.indexWhere((d) => d.id == download.id);
+      if (index == -1) {
+        client.close();
+        return;
+      }
+
+      // Mettre à jour avec le total de bytes et le chemin du fichier
+      _downloads[index] = _downloads[index].copyWith(
         totalBytes: totalBytes,
         filePath: filePath,
+        fileName: fileName,
+        status: DownloadStatus.downloading,
       );
       notifyListeners();
 
       final file = File(filePath);
       final sink = file.openWrite();
+      
+      // Compteur pour limiter les notifications (performance)
+      int lastNotifyTime = DateTime.now().millisecondsSinceEpoch;
 
       await for (final chunk in response.stream) {
+        // Recalculer l'index à chaque itération
+        index = _downloads.indexWhere((d) => d.id == download.id);
+        if (index == -1) {
+          await sink.close();
+          await file.delete().catchError((_) => file);
+          client.close();
+          return;
+        }
+        
         // Vérifier si le téléchargement a été annulé
         if (_cancelledDownloads[download.id] == true) {
           await sink.close();
-          await file.delete();
-          _downloads[index] = download.copyWith(status: DownloadStatus.cancelled);
+          await file.delete().catchError((_) => file);
+          _downloads[index] = _downloads[index].copyWith(status: DownloadStatus.cancelled);
           notifyListeners();
           _saveDownloads();
+          client.close();
           return;
         }
 
-        receivedBytes.addAll(chunk);
+        receivedBytesCount += chunk.length;
         sink.add(chunk);
 
-        // Mettre à jour la progression
-        _downloads[index] = download.copyWith(
-          receivedBytes: receivedBytes.length,
-          totalBytes: totalBytes,
-        );
-        notifyListeners();
+        // Mettre à jour la progression (limité à 10 fois par seconde max)
+        final now = DateTime.now().millisecondsSinceEpoch;
+        if (now - lastNotifyTime > 100) {
+          lastNotifyTime = now;
+          _downloads[index] = _downloads[index].copyWith(
+            receivedBytes: receivedBytesCount,
+            totalBytes: totalBytes,
+          );
+          notifyListeners();
+        }
       }
 
       await sink.close();
       client.close();
       _activeClients.remove(download.id);
 
+      // Recalculer l'index final
+      index = _downloads.indexWhere((d) => d.id == download.id);
+      if (index == -1) return;
+
       // Téléchargement terminé
-      _downloads[index] = download.copyWith(
+      _downloads[index] = _downloads[index].copyWith(
         status: DownloadStatus.completed,
-        receivedBytes: receivedBytes.length,
+        receivedBytes: receivedBytesCount,
+        totalBytes: totalBytes ?? receivedBytesCount,
         endTime: DateTime.now(),
       );
       notifyListeners();
       _saveDownloads();
+      
+      debugPrint('✅ Téléchargement terminé: $filePath ($receivedBytesCount bytes)');
     } catch (e) {
       final index = _downloads.indexWhere((d) => d.id == download.id);
       if (index != -1) {
-        _downloads[index] = download.copyWith(
+        _downloads[index] = _downloads[index].copyWith(
           status: DownloadStatus.failed,
           error: e.toString(),
           endTime: DateTime.now(),
@@ -144,7 +195,7 @@ class DownloadService extends ChangeNotifier {
         _saveDownloads();
       }
       _activeClients.remove(download.id)?.close();
-      debugPrint('Erreur lors du téléchargement: $e');
+      debugPrint('❌ Erreur lors du téléchargement: $e');
     }
   }
 
@@ -230,13 +281,38 @@ class DownloadService extends ChangeNotifier {
   String _extractFileName(String url) {
     try {
       final uri = Uri.parse(url);
+      
+      // Chercher d'abord dans les paramètres de requête
+      final queryFileName = uri.queryParameters['filename'] ?? 
+                           uri.queryParameters['file'] ??
+                           uri.queryParameters['name'];
+      if (queryFileName != null && queryFileName.contains('.')) {
+        return Uri.decodeComponent(queryFileName);
+      }
+      
+      // Ensuite dans le chemin
       final segments = uri.pathSegments;
       if (segments.isNotEmpty) {
-        final fileName = segments.last;
-        if (fileName.isNotEmpty && fileName.contains('.')) {
-          return fileName;
+        // Prendre le dernier segment non vide
+        for (int i = segments.length - 1; i >= 0; i--) {
+          final segment = segments[i];
+          if (segment.isNotEmpty && segment.contains('.')) {
+            // Décoder l'URL et supprimer les paramètres de requête éventuels
+            final decoded = Uri.decodeComponent(segment);
+            return decoded.split('?').first;
+          }
         }
       }
+      
+      // Fallback avec un nom générique basé sur l'extension détectée
+      final urlLower = url.toLowerCase();
+      final commonExtensions = ['.pdf', '.zip', '.exe', '.mp3', '.mp4', '.jpg', '.png'];
+      for (final ext in commonExtensions) {
+        if (urlLower.contains(ext)) {
+          return 'download_${DateTime.now().millisecondsSinceEpoch}$ext';
+        }
+      }
+      
       return 'download_${DateTime.now().millisecondsSinceEpoch}';
     } catch (e) {
       return 'download_${DateTime.now().millisecondsSinceEpoch}';

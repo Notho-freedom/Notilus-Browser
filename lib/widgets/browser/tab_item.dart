@@ -8,6 +8,7 @@ class TabItem extends StatefulWidget {
   final TabModel tab;
   final VoidCallback onTap;
   final VoidCallback onClose;
+  final VoidCallback? onReload;
   final VoidCallback? onDuplicate;
   final VoidCallback? onPin;
   final VoidCallback? onAddToGroup;
@@ -19,6 +20,7 @@ class TabItem extends StatefulWidget {
     required this.tab,
     required this.onTap,
     required this.onClose,
+    this.onReload,
     this.onDuplicate,
     this.onPin,
     this.onAddToGroup,
@@ -53,6 +55,7 @@ class _TabItemState extends State<TabItem> with SingleTickerProviderStateMixin {
           TabContextMenu(
             tab: widget.tab,
             onClose: widget.onClose,
+            onReload: widget.onReload,
             onDuplicate: widget.onDuplicate,
             onPin: widget.onPin,
             onAddToGroup: widget.onAddToGroup,

@@ -57,8 +57,10 @@ class SystemMetricsService extends ChangeNotifier {
   }
 
   void updateTabCount(int count) {
-    _tabCount = count;
-    notifyListeners();
+    if (_tabCount != count) {
+      _tabCount = count;
+      notifyListeners();
+    }
   }
 
   void incrementPagesVisited() {

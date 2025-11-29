@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import '../../services/bookmark_service.dart';
 import '../../models/bookmark.dart';
 import '../../services/tab_manager.dart';
 import '../../core/services/wallpaper_manager.dart';
+import '../../core/services/color_theme_manager.dart';
 
 class ModernBookmarksPanel extends StatefulWidget {
   const ModernBookmarksPanel({super.key});
@@ -26,6 +28,122 @@ class _ModernBookmarksPanelState extends State<ModernBookmarksPanel> {
     setState(() {
       _bookmarksFuture = _bookmarkService.getBookmarks();
     });
+  }
+
+  Future<Map<String, String>?> _showAddBookmarkDialog(
+    BuildContext context,
+    String initialTitle,
+    String url,
+    String? favicon,
+    Color accentColor,
+  ) {
+    final titleController = TextEditingController(text: initialTitle);
+    final descController = TextEditingController();
+    final tagsController = TextEditingController();
+
+    return showDialog<Map<String, String>>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A20),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            if (favicon != null)
+              Image.network(
+                favicon,
+                width: 24,
+                height: 24,
+                errorBuilder: (_, __, ___) => Icon(CupertinoIcons.bookmark_fill, color: accentColor, size: 24),
+              )
+            else
+              Icon(CupertinoIcons.bookmark_fill, color: accentColor, size: 24),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Ajouter aux favoris',
+                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                url,
+                style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 10),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: titleController,
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+                decoration: InputDecoration(
+                  labelText: 'Titre',
+                  labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: accentColor),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: descController,
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+                maxLines: 2,
+                decoration: InputDecoration(
+                  labelText: 'Description (optionnel)',
+                  labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: accentColor),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: tagsController,
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+                decoration: InputDecoration(
+                  labelText: 'Tags (séparés par virgule)',
+                  labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                  hintText: 'ex: travail, dev, docs',
+                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 11),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: accentColor),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Annuler', style: TextStyle(color: Colors.white.withOpacity(0.6))),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context, {
+                'title': titleController.text,
+                'description': descController.text,
+                'tags': tagsController.text,
+              });
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: accentColor),
+            child: const Text('Ajouter', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -61,13 +179,51 @@ class _ModernBookmarksPanelState extends State<ModernBookmarksPanel> {
                 ),
                 const Spacer(),
                 IconButton(
-                  icon: const Icon(Icons.add, size: 18),
+                  icon: Icon(Icons.add, size: 18, color: Provider.of<ColorThemeManager>(context).nativeSecondaryColor),
                   tooltip: 'Ajouter un favori',
                   onPressed: () async {
                     final tabManager = Provider.of<TabManager>(context, listen: false);
                     final activeTab = tabManager.activeTab;
+                    final accentColor = Provider.of<ColorThemeManager>(context, listen: false).nativeSecondaryColor;
+                    
                     if (activeTab?.url != null && !activeTab!.url!.startsWith('about:')) {
-                      // TODO: Ajouter le favori
+                      // Afficher un dialogue d'édition
+                      final result = await _showAddBookmarkDialog(
+                        context, 
+                        activeTab.title ?? 'Sans titre',
+                        activeTab.url!,
+                        activeTab.favicon,
+                        accentColor,
+                      );
+                      
+                      if (result != null) {
+                        final bookmark = Bookmark(
+                          id: DateTime.now().millisecondsSinceEpoch.toString(),
+                          title: result['title'] ?? activeTab.title ?? 'Sans titre',
+                          url: activeTab.url!,
+                          favicon: activeTab.favicon,
+                          description: result['description'],
+                          tags: (result['tags'] as String?)?.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList() ?? [],
+                          createdAt: DateTime.now(),
+                        );
+                        await _bookmarkService.addBookmark(bookmark);
+                        await _refresh();
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Text('Favori ajouté'),
+                              backgroundColor: accentColor,
+                            ),
+                          );
+                        }
+                      }
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text('Aucune page à ajouter aux favoris'),
+                          backgroundColor: Colors.orange,
+                        ),
+                      );
                     }
                   },
                 ),

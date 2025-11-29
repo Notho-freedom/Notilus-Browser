@@ -54,6 +54,8 @@ build/
 .env
 .env.local
 .env.*.local
+# Mais garder .env.example pour la documentation
+!.env.example
 
 # IDE
 .vscode/
@@ -78,4 +80,7 @@ firestore-debug.log
 # CEF
 cef/
 cef_binary/
+
+# Large audio files
+assets/soundeffects/Notilus GX Background Music.wav
 

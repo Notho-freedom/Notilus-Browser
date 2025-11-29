@@ -6,6 +6,7 @@ import '../../widgets/common/glassmorphic_container.dart';
 class TabContextMenu extends StatelessWidget {
   final TabModel tab;
   final VoidCallback onClose;
+  final VoidCallback? onReload;
   final VoidCallback? onDuplicate;
   final VoidCallback? onPin;
   final VoidCallback? onAddToGroup;
@@ -17,6 +18,7 @@ class TabContextMenu extends StatelessWidget {
     super.key,
     required this.tab,
     required this.onClose,
+    this.onReload,
     this.onDuplicate,
     this.onPin,
     this.onAddToGroup,
@@ -40,16 +42,17 @@ class TabContextMenu extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildMenuItem(
-              context,
-              theme,
-              icon: Icons.refresh,
-              label: 'Recharger',
-              onTap: () {
-                Navigator.of(context).pop();
-                // TODO: Implement reload
-              },
-            ),
+            if (onReload != null)
+              _buildMenuItem(
+                context,
+                theme,
+                icon: Icons.refresh,
+                label: 'Recharger',
+                onTap: () {
+                  Navigator.of(context).pop();
+                  onReload!();
+                },
+              ),
             if (onDuplicate != null)
               _buildMenuItem(
                 context,

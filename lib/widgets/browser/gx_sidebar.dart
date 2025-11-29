@@ -3,7 +3,11 @@ import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/notilus_colors.dart';
 import '../../core/services/color_theme_manager.dart';
+import '../../core/animations/notilus_animations.dart';
+import 'package:flutter/services.dart';
 import '../../services/tab_manager.dart';
+import '../../services/settings_service.dart';
+import '../../services/mosaic_service.dart';
 import '../common/notilus_monogram.dart';
 import '../common/notilus_tooltip.dart';
 
@@ -18,7 +22,15 @@ enum SidebarSection {
   ai,
   settings,
   updates,
+  extensions,
   terminal,
+  nativeDevtools,
+  mosaic,
+  docs,
+  studio,
+  lighthouse,
+  github,
+  testPanel,
   youtubeMusic,
   youtube,
   chatgpt,
@@ -44,6 +56,7 @@ class GXSidebar extends StatefulWidget {
 class _GXSidebarState extends State<GXSidebar> {
   int _selectedIndex = 0;
   int _hoveredIndex = -1;
+  final SettingsService _settings = SettingsService();
   final List<_SidebarDestination> _destinations = const [
     _SidebarDestination(
       section: SidebarSection.home,
@@ -81,155 +94,221 @@ class _GXSidebarState extends State<GXSidebar> {
       label: 'Paramètres',
     ),
     _SidebarDestination(
+      section: SidebarSection.updates,
+      icon: CupertinoIcons.arrow_up_circle,
+      label: 'Mises à jour',
+    ),
+    _SidebarDestination(
+      section: SidebarSection.extensions,
+      icon: CupertinoIcons.square_grid_2x2,
+      label: 'Extensions',
+    ),
+    _SidebarDestination(
       section: SidebarSection.terminal,
       icon: CupertinoIcons.square_list,
       label: 'Terminal',
     ),
+    _SidebarDestination(
+      section: SidebarSection.nativeDevtools,
+      icon: CupertinoIcons.ant,
+      label: 'DevTools (F12)',
+    ),
+    _SidebarDestination(
+      section: SidebarSection.mosaic,
+      icon: CupertinoIcons.square_grid_2x2_fill,
+      label: 'Mosaïque',
+    ),
+    _SidebarDestination(
+      section: SidebarSection.studio,
+      icon: CupertinoIcons.paintbrush,
+      label: 'Studio (Tests Front-End)',
+    ),
+    _SidebarDestination(
+      section: SidebarSection.lighthouse,
+      icon: CupertinoIcons.gauge,
+      label: 'Lighthouse (Analyse)',
+    ),
+    _SidebarDestination(
+      section: SidebarSection.github,
+      icon: Icons.code,
+      label: 'Mes Dépôts GitHub',
+    ),
+    _SidebarDestination(
+      section: SidebarSection.docs,
+      icon: CupertinoIcons.book,
+      label: 'Documentation',
+    ),
+    _SidebarDestination(
+      section: SidebarSection.testPanel,
+      icon: CupertinoIcons.square_grid_2x2,
+      label: 'Test Panel GX',
+    ),
   ];
 
-  // Services web avec webview - tous en rouge GX
-  List<_WebServiceDestination> _getWebServices(Color gxRed) => [
-    _WebServiceDestination(
+  // Tous les services web disponibles
+  static const List<_WebServiceConfig> _allWebServices = [
+    _WebServiceConfig(
+      id: 'youtubeMusic',
       url: 'https://music.youtube.com',
       icon: CupertinoIcons.music_note,
       label: 'YouTube Music',
-      color: gxRed,
+      section: SidebarSection.youtubeMusic,
     ),
-    _WebServiceDestination(
+    _WebServiceConfig(
+      id: 'youtube',
       url: 'https://www.youtube.com',
       icon: CupertinoIcons.play_circle,
       label: 'YouTube',
-      color: gxRed,
+      section: SidebarSection.youtube,
     ),
-    _WebServiceDestination(
+    _WebServiceConfig(
+      id: 'chatgpt',
       url: 'https://chat.openai.com',
       icon: CupertinoIcons.chat_bubble_2,
       label: 'ChatGPT',
-      color: gxRed,
+      section: SidebarSection.chatgpt,
     ),
-    _WebServiceDestination(
+    _WebServiceConfig(
+      id: 'deepseek',
       url: 'https://chat.deepseek.com',
       icon: CupertinoIcons.sparkles,
       label: 'DeepSeek',
-      color: gxRed,
+      section: SidebarSection.deepseek,
     ),
-    _WebServiceDestination(
+    _WebServiceConfig(
+      id: 'whatsapp',
       url: 'https://web.whatsapp.com',
       icon: CupertinoIcons.chat_bubble_text,
       label: 'WhatsApp',
-      color: gxRed,
+      section: SidebarSection.whatsapp,
     ),
-    _WebServiceDestination(
+    _WebServiceConfig(
+      id: 'telegram',
       url: 'https://web.telegram.org',
       icon: CupertinoIcons.paperplane,
       label: 'Telegram',
-      color: gxRed,
+      section: SidebarSection.telegram,
     ),
   ];
+  
+  // Services web filtrés par les paramètres
+  List<_WebServiceDestination> _getWebServices(Color gxRed) {
+    return _allWebServices
+        .where((config) => _settings.isWebServiceEnabled(config.id))
+        .map((config) => _WebServiceDestination(
+              url: config.url,
+              icon: config.icon,
+              label: config.label,
+              color: gxRed,
+              section: config.section,
+            ))
+        .toList();
+  }
 
   @override
   Widget build(BuildContext context) {
     final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: true);
     final gxRed = colorThemeManager.nativeSecondaryColor;
-    return Container(
-      width: 50,
-      color: colorThemeManager.nativeBackgroundColor,
-      child: Column(
-        children: [
-          const SizedBox(height: 10),
-          const NotilusMonogram(
-            size: 24,
-            showGlow: false,
-            showFrame: true,
-          ),
-          const SizedBox(height: 18),
-          for (int i = 0; i < _destinations.length; i++) ...[
-            NotilusTooltip(
-              message: _destinations[i].label,
-              child: _GXSidebarIcon(
-                icon: _destinations[i].icon,
-                isSelected: _selectedIndex == i,
-                isHovered: _hoveredIndex == i,
-                onTap: () {
-                  setState(() {
-                    _selectedIndex = i;
-                  });
-                  if (_destinations[i].section == SidebarSection.home) {
-                    Provider.of<TabManager>(context, listen: false)
-                        .addTab(url: 'about:newtab');
-                  }
-                  widget.onSectionSelected?.call(_destinations[i].section);
-                },
-                onHover: (hover) => setState(() => _hoveredIndex = hover ? i : -1),
-              ),
-            ),
-            const SizedBox(height: 4),
-          ],
-          const SizedBox(height: 12),
-          Container(
-            width: 40,
-            height: 1,
-            color: gxRed.withValues(alpha: 0.3),
-          ),
-          const SizedBox(height: 12),
-          // Services web
-          for (int i = 0; i < _getWebServices(gxRed).length; i++) ...[
-            NotilusTooltip(
-              message: _getWebServices(gxRed)[i].label,
-              child: _GXSidebarWebServiceIcon(
-                icon: _getWebServices(gxRed)[i].icon,
-                color: _getWebServices(gxRed)[i].color,
-                isHovered: _hoveredIndex == _destinations.length + i,
-                onTap: () {
-                  setState(() {
-                    _selectedIndex = -1; // Désélectionner les destinations principales
-                  });
-                  // Déterminer la section correspondante
-                  SidebarSection? section;
-                  switch (i) {
-                    case 0:
-                      section = SidebarSection.youtubeMusic;
-                      break;
-                    case 1:
-                      section = SidebarSection.youtube;
-                      break;
-                    case 2:
-                      section = SidebarSection.chatgpt;
-                      break;
-                    case 3:
-                      section = SidebarSection.deepseek;
-                      break;
-                    case 4:
-                      section = SidebarSection.whatsapp;
-                      break;
-                    case 5:
-                      section = SidebarSection.telegram;
-                      break;
-                  }
-                  if (section != null) {
-                    widget.onSectionSelected?.call(section);
-                  } else {
-                    Provider.of<TabManager>(context, listen: false)
-                        .addTab(url: _getWebServices(gxRed)[i].url);
-                  }
-                },
-                onHover: (hover) => setState(() => _hoveredIndex = hover ? _destinations.length + i : -1),
-              ),
-            ),
-            const SizedBox(height: 4),
-          ],
-          const SizedBox(height: 20),
-          const _SidebarSignature(),
-          const Spacer(),
-          const _SidebarVerticalLabel(),
-          const SizedBox(height: 10),
-        ],
+    final webServices = _getWebServices(gxRed);
+    
+    return RepaintBoundary(
+      child: ListenableBuilder(
+        listenable: _settings,
+        builder: (context, _) => Container(
+          width: 50,
+          color: colorThemeManager.nativeBackgroundColor.withOpacity(1.0 - _settings.panelTransparency),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return Column(
+              children: [
+                const SizedBox(height: 10),
+                const NotilusMonogram(
+                  size: 24,
+                  showGlow: false,
+                  showFrame: true,
+                ),
+                const SizedBox(height: 18),
+                // Zone scrollable pour les icônes
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const ClampingScrollPhysics(),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        for (int i = 0; i < _destinations.length; i++) ...[
+                          NotilusTooltip(
+                            message: _destinations[i].label,
+                            child: _GXSidebarIcon(
+                              icon: _destinations[i].icon,
+                              isSelected: _selectedIndex == i,
+                              isHovered: _hoveredIndex == i,
+                              onTap: () {
+                                setState(() {
+                                  _selectedIndex = i;
+                                });
+                                if (_destinations[i].section == SidebarSection.home) {
+                                  Provider.of<TabManager>(context, listen: false)
+                                      .addTab(url: 'about:newtab');
+                                } else if (_destinations[i].section == SidebarSection.mosaic) {
+                                  final mosaicService = Provider.of<NotilusMosaicService>(context, listen: false);
+                                  final tabManager = Provider.of<TabManager>(context, listen: false);
+                                  final activeTabId = tabManager.activeTab?.id;
+                                  mosaicService.toggle(activeTabId: activeTabId);
+                                  HapticFeedback.mediumImpact();
+                                  return;
+                                }
+                                widget.onSectionSelected?.call(_destinations[i].section);
+                              },
+                              onHover: (hover) => setState(() => _hoveredIndex = hover ? i : -1),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                        ],
+                        const SizedBox(height: 12),
+                        Container(
+                          width: 40,
+                          height: 1,
+                          color: gxRed.withValues(alpha: 0.3),
+                        ),
+                        const SizedBox(height: 12),
+                        // Services web
+                        for (int i = 0; i < webServices.length; i++) ...[
+                          NotilusTooltip(
+                            message: webServices[i].label,
+                            child: _GXSidebarWebServiceIcon(
+                              icon: webServices[i].icon,
+                              color: webServices[i].color,
+                              isHovered: _hoveredIndex == _destinations.length + i,
+                              onTap: () {
+                                setState(() {
+                                  _selectedIndex = -1;
+                                });
+                                widget.onSectionSelected?.call(webServices[i].section);
+                              },
+                              onHover: (hover) => setState(() => _hoveredIndex = hover ? _destinations.length + i : -1),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                        ],
+                        const SizedBox(height: 20),
+                        const _SidebarSignature(),
+                      ],
+                    ),
+                  ),
+                ),
+                const _SidebarVerticalLabel(),
+                const SizedBox(height: 10),
+              ],
+            );
+          },
+        ),
+        ),
       ),
     );
   }
 }
 
-class _GXSidebarIcon extends StatelessWidget {
+class _GXSidebarIcon extends StatefulWidget {
   final IconData icon;
   final bool isSelected;
   final bool isHovered;
@@ -245,69 +324,161 @@ class _GXSidebarIcon extends StatelessWidget {
   });
 
   @override
+  State<_GXSidebarIcon> createState() => _GXSidebarIconState();
+}
+
+class _GXSidebarIconState extends State<_GXSidebarIcon>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _bounceAnimation;
+  bool _isPressed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.08).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
+    );
+    _bounceAnimation = Tween<double>(begin: 1.0, end: 0.92).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void didUpdateWidget(_GXSidebarIcon oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isHovered && !oldWidget.isHovered) {
+      _controller.forward();
+    } else if (!widget.isHovered && oldWidget.isHovered && !_isPressed) {
+      _controller.reverse();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _handleTapDown(_) {
+    setState(() => _isPressed = true);
+    _controller.forward();
+  }
+
+  void _handleTapUp(_) {
+    setState(() => _isPressed = false);
+    if (!widget.isHovered) _controller.reverse();
+    widget.onTap();
+  }
+
+  void _handleTapCancel() {
+    setState(() => _isPressed = false);
+    if (!widget.isHovered) _controller.reverse();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: true);
     final gxRed = colorThemeManager.nativeSecondaryColor;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
-      onEnter: (_) => onHover(true),
-      onExit: (_) => onHover(false),
+      onEnter: (_) => widget.onHover(true),
+      onExit: (_) => widget.onHover(false),
       child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: 48,
-          height: 40,
-          child: Stack(
-            children: [
-              // Barre de sélection à gauche - exactement comme GX
-              if (isSelected)
-                Positioned(
+        onTapDown: _handleTapDown,
+        onTapUp: _handleTapUp,
+        onTapCancel: _handleTapCancel,
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (context, child) {
+            final scale = _isPressed ? _bounceAnimation.value : _scaleAnimation.value;
+            return Transform.scale(
+              scale: scale,
+              child: child,
+            );
+          },
+          child: SizedBox(
+            width: 48,
+            height: 40,
+            child: Stack(
+              children: [
+                // Barre de sélection à gauche avec animation
+                AnimatedPositioned(
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeOutCubic,
                   left: 0,
-                  top: 10,
-                  bottom: 10,
-                  child: Container(
-                    width: 3,
+                  top: widget.isSelected ? 8 : 18,
+                  bottom: widget.isSelected ? 8 : 18,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeOutCubic,
+                    width: widget.isSelected ? 3 : 0,
                     decoration: BoxDecoration(
                       color: gxRed,
                       borderRadius: const BorderRadius.only(
                         topRight: Radius.circular(2),
                         bottomRight: Radius.circular(2),
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: gxRed.withValues(alpha: 0.8),
-                          blurRadius: 4,
-                          spreadRadius: 0,
-                        ),
-                      ],
+                      boxShadow: widget.isSelected
+                          ? [
+                              BoxShadow(
+                                color: gxRed.withValues(alpha: 0.8),
+                                blurRadius: 6,
+                                spreadRadius: 1,
+                              ),
+                            ]
+                          : [],
                     ),
                   ),
                 ),
-              
-              // Fond au hover/sélection
-              Center(
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? gxRed.withValues(alpha: 0.18)
-                        : (isHovered
-                            ? gxRed.withValues(alpha: 0.08)
-                            : Colors.transparent),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    icon,
-                    size: 20,
-                    color: gxRed.withValues(alpha: isSelected
-                        ? 1.0
-                        : (isHovered ? 0.9 : 0.65)),
+                
+                // Fond au hover/sélection avec animation de glow
+                Center(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeOutCubic,
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: widget.isSelected
+                          ? gxRed.withValues(alpha: 0.18)
+                          : (widget.isHovered
+                              ? gxRed.withValues(alpha: 0.12)
+                              : Colors.transparent),
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: widget.isHovered || widget.isSelected
+                          ? [
+                              BoxShadow(
+                                color: gxRed.withValues(alpha: widget.isSelected ? 0.3 : 0.15),
+                                blurRadius: 8,
+                                spreadRadius: 0,
+                              ),
+                            ]
+                          : [],
+                    ),
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween(
+                        begin: 0.0,
+                        end: widget.isSelected ? 1.0 : (widget.isHovered ? 0.9 : 0.65),
+                      ),
+                      duration: const Duration(milliseconds: 200),
+                      builder: (context, opacity, _) {
+                        return Icon(
+                          widget.icon,
+                          size: 20,
+                          color: gxRed.withValues(alpha: opacity),
+                        );
+                      },
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -385,16 +556,34 @@ class _WebServiceDestination {
   final IconData icon;
   final String label;
   final Color color;
+  final SidebarSection section;
 
   const _WebServiceDestination({
     required this.url,
     required this.icon,
     required this.label,
     required this.color,
+    required this.section,
   });
 }
 
-class _GXSidebarWebServiceIcon extends StatelessWidget {
+class _WebServiceConfig {
+  final String id;
+  final String url;
+  final IconData icon;
+  final String label;
+  final SidebarSection section;
+
+  const _WebServiceConfig({
+    required this.id,
+    required this.url,
+    required this.icon,
+    required this.label,
+    required this.section,
+  });
+}
+
+class _GXSidebarWebServiceIcon extends StatefulWidget {
   final IconData icon;
   final Color color;
   final bool isHovered;
@@ -410,37 +599,105 @@ class _GXSidebarWebServiceIcon extends StatelessWidget {
   });
 
   @override
+  State<_GXSidebarWebServiceIcon> createState() => _GXSidebarWebServiceIconState();
+}
+
+class _GXSidebarWebServiceIconState extends State<_GXSidebarWebServiceIcon>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _rotationAnimation;
+  bool _isPressed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _rotationAnimation = Tween<double>(begin: 0.0, end: 0.05).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void didUpdateWidget(_GXSidebarWebServiceIcon oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isHovered && !oldWidget.isHovered) {
+      _controller.forward().then((_) => _controller.reverse());
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
-      onEnter: (_) => onHover(true),
-      onExit: (_) => onHover(false),
+      onEnter: (_) => widget.onHover(true),
+      onExit: (_) => widget.onHover(false),
       child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: 48,
-          height: 40,
-          child: Stack(
-            children: [
-              Center(
-                child: AnimatedContainer(
+        onTapDown: (_) => setState(() => _isPressed = true),
+        onTapUp: (_) {
+          setState(() => _isPressed = false);
+          widget.onTap();
+        },
+        onTapCancel: () => setState(() => _isPressed = false),
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (context, child) {
+            return Transform.rotate(
+              angle: _rotationAnimation.value,
+              child: Transform.scale(
+                scale: _isPressed ? 0.9 : (widget.isHovered ? 1.1 : 1.0),
+                child: child,
+              ),
+            );
+          },
+          child: SizedBox(
+            width: 48,
+            height: 40,
+            child: Center(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOutCubic,
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: widget.isHovered
+                      ? widget.color.withOpacity(0.18)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: widget.isHovered
+                      ? [
+                          BoxShadow(
+                            color: widget.color.withOpacity(0.25),
+                            blurRadius: 10,
+                            spreadRadius: 0,
+                          ),
+                        ]
+                      : [],
+                ),
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(
+                    begin: 0.0,
+                    end: widget.isHovered ? 1.0 : 0.7,
+                  ),
                   duration: const Duration(milliseconds: 200),
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: isHovered
-                        ? color.withOpacity(0.15)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    icon,
-                    size: 18,
-                    color: color.withOpacity(isHovered ? 1 : 0.7),
-                  ),
+                  builder: (context, opacity, _) {
+                    return Icon(
+                      widget.icon,
+                      size: 18,
+                      color: widget.color.withOpacity(opacity),
+                    );
+                  },
                 ),
               ),
-            ],
+            ),
           ),
         ),
       ),

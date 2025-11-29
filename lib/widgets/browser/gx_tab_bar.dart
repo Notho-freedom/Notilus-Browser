@@ -6,7 +6,6 @@ import 'package:window_manager/window_manager.dart';
 import '../../core/constants/notilus_colors.dart';
 import '../../services/tab_manager.dart';
 import '../../services/tab_webview_manager.dart';
-import '../../services/split_screen_service.dart';
 import '../../services/quick_access_service.dart';
 import 'package:flutter/services.dart';
 import '../../services/bookmark_service.dart';
@@ -20,15 +19,30 @@ import '../common/context_menu.dart';
 
 // La couleur rouge est maintenant gérée par ColorThemeManager
 
-class GXTabBar extends StatelessWidget {
+class GXTabBar extends StatefulWidget {
   final VoidCallback? onMenuTap;
+  final VoidCallback? onGroupsPressed;
   final bool isSidebarVisible;
 
   const GXTabBar({
     super.key,
     this.onMenuTap,
+    this.onGroupsPressed,
     this.isSidebarVisible = true,
   });
+
+  @override
+  State<GXTabBar> createState() => _GXTabBarState();
+}
+
+class _GXTabBarState extends State<GXTabBar> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,8 +61,8 @@ class GXTabBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          SizedBox(width: isSidebarVisible ? 10 : 10),
-          if (!isSidebarVisible) ...[
+          SizedBox(width: widget.isSidebarVisible ? 10 : 10),
+          if (!widget.isSidebarVisible) ...[
             const NotilusTooltip(
               message: 'Identité Notilus',
               child: NotilusMonogram(
@@ -59,11 +73,11 @@ class GXTabBar extends StatelessWidget {
             const SizedBox(width: 8),
           ],
           _GXTabBarIconButton(
-            icon: isSidebarVisible
+            icon: widget.isSidebarVisible
                 ? CupertinoIcons.sidebar_left
                 : CupertinoIcons.sidebar_right,
-            tooltip: isSidebarVisible ? 'Masquer la barre latérale' : 'Afficher la barre latérale',
-            onPressed: onMenuTap,
+            tooltip: widget.isSidebarVisible ? 'Masquer la barre latérale' : 'Afficher la barre latérale',
+            onPressed: widget.onMenuTap,
           ),
           const SizedBox(width: 10),
           // Tabs container
@@ -78,9 +92,12 @@ class GXTabBar extends StatelessWidget {
                         .toDouble();
 
                     return Scrollbar(
+                      controller: _scrollController,
                       thickness: 2,
                       radius: const Radius.circular(1),
+                      thumbVisibility: false,
                       child: ListView.builder(
+                        controller: _scrollController,
                         scrollDirection: Axis.horizontal,
                         padding: const EdgeInsets.symmetric(horizontal: 8),
                         itemCount: tabManager.tabs.length + 1,
@@ -257,49 +274,10 @@ class GXTabBar extends StatelessWidget {
                 tooltip: 'Rechercher un onglet',
                 onPressed: () => _openTabSearch(context),
               ),
-              Builder(
-                builder: (context) {
-                  final splitService = context.watch<SplitScreenService>();
-                  final tabManager = context.watch<TabManager>();
-                  
-                  if (splitService.isActive && !splitService.isVisible) {
-                    // Bouton pour réafficher le split
-                    return _GXTabBarIconButton(
-                      icon: CupertinoIcons.eye,
-                      tooltip: 'Afficher le split-screen',
-                      onPressed: () {
-                        splitService.setVisible(true);
-                        HapticFeedback.lightImpact();
-                      },
-                    );
-                  }
-                  
-                  return _GXTabBarIconButton(
-                    icon: splitService.isActive
-                        ? CupertinoIcons.eye_slash // Icône différente quand actif pour indiquer qu'on peut masquer
-                        : CupertinoIcons.square_split_2x1,
-                    tooltip: splitService.isActive
-                        ? 'Masquer le split-screen et revenir aux onglets'
-                        : 'Activer le split-screen',
-                    onPressed: () {
-                      if (splitService.isActive) {
-                        // Masquer le split pour revenir aux tabsviews
-                        splitService.setVisible(false);
-                        HapticFeedback.lightImpact();
-                      } else {
-                        // Activer le split
-                        final activeTabId = tabManager.activeTab?.id;
-                        splitService.toggle(activeTabId: activeTabId);
-                        HapticFeedback.mediumImpact();
-                      }
-                    },
-                  );
-                },
-              ),
               _GXTabBarIconButton(
-                icon: CupertinoIcons.square_grid_2x2,
-                tooltip: 'Groupes (bientôt)',
-                onPressed: () {},
+                icon: CupertinoIcons.rectangle_stack,
+                tooltip: 'Groupes d\'onglets',
+                onPressed: widget.onGroupsPressed,
               ),
             ],
           ),
@@ -462,13 +440,48 @@ class _GXTabItem extends StatefulWidget {
   State<_GXTabItem> createState() => _GXTabItemState();
 }
 
-class _GXTabItemState extends State<_GXTabItem> {
+class _GXTabItemState extends State<_GXTabItem>
+    with SingleTickerProviderStateMixin {
   Color get _gxRed {
     final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: false);
     return colorThemeManager.nativeSecondaryColor;
   }
   bool _isHovered = false;
   bool _closeHovered = false;
+  bool _isPressed = false;
+  late AnimationController _animController;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _glowAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.02).animate(
+      CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic),
+    );
+    _glowAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic),
+    );
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
+  }
+
+  void _handleHoverChange(bool hover) {
+    setState(() => _isHovered = hover);
+    if (hover) {
+      _animController.forward();
+    } else if (!_isPressed) {
+      _animController.reverse();
+    }
+  }
 
   void _showContextMenu(BuildContext context, Offset position) {
     if (widget.tab.url == null || widget.tab.url!.isEmpty || widget.tab.url!.startsWith('about:')) {
@@ -478,10 +491,28 @@ class _GXTabItemState extends State<_GXTabItem> {
     final quickAccessService = QuickAccessService();
     final bookmarkService = BookmarkService();
     
+    final webViewManager = Provider.of<TabWebViewManager>(context, listen: false);
+    
     ContextMenu.show(
       context: context,
       position: position,
       actions: [
+        ContextMenuAction(
+          label: 'Recharger',
+          icon: CupertinoIcons.arrow_clockwise,
+          onTap: () {
+            final engine = webViewManager.getEngine(widget.tab.id);
+            engine?.reload();
+          },
+        ),
+        ContextMenuAction(
+          label: 'Dupliquer',
+          icon: CupertinoIcons.doc_on_doc,
+          onTap: () {
+            final tabManager = Provider.of<TabManager>(context, listen: false);
+            tabManager.addTab(url: widget.tab.url);
+          },
+        ),
         ContextMenuAction(
           label: 'Ajouter aux sites rapides',
           icon: CupertinoIcons.add_circled,
@@ -529,10 +560,15 @@ class _GXTabItemState extends State<_GXTabItem> {
     return NotilusTooltip(
       message: widget.tab.title ?? widget.tab.url ?? 'Onglet',
       child: MouseRegion(
-        onEnter: (_) => setState(() => _isHovered = true),
-        onExit: (_) => setState(() => _isHovered = false),
+        onEnter: (_) => _handleHoverChange(true),
+        onExit: (_) => _handleHoverChange(false),
         child: GestureDetector(
-          onTap: widget.onTap,
+          onTapDown: (_) => setState(() => _isPressed = true),
+          onTapUp: (_) {
+            setState(() => _isPressed = false);
+            widget.onTap();
+          },
+          onTapCancel: () => setState(() => _isPressed = false),
           onSecondaryTapDown: (details) => _showContextMenu(context, details.globalPosition),
           onLongPress: () {
             final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
@@ -541,35 +577,64 @@ class _GXTabItemState extends State<_GXTabItem> {
               _showContextMenu(context, position);
             }
           },
-          child: SizedBox(
-            width: widget.width,
-            height: 32,
-            child: Column(
-              children: [
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  height: 3,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    gradient: widget.isActive ? activeGradient : null,
-                    color: widget.isActive ? null : Colors.transparent,
-                  ),
-                ),
-                const SizedBox(height: 1),
-                Expanded(
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
+          child: AnimatedBuilder(
+            animation: _animController,
+            builder: (context, child) {
+              return Transform.scale(
+                scale: _isPressed ? 0.97 : _scaleAnimation.value,
+                child: child,
+              );
+            },
+            child: SizedBox(
+              width: widget.width,
+              height: 32,
+              child: Column(
+                children: [
+                  // Indicateur animé en haut de l'onglet
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeOutCubic,
+                    height: 3,
+                    width: widget.isActive ? widget.width : (_isHovered ? widget.width * 0.6 : 0),
                     decoration: BoxDecoration(
-                      gradient: widget.isActive
-                          ? activeGradient
-                          : null,
-                      color: widget.isActive
-                          ? null
-                          : (_isHovered
-                              ? const Color(0xFF1F1F23)
-                              : Colors.transparent),
-                      borderRadius: BorderRadius.circular(8),
+                      gradient: widget.isActive || _isHovered ? activeGradient : null,
+                      borderRadius: BorderRadius.circular(2),
+                      boxShadow: widget.isActive
+                          ? [
+                              BoxShadow(
+                                color: gxRed.withValues(alpha: 0.5),
+                                blurRadius: 6,
+                                spreadRadius: 0,
+                              ),
+                            ]
+                          : [],
                     ),
+                  ),
+                  const SizedBox(height: 1),
+                  Expanded(
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeOutCubic,
+                      decoration: BoxDecoration(
+                        gradient: widget.isActive
+                            ? activeGradient
+                            : null,
+                        color: widget.isActive
+                            ? null
+                            : (_isHovered
+                                ? const Color(0xFF1F1F23)
+                                : Colors.transparent),
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: _isHovered && !widget.isActive
+                            ? [
+                                BoxShadow(
+                                  color: gxRed.withValues(alpha: _glowAnimation.value * 0.15),
+                                  blurRadius: 10,
+                                  spreadRadius: 0,
+                                ),
+                              ]
+                            : [],
+                      ),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                       child: Row(
@@ -663,6 +728,7 @@ class _GXTabItemState extends State<_GXTabItem> {
         ),
       ),
     ),
+  ),
     );
   }
 

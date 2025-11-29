@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:provider/provider.dart';
 import '../../services/native_terminal_service.dart';
 import '../../core/services/wallpaper_manager.dart';
@@ -39,7 +40,10 @@ class _NativeTerminalPanelState extends State<NativeTerminalPanel> {
   @override
   void initState() {
     super.initState();
-    _initializeSession();
+    // Utiliser addPostFrameCallback pour éviter setState pendant le build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeSession();
+    });
   }
 
   @override
@@ -424,6 +428,7 @@ class _NativeTerminalPanelState extends State<NativeTerminalPanel> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Scrollbar(
+        controller: _scrollController,
         thickness: 1,
         radius: const Radius.circular(0),
         thumbVisibility: true,
