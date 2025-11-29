@@ -3464,6 +3464,201 @@ class _SearchResult {
   });
 }
 
+class _SearchResultWidget extends StatefulWidget {
+  final _SearchResult result;
+  final _SectionItem section;
+  final bool isSelected;
+  final Color accentColor;
+  final bool isCompact;
+  final String searchQuery;
+  final VoidCallback onTap;
+
+  const _SearchResultWidget({
+    required this.result,
+    required this.section,
+    required this.isSelected,
+    required this.accentColor,
+    required this.isCompact,
+    required this.searchQuery,
+    required this.onTap,
+  });
+
+  @override
+  State<_SearchResultWidget> createState() => _SearchResultWidgetState();
+}
+
+class _SearchResultWidgetState extends State<_SearchResultWidget> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          padding: EdgeInsets.symmetric(
+            horizontal: widget.isCompact ? 12 : 16,
+            vertical: widget.isCompact ? 10 : 12,
+          ),
+          decoration: BoxDecoration(
+            color: widget.isSelected
+                ? widget.accentColor.withOpacity(0.15)
+                : (_isHovered ? widget.accentColor.withOpacity(0.08) : Colors.transparent),
+            border: Border(
+              left: BorderSide(
+                color: widget.isSelected
+                    ? widget.accentColor
+                    : (_isHovered ? widget.accentColor.withOpacity(0.5) : Colors.transparent),
+                width: widget.isSelected ? 3 : (_isHovered ? 2 : 0),
+              ),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    widget.section.icon,
+                    size: widget.isCompact ? 14 : 16,
+                    color: widget.isSelected
+                        ? widget.accentColor
+                        : (_isHovered ? widget.accentColor.withOpacity(0.8) : Colors.white60),
+                  ),
+                  SizedBox(width: widget.isCompact ? 8 : 10),
+                  Expanded(
+                    child: Text(
+                      widget.result.setting.title,
+                      style: NotilusFonts.rajdhani(
+                        fontSize: widget.isCompact ? 11 : 12,
+                        fontWeight: FontWeight.w600,
+                        color: widget.isSelected
+                            ? widget.accentColor
+                            : (_isHovered ? Colors.white : Colors.white70),
+                      ),
+                    ),
+                  ),
+                  if (widget.isSelected)
+                    Icon(
+                      CupertinoIcons.checkmark_circle_fill,
+                      color: widget.accentColor,
+                      size: 16,
+                    ),
+                ],
+              ),
+              SizedBox(height: 4),
+              Text(
+                widget.result.setting.description,
+                style: NotilusFonts.rajdhani(
+                  fontSize: widget.isCompact ? 9 : 10,
+                  color: Colors.white.withOpacity(0.5),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SearchResultCard extends StatefulWidget {
+  final _SearchResult result;
+  final Color accentColor;
+  final bool isCompact;
+  final bool isMedium;
+  final double spacing;
+  final String searchQuery;
+  final VoidCallback onTap;
+
+  const _SearchResultCard({
+    required this.result,
+    required this.accentColor,
+    required this.isCompact,
+    required this.isMedium,
+    required this.spacing,
+    required this.searchQuery,
+    required this.onTap,
+  });
+
+  @override
+  State<_SearchResultCard> createState() => _SearchResultCardState();
+}
+
+class _SearchResultCardState extends State<_SearchResultCard> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          padding: EdgeInsets.all(widget.spacing),
+          decoration: BoxDecoration(
+            color: _isHovered
+                ? widget.accentColor.withOpacity(0.1)
+                : Colors.white.withOpacity(0.03),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: _isHovered
+                  ? widget.accentColor.withOpacity(0.5)
+                  : Colors.white.withOpacity(0.1),
+              width: _isHovered ? 1.5 : 1,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      widget.result.setting.title,
+                      style: NotilusFonts.rajdhani(
+                        fontSize: widget.isCompact ? 12 : widget.isMedium ? 13 : 14,
+                        fontWeight: FontWeight.w700,
+                        color: _isHovered ? widget.accentColor : Colors.white,
+                      ),
+                    ),
+                  ),
+                  Icon(
+                    CupertinoIcons.chevron_right,
+                    size: widget.isCompact ? 14 : 16,
+                    color: widget.accentColor.withOpacity(0.6),
+                  ),
+                ],
+              ),
+              SizedBox(height: widget.spacing / 2),
+              Text(
+                widget.result.setting.description,
+                style: NotilusFonts.rajdhani(
+                  fontSize: widget.isCompact ? 10 : 11,
+                  color: Colors.white.withOpacity(0.6),
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _SectionItemWidget extends StatefulWidget {
   final _SectionItem section;
   final bool isSelected;
