@@ -2377,6 +2377,37 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
             ),
             const SizedBox(height: 28),
             
+            // Mémoire glissante
+            _buildSubsectionTitle('Mémoire contextuelle', gxRed),
+            const SizedBox(height: 12),
+            Text(
+              'La mémoire glissante stocke automatiquement le contexte (site web, console, réseau) pour améliorer les réponses de l\'IA.',
+              style: TextStyle(color: Colors.white60, fontSize: 11),
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton.icon(
+              onPressed: () async {
+                await _settings.clearAiSlidingMemory();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('Mémoire contextuelle vidée avec succès'),
+                      backgroundColor: gxRed,
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }
+              },
+              icon: const Icon(CupertinoIcons.trash, size: 14),
+              label: const Text('Vider la mémoire', style: TextStyle(fontSize: 11)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red.withOpacity(0.2),
+                foregroundColor: Colors.redAccent,
+                side: BorderSide(color: Colors.redAccent.withOpacity(0.5)),
+              ),
+            ),
+            const SizedBox(height: 28),
+            
             // Test de connexion
             _buildSubsectionTitle('Test', gxRed),
             const SizedBox(height: 12),

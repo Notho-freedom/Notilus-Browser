@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 /// Service centralisé pour toutes les préférences de l'application Notilus
 /// Permet de gérer les paramètres de façon cohérente et persistante
@@ -81,6 +82,7 @@ class SettingsService extends ChangeNotifier {
   static const String _keyGroqApiKey = 'notilus_groq_api_key';
   static const String _keyAiAutoSwitch = 'notilus_ai_auto_switch';
   static const String _keyAiPreferredModel = 'notilus_ai_preferred_model';
+  static const String _keyAiSlidingMemory = 'notilus_ai_sliding_memory';
   
   // DevTools
   static const String _keyDevToolsPosition = 'notilus_devtools_position'; // 'bottom', 'right', 'detached'
@@ -544,6 +546,28 @@ class SettingsService extends ChangeNotifier {
   
   Future<void> setAiPreferredModel(String model) async {
     await _prefs?.setString(_keyAiPreferredModel, model);
+    notifyListeners();
+  }
+
+  Map<String, dynamic> get aiSlidingMemory {
+    final json = _prefs?.getString(_keyAiSlidingMemory);
+    if (json == null || json.isEmpty) return {};
+    try {
+      return Map<String, dynamic>.from(
+        (jsonDecode(json) as Map<dynamic, dynamic>).map((k, v) => MapEntry(k.toString(), v))
+      );
+    } catch (e) {
+      return {};
+    }
+  }
+  
+  Future<void> setAiSlidingMemory(Map<String, dynamic> memory) async {
+    await _prefs?.setString(_keyAiSlidingMemory, jsonEncode(memory));
+    notifyListeners();
+  }
+  
+  Future<void> clearAiSlidingMemory() async {
+    await _prefs?.remove(_keyAiSlidingMemory);
     notifyListeners();
   }
 
