@@ -43,7 +43,11 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
   // Cache pour optimiser les performances
   Timer? _searchDebounceTimer;
   List<_SectionItem>? _cachedFilteredSections;
+  List<_SearchResult>? _cachedSearchResults;
   String? _lastSearchQuery;
+  
+  // Index de recherche approfondie
+  late List<_SettingIndex> _settingsIndex;
   
   // Liste des sections
   final List<_SectionItem> _sections = [
@@ -67,6 +71,111 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
     super.initState();
     _settings.initialize();
     _searchController.addListener(_onSearchChanged);
+    _buildSettingsIndex();
+  }
+  
+  void _buildSettingsIndex() {
+    _settingsIndex = [
+      // Section Apparence
+      _SettingIndex('appearance', 'Mode de thème', 'Système, Clair, Sombre', 'Thème', 'appearance'),
+      _SettingIndex('appearance', 'Thème de couleur', 'Change la couleur principale de l\'interface', 'Couleur', 'appearance'),
+      _SettingIndex('appearance', 'Couleurs personnalisées', 'Couleur de fond, Couleur secondaire', 'Personnalisation', 'appearance'),
+      _SettingIndex('appearance', 'Couleur de fond', 'Sidebar, barres d\'outils', 'Fond', 'appearance'),
+      _SettingIndex('appearance', 'Couleur secondaire', 'Accents, éléments actifs', 'Accent', 'appearance'),
+      
+      // Section Fonds d'écran
+      _SettingIndex('wallpaper', 'Fond d\'écran dynamique', 'Affiche un fond d\'écran sur la page d\'accueil et les panneaux', 'Fond écran', 'wallpaper'),
+      _SettingIndex('wallpaper', 'Activer les fonds d\'écran', 'Affiche un fond d\'écran sur la page d\'accueil et les panneaux', 'Activer', 'wallpaper'),
+      _SettingIndex('wallpaper', 'Rotation automatique', 'Change le fond d\'écran périodiquement', 'Rotation', 'wallpaper'),
+      _SettingIndex('wallpaper', 'Intervalle de rotation', '1 min, 2 min, 5 min, 10 min, 15 min, 30 min', 'Intervalle', 'wallpaper'),
+      
+      // Section Onglets
+      _SettingIndex('tabs', 'Démarrage', 'Restaurer les onglets, Ouvrir sur la page d\'accueil', 'Démarrage', 'tabs'),
+      _SettingIndex('tabs', 'Restaurer les onglets', 'Recharge les onglets ouverts au prochain lancement', 'Restaurer', 'tabs'),
+      _SettingIndex('tabs', 'Ouvrir sur la page d\'accueil', 'Démarre Notilus sur le Speed Dial', 'Page accueil', 'tabs'),
+      _SettingIndex('tabs', 'Nouvel onglet', 'Page d\'accueil, Page vide, URL personnalisée', 'Nouvel onglet', 'tabs'),
+      
+      // Section Téléchargements
+      _SettingIndex('downloads', 'Dossier de téléchargement', 'Configurez le dossier de téléchargement', 'Dossier', 'downloads'),
+      _SettingIndex('downloads', 'Demander l\'emplacement', 'Demander où enregistrer chaque fichier', 'Emplacement', 'downloads'),
+      _SettingIndex('downloads', 'Ouvrir automatiquement', 'Ouvrir les fichiers après téléchargement', 'Auto ouvrir', 'downloads'),
+      
+      // Section Terminal
+      _SettingIndex('terminal', 'Terminal préféré', 'PowerShell, CMD, WSL', 'Terminal', 'terminal'),
+      _SettingIndex('terminal', 'Taille de police', 'Taille de la police du terminal', 'Police', 'terminal'),
+      _SettingIndex('terminal', 'Type d\'interface', 'Native, XTerm', 'Interface', 'terminal'),
+      
+      // Section Page d'accueil
+      _SettingIndex('homepage', 'Style de page d\'accueil', 'Modern, Notilus Dev, Frontend, Backend, DevOps, Data Science, Minimal, GX Futuristic', 'Style', 'homepage'),
+      _SettingIndex('homepage', 'Transparence des widgets', 'Réglez la transparence pour voir le fond d\'écran', 'Transparence', 'homepage'),
+      _SettingIndex('homepage', 'Widgets', 'Transparence des widgets et éléments de l\'interface', 'Widgets', 'homepage'),
+      _SettingIndex('homepage', 'Panneaux latéraux', 'Transparence des panneaux latéraux', 'Panneaux', 'homepage'),
+      _SettingIndex('homepage', 'Overlays', 'Transparence des overlays et menus contextuels', 'Overlays', 'homepage'),
+      _SettingIndex('homepage', 'Page d\'accueil', 'Contrôle l\'opacité du fond d\'écran et du flou', 'Page accueil', 'homepage'),
+      _SettingIndex('homepage', 'Intensité du flou', 'Contrôle l\'intensité du flou d\'arrière-plan', 'Flou', 'homepage'),
+      _SettingIndex('homepage', 'Personnalisation avancée', 'Horloge, Citations, Animations, Message de bienvenue', 'Personnalisation', 'homepage'),
+      _SettingIndex('homepage', 'Afficher l\'horloge', 'Heure et date sur la page d\'accueil', 'Horloge', 'homepage'),
+      _SettingIndex('homepage', 'Afficher les citations', 'Citations inspirantes pour développeurs', 'Citations', 'homepage'),
+      _SettingIndex('homepage', 'Animations', 'Effets visuels et transitions', 'Animations', 'homepage'),
+      _SettingIndex('homepage', 'Message de bienvenue', 'Message personnalisé sur la page d\'accueil', 'Message', 'homepage'),
+      _SettingIndex('homepage', 'Panneaux latéraux', 'Panneau Dev Tools, Panneau Quick Actions', 'Panneaux', 'homepage'),
+      _SettingIndex('homepage', 'Sections visibles', 'Widgets système, Sites rapides, Historique récent', 'Sections', 'homepage'),
+      _SettingIndex('homepage', 'Widgets système', 'CPU, RAM, GPU, etc.', 'Système', 'homepage'),
+      _SettingIndex('homepage', 'Sites rapides', 'Raccourcis vers vos sites favoris', 'Sites', 'homepage'),
+      _SettingIndex('homepage', 'Historique récent', 'Afficher l\'historique récent sur la page d\'accueil', 'Historique', 'homepage'),
+      
+      // Section Services Web
+      _SettingIndex('webservices', 'Services Web', 'YouTube Music, YouTube, ChatGPT, DeepSeek, WhatsApp, Telegram', 'Services', 'webservices'),
+      _SettingIndex('webservices', 'YouTube Music', 'Service de musique YouTube', 'YouTube Music', 'webservices'),
+      _SettingIndex('webservices', 'YouTube', 'Service vidéo YouTube', 'YouTube', 'webservices'),
+      _SettingIndex('webservices', 'ChatGPT', 'Service d\'assistant IA ChatGPT', 'ChatGPT', 'webservices'),
+      _SettingIndex('webservices', 'DeepSeek', 'Service d\'assistant IA DeepSeek', 'DeepSeek', 'webservices'),
+      _SettingIndex('webservices', 'WhatsApp', 'Service de messagerie WhatsApp', 'WhatsApp', 'webservices'),
+      _SettingIndex('webservices', 'Telegram', 'Service de messagerie Telegram', 'Telegram', 'webservices'),
+      
+      // Section Confidentialité
+      _SettingIndex('privacy', 'Confidentialité', 'Protégez vos données de navigation', 'Confidentialité', 'privacy'),
+      _SettingIndex('privacy', 'Sauvegarder l\'historique', 'Enregistrer l\'historique de navigation', 'Historique', 'privacy'),
+      _SettingIndex('privacy', 'Sauvegarder les cookies', 'Enregistrer les cookies des sites', 'Cookies', 'privacy'),
+      _SettingIndex('privacy', 'Bloquer les trackers', 'Bloquer les trackers publicitaires', 'Trackers', 'privacy'),
+      
+      // Section Compte
+      _SettingIndex('account', 'Authentification', 'Connectez-vous pour synchroniser vos configurations', 'Auth', 'account'),
+      _SettingIndex('account', 'Synchronisation', 'Exporter vers le cloud, Restaurer depuis le cloud', 'Sync', 'account'),
+      _SettingIndex('account', 'Exporter vers le cloud', 'Sauvegarder vos configurations dans le cloud', 'Exporter', 'account'),
+      _SettingIndex('account', 'Restaurer depuis le cloud', 'Restaurer vos configurations depuis le cloud', 'Restaurer', 'account'),
+      
+      // Section DevTools
+      _SettingIndex('devtools', 'DevTools', 'Configuration des outils de développement', 'DevTools', 'devtools'),
+      _SettingIndex('devtools', 'Position', 'Bottom, Right, Detached', 'Position', 'devtools'),
+      _SettingIndex('devtools', 'Hauteur', 'Hauteur du panneau DevTools', 'Hauteur', 'devtools'),
+      _SettingIndex('devtools', 'Afficher les timestamps', 'Afficher les horodatages dans les logs', 'Timestamps', 'devtools'),
+      _SettingIndex('devtools', 'Grouper les logs', 'Grouper les logs similaires', 'Grouper', 'devtools'),
+      _SettingIndex('devtools', 'Défilement automatique', 'Défilement automatique vers les nouveaux logs', 'Auto scroll', 'devtools'),
+      _SettingIndex('devtools', 'Préserver les logs', 'Conserver les logs après navigation', 'Préserver', 'devtools'),
+      _SettingIndex('devtools', 'Capturer le body', 'Capturer le contenu des requêtes', 'Body', 'devtools'),
+      _SettingIndex('devtools', 'Désactiver le cache', 'Désactiver le cache pour les requêtes', 'Cache', 'devtools'),
+      _SettingIndex('devtools', 'Afficher le box model', 'Afficher le modèle de boîte dans Elements', 'Box model', 'devtools'),
+      _SettingIndex('devtools', 'Afficher les dimensions', 'Afficher les dimensions dans Elements', 'Dimensions', 'devtools'),
+      _SettingIndex('devtools', 'Afficher les guides', 'Afficher les guides de mise en page', 'Guides', 'devtools'),
+      _SettingIndex('devtools', 'Couleur de surbrillance', 'Couleur pour mettre en surbrillance les éléments', 'Couleur', 'devtools'),
+      _SettingIndex('devtools', 'Taux de rafraîchissement', 'Fréquence de rafraîchissement des DevTools', 'Refresh', 'devtools'),
+      _SettingIndex('devtools', 'Taille de police', 'Taille de la police dans les DevTools', 'Police', 'devtools'),
+      
+      // Section Composants GX
+      _SettingIndex('gxComponents', 'Composants GX', 'Test et aperçu des composants GX Futuristic', 'Composants', 'gxComponents'),
+      
+      // Section Notifications
+      _SettingIndex('notifications', 'Notifications', 'Configuration des notifications', 'Notifications', 'notifications'),
+      _SettingIndex('notifications', 'Position', 'Top-right, Top-left, Bottom-right, Bottom-left', 'Position', 'notifications'),
+      _SettingIndex('notifications', 'Son', 'Activer le son des notifications', 'Son', 'notifications'),
+      
+      // Section À propos
+      _SettingIndex('about', 'À propos', 'Informations sur Notilus Browser', 'À propos', 'about'),
+      _SettingIndex('about', 'Version', 'Version de Notilus Browser', 'Version', 'about'),
+      _SettingIndex('about', 'Licence', 'Informations de licence', 'Licence', 'about'),
+      _SettingIndex('about', 'Réinitialiser', 'Réinitialiser tous les paramètres', 'Réinitialiser', 'about'),
+    ];
   }
   
   void _onSearchChanged() {
@@ -106,6 +215,71 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
     _cachedFilteredSections = filtered;
     _lastSearchQuery = _searchQuery;
     return filtered;
+  }
+  
+  List<_SearchResult> _performDeepSearch() {
+    if (_cachedSearchResults != null && _lastSearchQuery == _searchQuery) {
+      return _cachedSearchResults!;
+    }
+    
+    if (_searchQuery.isEmpty) {
+      _cachedSearchResults = [];
+      return [];
+    }
+    
+    final query = _searchQuery.toLowerCase();
+    final results = <_SearchResult>[];
+    
+    // Recherche dans l'index
+    for (final setting in _settingsIndex) {
+      final relevance = _calculateRelevance(setting, query);
+      if (relevance > 0) {
+        results.add(_SearchResult(
+          setting: setting,
+          relevance: relevance,
+        ));
+      }
+    }
+    
+    // Trier par pertinence
+    results.sort((a, b) => b.relevance.compareTo(a.relevance));
+    
+    _cachedSearchResults = results;
+    return results;
+  }
+  
+  int _calculateRelevance(_SettingIndex setting, String query) {
+    int score = 0;
+    final titleLower = setting.title.toLowerCase();
+    final descriptionLower = setting.description.toLowerCase();
+    final keywordsLower = setting.keywords.toLowerCase();
+    final sectionLabel = _sections.firstWhere((s) => s.id == setting.sectionId).label.toLowerCase();
+    
+    // Correspondance exacte dans le titre (score élevé)
+    if (titleLower == query) {
+      score += 100;
+    } else if (titleLower.startsWith(query)) {
+      score += 50;
+    } else if (titleLower.contains(query)) {
+      score += 30;
+    }
+    
+    // Correspondance dans les mots-clés
+    if (keywordsLower.contains(query)) {
+      score += 20;
+    }
+    
+    // Correspondance dans la description
+    if (descriptionLower.contains(query)) {
+      score += 10;
+    }
+    
+    // Correspondance dans le nom de section
+    if (sectionLabel.contains(query)) {
+      score += 5;
+    }
+    
+    return score;
   }
 
   @override
@@ -178,26 +352,28 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                         ),
                         Expanded(
                           child: RepaintBoundary(
-                            child: ListView.builder(
-                              padding: EdgeInsets.symmetric(vertical: 8),
-                              itemCount: _getFilteredSections().length,
-                              cacheExtent: 500,
-                              addAutomaticKeepAlives: false,
-                              addRepaintBoundaries: true,
-                              itemBuilder: (context, index) {
-                                final section = _getFilteredSections()[index];
-                                return RepaintBoundary(
-                                  key: ValueKey('section_${section.id}'),
-                                  child: _SectionItemWidget(
-                                    section: section,
-                                    isSelected: _currentSection == section.id,
-                                    accentColor: gxRed,
-                                    isCompact: isCompact,
-                                    onTap: () => setState(() => _currentSection = section.id),
-                                  ),
-                                );
-                              },
-                            ),
+                            child: _searchQuery.isEmpty
+                                ? ListView.builder(
+                                    padding: EdgeInsets.symmetric(vertical: 8),
+                                    itemCount: _getFilteredSections().length,
+                                    cacheExtent: 500,
+                                    addAutomaticKeepAlives: false,
+                                    addRepaintBoundaries: true,
+                                    itemBuilder: (context, index) {
+                                      final section = _getFilteredSections()[index];
+                                      return RepaintBoundary(
+                                        key: ValueKey('section_${section.id}'),
+                                        child: _SectionItemWidget(
+                                          section: section,
+                                          isSelected: _currentSection == section.id,
+                                          accentColor: gxRed,
+                                          isCompact: isCompact,
+                                          onTap: () => setState(() => _currentSection = section.id),
+                                        ),
+                                      );
+                                    },
+                                  )
+                                : _buildSearchResults(gxRed, isCompact),
                           ),
                         ),
                       ],
@@ -218,6 +394,209 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
     );
   }
 
+
+  Widget _buildSearchResults(Color gxRed, bool isCompact) {
+    final results = _performDeepSearch();
+    
+    if (results.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              CupertinoIcons.search,
+              size: isCompact ? 32 : 40,
+              color: Colors.white.withOpacity(0.3),
+            ),
+            SizedBox(height: isCompact ? 8 : 12),
+            Text(
+              'Aucun résultat',
+              style: NotilusFonts.rajdhani(
+                fontSize: isCompact ? 12 : 14,
+                color: Colors.white.withOpacity(0.5),
+              ),
+            ),
+            SizedBox(height: 4),
+            Text(
+              'Essayez d\'autres mots-clés',
+              style: NotilusFonts.rajdhani(
+                fontSize: isCompact ? 10 : 11,
+                color: Colors.white.withOpacity(0.3),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    return ListView.builder(
+      padding: EdgeInsets.symmetric(vertical: 8),
+      itemCount: results.length,
+      cacheExtent: 500,
+      addAutomaticKeepAlives: false,
+      addRepaintBoundaries: true,
+      itemBuilder: (context, index) {
+        final result = results[index];
+        final section = _sections.firstWhere((s) => s.id == result.setting.sectionId);
+        return RepaintBoundary(
+          key: ValueKey('search_result_${result.setting.sectionId}_${result.setting.title}'),
+          child: _SearchResultWidget(
+            result: result,
+            section: section,
+            isSelected: _currentSection == result.setting.sectionId,
+            accentColor: gxRed,
+            isCompact: isCompact,
+            searchQuery: _searchQuery,
+            onTap: () {
+              setState(() {
+                _currentSection = result.setting.sectionId;
+                _searchController.clear();
+                _searchQuery = '';
+                _cachedSearchResults = null;
+              });
+            },
+          ),
+        );
+      },
+    );
+  }
+  
+  Widget _buildSearchResultsContent(BuildContext context, ThemeData theme, Color gxRed) {
+    final results = _performDeepSearch();
+    
+    if (results.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              CupertinoIcons.search,
+              size: 48,
+              color: Colors.white.withOpacity(0.3),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Aucun résultat trouvé',
+              style: NotilusFonts.rajdhani(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Colors.white.withOpacity(0.5),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Essayez d\'autres mots-clés pour votre recherche',
+              style: NotilusFonts.rajdhani(
+                fontSize: 12,
+                color: Colors.white.withOpacity(0.3),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    // Grouper les résultats par section
+    final groupedResults = <String, List<_SearchResult>>{};
+    for (final result in results) {
+      groupedResults.putIfAbsent(result.setting.sectionId, () => []).add(result);
+    }
+    
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompact = constraints.maxWidth < 600;
+        final isMedium = constraints.maxWidth >= 600 && constraints.maxWidth < 900;
+        final padding = isCompact ? 12.0 : isMedium ? 16.0 : 20.0;
+        final spacing = isCompact ? 8.0 : isMedium ? 12.0 : 16.0;
+        
+        return SingleChildScrollView(
+          padding: EdgeInsets.all(padding),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(CupertinoIcons.search, color: gxRed, size: isCompact ? 18 : 20),
+                  SizedBox(width: spacing),
+                  Text(
+                    'Résultats de recherche',
+                    style: NotilusFonts.orbitron(
+                      fontSize: isCompact ? 14 : 16,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    '${results.length} résultat${results.length > 1 ? 's' : ''}',
+                    style: NotilusFonts.rajdhani(
+                      fontSize: isCompact ? 11 : 12,
+                      color: Colors.white.withOpacity(0.5),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: spacing * 1.5),
+              ...groupedResults.entries.map((entry) {
+                final section = _sections.firstWhere((s) => s.id == entry.key);
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(section.icon, color: gxRed, size: isCompact ? 14 : 16),
+                        SizedBox(width: spacing / 2),
+                        Text(
+                          section.label.toUpperCase(),
+                          style: NotilusFonts.orbitron(
+                            fontSize: isCompact ? 10 : 11,
+                            fontWeight: FontWeight.w700,
+                            color: gxRed,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                        SizedBox(width: spacing),
+                        Expanded(
+                          child: Divider(
+                            height: 1,
+                            color: gxRed.withOpacity(0.3),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: spacing),
+                    ...entry.value.map((result) {
+                      return Padding(
+                        padding: EdgeInsets.only(bottom: spacing),
+                        child: _SearchResultCard(
+                          result: result,
+                          accentColor: gxRed,
+                          isCompact: isCompact,
+                          isMedium: isMedium,
+                          spacing: spacing,
+                          searchQuery: _searchQuery,
+                          onTap: () {
+                            setState(() {
+                              _currentSection = result.setting.sectionId;
+                              _searchController.clear();
+                              _searchQuery = '';
+                              _cachedSearchResults = null;
+                            });
+                          },
+                        ),
+                      );
+                    }),
+                    SizedBox(height: spacing * 2),
+                  ],
+                );
+              }),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   Widget _buildSectionContent(BuildContext context, ThemeData theme, Color gxRed) {
     return LayoutBuilder(
@@ -3053,6 +3432,36 @@ class _SectionItem {
   final IconData icon;
 
   const _SectionItem(this.id, this.label, this.icon);
+}
+
+// ============================================
+// CLASSES POUR RECHERCHE APPROFONDIE
+// ============================================
+
+class _SettingIndex {
+  final String sectionId;
+  final String title;
+  final String description;
+  final String keywords;
+  final String category;
+
+  const _SettingIndex(
+    this.sectionId,
+    this.title,
+    this.description,
+    this.keywords,
+    this.category,
+  );
+}
+
+class _SearchResult {
+  final _SettingIndex setting;
+  final int relevance;
+
+  const _SearchResult({
+    required this.setting,
+    required this.relevance,
+  });
 }
 
 class _SectionItemWidget extends StatefulWidget {
