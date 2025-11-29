@@ -3,12 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../services/cloudinary_service.dart';
 import '../../services/settings_service.dart';
 import '../../core/services/color_theme_manager.dart';
 import '../../core/constants/notilus_fonts.dart';
 import '../../services/gx_notification_service.dart';
 import '../common/gx_futuristic_components.dart';
+import '../common/gx_futuristic_dialog.dart';
 
 /// Widget pour gérer les uploads et sélection de médias Cloudinary
 class CloudinaryMediaManager extends StatefulWidget {
@@ -81,35 +84,55 @@ class _CloudinaryMediaManagerState extends State<CloudinaryMediaManager> {
     }
 
     if (result != null && result.files.isNotEmpty) {
-      for (final file in result.files) {
-        if (file.path != null) {
-          final fileObj = File(file.path!);
-          final folder = widget.resourceType == CloudinaryResourceType.image
-              ? 'backgrounds'
-              : widget.resourceType == CloudinaryResourceType.video
-                  ? 'videos'
-                  : 'music';
+      // Lancer tous les uploads en parallèle
+      final uploadFutures = result.files.where((file) => file.path != null).map((file) {
+        final fileObj = File(file.path!);
+        final folder = widget.resourceType == CloudinaryResourceType.image
+            ? 'backgrounds'
+            : widget.resourceType == CloudinaryResourceType.video
+                ? 'videos'
+                : 'music';
 
-          final media = await _cloudinaryService.uploadFile(
-            file: fileObj,
-            resourceType: widget.resourceType,
-            folder: folder,
-          );
+        return _cloudinaryService.uploadFile(
+          file: fileObj,
+          resourceType: widget.resourceType,
+          folder: folder,
+        );
+      }).toList();
 
-          if (media != null) {
-            GxNotificationService().showSuccess(
-              title: 'Upload réussi',
-              message: 'Le fichier a été uploadé avec succès.',
-              context: context,
-            );
-          } else {
-            GxNotificationService().showError(
-              title: 'Erreur d\'upload',
-              message: _cloudinaryService.error ?? 'Une erreur est survenue.',
-              context: context,
-            );
-          }
+      // Attendre que tous les uploads soient terminés
+      final results = await Future.wait(uploadFutures, eagerError: false);
+      
+      int successCount = 0;
+      int errorCount = 0;
+      
+      for (final result in results) {
+        if (result != null) {
+          successCount++;
+        } else {
+          errorCount++;
         }
+      }
+      
+      // Afficher les résultats
+      if (errorCount == 0) {
+        GxNotificationService().showSuccess(
+          title: 'Uploads réussis',
+          message: '$successCount fichier(s) uploadé(s) avec succès.',
+          context: context,
+        );
+      } else if (successCount > 0) {
+        GxNotificationService().showWarning(
+          title: 'Uploads partiels',
+          message: '$successCount succès, $errorCount échec(s).',
+          context: context,
+        );
+      } else {
+        GxNotificationService().showError(
+          title: 'Échec des uploads',
+          message: _cloudinaryService.error ?? 'Tous les uploads ont échoué.',
+          context: context,
+        );
       }
     }
   }
@@ -127,6 +150,57 @@ class _CloudinaryMediaManagerState extends State<CloudinaryMediaManager> {
       }
       _saveSelection();
     });
+  }
+
+  Future<void> _showPreview(CloudinaryMedia media) async {
+    final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: false);
+    final gxRed = colorThemeManager.nativeSecondaryColor;
+    final bgColor = colorThemeManager.nativeBackgroundColor;
+    final isSelected = _selectedUrls.contains(media.secureUrl);
+
+    await GxFuturisticDialog.show(
+      context: context,
+      title: 'Prévisualisation',
+      titleIcon: widget.resourceType == CloudinaryResourceType.image
+          ? CupertinoIcons.photo
+          : widget.resourceType == CloudinaryResourceType.video
+              ? CupertinoIcons.play_circle
+              : CupertinoIcons.music_note,
+      accentColor: gxRed,
+      width: 700,
+      height: widget.resourceType == CloudinaryResourceType.image ? 600 : 400,
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(
+            'Annuler',
+            style: NotilusFonts.rajdhani(color: Colors.white70),
+          ),
+        ),
+        GxFuturisticButton(
+          label: isSelected ? 'Désélectionner' : 'Appliquer',
+          icon: isSelected ? CupertinoIcons.xmark_circle : CupertinoIcons.checkmark,
+          variant: GxFuturisticButtonVariant.primary,
+          onPressed: () {
+            Navigator.of(context).pop();
+            _toggleSelection(media.secureUrl);
+            GxNotificationService().showSuccess(
+              title: isSelected ? 'Média désélectionné' : 'Média appliqué',
+              message: isSelected 
+                  ? 'Le média a été désélectionné.'
+                  : 'Le média a été appliqué avec succès.',
+              context: context,
+            );
+          },
+        ),
+      ],
+      child: _MediaPreview(
+        media: media,
+        resourceType: widget.resourceType,
+        gxRed: gxRed,
+        bgColor: bgColor,
+      ),
+    );
   }
 
   Future<void> _saveSelection() async {
@@ -201,6 +275,15 @@ class _CloudinaryMediaManagerState extends State<CloudinaryMediaManager> {
                 ? service.uploadedVideos
                 : service.uploadedMusic;
 
+        // Utilise isLoading avec le type spécifique
+        final isLoading = service.isLoading(widget.resourceType);
+        
+        // Filtre les uploads en cours pour ce type seulement
+        final currentUploadsForThisType = service.getCurrentUploads(widget.resourceType);
+        final uploadsForThisType = service.uploadProgressMap.entries
+            .where((entry) => currentUploadsForThisType.contains(entry.key))
+            .toList();
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -221,26 +304,74 @@ class _CloudinaryMediaManagerState extends State<CloudinaryMediaManager> {
                   label: 'Uploader',
                   icon: CupertinoIcons.cloud_upload,
                   variant: GxFuturisticButtonVariant.primary,
-                  onPressed: service.isLoading ? null : _uploadFile,
+                  // Désactivé seulement si ce type spécifique est en chargement
+                  onPressed: isLoading ? null : _uploadFile,
                 ),
-                if (service.isLoading)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 12),
-                    child: SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: gxRed,
-                      ),
-                    ),
-                  ),
               ],
             ),
             const SizedBox(height: 16),
+            
+            // Liste des uploads en cours POUR CE TYPE SEULEMENT
+            if (uploadsForThisType.isNotEmpty)
+              Column(
+                children: [
+                  ...uploadsForThisType.map((entry) {
+                    final progress = entry.value;
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: bgColor.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: gxRed.withOpacity(0.3)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                CupertinoIcons.cloud_upload,
+                                size: 16,
+                                color: gxRed,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  progress.fileName,
+                                  style: NotilusFonts.rajdhani(
+                                    fontSize: 12,
+                                    color: Colors.white.withOpacity(0.8),
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              Text(
+                                '${(progress.progress * 100).toStringAsFixed(0)}%',
+                                style: NotilusFonts.rajdhani(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: gxRed,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          GxFuturisticProgress(
+                            value: progress.progress,
+                            accentColor: gxRed,
+                            height: 6,
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                  const SizedBox(height: 16),
+                ],
+              ),
 
             // Liste des médias
-            if (mediaList.isEmpty)
+            if (mediaList.isEmpty && uploadsForThisType.isEmpty)
               Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
@@ -268,7 +399,7 @@ class _CloudinaryMediaManagerState extends State<CloudinaryMediaManager> {
                   ),
                 ),
               )
-            else
+            else if (mediaList.isNotEmpty)
               GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
@@ -287,7 +418,7 @@ class _CloudinaryMediaManagerState extends State<CloudinaryMediaManager> {
                     media: media,
                     isSelected: isSelected,
                     resourceType: widget.resourceType,
-                    onTap: () => _toggleSelection(media.secureUrl),
+                    onTap: () => _showPreview(media),
                     onDelete: () => _deleteMedia(media),
                     gxRed: gxRed,
                     bgColor: bgColor,
@@ -418,3 +549,261 @@ class _MediaItem extends StatelessWidget {
   }
 }
 
+/// Widget pour prévisualiser un média Cloudinary
+class _MediaPreview extends StatefulWidget {
+  final CloudinaryMedia media;
+  final CloudinaryResourceType resourceType;
+  final Color gxRed;
+  final Color bgColor;
+
+  const _MediaPreview({
+    required this.media,
+    required this.resourceType,
+    required this.gxRed,
+    required this.bgColor,
+  });
+
+  @override
+  State<_MediaPreview> createState() => _MediaPreviewState();
+}
+
+class _MediaPreviewState extends State<_MediaPreview> {
+  AudioPlayer? _audioPlayer;
+  bool _isPlaying = false;
+  Duration _duration = Duration.zero;
+  Duration _position = Duration.zero;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.resourceType == CloudinaryResourceType.raw) {
+      _audioPlayer = AudioPlayer();
+      _initAudioPlayer();
+    }
+  }
+
+  void _initAudioPlayer() async {
+    if (_audioPlayer == null) return;
+    
+    _audioPlayer!.onDurationChanged.listen((duration) {
+      if (mounted) {
+        setState(() => _duration = duration);
+      }
+    });
+
+    _audioPlayer!.onPositionChanged.listen((position) {
+      if (mounted) {
+        setState(() => _position = position);
+      }
+    });
+
+    _audioPlayer!.onPlayerComplete.listen((_) {
+      if (mounted) {
+        setState(() {
+          _isPlaying = false;
+          _position = Duration.zero;
+        });
+      }
+    });
+  }
+
+  Future<void> _togglePlayPause() async {
+    if (_audioPlayer == null) return;
+
+    if (_isPlaying) {
+      await _audioPlayer!.pause();
+    } else {
+      if (_position == Duration.zero) {
+        await _audioPlayer!.setSource(UrlSource(widget.media.secureUrl));
+      }
+      await _audioPlayer!.resume();
+    }
+    
+    if (mounted) {
+      setState(() => _isPlaying = !_isPlaying);
+    }
+  }
+
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final minutes = twoDigits(duration.inMinutes.remainder(60));
+    final seconds = twoDigits(duration.inSeconds.remainder(60));
+    return '$minutes:$seconds';
+  }
+
+  @override
+  void dispose() {
+    _audioPlayer?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Afficher le nom du fichier
+          Text(
+            widget.media.publicId.split('/').last,
+            style: NotilusFonts.orbitron(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: widget.gxRed,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 20),
+          
+          // Contenu selon le type
+          Expanded(
+            child: widget.resourceType == CloudinaryResourceType.image
+                ? _buildImagePreview()
+                : widget.resourceType == CloudinaryResourceType.video
+                    ? _buildVideoPreview()
+                    : _buildAudioPreview(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildImagePreview() {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: CachedNetworkImage(
+        imageUrl: widget.media.secureUrl,
+        fit: BoxFit.contain,
+        placeholder: (context, url) => Container(
+          color: widget.bgColor.withOpacity(0.3),
+          child: Center(
+            child: CircularProgressIndicator(color: widget.gxRed),
+          ),
+        ),
+        errorWidget: (context, url, error) => Container(
+          color: widget.bgColor.withOpacity(0.3),
+          child: Center(
+            child: Icon(
+              CupertinoIcons.photo,
+              size: 64,
+              color: widget.gxRed.withOpacity(0.5),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVideoPreview() {
+    return Container(
+      decoration: BoxDecoration(
+        color: widget.bgColor.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: widget.gxRed.withOpacity(0.3)),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              CupertinoIcons.play_circle_fill,
+              size: 64,
+              color: widget.gxRed,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Vidéo',
+              style: NotilusFonts.rajdhani(
+                fontSize: 18,
+                color: Colors.white.withOpacity(0.8),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Cliquez sur "Appliquer" pour utiliser cette vidéo',
+              style: NotilusFonts.rajdhani(
+                fontSize: 12,
+                color: Colors.white.withOpacity(0.6),
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAudioPreview() {
+    return Container(
+      decoration: BoxDecoration(
+        color: widget.bgColor.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: widget.gxRed.withOpacity(0.3)),
+      ),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            CupertinoIcons.music_note,
+            size: 64,
+            color: widget.gxRed,
+          ),
+          const SizedBox(height: 24),
+          
+          // Contrôles audio
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                onPressed: _togglePlayPause,
+                icon: Icon(
+                  _isPlaying ? CupertinoIcons.pause_circle_fill : CupertinoIcons.play_circle_fill,
+                  size: 48,
+                  color: widget.gxRed,
+                ),
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 16),
+          
+          // Barre de progression
+          if (_duration != Duration.zero) ...[
+            Slider(
+              value: _position.inSeconds.toDouble(),
+              min: 0,
+              max: _duration.inSeconds.toDouble(),
+              activeColor: widget.gxRed,
+              inactiveColor: widget.gxRed.withOpacity(0.3),
+              onChanged: (value) {
+                _audioPlayer?.seek(Duration(seconds: value.toInt()));
+              },
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  _formatDuration(_position),
+                  style: NotilusFonts.rajdhani(
+                    fontSize: 12,
+                    color: Colors.white.withOpacity(0.8),
+                  ),
+                ),
+                Text(
+                  _formatDuration(_duration),
+                  style: NotilusFonts.rajdhani(
+                    fontSize: 12,
+                    color: Colors.white.withOpacity(0.8),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}

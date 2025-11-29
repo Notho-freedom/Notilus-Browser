@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
@@ -18,14 +19,28 @@ class CloudinaryService extends ChangeNotifier {
   List<CloudinaryMedia> _uploadedBackgrounds = [];
   List<CloudinaryMedia> _uploadedVideos = [];
   List<CloudinaryMedia> _uploadedMusic = [];
-  bool _isLoading = false;
+  
+  // Gestion des uploads parallèles PAR TYPE
+  final Map<CloudinaryResourceType, List<String>> _currentUploadsByType = {};
+  final Map<String, UploadProgress> _uploadProgressMap = {};
+  
   String? _error;
 
   List<CloudinaryMedia> get uploadedBackgrounds => _uploadedBackgrounds;
   List<CloudinaryMedia> get uploadedVideos => _uploadedVideos;
   List<CloudinaryMedia> get uploadedMusic => _uploadedMusic;
-  bool get isLoading => _isLoading;
   String? get error => _error;
+  
+  // Getters pour les uploads en cours PAR TYPE
+  List<String> getCurrentUploads(CloudinaryResourceType type) => 
+      _currentUploadsByType[type] ?? [];
+  
+  Map<String, UploadProgress> get uploadProgressMap => _uploadProgressMap;
+  
+  bool isLoading(CloudinaryResourceType type) => 
+      getCurrentUploads(type).isNotEmpty;
+  
+  double getUploadProgress(String fileName) => _uploadProgressMap[fileName]?.progress ?? 0.0;
 
   /// Initialise le service et charge les médias existants
   Future<void> initialize() async {
@@ -35,11 +50,9 @@ class CloudinaryService extends ChangeNotifier {
   /// Vérifie si Cloudinary est configuré
   bool get isConfigured {
     final cloudName = _settings.cloudinaryCloudName;
-    final apiKey = _settings.cloudinaryApiKey;
-    final apiSecret = _settings.cloudinaryApiSecret;
+    final uploadPreset = _settings.cloudinaryUploadPreset;
     return cloudName != null && cloudName.isNotEmpty &&
-           apiKey != null && apiKey.isNotEmpty &&
-           apiSecret != null && apiSecret.isNotEmpty;
+           uploadPreset != null && uploadPreset.isNotEmpty;
   }
 
   /// Upload un fichier vers Cloudinary
@@ -55,24 +68,30 @@ class CloudinaryService extends ChangeNotifier {
       return null;
     }
 
-    _isLoading = true;
-    _error = null;
+    final fileName = file.path.split(Platform.pathSeparator).last;
+    final uploadId = '${DateTime.now().millisecondsSinceEpoch}_$fileName';
+    
+    // Ajouter aux uploads en cours POUR CE TYPE SEULEMENT
+    _currentUploadsByType[resourceType] ??= [];
+    _currentUploadsByType[resourceType]!.add(uploadId);
+    _uploadProgressMap[uploadId] = UploadProgress(
+      fileName: fileName, 
+      progress: 0.0,
+      resourceType: resourceType,
+    );
     notifyListeners();
 
     try {
       final cloudName = _settings.cloudinaryCloudName!;
-      final apiKey = _settings.cloudinaryApiKey!;
-      final apiSecret = _settings.cloudinaryApiSecret!;
+      final uploadPreset = _settings.cloudinaryUploadPreset!;
 
-      // Générer le timestamp
-      final timestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-      
-      // Préparer les paramètres (sans api_key et signature pour le calcul)
+      // Préparer les paramètres pour l'upload UNSIGNED avec preset
+      // Avec un Upload Preset UNSIGNED, pas besoin de signature ni d'API key/secret
       final params = <String, String>{
-        'timestamp': timestamp.toString(),
-        'resource_type': resourceType.name,
+        'upload_preset': uploadPreset,
       };
 
+      // Le folder peut être défini dans le preset, mais on peut aussi le surcharger
       if (folder != null && folder.isNotEmpty) {
         params['folder'] = folder;
       }
@@ -82,40 +101,62 @@ class CloudinaryService extends ChangeNotifier {
         params['transformation'] = jsonEncode(transformation);
       }
 
-      // Générer la signature AVANT d'ajouter api_key et signature
-      // Pour multipart, le paramètre 'file' n'est pas dans la signature
-      final signature = _generateSignature(params, apiSecret, excludeFile: true);
-      
-      // Maintenant ajouter api_key et signature
-      params['api_key'] = apiKey;
-      params['signature'] = signature;
-
       // Créer la requête multipart
+      // NOTE: resource_type fait partie de l'URL, pas des paramètres
       final uri = Uri.parse('https://api.cloudinary.com/v1_1/$cloudName/${resourceType.name}/upload');
       final request = http.MultipartRequest('POST', uri);
       
-      // Ajouter les paramètres
+      // Ajouter les paramètres (seulement upload_preset et folder, pas de signature)
       params.forEach((key, value) {
         request.fields[key] = value;
       });
 
-      // Ajouter le fichier
-      request.files.add(
-        await http.MultipartFile.fromPath('file', file.path),
+      // Obtenir la taille du fichier pour la progression
+      final fileLength = await file.length();
+      
+      // Créer le multipart file avec progression personnalisée
+      final multipartFile = await _createMultipartFileWithProgress(
+        file: file,
+        fileName: fileName,
+        fileLength: fileLength,
+        uploadId: uploadId,
+        resourceType: resourceType,
       );
 
-      // Envoyer la requête avec timeout pour les gros fichiers
-      final streamedResponse = await request.send().timeout(
-        const Duration(seconds: 300), // 5 minutes pour les gros fichiers
-        onTimeout: () {
-          throw Exception('Upload timeout après 5 minutes');
-        },
+      request.files.add(multipartFile);
+
+      // Mettre à jour la progression à 80% (début de l'envoi)
+      _uploadProgressMap[uploadId] = UploadProgress(
+        fileName: fileName,
+        progress: 0.80,
+        resourceType: resourceType,
       );
+      notifyListeners();
+      
+      // Envoyer la requête sans timeout
+      final streamedResponse = await request.send();
+      
+      // Mettre à jour la progression à 90% (en attente de réponse)
+      _uploadProgressMap[uploadId] = UploadProgress(
+        fileName: fileName,
+        progress: 0.90,
+        resourceType: resourceType,
+      );
+      notifyListeners();
+      
       final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         final media = CloudinaryMedia.fromJson(data);
+        
+        // Mettre à jour la progression à 100%
+        _uploadProgressMap[uploadId] = UploadProgress(
+          fileName: fileName,
+          progress: 1.0,
+          resourceType: resourceType,
+        );
+        notifyListeners();
         
         // Ajouter au cache approprié
         _addToCache(media, resourceType);
@@ -123,24 +164,81 @@ class CloudinaryService extends ChangeNotifier {
         // Sauvegarder dans le stockage local
         await _saveMediaToStorage();
         
-        _isLoading = false;
-        notifyListeners();
+        // Petit délai pour afficher le 100%
+        await Future.delayed(const Duration(milliseconds: 300));
+        
+        // Nettoyer l'upload
+        _cleanupUpload(uploadId, resourceType);
+        
         return media;
       } else {
         _error = 'Erreur lors de l\'upload: ${response.statusCode} - ${response.body}';
-        _isLoading = false;
+        _cleanupUpload(uploadId, resourceType);
         notifyListeners();
         return null;
       }
     } catch (e) {
       _error = 'Erreur lors de l\'upload: $e';
-      _isLoading = false;
+      _cleanupUpload(uploadId, resourceType);
       notifyListeners();
       return null;
     }
   }
 
-  /// Upload depuis une URL
+  /// Créer un MultipartFile avec suivi de progression
+  Future<http.MultipartFile> _createMultipartFileWithProgress({
+    required File file,
+    required String fileName,
+    required int fileLength,
+    required String uploadId,
+    required CloudinaryResourceType resourceType,
+  }) async {
+    // Lire le fichier en chunks pour suivre la progression réelle
+    final stream = file.openRead();
+    int totalBytesRead = 0;
+    final List<List<int>> chunks = [];
+    
+    // Suivre la progression pendant la lecture
+    await for (final chunk in stream) {
+      totalBytesRead += chunk.length;
+      chunks.add(chunk);
+      
+      // Mettre à jour la progression (max 70% pendant la lecture du fichier)
+      final progress = (totalBytesRead / fileLength * 0.7).clamp(0.0, 0.7);
+      _uploadProgressMap[uploadId] = UploadProgress(
+        fileName: fileName,
+        progress: progress,
+        resourceType: resourceType,
+      );
+      notifyListeners();
+    }
+    
+    // Combiner tous les chunks
+    final bytes = chunks.expand((chunk) => chunk).toList();
+    
+    // Mettre à jour à 75% après la lecture complète
+    _uploadProgressMap[uploadId] = UploadProgress(
+      fileName: fileName,
+      progress: 0.75,
+      resourceType: resourceType,
+    );
+    notifyListeners();
+    
+    return http.MultipartFile.fromBytes(
+      'file',
+      bytes,
+      filename: fileName,
+    );
+  }
+
+  /// Nettoyer un upload terminé
+  void _cleanupUpload(String uploadId, CloudinaryResourceType resourceType) {
+    _currentUploadsByType[resourceType]?.remove(uploadId);
+    _uploadProgressMap.remove(uploadId);
+    notifyListeners();
+  }
+
+  /// Upload depuis une URL (méthode simplifiée sans progression)
   Future<CloudinaryMedia?> uploadFromUrl({
     required String url,
     required CloudinaryResourceType resourceType,
@@ -153,20 +251,15 @@ class CloudinaryService extends ChangeNotifier {
       return null;
     }
 
-    _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
       final cloudName = _settings.cloudinaryCloudName!;
-      final apiKey = _settings.cloudinaryApiKey!;
-      final apiSecret = _settings.cloudinaryApiSecret!;
-
-      final timestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final uploadPreset = _settings.cloudinaryUploadPreset!;
       
       final params = <String, String>{
-        'timestamp': timestamp.toString(),
-        'resource_type': resourceType.name,
+        'upload_preset': uploadPreset,
         'file': url,
       };
 
@@ -178,18 +271,9 @@ class CloudinaryService extends ChangeNotifier {
         params['transformation'] = jsonEncode(transformation);
       }
 
-      // Pour uploadFromUrl, le paramètre 'file' DOIT être dans la signature
-      final signature = _generateSignature(params, apiSecret, excludeFile: false);
-      params['api_key'] = apiKey;
-      params['signature'] = signature;
-
       final uri = Uri.parse('https://api.cloudinary.com/v1_1/$cloudName/${resourceType.name}/upload');
-      final response = await http.post(uri, body: params).timeout(
-        const Duration(seconds: 120),
-        onTimeout: () {
-          throw Exception('Upload timeout après 120 secondes');
-        },
-      );
+      // Pas de timeout pour les uploads depuis URL
+      final response = await http.post(uri, body: params);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -198,18 +282,15 @@ class CloudinaryService extends ChangeNotifier {
         _addToCache(media, resourceType);
         await _saveMediaToStorage();
         
-        _isLoading = false;
         notifyListeners();
         return media;
       } else {
         _error = 'Erreur lors de l\'upload: ${response.statusCode}';
-        _isLoading = false;
         notifyListeners();
         return null;
       }
     } catch (e) {
       _error = 'Erreur lors de l\'upload: $e';
-      _isLoading = false;
       notifyListeners();
       return null;
     }
@@ -224,37 +305,13 @@ class CloudinaryService extends ChangeNotifier {
     }
 
     try {
-      final cloudName = _settings.cloudinaryCloudName!;
-      final apiKey = _settings.cloudinaryApiKey!;
-      final apiSecret = _settings.cloudinaryApiSecret!;
-
-      final timestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      // Retirer du cache local uniquement
+      // La suppression réelle nécessite l'Admin API avec api_key/api_secret
+      _removeFromCache(media);
+      await _saveMediaToStorage();
       
-      final params = <String, String>{
-        'timestamp': timestamp.toString(),
-        'public_id': media.publicId,
-        'resource_type': media.resourceType.name,
-      };
-
-      final signature = _generateSignature(params, apiSecret, excludeFile: true);
-      params['api_key'] = apiKey;
-      params['signature'] = signature;
-
-      final uri = Uri.parse('https://api.cloudinary.com/v1_1/$cloudName/${media.resourceType.name}/destroy');
-      final response = await http.post(uri, body: params);
-
-      if (response.statusCode == 200) {
-        // Retirer du cache
-        _removeFromCache(media);
-        await _saveMediaToStorage();
-        
-        notifyListeners();
-        return true;
-      } else {
-        _error = 'Erreur lors de la suppression: ${response.statusCode}';
-        notifyListeners();
-        return false;
-      }
+      notifyListeners();
+      return true;
     } catch (e) {
       _error = 'Erreur lors de la suppression: $e';
       notifyListeners();
@@ -266,8 +323,8 @@ class CloudinaryService extends ChangeNotifier {
   /// Format: param1=value1&param2=value2&...&api_secret
   /// Pour les uploads multipart, excludeFile doit être true (le fichier est envoyé séparément)
   /// Pour les uploads depuis URL, excludeFile doit être false (le paramètre 'file' doit être signé)
+  /// NOTE: resource_type ne doit JAMAIS être dans la signature car il fait partie de l'URL
   String _generateSignature(Map<String, String> params, String apiSecret, {bool excludeFile = true}) {
-    // Exclure les paramètres qui ne doivent pas être dans la signature
     final paramsToSign = <String, String>{};
     params.forEach((key, value) {
       // Toujours exclure api_key et signature
@@ -275,6 +332,9 @@ class CloudinaryService extends ChangeNotifier {
       
       // Exclure 'file' seulement si excludeFile est true (pour multipart)
       if (excludeFile && key == 'file') return;
+      
+      // NE JAMAIS signer resource_type - il fait partie de l'URL
+      if (key == 'resource_type') return;
       
       // Inclure tous les autres paramètres non vides
       if (value.isNotEmpty) {
@@ -307,7 +367,6 @@ class CloudinaryService extends ChangeNotifier {
     } else if (resourceType == CloudinaryResourceType.video) {
       _uploadedVideos.add(media);
     } else if (resourceType == CloudinaryResourceType.raw) {
-      // On considère que les fichiers audio sont uploadés en raw
       _uploadedMusic.add(media);
     }
   }
@@ -379,75 +438,34 @@ class CloudinaryService extends ChangeNotifier {
   }
 
   /// Rafraîchit la liste des médias depuis Cloudinary
+  /// NOTE: Le refresh nécessite l'Admin API qui requiert api_key/api_secret
+  /// Avec un preset UNSIGNED, on utilise le cache local uniquement
+  /// L'utilisateur peut recharger la page pour voir les nouveaux uploads
   Future<void> refreshMedia() async {
     if (!isConfigured) return;
-
-    _isLoading = true;
     notifyListeners();
-
-    try {
-      final cloudName = _settings.cloudinaryCloudName!;
-      final apiKey = _settings.cloudinaryApiKey!;
-      final apiSecret = _settings.cloudinaryApiSecret!;
-
-      // Récupérer les images
-      await _fetchResources(CloudinaryResourceType.image, 'backgrounds');
-      // Récupérer les vidéos
-      await _fetchResources(CloudinaryResourceType.video, 'videos');
-      // Récupérer les fichiers audio (raw)
-      await _fetchResources(CloudinaryResourceType.raw, 'music');
-
-      await _saveMediaToStorage();
-      _isLoading = false;
-      notifyListeners();
-    } catch (e) {
-      _error = 'Erreur lors du rafraîchissement: $e';
-      _isLoading = false;
-      notifyListeners();
-    }
   }
 
-  /// Récupère les ressources depuis Cloudinary
-  Future<void> _fetchResources(CloudinaryResourceType resourceType, String folder) async {
-    try {
-      final cloudName = _settings.cloudinaryCloudName!;
-      final apiKey = _settings.cloudinaryApiKey!;
-      final apiSecret = _settings.cloudinaryApiSecret!;
+  /// Efface les erreurs
+  void clearError() {
+    _error = null;
+    notifyListeners();
+  }
 
-      final timestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-      final params = <String, String>{
-        'timestamp': timestamp.toString(),
-        'type': 'upload',
-        'resource_type': resourceType.name,
-        'prefix': folder,
-        'max_results': '500',
-      };
-
-      final signature = _generateSignature(params, apiSecret, excludeFile: true);
-      params['api_key'] = apiKey;
-      params['signature'] = signature;
-
-      final uri = Uri.parse('https://api.cloudinary.com/v1_1/$cloudName/resources/${resourceType.name}/upload')
-          .replace(queryParameters: params);
-
-      final response = await http.get(uri);
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final resources = (data['resources'] as List<dynamic>?)
-                ?.map((e) => CloudinaryMedia.fromJson(e as Map<String, dynamic>))
-                .toList() ?? [];
-
-        if (resourceType == CloudinaryResourceType.image) {
-          _uploadedBackgrounds = resources;
-        } else if (resourceType == CloudinaryResourceType.video) {
-          _uploadedVideos = resources;
-        } else if (resourceType == CloudinaryResourceType.raw) {
-          _uploadedMusic = resources;
-        }
-      }
-    } catch (e) {
-      debugPrint('Erreur lors de la récupération des ressources: $e');
+  /// Annule tous les uploads en cours POUR UN TYPE
+  void cancelUploadsForType(CloudinaryResourceType type) {
+    final uploads = _currentUploadsByType[type] ?? [];
+    for (final uploadId in uploads) {
+      _uploadProgressMap.remove(uploadId);
+    }
+    _currentUploadsByType[type]?.clear();
+    notifyListeners();
+  }
+  
+  /// Annule tous les uploads en cours (tous types)
+  void cancelAllUploads() {
+    for (final type in CloudinaryResourceType.values) {
+      cancelUploadsForType(type);
     }
   }
 }
@@ -533,3 +551,15 @@ class CloudinaryMedia {
   }
 }
 
+/// Modèle pour suivre la progression d'un upload
+class UploadProgress {
+  final String fileName;
+  final double progress;
+  final CloudinaryResourceType resourceType;
+
+  UploadProgress({
+    required this.fileName,
+    required this.progress,
+    required this.resourceType,
+  });
+}

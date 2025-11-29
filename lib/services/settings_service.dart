@@ -101,8 +101,7 @@ class SettingsService extends ChangeNotifier {
   
   // Cloudinary
   static const String _keyCloudinaryCloudName = 'notilus_cloudinary_cloud_name';
-  static const String _keyCloudinaryApiKey = 'notilus_cloudinary_api_key';
-  static const String _keyCloudinaryApiSecret = 'notilus_cloudinary_api_secret';
+  static const String _keyCloudinaryUploadPreset = 'notilus_cloudinary_upload_preset';
   static const String _keySelectedBackgrounds = 'notilus_selected_backgrounds'; // Liste des URLs sélectionnées
   static const String _keySelectedVideos = 'notilus_selected_videos'; // Liste des URLs sélectionnées
   static const String _keySelectedMusic = 'notilus_selected_music'; // URL de la musique sélectionnée
@@ -827,22 +826,12 @@ class SettingsService extends ChangeNotifier {
     notifyListeners();
   }
   
-  String? get cloudinaryApiKey => _prefs?.getString(_keyCloudinaryApiKey);
-  Future<void> setCloudinaryApiKey(String? value) async {
+  String? get cloudinaryUploadPreset => _prefs?.getString(_keyCloudinaryUploadPreset);
+  Future<void> setCloudinaryUploadPreset(String? value) async {
     if (value == null || value.isEmpty) {
-      await _prefs?.remove(_keyCloudinaryApiKey);
+      await _prefs?.remove(_keyCloudinaryUploadPreset);
     } else {
-      await _prefs?.setString(_keyCloudinaryApiKey, value);
-    }
-    notifyListeners();
-  }
-  
-  String? get cloudinaryApiSecret => _prefs?.getString(_keyCloudinaryApiSecret);
-  Future<void> setCloudinaryApiSecret(String? value) async {
-    if (value == null || value.isEmpty) {
-      await _prefs?.remove(_keyCloudinaryApiSecret);
-    } else {
-      await _prefs?.setString(_keyCloudinaryApiSecret, value);
+      await _prefs?.setString(_keyCloudinaryUploadPreset, value);
     }
     notifyListeners();
   }

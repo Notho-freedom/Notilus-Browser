@@ -8,7 +8,8 @@ import '../../services/tab_webview_manager.dart';
 import '../../services/tab_manager.dart';
 import '../../services/favicon_service.dart';
 import '../../services/webview2_browser_engine.dart';
-import 'home_page.dart';
+import '../../services/settings_service.dart';
+import 'home_pages/home_page_factory.dart';
 
 /// Widget pour afficher le contenu web avec WebView2
 class WebContentView extends StatefulWidget {
@@ -227,12 +228,16 @@ class _WebContentViewState extends State<WebContentView> with WidgetsBindingObse
     final theme = _getThemeFromContext();
 
     // Afficher la page d'accueil si pas d'onglet ou URL vide
+    // Utiliser HomePageFactory pour créer la bonne page selon les paramètres
     if (widget.tab == null || 
         widget.tab!.url == null || 
         widget.tab!.url!.isEmpty ||
         widget.tab!.url == 'about:blank' ||
         widget.tab!.url == 'about:newtab') {
-      return HomePage();
+      final settings = SettingsService();
+      return HomePageFactory.create(
+        style: settings.homePageStyle,
+      );
     }
 
     if (!Platform.isWindows) {

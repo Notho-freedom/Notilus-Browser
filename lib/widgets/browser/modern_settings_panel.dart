@@ -19,6 +19,7 @@ import '../../widgets/auth/auth_dialog.dart';
 import '../common/color_picker_dialog.dart';
 import '../common/gx_futuristic_dialog.dart';
 import '../common/gx_futuristic_components.dart';
+import '../common/notilus_about_page.dart';
 import '../../core/constants/notilus_fonts.dart';
 import '../../services/gx_notification_service.dart';
 import '../../services/tts_service.dart';
@@ -50,8 +51,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
   
   // Controllers pour Cloudinary
   late final TextEditingController _cloudinaryCloudNameController;
-  late final TextEditingController _cloudinaryApiKeyController;
-  late final TextEditingController _cloudinaryApiSecretController;
+  late final TextEditingController _cloudinaryUploadPresetController;
   
   // Cache pour optimiser les performances
   Timer? _searchDebounceTimer;
@@ -90,18 +90,14 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
     
     // Initialiser les controllers Cloudinary
     _cloudinaryCloudNameController = TextEditingController(text: _settings.cloudinaryCloudName ?? '');
-    _cloudinaryApiKeyController = TextEditingController(text: _settings.cloudinaryApiKey ?? '');
-    _cloudinaryApiSecretController = TextEditingController(text: _settings.cloudinaryApiSecret ?? '');
+    _cloudinaryUploadPresetController = TextEditingController(text: _settings.cloudinaryUploadPreset ?? '');
     
     // Écouter les changements
     _cloudinaryCloudNameController.addListener(() {
       _settings.setCloudinaryCloudName(_cloudinaryCloudNameController.text.isEmpty ? null : _cloudinaryCloudNameController.text);
     });
-    _cloudinaryApiKeyController.addListener(() {
-      _settings.setCloudinaryApiKey(_cloudinaryApiKeyController.text.isEmpty ? null : _cloudinaryApiKeyController.text);
-    });
-    _cloudinaryApiSecretController.addListener(() {
-      _settings.setCloudinaryApiSecret(_cloudinaryApiSecretController.text.isEmpty ? null : _cloudinaryApiSecretController.text);
+    _cloudinaryUploadPresetController.addListener(() {
+      _settings.setCloudinaryUploadPreset(_cloudinaryUploadPresetController.text.isEmpty ? null : _cloudinaryUploadPresetController.text);
     });
   }
   
@@ -1059,17 +1055,51 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
         ),
         SizedBox(height: spacing),
         GxFuturisticInput(
-          label: 'API Key',
-          controller: _cloudinaryApiKeyController,
-          hint: 'Votre clé API',
-          obscureText: true,
+          label: 'Upload Preset (UNSIGNED)',
+          controller: _cloudinaryUploadPresetController,
+          hint: 'nom-de-votre-preset-unsigned',
         ),
         SizedBox(height: spacing),
-        GxFuturisticInput(
-          label: 'API Secret',
-          controller: _cloudinaryApiSecretController,
-          hint: 'Votre secret API',
-          obscureText: true,
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: gxRed.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: gxRed.withOpacity(0.3)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(CupertinoIcons.info, size: 16, color: gxRed),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Comment créer un Upload Preset UNSIGNED',
+                    style: NotilusFonts.rajdhani(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: gxRed,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '1. Allez dans votre dashboard Cloudinary\n'
+                '2. Settings → Upload → Upload Presets\n'
+                '3. Cliquez sur "Add Upload Preset"\n'
+                '4. Activez "Unsigned"\n'
+                '5. Configurez le dossier, formats, taille max\n'
+                '6. Donnez un nom à votre preset\n'
+                '7. Entrez ce nom dans le champ ci-dessus',
+                style: NotilusFonts.rajdhani(
+                  fontSize: 11,
+                  color: Colors.white.withOpacity(0.7),
+                ),
+              ),
+            ],
+          ),
         ),
         SizedBox(height: spacing * 2),
         
@@ -4043,6 +4073,20 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
           ),
         ),
         const SizedBox(height: 32),
+        
+        // Bouton pour ouvrir la page full-screen
+        Center(
+          child: GxFuturisticButton(
+            label: 'Voir la page complète',
+            icon: CupertinoIcons.fullscreen,
+            variant: GxFuturisticButtonVariant.primary,
+            onPressed: () {
+              NotilusAboutPage.showFullScreen(context);
+            },
+          ),
+        ),
+        const SizedBox(height: 32),
+        
         _buildSubsectionTitle('Informations', gxRed),
         const SizedBox(height: 12),
         _buildInfoRow('Moteur', 'WebView2 / WebKit'),
