@@ -67,7 +67,7 @@ class CloudinaryService extends ChangeNotifier {
       // Générer le timestamp
       final timestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
       
-      // Préparer les paramètres
+      // Préparer les paramètres (sans api_key et signature pour le calcul)
       final params = <String, String>{
         'timestamp': timestamp.toString(),
         'resource_type': resourceType.name,
@@ -82,10 +82,13 @@ class CloudinaryService extends ChangeNotifier {
         params['transformation'] = jsonEncode(transformation);
       }
 
-      // Générer la signature
-      final signature = _generateSignature(params, apiSecret);
-      params['signature'] = signature;
+      // Générer la signature AVANT d'ajouter api_key et signature
+      // Pour multipart, le paramètre 'file' n'est pas dans la signature
+      final signature = _generateSignature(params, apiSecret, excludeFile: true);
+      
+      // Maintenant ajouter api_key et signature
       params['api_key'] = apiKey;
+      params['signature'] = signature;
 
       // Créer la requête multipart
       final uri = Uri.parse('https://api.cloudinary.com/v1_1/$cloudName/${resourceType.name}/upload');
@@ -101,8 +104,13 @@ class CloudinaryService extends ChangeNotifier {
         await http.MultipartFile.fromPath('file', file.path),
       );
 
-      // Envoyer la requête
-      final streamedResponse = await request.send();
+      // Envoyer la requête avec timeout pour les gros fichiers
+      final streamedResponse = await request.send().timeout(
+        const Duration(seconds: 300), // 5 minutes pour les gros fichiers
+        onTimeout: () {
+          throw Exception('Upload timeout après 5 minutes');
+        },
+      );
       final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200) {
@@ -170,12 +178,18 @@ class CloudinaryService extends ChangeNotifier {
         params['transformation'] = jsonEncode(transformation);
       }
 
-      final signature = _generateSignature(params, apiSecret);
-      params['signature'] = signature;
+      // Pour uploadFromUrl, le paramètre 'file' DOIT être dans la signature
+      final signature = _generateSignature(params, apiSecret, excludeFile: false);
       params['api_key'] = apiKey;
+      params['signature'] = signature;
 
       final uri = Uri.parse('https://api.cloudinary.com/v1_1/$cloudName/${resourceType.name}/upload');
-      final response = await http.post(uri, body: params);
+      final response = await http.post(uri, body: params).timeout(
+        const Duration(seconds: 120),
+        onTimeout: () {
+          throw Exception('Upload timeout après 120 secondes');
+        },
+      );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -222,9 +236,9 @@ class CloudinaryService extends ChangeNotifier {
         'resource_type': media.resourceType.name,
       };
 
-      final signature = _generateSignature(params, apiSecret);
-      params['signature'] = signature;
+      final signature = _generateSignature(params, apiSecret, excludeFile: true);
       params['api_key'] = apiKey;
+      params['signature'] = signature;
 
       final uri = Uri.parse('https://api.cloudinary.com/v1_1/$cloudName/${media.resourceType.name}/destroy');
       final response = await http.post(uri, body: params);
@@ -249,17 +263,34 @@ class CloudinaryService extends ChangeNotifier {
   }
 
   /// Génère la signature Cloudinary
-  String _generateSignature(Map<String, String> params, String apiSecret) {
-    // Trier les paramètres par clé
-    final sortedParams = params.entries.toList()
-      ..sort((a, b) => a.key.compareTo(b.key));
+  /// Format: param1=value1&param2=value2&...&api_secret
+  /// Pour les uploads multipart, excludeFile doit être true (le fichier est envoyé séparément)
+  /// Pour les uploads depuis URL, excludeFile doit être false (le paramètre 'file' doit être signé)
+  String _generateSignature(Map<String, String> params, String apiSecret, {bool excludeFile = true}) {
+    // Exclure les paramètres qui ne doivent pas être dans la signature
+    final paramsToSign = <String, String>{};
+    params.forEach((key, value) {
+      // Toujours exclure api_key et signature
+      if (key == 'api_key' || key == 'signature') return;
+      
+      // Exclure 'file' seulement si excludeFile est true (pour multipart)
+      if (excludeFile && key == 'file') return;
+      
+      // Inclure tous les autres paramètres non vides
+      if (value.isNotEmpty) {
+        paramsToSign[key] = value;
+      }
+    });
     
-    // Créer la chaîne de signature
-    final signatureString = sortedParams
-        .where((e) => e.key != 'file' && e.key != 'api_key')
-        .map((e) => '${e.key}=${e.value}')
+    // Trier les paramètres par clé (ordre alphabétique)
+    final sortedKeys = paramsToSign.keys.toList()..sort();
+    
+    // Créer la chaîne de signature: key1=value1&key2=value2&...
+    final signatureString = sortedKeys
+        .map((key) => '$key=${paramsToSign[key]}')
         .join('&');
     
+    // Ajouter l'API secret à la fin
     final fullString = '$signatureString$apiSecret';
     
     // Générer le hash SHA1
@@ -392,9 +423,9 @@ class CloudinaryService extends ChangeNotifier {
         'max_results': '500',
       };
 
-      final signature = _generateSignature(params, apiSecret);
-      params['signature'] = signature;
+      final signature = _generateSignature(params, apiSecret, excludeFile: true);
       params['api_key'] = apiKey;
+      params['signature'] = signature;
 
       final uri = Uri.parse('https://api.cloudinary.com/v1_1/$cloudName/resources/${resourceType.name}/upload')
           .replace(queryParameters: params);
