@@ -1394,76 +1394,28 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
       ),
     ];
     
-    return Column(
-      children: styles.map((style) {
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: styles.length,
+      itemBuilder: (context, index) {
+        final style = styles[index];
         final isSelected = _settings.homePageStyle == style.$1;
         final accentColor = style.$6;
         return Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: GestureDetector(
+          padding: EdgeInsets.only(bottom: index < styles.length - 1 ? 12 : 0),
+          child: _HomePageStyleCard(
+            id: style.$1,
+            title: style.$2,
+            description: style.$3,
+            icon: style.$4,
+            emoji: style.$5,
+            accentColor: accentColor,
+            isSelected: isSelected,
             onTap: () => _settings.setHomePageStyle(style.$1),
-            child: Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: isSelected ? accentColor.withOpacity(0.1) : Colors.white.withOpacity(0.03),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: isSelected ? accentColor : Colors.white.withOpacity(0.1),
-                  width: isSelected ? 2 : 1,
-                ),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: isSelected ? accentColor.withOpacity(0.2) : Colors.white.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Center(
-                      child: Text(
-                        style.$5,
-                        style: const TextStyle(fontSize: 20),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          style.$2,
-                          style: TextStyle(
-                            color: isSelected ? accentColor : Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          style.$3,
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.5),
-                            fontSize: 10,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (isSelected)
-                    Icon(
-                      CupertinoIcons.checkmark_circle_fill,
-                      color: accentColor,
-                      size: 20,
-                    ),
-                ],
-              ),
-            ),
           ),
         );
-      }).toList(),
+      },
     );
   }
 
@@ -2087,23 +2039,22 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildSubsectionTitle('Authentification', gxRed),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.orange.withOpacity(0.3)),
-                ),
+              _buildSubsectionTitle('Authentification', gxRed, isCompact: isCompact, isMedium: isMedium),
+              SizedBox(height: spacing),
+              GxFuturisticCard(
+                accentColor: const Color(0xFFF59E0B),
+                padding: EdgeInsets.all(isCompact ? 12 : 16),
                 child: Row(
                   children: [
-                    Icon(CupertinoIcons.info, color: Colors.orange, size: 20),
-                    const SizedBox(width: 12),
+                    Icon(CupertinoIcons.info, color: const Color(0xFFF59E0B), size: isCompact ? 20 : 24),
+                    SizedBox(width: spacing),
                     Expanded(
                       child: Text(
                         'Firebase n\'est pas configuré. Configurez Firebase pour activer l\'authentification et la synchronisation.',
-                        style: TextStyle(color: Colors.white70, fontSize: 12),
+                        style: NotilusFonts.rajdhani(
+                          fontSize: isCompact ? 11 : 12,
+                          color: Colors.white.withOpacity(0.7),
+                        ),
                       ),
                     ),
                   ],
@@ -2120,31 +2071,55 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSubsectionTitle('Authentification', gxRed),
-            const SizedBox(height: 12),
+            _buildSubsectionTitle('Authentification', gxRed, isCompact: isCompact, isMedium: isMedium),
+            SizedBox(height: spacing),
             if (!isSignedIn) ...[
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.white.withOpacity(0.1)),
-                ),
+              GxFuturisticCard(
+                accentColor: gxRed,
+                padding: EdgeInsets.all(isCompact ? 12 : 16),
                 child: Column(
                   children: [
-                    Text(
-                      'Connectez-vous pour synchroniser vos configurations',
-                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                    Row(
+                      children: [
+                        Icon(CupertinoIcons.person_circle, color: gxRed, size: isCompact ? 24 : 28),
+                        SizedBox(width: spacing),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Synchronisation des configurations',
+                                style: NotilusFonts.rajdhani(
+                                  fontSize: isCompact ? 12 : 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                'Connectez-vous pour sauvegarder et synchroniser vos paramètres sur tous vos appareils',
+                                style: NotilusFonts.rajdhani(
+                                  fontSize: isCompact ? 10 : 11,
+                                  color: Colors.white.withOpacity(0.6),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 16),
-                    ElevatedButton.icon(
+                    SizedBox(height: spacing * 1.5),
+                    GxFuturisticButton(
+                      label: 'Se connecter',
+                      icon: CupertinoIcons.person_circle,
+                      variant: GxFuturisticButtonVariant.primary,
+                      accentColor: gxRed,
                       onPressed: () async {
                         final result = await showDialog<bool>(
                           context: context,
                           builder: (ctx) => AuthDialog(
                             authService: authService,
                             onAuthStarted: () {
-                              // Fermer le panel de paramètres quand l'auth démarre
                               widget.onClose?.call();
                             },
                           ),
@@ -2153,136 +2128,171 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                           await syncService!.restoreConfigs();
                         }
                       },
-                      icon: Icon(CupertinoIcons.person_circle),
-                      label: const Text('Se connecter'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: gxRed.withOpacity(0.2),
-                        foregroundColor: gxRed,
-                        side: BorderSide(color: gxRed),
-                      ),
                     ),
                   ],
                 ),
               ),
             ] else ...[
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.green.withOpacity(0.3)),
-                ),
+              GxFuturisticCard(
+                accentColor: const Color(0xFF22C55E),
+                padding: EdgeInsets.all(isCompact ? 12 : 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
                         if ((user?.photoURL ?? githubUser?.avatarUrl) != null)
-                          CircleAvatar(
-                            radius: 20,
-                            backgroundImage: NetworkImage((user?.photoURL ?? githubUser?.avatarUrl)!),
+                          Container(
+                            width: isCompact ? 40 : 48,
+                            height: isCompact ? 40 : 48,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: gxRed, width: 2),
+                              image: DecorationImage(
+                                image: NetworkImage((user?.photoURL ?? githubUser?.avatarUrl)!),
+                                fit: BoxFit.cover,
+                              ),
+                            ),
                           )
                         else
-                          CircleAvatar(
-                            radius: 20,
-                            child: Icon(CupertinoIcons.person),
+                          Container(
+                            width: isCompact ? 40 : 48,
+                            height: isCompact ? 40 : 48,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: gxRed.withOpacity(0.2),
+                              border: Border.all(color: gxRed, width: 2),
+                            ),
+                            child: Icon(CupertinoIcons.person, color: gxRed, size: isCompact ? 20 : 24),
                           ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: spacing),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 user?.displayName ?? user?.email ?? githubUser?.name ?? githubUser?.email ?? 'Utilisateur',
-                                style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                                style: NotilusFonts.rajdhani(
+                                  fontSize: isCompact ? 13 : 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
                               ),
+                              SizedBox(height: 2),
                               Text(
                                 user?.email ?? githubUser?.email ?? '',
-                                style: TextStyle(color: Colors.white60, fontSize: 11),
+                                style: NotilusFonts.rajdhani(
+                                  fontSize: isCompact ? 10 : 11,
+                                  color: Colors.white.withOpacity(0.6),
+                                ),
                               ),
+                              if (githubUser != null) ...[
+                                SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    Icon(CupertinoIcons.star, size: 12, color: Colors.amber),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'GitHub',
+                                      style: NotilusFonts.rajdhani(
+                                        fontSize: 10,
+                                        color: Colors.white.withOpacity(0.5),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ],
                           ),
                         ),
-                        ElevatedButton(
+                        GxFuturisticButton(
+                          label: '',
+                          icon: CupertinoIcons.xmark,
+                          variant: GxFuturisticButtonVariant.secondary,
+                          accentColor: const Color(0xFFEF4444),
                           onPressed: () async {
                             await authService.signOut();
                             if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Déconnexion réussie')),
+                              GxNotificationService().showSuccess(
+                                title: 'Déconnexion',
+                                message: 'Déconnexion réussie',
+                                context: context,
                               );
                             }
                           },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red.withOpacity(0.2),
-                            foregroundColor: Colors.red,
-                            side: BorderSide(color: Colors.red),
-                          ),
-                          child: const Text('Déconnexion'),
                         ),
                       ],
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
-              _buildSubsectionTitle('Synchronisation', gxRed),
-              const SizedBox(height: 12),
+              SizedBox(height: spacing * 1.5),
+              _buildSubsectionTitle('Synchronisation', gxRed, isCompact: isCompact, isMedium: isMedium),
+              SizedBox(height: spacing),
               Row(
                 children: [
                   Expanded(
-                    child: ElevatedButton.icon(
+                    child: GxFuturisticButton(
+                      label: 'Exporter',
+                      icon: CupertinoIcons.cloud_upload,
+                      variant: GxFuturisticButtonVariant.secondary,
+                      accentColor: gxRed,
+                      isLoading: syncService.isSyncing,
                       onPressed: syncService.isSyncing
                           ? null
                           : () async {
                               final success = await syncService.exportConfigs();
                               if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(success
-                                        ? 'Configurations synchronisées'
-                                        : 'Erreur lors de la synchronisation'),
-                                  ),
-                                );
+                                if (success) {
+                                  GxNotificationService().showSuccess(
+                                    title: 'Succès',
+                                    message: 'Configurations synchronisées',
+                                    context: context,
+                                  );
+                                } else {
+                                  GxNotificationService().showError(
+                                    title: 'Erreur',
+                                    message: 'Erreur lors de la synchronisation',
+                                    context: context,
+                                  );
+                                }
                               }
                             },
-                      icon: Icon(CupertinoIcons.cloud_upload),
-                      label: const Text('Exporter vers le cloud'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: gxRed.withOpacity(0.2),
-                        foregroundColor: gxRed,
-                        side: BorderSide(color: gxRed),
-                      ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: spacing),
                   Expanded(
-                    child: ElevatedButton.icon(
+                    child: GxFuturisticButton(
+                      label: 'Restaurer',
+                      icon: CupertinoIcons.cloud_download,
+                      variant: GxFuturisticButtonVariant.secondary,
+                      accentColor: const Color(0xFF3B82F6),
+                      isLoading: syncService.isSyncing,
                       onPressed: syncService.isSyncing
                           ? null
                           : () async {
                               final success = await syncService.restoreConfigs();
                               if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(success
-                                        ? 'Configurations restaurées'
-                                        : 'Erreur lors de la restauration'),
-                                  ),
-                                );
+                                if (success) {
+                                  GxNotificationService().showSuccess(
+                                    title: 'Succès',
+                                    message: 'Configurations restaurées',
+                                    context: context,
+                                  );
+                                } else {
+                                  GxNotificationService().showError(
+                                    title: 'Erreur',
+                                    message: 'Erreur lors de la restauration',
+                                    context: context,
+                                  );
+                                }
                               }
                             },
-                      icon: Icon(CupertinoIcons.cloud_download),
-                      label: const Text('Restaurer depuis le cloud'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue.withOpacity(0.2),
-                        foregroundColor: Colors.blue,
-                        side: BorderSide(color: Colors.blue),
-                      ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: spacing),
               SyncStatusWidget(syncService: syncService),
             ],
           ],
@@ -2892,6 +2902,140 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                 ),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================
+// WIDGETS POUR PAGE D'ACCUEIL
+// ============================================
+
+class _HomePageStyleCard extends StatefulWidget {
+  final String id;
+  final String title;
+  final String description;
+  final IconData icon;
+  final String emoji;
+  final Color accentColor;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _HomePageStyleCard({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.icon,
+    required this.emoji,
+    required this.accentColor,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  State<_HomePageStyleCard> createState() => _HomePageStyleCardState();
+}
+
+class _HomePageStyleCardState extends State<_HomePageStyleCard> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: widget.isSelected
+                ? widget.accentColor.withOpacity(0.15)
+                : (_isHovered ? widget.accentColor.withOpacity(0.08) : Colors.white.withOpacity(0.03)),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: widget.isSelected
+                  ? widget.accentColor
+                  : (_isHovered ? widget.accentColor.withOpacity(0.5) : Colors.white.withOpacity(0.1)),
+              width: widget.isSelected ? 2 : (_isHovered ? 1.5 : 1),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: widget.isSelected
+                      ? widget.accentColor.withOpacity(0.2)
+                      : (_isHovered ? widget.accentColor.withOpacity(0.1) : Colors.white.withOpacity(0.05)),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: widget.accentColor.withOpacity(widget.isSelected ? 0.5 : 0.2),
+                    width: 1,
+                  ),
+                ),
+                child: Center(
+                  child: Text(
+                    widget.emoji,
+                    style: const TextStyle(fontSize: 28),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            widget.title,
+                            style: NotilusFonts.rajdhani(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: widget.isSelected
+                                  ? widget.accentColor
+                                  : (_isHovered ? Colors.white : Colors.white70),
+                            ),
+                          ),
+                        ),
+                        if (widget.isSelected)
+                          Icon(
+                            CupertinoIcons.checkmark_circle_fill,
+                            color: widget.accentColor,
+                            size: 20,
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      widget.description,
+                      style: NotilusFonts.rajdhani(
+                        fontSize: 11,
+                        color: Colors.white.withOpacity(0.5),
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Icon(
+                widget.icon,
+                color: widget.isSelected
+                    ? widget.accentColor
+                    : (_isHovered ? widget.accentColor.withOpacity(0.8) : Colors.white.withOpacity(0.4)),
+                size: 20,
+              ),
+            ],
           ),
         ),
       ),
