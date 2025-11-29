@@ -7,6 +7,7 @@ import '../models/tab_model.dart';
 import 'download_service.dart';
 import 'studio/studio_service.dart';
 import 'lighthouse/lighthouse_service.dart';
+import 'adblocker_service.dart';
 
 /// Gestionnaire qui associe chaque onglet à son moteur de rendu
 /// Optimisé pour conserver les sessions et éviter les rechargements
@@ -14,6 +15,7 @@ class TabWebViewManager extends ChangeNotifier {
   DownloadService? _downloadService;
   StudioService? _studioService;
   LighthouseService? _lighthouseService;
+  AdBlockerService? _adBlockerService;
   
   // État de suspension des onglets
   final Set<String> _suspendedTabs = {};
@@ -28,6 +30,10 @@ class TabWebViewManager extends ChangeNotifier {
   
   void setLighthouseService(LighthouseService service) {
     _lighthouseService = service;
+  }
+  
+  void setAdBlockerService(AdBlockerService service) {
+    _adBlockerService = service;
   }
   // Engines actifs (associés à des onglets ouverts)
   final Map<String, BrowserEngine> _activeEngines = {};

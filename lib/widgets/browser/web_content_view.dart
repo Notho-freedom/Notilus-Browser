@@ -30,6 +30,7 @@ class _WebContentViewState extends State<WebContentView> with WidgetsBindingObse
   WebviewController? _webView;
   bool _isVisible = true;
   bool _isTabActive = true;
+  TabWebViewManager? _tabWebViewManager;
 
   @override
   void initState() {
@@ -38,16 +39,27 @@ class _WebContentViewState extends State<WebContentView> with WidgetsBindingObse
     _initializeEngine();
     _checkTabVisibility();
   }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Sauvegarder la référence au TabWebViewManager pour l'utiliser dans dispose()
+    _tabWebViewManager = Provider.of<TabWebViewManager>(context, listen: false);
+  }
   
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     // Suspendre le WebView si nécessaire
-    if (_webView != null && _isTabActive && widget.tab?.id != null) {
-      final tabManager = Provider.of<TabWebViewManager>(context, listen: false);
-      final engine = tabManager.getEngine(widget.tab!.id);
-      if (engine != null && engine is WebView2BrowserEngine) {
-        engine.setTabActive(false);
+    if (_webView != null && _isTabActive && widget.tab?.id != null && _tabWebViewManager != null) {
+      try {
+        final engine = _tabWebViewManager!.getEngine(widget.tab!.id);
+        if (engine != null && engine is WebView2BrowserEngine) {
+          engine.setTabActive(false);
+        }
+      } catch (e) {
+        // Ignorer les erreurs si le widget est déjà désactivé
+        debugPrint('Erreur lors de la suspension du WebView dans dispose: $e');
       }
     }
     super.dispose();

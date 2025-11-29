@@ -1,6 +1,6 @@
 """
 Service TTS (Text-to-Speech) pour Notilus Browser
-Génération de synthèse vocale avec Microsoft Edge TTS
+Génération de synthèse vocale avec Microsoft Edge TTS et Google Cloud TTS
 """
 
 import asyncio
@@ -8,19 +8,33 @@ from io import BytesIO
 from typing import Optional, Dict, List
 from functools import lru_cache
 import logging
+import os
+import json
+import base64
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Header
 from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel, Field
 import edge_tts
 from langdetect import detect, LangDetectException
 
+# Import GCP TTS (optionnel)
+try:
+    from google.cloud import texttospeech
+    GCP_TTS_AVAILABLE = True
+except ImportError:
+    GCP_TTS_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
+
+if not GCP_TTS_AVAILABLE:
+    logger.warning("google-cloud-texttospeech not installed. GCP TTS will not be available.")
 
 router = APIRouter()
 
 # Cache pour les voix (évite de les récupérer à chaque requête)
 _voices_cache: Optional[List[Dict]] = None
+_gcp_voices_cache: Optional[List[Dict]] = None
 _cache_lock = asyncio.Lock()
 
 
@@ -32,6 +46,10 @@ class TTSRequest(BaseModel):
     """Requête pour la génération TTS"""
     text: str = Field(..., min_length=1, description="Texte à synthétiser")
     voice: str = Field(default="fr-FR-DeniseNeural", description="Nom de la voix à utiliser")
+    provider: Optional[str] = Field(default="edge", description="Fournisseur TTS: 'edge' ou 'gcp'")
+    gcp_api_key: Optional[str] = Field(default=None, description="Clé API Google Cloud (si provider='gcp')")
+    gcp_project_id: Optional[str] = Field(default=None, description="Project ID Google Cloud (si provider='gcp')")
+    gcp_location: Optional[str] = Field(default="global", description="Location Google Cloud (si provider='gcp')")
 
 
 class TTSResponse(BaseModel):
@@ -123,6 +141,211 @@ async def get_voices_list(force_refresh: bool = False) -> List[Dict]:
     return _voices_cache
 
 
+async def get_gcp_voices_list(api_key: str, project_id: str, location: str = "global", force_refresh: bool = False) -> List[Dict]:
+    """
+    Récupère la liste des voix Google Cloud TTS avec cache.
+    
+    Args:
+        api_key: Clé API Google Cloud
+        project_id: Project ID Google Cloud
+        location: Location Google Cloud (default: "global")
+        force_refresh: Force le rafraîchissement du cache
+        
+    Returns:
+        Liste des voix GCP disponibles
+    """
+    global _gcp_voices_cache
+    
+    if not GCP_TTS_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Google Cloud TTS n'est pas disponible. Installez google-cloud-texttospeech."
+        )
+    
+    async with _cache_lock:
+        if _gcp_voices_cache is None or force_refresh:
+            try:
+                # Créer un client GCP TTS
+                # Note: Pour utiliser une clé API, on doit créer un fichier de credentials temporaire
+                import tempfile
+                import json
+                
+                # Décoder la clé API (peut être en base64 ou JSON)
+                try:
+                    if api_key.startswith('{'):
+                        credentials_data = json.loads(api_key)
+                    else:
+                        # Essayer de décoder en base64
+                        try:
+                            decoded = base64.b64decode(api_key)
+                            credentials_data = json.loads(decoded.decode('utf-8'))
+                        except:
+                            # Si ce n'est pas du base64, traiter comme JSON direct
+                            credentials_data = json.loads(api_key)
+                except:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Format de clé API invalide. Utilisez un fichier JSON de credentials Google Cloud."
+                    )
+                
+                # Créer un fichier temporaire pour les credentials
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+                    json.dump(credentials_data, f)
+                    credentials_path = f.name
+                
+                try:
+                    # Initialiser le client GCP
+                    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = credentials_path
+                    client = texttospeech.TextToSpeechClient()
+                    
+                    # Récupérer les voix
+                    parent = f"projects/{project_id}/locations/{location}"
+                    response = client.list_voices(parent=parent)
+                    
+                    voices_list = []
+                    for voice in response.voices:
+                        for language_code in voice.language_codes:
+                            voices_list.append({
+                                "Name": voice.name,
+                                "ShortName": voice.name.split('/')[-1],
+                                "Gender": voice.ssml_gender.name,
+                                "Locale": language_code,
+                                "Language": language_code.split('-')[0] if '-' in language_code else language_code,
+                            })
+                    
+                    _gcp_voices_cache = voices_list
+                    logger.info(f"GCP Voices cache refreshed: {len(_gcp_voices_cache)} voices loaded")
+                finally:
+                    # Nettoyer le fichier temporaire
+                    try:
+                        os.unlink(credentials_path)
+                        if 'GOOGLE_APPLICATION_CREDENTIALS' in os.environ:
+                            del os.environ['GOOGLE_APPLICATION_CREDENTIALS']
+                    except:
+                        pass
+                        
+            except Exception as e:
+                logger.error(f"Error fetching GCP voices: {e}")
+                if _gcp_voices_cache is None:
+                    raise HTTPException(
+                        status_code=500,
+                        detail=f"Impossible de récupérer la liste des voix GCP: {str(e)}"
+                    )
+    
+    return _gcp_voices_cache
+
+
+async def generate_gcp_tts(
+    text: str,
+    voice_name: str,
+    api_key: str,
+    project_id: str,
+    location: str = "global"
+) -> bytes:
+    """
+    Génère un audio TTS avec Google Cloud TTS.
+    
+    Args:
+        text: Texte à synthétiser
+        voice_name: Nom de la voix GCP (format: projects/PROJECT_ID/locations/LOCATION/voices/VOICE_NAME)
+        api_key: Clé API Google Cloud (JSON credentials)
+        project_id: Project ID Google Cloud
+        location: Location Google Cloud
+        
+    Returns:
+        Audio en bytes (MP3)
+    """
+    if not GCP_TTS_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Google Cloud TTS n'est pas disponible. Installez google-cloud-texttospeech."
+        )
+    
+    try:
+        # Décoder la clé API
+        try:
+            if api_key.startswith('{'):
+                credentials_data = json.loads(api_key)
+            else:
+                try:
+                    decoded = base64.b64decode(api_key)
+                    credentials_data = json.loads(decoded.decode('utf-8'))
+                except:
+                    credentials_data = json.loads(api_key)
+        except:
+            raise HTTPException(
+                status_code=400,
+                detail="Format de clé API invalide."
+            )
+        
+        # Créer un fichier temporaire pour les credentials
+        import tempfile
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            json.dump(credentials_data, f)
+            credentials_path = f.name
+        
+        try:
+            # Initialiser le client GCP
+            os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = credentials_path
+            client = texttospeech.TextToSpeechClient()
+            
+            # Préparer la requête
+            synthesis_input = texttospeech.SynthesisInput(text=text)
+            
+            # Construire le nom complet de la voix si nécessaire
+            full_voice_name = voice_name
+            if not voice_name.startswith('projects/'):
+                full_voice_name = f"projects/{project_id}/locations/{location}/voices/{voice_name}"
+            
+            # Extraire le language_code du nom de la voix
+            # Format GCP: projects/PROJECT/locations/LOCATION/voices/LANG-REGION-NAME
+            voice_parts = full_voice_name.split('/')
+            if len(voice_parts) >= 5:
+                voice_short_name = voice_parts[-1]  # e.g., "en-US-Wavenet-A"
+                # Extraire lang-region (e.g., "en-US")
+                lang_parts = voice_short_name.split('-')
+                if len(lang_parts) >= 2:
+                    language_code = f"{lang_parts[0]}-{lang_parts[1]}"
+                else:
+                    language_code = 'en-US'
+            else:
+                language_code = 'en-US'
+            
+            voice = texttospeech.VoiceSelectionParams(
+                name=full_voice_name,
+                language_code=language_code
+            )
+            
+            audio_config = texttospeech.AudioConfig(
+                audio_encoding=texttospeech.AudioEncoding.MP3
+            )
+            
+            # Générer l'audio
+            response = client.synthesize_speech(
+                input=synthesis_input,
+                voice=voice,
+                audio_config=audio_config
+            )
+            
+            return response.audio_content
+            
+        finally:
+            # Nettoyer
+            try:
+                os.unlink(credentials_path)
+                if 'GOOGLE_APPLICATION_CREDENTIALS' in os.environ:
+                    del os.environ['GOOGLE_APPLICATION_CREDENTIALS']
+            except:
+                pass
+                
+    except Exception as e:
+        logger.error(f"GCP TTS Error: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur lors de la génération TTS GCP: {str(e)}"
+        )
+
+
 async def find_fallback_voice(original_voice: str, voices_list: List[Dict]) -> str:
     """
     Trouve une voix de fallback du même genre et de la même langue.
@@ -209,59 +432,90 @@ async def generate_tts(request: TTSRequest):
     """
     Génère un fichier audio à partir d'un texte (TTS).
     
+    Supporte Microsoft Edge TTS et Google Cloud TTS.
     Retourne un flux audio MPEG avec retry automatique en cas d'échec de voix.
     """
-    max_retries = 3
+    provider = request.provider or "edge"
     
-    logger.info(f"TTS Request: '{request.text[:50]}...' with voice '{request.voice}'")
+    logger.info(f"TTS Request: '{request.text[:50]}...' with voice '{request.voice}' (provider: {provider})")
     
     try:
-        # Récupérer la liste des voix disponibles (avec cache)
-        voices_list = await get_voices_list()
-        
-        current_voice = request.voice
-        
-        for attempt in range(max_retries):
-            try:
-                if attempt > 0:
-                    current_voice = await find_fallback_voice(request.voice, voices_list)
-                
-                logger.info(f"Attempt {attempt + 1}/{max_retries}: Using voice '{current_voice}'")
-                
-                # Générer l'audio avec edge-tts
-                communicate = edge_tts.Communicate(request.text, current_voice)
-                audio_buffer = BytesIO()
-
-                async for chunk in communicate.stream():
-                    if chunk.get("type") == "audio" and "data" in chunk:
-                        audio_buffer.write(chunk["data"])
-
-                audio_buffer.seek(0)
-                
-                # Succès
-                if attempt > 0:
-                    logger.info(f"TTS succeeded with fallback voice '{current_voice}' after {attempt + 1} attempts")
-                else:
-                    logger.info(f"TTS succeeded with voice '{current_voice}'")
-                
-                return StreamingResponse(
-                    content=audio_buffer,
-                    media_type="audio/mpeg",
-                    headers={
-                        "X-Used-Voice": current_voice,
-                        "X-Attempts": str(attempt + 1)
-                    }
+        # Google Cloud TTS
+        if provider == "gcp":
+            if not request.gcp_api_key or not request.gcp_project_id:
+                raise HTTPException(
+                    status_code=400,
+                    detail="gcp_api_key et gcp_project_id sont requis pour utiliser GCP TTS"
                 )
+            
+            audio_content = await generate_gcp_tts(
+                text=request.text,
+                voice_name=request.voice,
+                api_key=request.gcp_api_key,
+                project_id=request.gcp_project_id,
+                location=request.gcp_location or "global"
+            )
+            
+            return StreamingResponse(
+                content=BytesIO(audio_content),
+                media_type="audio/mpeg",
+                headers={
+                    "X-Used-Voice": request.voice,
+                    "X-Provider": "gcp"
+                }
+            )
+        
+        # Microsoft Edge TTS (par défaut)
+        else:
+            max_retries = 3
+            
+            # Récupérer la liste des voix disponibles (avec cache)
+            voices_list = await get_voices_list()
+            
+            current_voice = request.voice
+            
+            for attempt in range(max_retries):
+                try:
+                    if attempt > 0:
+                        current_voice = await find_fallback_voice(request.voice, voices_list)
+                    
+                    logger.info(f"Attempt {attempt + 1}/{max_retries}: Using voice '{current_voice}'")
+                    
+                    # Générer l'audio avec edge-tts
+                    communicate = edge_tts.Communicate(request.text, current_voice)
+                    audio_buffer = BytesIO()
 
-            except Exception as voice_error:
-                logger.warning(f"Attempt {attempt + 1} failed with voice '{current_voice}': {voice_error}")
-                if attempt == max_retries - 1:
-                    # Dernière tentative échouée
-                    raise HTTPException(
-                        status_code=500,
-                        detail=f"Impossible de générer l'audio après {max_retries} tentatives. Dernière erreur: {str(voice_error)}"
+                    async for chunk in communicate.stream():
+                        if chunk.get("type") == "audio" and "data" in chunk:
+                            audio_buffer.write(chunk["data"])
+
+                    audio_buffer.seek(0)
+                    
+                    # Succès
+                    if attempt > 0:
+                        logger.info(f"TTS succeeded with fallback voice '{current_voice}' after {attempt + 1} attempts")
+                    else:
+                        logger.info(f"TTS succeeded with voice '{current_voice}'")
+                    
+                    return StreamingResponse(
+                        content=audio_buffer,
+                        media_type="audio/mpeg",
+                        headers={
+                            "X-Used-Voice": current_voice,
+                            "X-Attempts": str(attempt + 1),
+                            "X-Provider": "edge"
+                        }
                     )
-                # Continuer avec la prochaine tentative
+
+                except Exception as voice_error:
+                    logger.warning(f"Attempt {attempt + 1} failed with voice '{current_voice}': {voice_error}")
+                    if attempt == max_retries - 1:
+                        # Dernière tentative échouée
+                        raise HTTPException(
+                            status_code=500,
+                            detail=f"Impossible de générer l'audio après {max_retries} tentatives. Dernière erreur: {str(voice_error)}"
+                        )
+                    # Continuer avec la prochaine tentative
 
     except HTTPException:
         raise
@@ -270,6 +524,47 @@ async def generate_tts(request: TTSRequest):
         raise HTTPException(
             status_code=500,
             detail=f"Erreur lors de la génération TTS: {str(e)}"
+        )
+
+
+class GcpVoicesRequest(BaseModel):
+    """Requête pour obtenir les voix GCP"""
+    api_key: str = Field(..., description="Clé API Google Cloud (JSON credentials)")
+    project_id: str = Field(..., description="Project ID Google Cloud")
+    location: str = Field(default="global", description="Location Google Cloud")
+    force_refresh: bool = Field(default=False, description="Force le rafraîchissement du cache")
+
+
+@router.post("/gcp/voices")
+async def list_gcp_voices(request: GcpVoicesRequest):
+    """
+    Retourne toutes les voix disponibles pour Google Cloud TTS.
+    
+    Args:
+        request: Requête contenant api_key, project_id, location et force_refresh
+        
+    Returns:
+        Liste des voix GCP disponibles
+    """
+    try:
+        voices = await get_gcp_voices_list(
+            request.api_key, 
+            request.project_id, 
+            request.location, 
+            request.force_refresh
+        )
+        return JSONResponse({
+            "voices": voices,
+            "count": len(voices),
+            "provider": "gcp"
+        })
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error listing GCP voices: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur lors de la récupération des voix GCP: {str(e)}"
         )
 
 

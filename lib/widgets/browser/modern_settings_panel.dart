@@ -26,7 +26,7 @@ import '../../services/ai_service.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
-import 'package:flutter/foundation.dart' show Platform;
+import 'package:flutter/foundation.dart' show Platform, debugPrint;
 
 class ModernSettingsPanel extends StatefulWidget {
   final VoidCallback? onClose;
@@ -66,9 +66,11 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
     _SectionItem('webservices', 'Services Web', CupertinoIcons.globe),
     _SectionItem('privacy', 'Confidentialité', CupertinoIcons.shield),
     _SectionItem('account', 'Compte', CupertinoIcons.person_circle),
+    _SectionItem('ai', 'Assistant IA', CupertinoIcons.sparkles),
     _SectionItem('devtools', 'DevTools', CupertinoIcons.ant),
     _SectionItem('gxComponents', 'Composants GX', CupertinoIcons.square_grid_2x2),
     _SectionItem('notifications', 'Notifications', CupertinoIcons.bell),
+    _SectionItem('tts', 'Synthèse vocale', CupertinoIcons.speaker_2),
     _SectionItem('about', 'À propos', CupertinoIcons.info_circle),
   ];
   
@@ -175,6 +177,31 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
       _SettingIndex('notifications', 'Notifications', 'Configuration des notifications', 'Notifications', 'notifications'),
       _SettingIndex('notifications', 'Position', 'Top-right, Top-left, Bottom-right, Bottom-left', 'Position', 'notifications'),
       _SettingIndex('notifications', 'Son', 'Activer le son des notifications', 'Son', 'notifications'),
+      
+      // Section Assistant IA
+      _SettingIndex('ai', 'Assistant IA', 'Configuration de l\'assistant IA avec Groq', 'IA', 'ai'),
+      _SettingIndex('ai', 'Clé API Groq', 'Clé API pour utiliser l\'assistant IA', 'API', 'ai'),
+      _SettingIndex('ai', 'Auto-switch de modèles', 'Change automatiquement de modèle en cas de limite', 'Auto-switch', 'ai'),
+      _SettingIndex('ai', 'Modèle préféré', 'Sélectionnez un modèle spécifique ou auto-sélection', 'Modèle', 'ai'),
+      _SettingIndex('ai', 'Assistant contextuel', 'Utilise le contexte de la page pour améliorer les réponses', 'Contextuel', 'ai'),
+      _SettingIndex('ai', 'Résumés automatiques', 'Génère automatiquement des résumés de contenu', 'Résumés', 'ai'),
+      _SettingIndex('ai', 'Protection IA', 'Filtre les contenus sensibles avant l\'envoi à l\'IA', 'Protection', 'ai'),
+      _SettingIndex('ai', 'Mémoire contextuelle', 'Stocke automatiquement le contexte pour améliorer les réponses', 'Mémoire', 'ai'),
+      
+      // Section Synthèse vocale
+      _SettingIndex('tts', 'Synthèse vocale', 'Configuration du service Text-to-Speech', 'TTS', 'tts'),
+      _SettingIndex('tts', 'Fournisseur TTS', 'Microsoft Edge TTS, Google Cloud TTS', 'Fournisseur', 'tts'),
+      _SettingIndex('tts', 'Activer la synthèse vocale', 'Permet d\'utiliser le service TTS pour lire du texte', 'Activer', 'tts'),
+      _SettingIndex('tts', 'Voix par défaut', 'Sélectionnez la voix par défaut pour la synthèse', 'Voix', 'tts'),
+      _SettingIndex('tts', 'Détecter automatiquement la langue', 'Sélectionne automatiquement une voix selon la langue', 'Détection', 'tts'),
+      _SettingIndex('tts', 'Genre préféré', 'Féminin, Masculin', 'Genre', 'tts'),
+      _SettingIndex('tts', 'Volume', 'Réglez le volume de la synthèse vocale', 'Volume', 'tts'),
+      _SettingIndex('tts', 'Vitesse', 'Réglez la vitesse de lecture', 'Vitesse', 'tts'),
+      _SettingIndex('tts', 'Configuration backend', 'URL du backend TTS', 'Backend', 'tts'),
+      _SettingIndex('tts', 'Google Cloud TTS', 'Configuration du service Text-to-Speech de Google Cloud', 'GCP', 'tts'),
+      _SettingIndex('tts', 'Clé API Google Cloud', 'Clé API pour utiliser Google Cloud TTS', 'API GCP', 'tts'),
+      _SettingIndex('tts', 'Project ID Google Cloud', 'Project ID de votre projet Google Cloud', 'Project ID', 'tts'),
+      _SettingIndex('tts', 'Location Google Cloud', 'Location du service TTS (global, us-central1, etc.)', 'Location', 'tts'),
       
       // Section À propos
       _SettingIndex('about', 'À propos', 'Informations sur Notilus Browser', 'À propos', 'about'),
@@ -631,7 +658,9 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                 'gxComponents' => _buildGxComponentsSection(context, theme, gxRed, isCompact, isMedium, spacing),
                 'notifications' => _buildNotificationsSection(context, theme, gxRed, isCompact, isMedium, spacing),
                 'account' => _buildAccountSection(context, theme, gxRed, isCompact, isMedium, spacing),
+                'ai' => _buildAiSection(context, theme, gxRed, isCompact, isMedium, spacing),
                 'devtools' => _buildDevToolsSection(context, theme, gxRed, isCompact, isMedium, spacing),
+                'tts' => _buildTtsSection(context, theme, gxRed, isCompact, isMedium, spacing),
                 'about' => _buildAboutSection(context, theme, gxRed, isCompact, isMedium, spacing),
                 _ => const SizedBox.shrink(),
               },
@@ -653,7 +682,9 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
       'webservices': ('Services Web', 'Gérez les services de la sidebar'),
       'privacy': ('Confidentialité', 'Protégez vos données de navigation'),
       'account': ('Compte', 'Authentification et synchronisation'),
+      'ai': ('Assistant IA', 'Configuration de l\'assistant IA avec Groq'),
       'devtools': ('DevTools', 'Configuration des outils de développement'),
+      'tts': ('Synthèse vocale', 'Configuration du service Text-to-Speech'),
       'about': ('À propos', 'Informations sur Notilus Browser'),
     };
     final info = titles[_currentSection] ?? ('', '');
@@ -3061,6 +3092,815 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
   }
 
   // ============================================
+  // SECTION ASSISTANT IA
+  // ============================================
+  
+  Widget _buildAiSection(BuildContext context, ThemeData theme, Color gxRed, bool isCompact, bool isMedium, double spacing) {
+    return ListenableBuilder(
+      listenable: _settings,
+      builder: (context, _) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSubsectionTitle('Configuration Groq', gxRed, isCompact: isCompact, isMedium: isMedium),
+            SizedBox(height: spacing),
+            Text(
+              'Configurez votre clé API Groq pour utiliser l\'assistant IA. L\'auto-switch de modèles est activé par défaut pour éviter les limites de quota.',
+              style: NotilusFonts.rajdhani(
+                fontSize: isCompact ? 10 : 11,
+                color: Colors.white.withOpacity(0.6),
+              ),
+            ),
+            SizedBox(height: spacing * 1.5),
+            
+            // Clé API
+            _buildSubsectionTitle('Clé API Groq', gxRed, isCompact: isCompact, isMedium: isMedium),
+            SizedBox(height: spacing),
+            GxFuturisticInput(
+              controller: TextEditingController(text: _settings.groqApiKey),
+              hint: 'gsk_...',
+              prefixIcon: CupertinoIcons.lock,
+              accentColor: gxRed,
+              obscureText: true,
+              onChanged: (value) => _settings.setGroqApiKey(value),
+            ),
+            SizedBox(height: spacing / 2),
+            Row(
+              children: [
+                Icon(CupertinoIcons.info, size: isCompact ? 12 : 14, color: Colors.white.withOpacity(0.6)),
+                SizedBox(width: spacing / 2),
+                Expanded(
+                  child: Text(
+                    'Obtenez votre clé API sur https://console.groq.com',
+                    style: NotilusFonts.rajdhani(
+                      fontSize: isCompact ? 9 : 10,
+                      color: Colors.white.withOpacity(0.6),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: spacing * 1.5),
+            
+            // Auto-switch
+            _buildSubsectionTitle('Auto-switch de modèles', gxRed, isCompact: isCompact, isMedium: isMedium),
+            SizedBox(height: spacing),
+            _buildSettingSwitch(
+              title: 'Activer l\'auto-switch',
+              subtitle: 'Change automatiquement de modèle en cas de limite de quota',
+              value: _settings.aiAutoSwitch,
+              onChanged: (value) => _settings.setAiAutoSwitch(value),
+              gxRed: gxRed,
+              isCompact: isCompact,
+              isMedium: isMedium,
+            ),
+            if (_settings.aiAutoSwitch) ...[
+              SizedBox(height: spacing),
+              GxFuturisticCard(
+                accentColor: Colors.blue,
+                padding: EdgeInsets.all(isCompact ? 10 : 12),
+                child: Row(
+                  children: [
+                    Icon(CupertinoIcons.info, size: isCompact ? 14 : 16, color: Colors.blue),
+                    SizedBox(width: spacing / 2),
+                    Expanded(
+                      child: Text(
+                        'Les modèles seront automatiquement changés en cas de rate limit ou quota dépassé.',
+                        style: NotilusFonts.rajdhani(
+                          fontSize: isCompact ? 9 : 10,
+                          color: Colors.white.withOpacity(0.7),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            SizedBox(height: spacing * 1.5),
+            
+            // Modèle préféré
+            _buildSubsectionTitle('Modèle préféré', gxRed, isCompact: isCompact, isMedium: isMedium),
+            SizedBox(height: spacing),
+            Text(
+              'Sélectionnez un modèle spécifique ou laissez vide pour utiliser l\'auto-sélection.',
+              style: NotilusFonts.rajdhani(
+                fontSize: isCompact ? 10 : 11,
+                color: Colors.white.withOpacity(0.6),
+              ),
+            ),
+            SizedBox(height: spacing),
+            _AiModelsSelector(gxRed: gxRed),
+            SizedBox(height: spacing * 1.5),
+            
+            // Fonctionnalités AI
+            _buildSubsectionTitle('Fonctionnalités', gxRed, isCompact: isCompact, isMedium: isMedium),
+            SizedBox(height: spacing),
+            _buildSettingSwitch(
+              title: 'Assistant contextuel',
+              subtitle: 'Utilise le contexte de la page pour améliorer les réponses',
+              value: _settings.aiContextualEnabled,
+              onChanged: (value) => _settings.setAiContextualEnabled(value),
+              gxRed: gxRed,
+              isCompact: isCompact,
+              isMedium: isMedium,
+            ),
+            SizedBox(height: spacing),
+            _buildSettingSwitch(
+              title: 'Résumés automatiques',
+              subtitle: 'Génère automatiquement des résumés de contenu',
+              value: _settings.aiSummaryEnabled,
+              onChanged: (value) => _settings.setAiSummaryEnabled(value),
+              gxRed: gxRed,
+              isCompact: isCompact,
+              isMedium: isMedium,
+            ),
+            SizedBox(height: spacing),
+            _buildSettingSwitch(
+              title: 'Protection IA',
+              subtitle: 'Filtre les contenus sensibles avant l\'envoi à l\'IA',
+              value: _settings.aiProtectionEnabled,
+              onChanged: (value) => _settings.setAiProtectionEnabled(value),
+              gxRed: gxRed,
+              isCompact: isCompact,
+              isMedium: isMedium,
+            ),
+            SizedBox(height: spacing * 1.5),
+            
+            // Mémoire glissante
+            _buildSubsectionTitle('Mémoire contextuelle', gxRed, isCompact: isCompact, isMedium: isMedium),
+            SizedBox(height: spacing),
+            Text(
+              'La mémoire glissante stocke automatiquement le contexte (site web, console, réseau, utilisateur, dépôts GitHub) pour améliorer les réponses de l\'IA.',
+              style: NotilusFonts.rajdhani(
+                fontSize: isCompact ? 10 : 11,
+                color: Colors.white.withOpacity(0.6),
+              ),
+            ),
+            SizedBox(height: spacing),
+            GxFuturisticCard(
+              accentColor: gxRed,
+              padding: EdgeInsets.all(isCompact ? 10 : 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(CupertinoIcons.info, size: isCompact ? 14 : 16, color: gxRed),
+                      SizedBox(width: spacing / 2),
+                      Text(
+                        'Contenu de la mémoire',
+                        style: NotilusFonts.rajdhani(
+                          fontSize: isCompact ? 11 : 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: spacing),
+                  Builder(
+                    builder: (context) {
+                      final memory = _settings.aiSlidingMemory;
+                      if (memory.isEmpty) {
+                        return Text(
+                          'Aucune donnée en mémoire',
+                          style: NotilusFonts.rajdhani(
+                            fontSize: isCompact ? 9 : 10,
+                            color: Colors.white.withOpacity(0.6),
+                          ),
+                        );
+                      }
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (memory.containsKey('current_url'))
+                            _buildMemoryItem('URL actuelle', memory['current_url'].toString(), isCompact),
+                          if (memory.containsKey('current_title'))
+                            _buildMemoryItem('Titre', memory['current_title'].toString(), isCompact),
+                          if (memory.containsKey('user_name'))
+                            _buildMemoryItem('Utilisateur', memory['user_name'].toString(), isCompact),
+                          if (memory.containsKey('user_email'))
+                            _buildMemoryItem('Email', memory['user_email'].toString(), isCompact),
+                          if (memory.containsKey('github_repos_count'))
+                            _buildMemoryItem('Dépôts GitHub', '${memory['github_repos_count']} dépôts', isCompact),
+                          SizedBox(height: spacing / 2),
+                          GxFuturisticButton(
+                            label: 'Voir le contenu complet',
+                            icon: CupertinoIcons.eye,
+                            variant: GxFuturisticButtonVariant.secondary,
+                            accentColor: gxRed,
+                            onPressed: () {
+                              GxFuturisticDialog.show(
+                                context: context,
+                                title: 'Contenu complet de la mémoire',
+                                titleIcon: CupertinoIcons.info_circle_fill,
+                                accentColor: gxRed,
+                                width: 700,
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    maxHeight: MediaQuery.of(context).size.height * 0.7,
+                                    minWidth: 600,
+                                  ),
+                                  child: SingleChildScrollView(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: SelectableText(
+                                        _formatMemoryJson(memory),
+                                        style: NotilusFonts.rajdhani(
+                                          fontSize: 11,
+                                          color: Colors.white.withOpacity(0.7),
+                                          height: 1.5,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                actions: [
+                                  Expanded(
+                                    child: Center(
+                                      child: GxFuturisticButton(
+                                        label: 'Fermer',
+                                        icon: CupertinoIcons.xmark,
+                                        variant: GxFuturisticButtonVariant.secondary,
+                                        accentColor: gxRed,
+                                        onPressed: () => Navigator.pop(context),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: spacing),
+            GxFuturisticButton(
+              label: 'Vider la mémoire',
+              icon: CupertinoIcons.trash,
+              variant: GxFuturisticButtonVariant.secondary,
+              accentColor: Colors.red,
+              onPressed: () async {
+                await _settings.clearAiSlidingMemory();
+                if (context.mounted) {
+                  GxNotificationService().showSuccess(
+                    title: 'Mémoire vidée',
+                    message: 'La mémoire contextuelle a été vidée avec succès',
+                    context: context,
+                  );
+                }
+              },
+            ),
+            SizedBox(height: spacing * 1.5),
+            
+            // Test de connexion
+            _buildSubsectionTitle('Test', gxRed, isCompact: isCompact, isMedium: isMedium),
+            SizedBox(height: spacing),
+            GxFuturisticButton(
+              label: 'Tester la connexion',
+              icon: CupertinoIcons.checkmark_circle_fill,
+              accentColor: gxRed,
+              onPressed: _settings.groqApiKey.isEmpty
+                  ? null
+                  : () async {
+                      final aiService = AiService();
+                      GxNotificationService().showInfo(
+                        title: 'Test en cours',
+                        message: 'Vérification de la connexion...',
+                        context: context,
+                      );
+                      
+                      final success = await aiService.testConnection();
+                      
+                      if (context.mounted) {
+                        if (success) {
+                          GxNotificationService().showSuccess(
+                            title: 'Connexion réussie',
+                            message: 'L\'assistant IA est opérationnel.',
+                            context: context,
+                          );
+                        } else {
+                          GxNotificationService().showError(
+                            title: 'Erreur de connexion',
+                            message: aiService.lastError ?? 'Impossible de se connecter',
+                            context: context,
+                          );
+                        }
+                      }
+                    },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // ============================================
+  // SECTION SYNTHÈSE VOCALE
+  // ============================================
+  
+  Widget _buildTtsSection(BuildContext context, ThemeData theme, Color gxRed, bool isCompact, bool isMedium, double spacing) {
+    final ttsService = TtsService(baseUrl: _settings.ttsBackendUrl);
+    
+    return ListenableBuilder(
+      listenable: _settings,
+      builder: (context, _) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Statut de connexion
+                _buildSubsectionTitle('Connexion', gxRed, isCompact: isCompact, isMedium: isMedium),
+                SizedBox(height: spacing),
+                FutureBuilder<bool>(
+                  future: ttsService.checkConnection(),
+                  builder: (context, snapshot) {
+                    final isConnected = snapshot.data ?? false;
+                    return Row(
+                      children: [
+                        Container(
+                          width: isCompact ? 10 : 12,
+                          height: isCompact ? 10 : 12,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isConnected ? Colors.green : Colors.red,
+                          ),
+                        ),
+                        SizedBox(width: spacing / 2),
+                        Expanded(
+                          child: Text(
+                            isConnected ? 'Backend TTS connecté' : 'Backend TTS non disponible',
+                            style: NotilusFonts.rajdhani(
+                              fontSize: isCompact ? 10 : 11,
+                              color: isConnected ? Colors.green : Colors.red,
+                            ),
+                          ),
+                        ),
+                        GxFuturisticButton(
+                          label: 'Vérifier',
+                          icon: CupertinoIcons.arrow_clockwise,
+                          variant: GxFuturisticButtonVariant.secondary,
+                          accentColor: gxRed,
+                          onPressed: () {
+                            setState(() {});
+                            ttsService.checkConnection();
+                          },
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                SizedBox(height: spacing * 1.5),
+                
+                // Activation du service
+                _buildSubsectionTitle('Activation', gxRed, isCompact: isCompact, isMedium: isMedium),
+                SizedBox(height: spacing),
+                _buildSettingSwitch(
+                  title: 'Activer la synthèse vocale',
+                  subtitle: 'Permet d\'utiliser le service TTS pour lire du texte',
+                  value: _settings.ttsEnabled,
+                  onChanged: (value) => _settings.setTtsEnabled(value),
+                  gxRed: gxRed,
+                  isCompact: isCompact,
+                  isMedium: isMedium,
+                ),
+                SizedBox(height: spacing * 1.5),
+                
+                if (_settings.ttsEnabled) ...[
+                  // Configuration de la voix
+                  _buildSubsectionTitle('Voix par défaut', gxRed, isCompact: isCompact, isMedium: isMedium),
+                  SizedBox(height: spacing),
+                  Builder(
+                    builder: (context) {
+                      if (_settings.ttsProvider == 'gcp') {
+                        // Voix GCP
+                        if (_settings.gcpTtsApiKey.isEmpty || _settings.gcpTtsProjectId.isEmpty) {
+                          return GxFuturisticCard(
+                            accentColor: const Color(0xFFF59E0B),
+                            padding: EdgeInsets.all(isCompact ? 10 : 12),
+                            child: Row(
+                              children: [
+                                Icon(CupertinoIcons.exclamationmark_triangle, size: isCompact ? 14 : 16, color: const Color(0xFFF59E0B)),
+                                SizedBox(width: spacing / 2),
+                                Expanded(
+                                  child: Text(
+                                    'Configurez votre clé API et Project ID Google Cloud pour charger les voix.',
+                                    style: NotilusFonts.rajdhani(
+                                      fontSize: isCompact ? 10 : 11,
+                                      color: Colors.white.withOpacity(0.7),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                        
+                        return FutureBuilder<List<Map<String, dynamic>>>(
+                          future: ttsService.getGcpVoices(
+                            apiKey: _settings.gcpTtsApiKey,
+                            projectId: _settings.gcpTtsProjectId,
+                            location: _settings.gcpTtsLocation,
+                          ),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState == ConnectionState.waiting) {
+                              return Center(
+                                child: Padding(
+                                  padding: EdgeInsets.all(isCompact ? 12.0 : 16.0),
+                                  child: CircularProgressIndicator(color: gxRed),
+                                ),
+                              );
+                            }
+                            
+                            final voices = snapshot.data ?? [];
+                            final currentVoice = _settings.ttsDefaultVoice;
+                            
+                            return Column(
+                              children: [
+                                GxFuturisticDropdown<String>(
+                                  value: currentVoice,
+                                  items: voices.map((voice) {
+                                    final shortName = voice['ShortName'] as String? ?? '';
+                                    final name = voice['Name'] as String? ?? shortName;
+                                    final locale = voice['Locale'] as String? ?? '';
+                                    final gender = voice['Gender'] as String? ?? '';
+                                    
+                                    return DropdownMenuItem<String>(
+                                      value: shortName,
+                                      child: Text('$name ($locale, $gender)'),
+                                    );
+                                  }).toList(),
+                                  onChanged: (value) {
+                                    if (value != null) {
+                                      _settings.setTtsDefaultVoice(value);
+                                    }
+                                  },
+                                  accentColor: gxRed,
+                                  hint: 'Sélectionnez une voix',
+                                ),
+                                SizedBox(height: spacing),
+                                GxFuturisticButton(
+                                  label: 'Actualiser la liste',
+                                  icon: CupertinoIcons.arrow_clockwise,
+                                  variant: GxFuturisticButtonVariant.secondary,
+                                  accentColor: gxRed,
+                                  onPressed: () {
+                                    setState(() {});
+                                    ttsService.getGcpVoices(
+                                      apiKey: _settings.gcpTtsApiKey,
+                                      projectId: _settings.gcpTtsProjectId,
+                                      location: _settings.gcpTtsLocation,
+                                      forceRefresh: true,
+                                    );
+                                  },
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                      } else {
+                        // Voix Edge TTS
+                        return FutureBuilder<List<Map<String, dynamic>>>(
+                          future: ttsService.getVoices(),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState == ConnectionState.waiting) {
+                              return Center(
+                                child: Padding(
+                                  padding: EdgeInsets.all(isCompact ? 12.0 : 16.0),
+                                  child: CircularProgressIndicator(color: gxRed),
+                                ),
+                              );
+                            }
+                            
+                            final voices = snapshot.data ?? [];
+                            final currentVoice = _settings.ttsDefaultVoice;
+                            
+                            return Column(
+                              children: [
+                                GxFuturisticDropdown<String>(
+                                  value: currentVoice,
+                                  items: voices.map((voice) {
+                                    final shortName = voice['ShortName'] as String? ?? '';
+                                    final name = voice['Name'] as String? ?? shortName;
+                                    final locale = voice['Locale'] as String? ?? '';
+                                    final gender = voice['Gender'] as String? ?? '';
+                                    
+                                    return DropdownMenuItem<String>(
+                                      value: shortName,
+                                      child: Text('$name ($locale, $gender)'),
+                                    );
+                                  }).toList(),
+                                  onChanged: (value) {
+                                    if (value != null) {
+                                      _settings.setTtsDefaultVoice(value);
+                                    }
+                                  },
+                                  accentColor: gxRed,
+                                  hint: 'Sélectionnez une voix',
+                                ),
+                                SizedBox(height: spacing),
+                                GxFuturisticButton(
+                                  label: 'Actualiser la liste',
+                                  icon: CupertinoIcons.arrow_clockwise,
+                                  variant: GxFuturisticButtonVariant.secondary,
+                                  accentColor: gxRed,
+                                  onPressed: () {
+                                    setState(() {});
+                                    ttsService.getVoices(forceRefresh: true);
+                                  },
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                      }
+                    },
+                  ),
+                  SizedBox(height: spacing * 1.5),
+                  
+                  // Détection automatique
+                  _buildSubsectionTitle('Détection automatique', gxRed, isCompact: isCompact, isMedium: isMedium),
+                  SizedBox(height: spacing),
+                  _buildSettingSwitch(
+                    title: 'Détecter automatiquement la langue',
+                    subtitle: 'Sélectionne automatiquement une voix selon la langue du texte',
+                    value: _settings.ttsAutoDetectLanguage,
+                    onChanged: (value) => _settings.setTtsAutoDetectLanguage(value),
+                    gxRed: gxRed,
+                    isCompact: isCompact,
+                    isMedium: isMedium,
+                  ),
+                  if (_settings.ttsAutoDetectLanguage) ...[
+                    SizedBox(height: spacing),
+                    _buildSubsectionTitle('Genre préféré', gxRed, isCompact: isCompact, isMedium: isMedium),
+                    SizedBox(height: spacing),
+                    Wrap(
+                      spacing: spacing / 2,
+                      runSpacing: spacing / 2,
+                      children: [
+                        ChoiceChip(
+                          label: Text('Féminin', style: TextStyle(fontSize: isCompact ? 10 : 11)),
+                          selected: _settings.ttsPreferredGender == 'Female',
+                          onSelected: (_) => _settings.setTtsPreferredGender('Female'),
+                          selectedColor: gxRed.withOpacity(0.2),
+                          backgroundColor: Colors.white.withOpacity(0.05),
+                          side: BorderSide(
+                            color: _settings.ttsPreferredGender == 'Female' ? gxRed : Colors.white24,
+                          ),
+                          labelStyle: TextStyle(
+                            color: _settings.ttsPreferredGender == 'Female' ? gxRed : Colors.white70,
+                            fontSize: isCompact ? 10 : 11,
+                          ),
+                        ),
+                        ChoiceChip(
+                          label: Text('Masculin', style: TextStyle(fontSize: isCompact ? 10 : 11)),
+                          selected: _settings.ttsPreferredGender == 'Male',
+                          onSelected: (_) => _settings.setTtsPreferredGender('Male'),
+                          selectedColor: gxRed.withOpacity(0.2),
+                          backgroundColor: Colors.white.withOpacity(0.05),
+                          side: BorderSide(
+                            color: _settings.ttsPreferredGender == 'Male' ? gxRed : Colors.white24,
+                          ),
+                          labelStyle: TextStyle(
+                            color: _settings.ttsPreferredGender == 'Male' ? gxRed : Colors.white70,
+                            fontSize: isCompact ? 10 : 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  SizedBox(height: spacing * 1.5),
+                  
+                  // Paramètres audio
+                  _buildSubsectionTitle('Paramètres audio', gxRed, isCompact: isCompact, isMedium: isMedium),
+                  SizedBox(height: spacing),
+                  Row(
+                    children: [
+                      Text(
+                        'Volume',
+                        style: NotilusFonts.rajdhani(
+                          fontSize: isCompact ? 10 : 11,
+                          color: Colors.white.withOpacity(0.7),
+                        ),
+                      ),
+                      SizedBox(width: spacing),
+                      Expanded(
+                        child: Slider(
+                          value: _settings.ttsVolume,
+                          min: 0.0,
+                          max: 1.0,
+                          divisions: 10,
+                          activeColor: gxRed,
+                          inactiveColor: Colors.white.withOpacity(0.1),
+                          onChanged: (value) => _settings.setTtsVolume(value),
+                        ),
+                      ),
+                      SizedBox(width: spacing),
+                      Text(
+                        '${(_settings.ttsVolume * 100).toInt()}%',
+                        style: NotilusFonts.rajdhani(
+                          fontSize: isCompact ? 10 : 11,
+                          color: Colors.white.withOpacity(0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: spacing),
+                  Row(
+                    children: [
+                      Text(
+                        'Vitesse',
+                        style: NotilusFonts.rajdhani(
+                          fontSize: isCompact ? 10 : 11,
+                          color: Colors.white.withOpacity(0.7),
+                        ),
+                      ),
+                      SizedBox(width: spacing),
+                      Expanded(
+                        child: Slider(
+                          value: _settings.ttsSpeed,
+                          min: 0.5,
+                          max: 2.0,
+                          divisions: 15,
+                          activeColor: gxRed,
+                          inactiveColor: Colors.white.withOpacity(0.1),
+                          onChanged: (value) => _settings.setTtsSpeed(value),
+                        ),
+                      ),
+                      SizedBox(width: spacing),
+                      Text(
+                        '${_settings.ttsSpeed.toStringAsFixed(1)}x',
+                        style: NotilusFonts.rajdhani(
+                          fontSize: isCompact ? 10 : 11,
+                          color: Colors.white.withOpacity(0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: spacing * 1.5),
+                  
+                  // Sélection du fournisseur TTS
+                  _buildSubsectionTitle('Fournisseur TTS', gxRed, isCompact: isCompact, isMedium: isMedium),
+                  SizedBox(height: spacing),
+                  Wrap(
+                    spacing: spacing / 2,
+                    runSpacing: spacing / 2,
+                    children: [
+                      ChoiceChip(
+                        label: Text('Microsoft Edge TTS', style: TextStyle(fontSize: isCompact ? 10 : 11)),
+                        selected: _settings.ttsProvider == 'edge',
+                        onSelected: (_) => _settings.setTtsProvider('edge'),
+                        selectedColor: gxRed.withOpacity(0.2),
+                        backgroundColor: Colors.white.withOpacity(0.05),
+                        side: BorderSide(
+                          color: _settings.ttsProvider == 'edge' ? gxRed : Colors.white24,
+                        ),
+                        labelStyle: TextStyle(
+                          color: _settings.ttsProvider == 'edge' ? gxRed : Colors.white70,
+                          fontSize: isCompact ? 10 : 11,
+                        ),
+                      ),
+                      ChoiceChip(
+                        label: Text('Google Cloud TTS', style: TextStyle(fontSize: isCompact ? 10 : 11)),
+                        selected: _settings.ttsProvider == 'gcp',
+                        onSelected: (_) => _settings.setTtsProvider('gcp'),
+                        selectedColor: gxRed.withOpacity(0.2),
+                        backgroundColor: Colors.white.withOpacity(0.05),
+                        side: BorderSide(
+                          color: _settings.ttsProvider == 'gcp' ? gxRed : Colors.white24,
+                        ),
+                        labelStyle: TextStyle(
+                          color: _settings.ttsProvider == 'gcp' ? gxRed : Colors.white70,
+                          fontSize: isCompact ? 10 : 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (_settings.ttsProvider == 'gcp') ...[
+                    SizedBox(height: spacing * 1.5),
+                    _buildSubsectionTitle('Configuration Google Cloud TTS', gxRed, isCompact: isCompact, isMedium: isMedium),
+                    SizedBox(height: spacing),
+                    Text(
+                      'Configurez votre clé API Google Cloud pour utiliser le service Text-to-Speech de GCP.',
+                      style: NotilusFonts.rajdhani(
+                        fontSize: isCompact ? 10 : 11,
+                        color: Colors.white.withOpacity(0.6),
+                      ),
+                    ),
+                    SizedBox(height: spacing),
+                    
+                    // Clé API GCP
+                    _buildSubsectionTitle('Clé API Google Cloud', gxRed, isCompact: isCompact, isMedium: isMedium),
+                    SizedBox(height: spacing),
+                    GxFuturisticInput(
+                      controller: TextEditingController(text: _settings.gcpTtsApiKey),
+                      hint: 'AIza...',
+                      prefixIcon: CupertinoIcons.lock,
+                      accentColor: gxRed,
+                      obscureText: true,
+                      onChanged: (value) => _settings.setGcpTtsApiKey(value),
+                    ),
+                    SizedBox(height: spacing / 2),
+                    Row(
+                      children: [
+                        Icon(CupertinoIcons.info, size: isCompact ? 12 : 14, color: Colors.white.withOpacity(0.6)),
+                        SizedBox(width: spacing / 2),
+                        Expanded(
+                          child: Text(
+                            'Obtenez votre clé API sur https://console.cloud.google.com/apis/credentials',
+                            style: NotilusFonts.rajdhani(
+                              fontSize: isCompact ? 9 : 10,
+                              color: Colors.white.withOpacity(0.6),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: spacing * 1.5),
+                    
+                    // Project ID
+                    _buildSubsectionTitle('Project ID', gxRed, isCompact: isCompact, isMedium: isMedium),
+                    SizedBox(height: spacing),
+                    GxFuturisticInput(
+                      controller: TextEditingController(text: _settings.gcpTtsProjectId),
+                      hint: 'my-project-id',
+                      prefixIcon: CupertinoIcons.briefcase,
+                      accentColor: gxRed,
+                      onChanged: (value) => _settings.setGcpTtsProjectId(value),
+                    ),
+                    SizedBox(height: spacing * 1.5),
+                    
+                    // Location
+                    _buildSubsectionTitle('Location', gxRed, isCompact: isCompact, isMedium: isMedium),
+                    SizedBox(height: spacing),
+                    GxFuturisticDropdown<String>(
+                      value: _settings.gcpTtsLocation,
+                      items: [
+                        DropdownMenuItem(value: 'global', child: Text('Global')),
+                        DropdownMenuItem(value: 'us-central1', child: Text('us-central1')),
+                        DropdownMenuItem(value: 'us-east1', child: Text('us-east1')),
+                        DropdownMenuItem(value: 'us-west1', child: Text('us-west1')),
+                        DropdownMenuItem(value: 'europe-west1', child: Text('europe-west1')),
+                        DropdownMenuItem(value: 'asia-east1', child: Text('asia-east1')),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          _settings.setGcpTtsLocation(value);
+                        }
+                      },
+                      accentColor: gxRed,
+                      hint: 'Sélectionnez une location',
+                    ),
+                    SizedBox(height: spacing),
+                    Text(
+                      'La location "global" est recommandée pour la plupart des cas d\'usage.',
+                      style: NotilusFonts.rajdhani(
+                        fontSize: isCompact ? 9 : 10,
+                        color: Colors.white.withOpacity(0.5),
+                      ),
+                    ),
+                  ],
+                  SizedBox(height: spacing * 1.5),
+                  
+                  // Configuration backend
+                  _buildSubsectionTitle('Configuration backend', gxRed, isCompact: isCompact, isMedium: isMedium),
+                  SizedBox(height: spacing),
+                  GxFuturisticInput(
+                    controller: TextEditingController(text: _settings.ttsBackendUrl),
+                    hint: 'http://localhost:8000',
+                    prefixIcon: CupertinoIcons.link,
+                    accentColor: gxRed,
+                    onChanged: (value) => _settings.setTtsBackendUrl(value),
+                  ),
+                  SizedBox(height: spacing * 1.5),
+                  
+                  // Test
+                  _buildSubsectionTitle('Test', gxRed, isCompact: isCompact, isMedium: isMedium),
+                  SizedBox(height: spacing),
+                  _TtsTestButton(
+                    ttsService: ttsService,
+                    voice: _settings.ttsDefaultVoice,
+                    gxRed: gxRed,
+                    provider: _settings.ttsProvider,
+                    gcpApiKey: _settings.gcpTtsApiKey,
+                    gcpProjectId: _settings.gcpTtsProjectId,
+                    gcpLocation: _settings.gcpTtsLocation,
+                  ),
+                ],
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // ============================================
   // SECTION À PROPOS
   // ============================================
   
@@ -3291,6 +4131,79 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
         ),
       ),
     );
+  }
+
+  Widget _buildMemoryItem(String label, String value, bool isCompact) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: isCompact ? 3 : 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: isCompact ? 80 : 100,
+            child: Text(
+              '$label:',
+              style: NotilusFonts.rajdhani(
+                fontSize: isCompact ? 9 : 10,
+                fontWeight: FontWeight.w500,
+                color: Colors.white.withOpacity(0.6),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value.length > 50 ? '${value.substring(0, 50)}...' : value,
+              style: NotilusFonts.rajdhani(
+                fontSize: isCompact ? 9 : 10,
+                color: Colors.white.withOpacity(0.7),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatMemoryDate(String dateStr) {
+    try {
+      final date = DateTime.parse(dateStr);
+      final now = DateTime.now();
+      final diff = now.difference(date);
+      
+      if (diff.inMinutes < 1) {
+        return 'Il y a ${diff.inSeconds} secondes';
+      } else if (diff.inHours < 1) {
+        return 'Il y a ${diff.inMinutes} minutes';
+      } else if (diff.inDays < 1) {
+        return 'Il y a ${diff.inHours} heures';
+      } else {
+        return 'Il y a ${diff.inDays} jours';
+      }
+    } catch (e) {
+      return dateStr;
+    }
+  }
+
+  String _formatMemoryJson(Map<String, dynamic> memory) {
+    try {
+      final buffer = StringBuffer();
+      buffer.writeln('{');
+      memory.forEach((key, value) {
+        if (value is List) {
+          buffer.writeln('  "$key": [${value.length} éléments],');
+        } else if (value is Map) {
+          buffer.writeln('  "$key": {${value.length} clés},');
+        } else {
+          final str = value.toString();
+          final display = str.length > 100 ? '${str.substring(0, 100)}...' : str;
+          buffer.writeln('  "$key": "$display",');
+        }
+      });
+      buffer.writeln('}');
+      return buffer.toString();
+    } catch (e) {
+      return memory.toString();
+    }
   }
 }
 
@@ -3740,6 +4653,343 @@ class _SectionItemWidgetState extends State<_SectionItemWidget> {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ============================================
+// WIDGETS HELPER POUR AI ET TTS
+// ============================================
+
+class _AiModelsSelector extends StatefulWidget {
+  final Color gxRed;
+  
+  const _AiModelsSelector({required this.gxRed});
+  
+  @override
+  State<_AiModelsSelector> createState() => _AiModelsSelectorState();
+}
+
+class _AiModelsSelectorState extends State<_AiModelsSelector> {
+  final AiService _aiService = AiService();
+  final SettingsService _settings = SettingsService();
+  Future<List<String>?>? _modelsFuture;
+  
+  @override
+  void initState() {
+    super.initState();
+    _loadModels();
+  }
+  
+  void _loadModels() {
+    setState(() {
+      _modelsFuture = _aiService.getModels();
+    });
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<String>?>(
+      future: _modelsFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: CircularProgressIndicator(color: widget.gxRed),
+            ),
+          );
+        }
+        
+        final models = snapshot.data ?? [];
+        final currentModel = _settings.aiPreferredModel;
+        
+        if (models.isEmpty) {
+          return GxFuturisticCard(
+            accentColor: const Color(0xFFF59E0B),
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Icon(CupertinoIcons.exclamationmark_triangle, size: 16, color: const Color(0xFFF59E0B)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Impossible de charger les modèles. Vérifiez la connexion au backend.',
+                    style: NotilusFonts.rajdhani(
+                      fontSize: 10,
+                      color: Colors.white.withOpacity(0.7),
+                    ),
+                  ),
+                ),
+                GxFuturisticButton(
+                  label: 'Réessayer',
+                  icon: CupertinoIcons.arrow_clockwise,
+                  variant: GxFuturisticButtonVariant.secondary,
+                  accentColor: widget.gxRed,
+                  onPressed: _loadModels,
+                ),
+              ],
+            ),
+          );
+        }
+        
+        return Column(
+          children: [
+            GxFuturisticDropdown<String>(
+              value: currentModel.isEmpty ? null : (models.contains(currentModel) ? currentModel : null),
+              items: [
+                const DropdownMenuItem<String>(
+                  value: '',
+                  child: Text('Auto-sélection (recommandé)'),
+                ),
+                ...models.map((model) {
+                  return DropdownMenuItem<String>(
+                    value: model,
+                    child: Text(model),
+                  );
+                }),
+              ],
+              onChanged: (value) {
+                _settings.setAiPreferredModel(value ?? '');
+              },
+              accentColor: widget.gxRed,
+              hint: 'Auto-sélection (recommandé)',
+            ),
+            if (models.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(
+                'Modèles disponibles (${models.length}):',
+                style: NotilusFonts.rajdhani(
+                  fontSize: 10,
+                  color: Colors.white.withOpacity(0.6),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: models.map((model) {
+                  final shortName = model.split('-').take(2).join('-');
+                  final isSelected = currentModel == model;
+                  return ChoiceChip(
+                    label: Text(shortName, style: const TextStyle(fontSize: 10)),
+                    selected: isSelected,
+                    onSelected: (_) {
+                      _settings.setAiPreferredModel(isSelected ? '' : model);
+                    },
+                    selectedColor: widget.gxRed.withOpacity(0.2),
+                    backgroundColor: Colors.white.withOpacity(0.05),
+                    side: BorderSide(
+                      color: isSelected ? widget.gxRed : Colors.white24,
+                    ),
+                    labelStyle: TextStyle(
+                      color: isSelected ? widget.gxRed : Colors.white70,
+                      fontSize: 10,
+                    ),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: VisualDensity.compact,
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerRight,
+                child: GxFuturisticButton(
+                  label: 'Actualiser la liste',
+                  icon: CupertinoIcons.arrow_clockwise,
+                  variant: GxFuturisticButtonVariant.secondary,
+                  accentColor: widget.gxRed,
+                  onPressed: _loadModels,
+                ),
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _TtsTestButton extends StatelessWidget {
+  final TtsService ttsService;
+  final String voice;
+  final Color gxRed;
+  final String? provider;
+  final String? gcpApiKey;
+  final String? gcpProjectId;
+  final String? gcpLocation;
+  
+  const _TtsTestButton({
+    required this.ttsService,
+    required this.voice,
+    required this.gxRed,
+    this.provider,
+    this.gcpApiKey,
+    this.gcpProjectId,
+    this.gcpLocation,
+  });
+  
+  @override
+  Widget build(BuildContext context) {
+    return _TtsTestButtonStateful(
+      ttsService: ttsService,
+      voice: voice,
+      gxRed: gxRed,
+      provider: provider,
+      gcpApiKey: gcpApiKey,
+      gcpProjectId: gcpProjectId,
+      gcpLocation: gcpLocation,
+    );
+  }
+}
+
+class _TtsTestButtonStateful extends StatefulWidget {
+  final TtsService ttsService;
+  final String voice;
+  final Color gxRed;
+  final String? provider;
+  final String? gcpApiKey;
+  final String? gcpProjectId;
+  final String? gcpLocation;
+  
+  const _TtsTestButtonStateful({
+    required this.ttsService,
+    required this.voice,
+    required this.gxRed,
+    this.provider,
+    this.gcpApiKey,
+    this.gcpProjectId,
+    this.gcpLocation,
+  });
+  
+  @override
+  State<_TtsTestButtonStateful> createState() => _TtsTestButtonStatefulState();
+}
+
+class _TtsTestButtonStatefulState extends State<_TtsTestButtonStateful> {
+  bool _isPlaying = false;
+  AudioPlayer? _player;
+  bool _playerInitialized = false;
+  
+  @override
+  void initState() {
+    super.initState();
+    _initializePlayer();
+  }
+  
+  Future<void> _initializePlayer() async {
+    try {
+      _player = AudioPlayer();
+      _playerInitialized = true;
+    } catch (e) {
+      debugPrint('Erreur lors de l\'initialisation du lecteur audio: $e');
+      _playerInitialized = false;
+      if (mounted) {
+        GxNotificationService().showError(
+          title: 'Plugin audio non disponible',
+          message: 'Le plugin de lecture audio n\'est pas correctement initialisé. Veuillez redémarrer l\'application après avoir exécuté "flutter pub get".',
+          context: context,
+        );
+      }
+    }
+  }
+  
+  @override
+  void dispose() {
+    _player?.dispose();
+    super.dispose();
+  }
+  
+  Future<void> _testVoice() async {
+    if (!_playerInitialized || _player == null) {
+      GxNotificationService().showError(
+        title: 'Plugin audio non disponible',
+        message: 'Le plugin de lecture audio n\'est pas initialisé. Veuillez redémarrer l\'application.',
+        context: context,
+      );
+      return;
+    }
+    
+    setState(() => _isPlaying = true);
+    final testText = 'Bonjour, ceci est un test de synthèse vocale.';
+    
+    try {
+      final audioData = await widget.ttsService.generateTts(
+        text: testText,
+        voice: widget.voice,
+        provider: widget.provider,
+        gcpApiKey: widget.gcpApiKey,
+        gcpProjectId: widget.gcpProjectId,
+        gcpLocation: widget.gcpLocation,
+      );
+      
+      if (audioData != null && mounted && _player != null) {
+        final tempDir = await getTemporaryDirectory();
+        final fileName = 'tts_test_${DateTime.now().millisecondsSinceEpoch}.mp3';
+        final file = File('${tempDir.path}/$fileName');
+        await file.writeAsBytes(audioData);
+        
+        final filePath = file.absolute.path.replaceAll('\\', '/');
+        final fileUrl = Platform.isWindows 
+            ? 'file:///$filePath' 
+            : 'file://$filePath';
+        
+        try {
+          await _player!.setSource(UrlSource(fileUrl));
+          await _player!.resume();
+          
+          _player!.onPlayerComplete.listen((_) {
+            if (mounted) {
+              setState(() => _isPlaying = false);
+            }
+            file.delete();
+          });
+          
+          if (mounted) {
+            GxNotificationService().showInfo(
+              title: 'Lecture en cours',
+              message: 'Lecture de l\'audio en cours...',
+              context: context,
+            );
+          }
+        } catch (e) {
+          if (mounted) {
+            setState(() => _isPlaying = false);
+            GxNotificationService().showError(
+              title: 'Erreur de lecture',
+              message: 'Impossible de lire l\'audio. Le plugin audioplayers n\'est peut-être pas correctement installé. Essayez de redémarrer l\'application après avoir exécuté "flutter pub get".',
+              context: context,
+            );
+          }
+          file.delete();
+        }
+      } else if (mounted) {
+        setState(() => _isPlaying = false);
+        GxNotificationService().showError(
+          title: 'Erreur',
+          message: widget.ttsService.lastError ?? 'Impossible de générer l\'audio',
+          context: context,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isPlaying = false);
+        GxNotificationService().showError(
+          title: 'Erreur',
+          message: 'Erreur lors de la lecture: $e',
+          context: context,
+        );
+      }
+    }
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    return GxFuturisticButton(
+      label: _isPlaying ? 'Lecture...' : 'Tester la voix actuelle',
+      icon: _isPlaying ? CupertinoIcons.stop_circle : CupertinoIcons.play_circle,
+      accentColor: widget.gxRed,
+      onPressed: _isPlaying ? null : _testVoice,
     );
   }
 }

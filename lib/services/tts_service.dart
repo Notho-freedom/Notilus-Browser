@@ -204,15 +204,30 @@ class TtsService extends ChangeNotifier {
   Future<Uint8List?> generateTts({
     required String text,
     required String voice,
+    String? provider,
+    String? gcpApiKey,
+    String? gcpProjectId,
+    String? gcpLocation,
   }) async {
     try {
+      final body = <String, dynamic>{
+        'text': text,
+        'voice': voice,
+      };
+      
+      if (provider != null) {
+        body['provider'] = provider;
+        if (provider == 'gcp') {
+          if (gcpApiKey != null) body['gcp_api_key'] = gcpApiKey;
+          if (gcpProjectId != null) body['gcp_project_id'] = gcpProjectId;
+          if (gcpLocation != null) body['gcp_location'] = gcpLocation;
+        }
+      }
+      
       final response = await http.post(
         Uri.parse('$_baseUrl/api/tts/generate'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'text': text,
-          'voice': voice,
-        }),
+        body: jsonEncode(body),
       ).timeout(const Duration(seconds: 30));
       
       if (response.statusCode == 200) {
@@ -224,6 +239,49 @@ class TtsService extends ChangeNotifier {
       _lastError = e.toString();
       return null;
     }
+  }
+  
+  /// Récupère la liste des voix Google Cloud TTS
+  Future<List<Map<String, dynamic>>> getGcpVoices({
+    required String apiKey,
+    required String projectId,
+    String location = 'global',
+    bool forceRefresh = false,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+    
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/tts/gcp/voices'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'api_key': apiKey,
+          'project_id': projectId,
+          'location': location,
+          'force_refresh': forceRefresh,
+        }),
+      ).timeout(const Duration(seconds: 10));
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final voices = List<Map<String, dynamic>>.from(data['voices'] ?? []);
+        _lastError = null;
+        _isConnected = true;
+        _isLoading = false;
+        notifyListeners();
+        return voices;
+      } else {
+        _lastError = 'Erreur ${response.statusCode}';
+      }
+    } catch (e) {
+      _lastError = e.toString();
+      _isConnected = false;
+    }
+    
+    _isLoading = false;
+    notifyListeners();
+    return [];
   }
   
   /// Génère un TTS avec détection automatique

@@ -10,7 +10,6 @@ import '../../services/tab_manager.dart';
 import '../../services/favicon_service.dart';
 import '../../core/animations/notilus_animations.dart';
 import 'address_suggestions.dart';
-import '../common/gx_futuristic_components.dart';
 
 /// Suggestions d'autocomplétion dans le style Notilus GX futuriste
 /// Utilise les standards définis dans gx_test_panel

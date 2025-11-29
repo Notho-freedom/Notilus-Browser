@@ -17,3 +17,4 @@ aiofiles==23.2.1
 # TTS Service Dependencies
 edge-tts>=6.1.0
 langdetect>=1.0.9
+google-cloud-texttospeech>=2.16.0

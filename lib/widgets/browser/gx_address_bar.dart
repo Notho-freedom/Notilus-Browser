@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 import 'dart:ui';
 import 'package:provider/provider.dart';
 import '../../core/services/color_theme_manager.dart';
-import '../../core/constants/app_constants.dart';
 import '../../services/tab_manager.dart';
 import '../../services/tab_webview_manager.dart';
 import '../../core/utils/url_validator.dart';

@@ -93,6 +93,11 @@ class SettingsService extends ChangeNotifier {
   static const String _keyTtsVolume = 'notilus_tts_volume'; // 0.0 - 1.0
   static const String _keyTtsSpeed = 'notilus_tts_speed'; // 0.5 - 2.0
   static const String _keyTtsPitch = 'notilus_tts_pitch'; // 0.5 - 2.0
+  static const String _keyTtsProvider = 'notilus_tts_provider'; // 'edge' ou 'gcp'
+  static const String _keyGcpTtsEnabled = 'notilus_gcp_tts_enabled';
+  static const String _keyGcpTtsApiKey = 'notilus_gcp_tts_api_key';
+  static const String _keyGcpTtsProjectId = 'notilus_gcp_tts_project_id';
+  static const String _keyGcpTtsLocation = 'notilus_gcp_tts_location'; // 'global', 'us-central1', etc.
   
   // DevTools
   static const String _keyDevToolsPosition = 'notilus_devtools_position'; // 'bottom', 'right', 'detached'
@@ -620,6 +625,36 @@ class SettingsService extends ChangeNotifier {
   double get ttsPitch => _prefs?.getDouble(_keyTtsPitch) ?? 1.0;
   Future<void> setTtsPitch(double pitch) async {
     await _prefs?.setDouble(_keyTtsPitch, pitch.clamp(0.5, 2.0));
+    notifyListeners();
+  }
+  
+  String get ttsProvider => _prefs?.getString(_keyTtsProvider) ?? 'edge';
+  Future<void> setTtsProvider(String provider) async {
+    await _prefs?.setString(_keyTtsProvider, provider);
+    notifyListeners();
+  }
+  
+  bool get gcpTtsEnabled => _prefs?.getBool(_keyGcpTtsEnabled) ?? false;
+  Future<void> setGcpTtsEnabled(bool enabled) async {
+    await _prefs?.setBool(_keyGcpTtsEnabled, enabled);
+    notifyListeners();
+  }
+  
+  String get gcpTtsApiKey => _prefs?.getString(_keyGcpTtsApiKey) ?? '';
+  Future<void> setGcpTtsApiKey(String apiKey) async {
+    await _prefs?.setString(_keyGcpTtsApiKey, apiKey);
+    notifyListeners();
+  }
+  
+  String get gcpTtsProjectId => _prefs?.getString(_keyGcpTtsProjectId) ?? '';
+  Future<void> setGcpTtsProjectId(String projectId) async {
+    await _prefs?.setString(_keyGcpTtsProjectId, projectId);
+    notifyListeners();
+  }
+  
+  String get gcpTtsLocation => _prefs?.getString(_keyGcpTtsLocation) ?? 'global';
+  Future<void> setGcpTtsLocation(String location) async {
+    await _prefs?.setString(_keyGcpTtsLocation, location);
     notifyListeners();
   }
 
