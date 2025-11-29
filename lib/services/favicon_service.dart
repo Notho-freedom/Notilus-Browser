@@ -6,6 +6,10 @@ import '../core/utils/url_validator.dart';
 class FaviconService {
   static const String _defaultFaviconPath = 'assets/icons/default_favicon.png';
   
+  // Cache en mémoire pour éviter de recharger les favicons
+  static final Map<String, String?> _faviconCache = {};
+  static final Map<String, Future<String?>> _loadingFutures = {};
+  
   /// Récupère le favicon d'une URL
   /// Essaie plusieurs méthodes : Google Favicon Service, favicon.ico, ou meta tags
   static Future<String?> getFaviconUrl(String url) async {
@@ -69,9 +73,35 @@ class FaviconService {
 
   /// Récupère le favicon avec cache
   static Future<String?> getFaviconWithCache(String url) async {
-    // TODO: Vérifier le cache local d'abord
-    // Si pas dans le cache, récupérer et mettre en cache
-    return await getFaviconUrl(url);
+    // Vérifier le cache en mémoire d'abord
+    if (_faviconCache.containsKey(url)) {
+      return _faviconCache[url];
+    }
+    
+    // Si déjà en cours de chargement, retourner le même Future
+    if (_loadingFutures.containsKey(url)) {
+      return _loadingFutures[url];
+    }
+    
+    // Lancer le chargement et le mettre en cache
+    final future = getFaviconUrl(url).then((faviconUrl) {
+      _faviconCache[url] = faviconUrl;
+      _loadingFutures.remove(url);
+      return faviconUrl;
+    }).catchError((error) {
+      _loadingFutures.remove(url);
+      _faviconCache[url] = null; // Mettre null en cache pour éviter de réessayer
+      return null;
+    });
+    
+    _loadingFutures[url] = future;
+    return future;
+  }
+  
+  /// Vide le cache (utile pour forcer le rechargement)
+  static void clearCache() {
+    _faviconCache.clear();
+    _loadingFutures.clear();
   }
 }
 
