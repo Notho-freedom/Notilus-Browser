@@ -45,22 +45,32 @@ class WallpaperManager extends ChangeNotifier {
     cloudinaryWallpapers.addAll(selectedBackgrounds);
     cloudinaryWallpapers.addAll(selectedVideos);
     
+    final previousWallpapers = List<String>.from(_wallpapers);
+    
     if (cloudinaryWallpapers.isNotEmpty) {
       // Utiliser uniquement les wallpapers Cloudinary si disponibles
       _wallpapers.clear();
       _wallpapers.addAll(cloudinaryWallpapers);
       _wallpapers.addAll(NotilusWallpapers.all); // Ajouter les par défaut aussi
-      
-      // Mettre à jour le wallpaper actuel si nécessaire
-      if (!_wallpapers.contains(_current) && _wallpapers.isNotEmpty) {
-        _current = _pickRandom();
-        _preloadImage(_current);
-        notifyListeners();
-      }
     } else {
       // Utiliser uniquement les wallpapers par défaut
       _wallpapers.clear();
       _wallpapers.addAll(NotilusWallpapers.all);
+    }
+    
+    // Vérifier si les wallpapers ont changé
+    final hasChanged = _wallpapers.length != previousWallpapers.length ||
+        !_wallpapers.every((w) => previousWallpapers.contains(w));
+    
+    // Mettre à jour le wallpaper actuel si nécessaire
+    if (!_wallpapers.contains(_current) && _wallpapers.isNotEmpty) {
+      _current = _pickRandom();
+      _preloadImage(_current);
+      notifyListeners();
+    } else if (hasChanged) {
+      // Notifier même si le wallpaper actuel est toujours valide
+      // pour que l'UI se mette à jour avec les nouveaux wallpapers disponibles
+      notifyListeners();
     }
   }
   

@@ -139,7 +139,7 @@ class _CloudinaryMediaManagerState extends State<CloudinaryMediaManager> {
     }
   }
 
-  void _toggleSelection(String url) {
+  Future<void> _toggleSelection(String url) async {
     setState(() {
       if (_selectedUrls.contains(url)) {
         _selectedUrls.remove(url);
@@ -150,8 +150,9 @@ class _CloudinaryMediaManagerState extends State<CloudinaryMediaManager> {
           _selectedUrls = [url];
         }
       }
-      _saveSelection();
     });
+    // Sauvegarder après la mise à jour de l'état
+    await _saveSelection();
   }
 
   Future<void> _showPreview(CloudinaryMedia media) async {
@@ -184,9 +185,9 @@ class _CloudinaryMediaManagerState extends State<CloudinaryMediaManager> {
           label: isSelected ? 'Désélectionner' : 'Appliquer',
           icon: isSelected ? CupertinoIcons.xmark_circle : CupertinoIcons.checkmark,
           variant: GxFuturisticButtonVariant.primary,
-          onPressed: () {
+          onPressed: () async {
             Navigator.of(context).pop();
-            _toggleSelection(media.secureUrl);
+            await _toggleSelection(media.secureUrl);
             GxNotificationService().showSuccess(
               title: isSelected ? 'Média désélectionné' : 'Média appliqué',
               message: isSelected 
@@ -856,7 +857,9 @@ class _MediaPreviewState extends State<_MediaPreview> {
                 ? _buildImagePreview()
                 : widget.resourceType == CloudinaryResourceType.video
                     ? _buildVideoPreview()
-                    : _buildAudioPreview(),
+                    : SingleChildScrollView(
+                        child: _buildAudioPreview(),
+                      ),
           ),
         ],
       ),
@@ -1028,17 +1031,17 @@ class _MediaPreviewState extends State<_MediaPreview> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: widget.gxRed.withOpacity(0.3)),
       ),
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(16),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
             CupertinoIcons.music_note,
-            size: 64,
+            size: 48,
             color: widget.gxRed,
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
           
           // Contrôles audio
           Row(
@@ -1046,16 +1049,18 @@ class _MediaPreviewState extends State<_MediaPreview> {
             children: [
               IconButton(
                 onPressed: _togglePlayPause,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
                 icon: Icon(
                   _isPlaying ? CupertinoIcons.pause_circle_fill : CupertinoIcons.play_circle_fill,
-                  size: 48,
+                  size: 40,
                   color: widget.gxRed,
                 ),
               ),
             ],
           ),
           
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           
           // Barre de progression
           if (_duration != Duration.zero) ...[
@@ -1069,27 +1074,30 @@ class _MediaPreviewState extends State<_MediaPreview> {
                 _audioPlayer?.seek(Duration(seconds: value.toInt()));
               },
             ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  _formatDuration(_position),
-                  style: NotilusFonts.rajdhani(
-                    fontSize: 12,
-                    color: Colors.white.withOpacity(0.8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    _formatDuration(_position),
+                    style: NotilusFonts.rajdhani(
+                      fontSize: 11,
+                      color: Colors.white.withOpacity(0.8),
+                    ),
                   ),
-                ),
-                Text(
-                  _formatDuration(_duration),
-                  style: NotilusFonts.rajdhani(
-                    fontSize: 12,
-                    color: Colors.white.withOpacity(0.8),
+                  Text(
+                    _formatDuration(_duration),
+                    style: NotilusFonts.rajdhani(
+                      fontSize: 11,
+                      color: Colors.white.withOpacity(0.8),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ],
+          ] else
+            const SizedBox(height: 8),
         ],
       ),
     );
