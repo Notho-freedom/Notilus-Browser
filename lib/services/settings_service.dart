@@ -79,13 +79,20 @@ class SettingsService extends ChangeNotifier {
   static const String _keyAiContextual = 'notilus_ai_contextual';
   static const String _keyAiSummary = 'notilus_ai_summary';
   static const String _keyAiProtection = 'notilus_ai_protection';
-<<<<<<< HEAD
-=======
   static const String _keyGroqApiKey = 'notilus_groq_api_key';
   static const String _keyAiAutoSwitch = 'notilus_ai_auto_switch';
   static const String _keyAiPreferredModel = 'notilus_ai_preferred_model';
   static const String _keyAiSlidingMemory = 'notilus_ai_sliding_memory';
->>>>>>> origin/ai-tts
+  
+  // TTS
+  static const String _keyTtsEnabled = 'notilus_tts_enabled';
+  static const String _keyTtsDefaultVoice = 'notilus_tts_default_voice';
+  static const String _keyTtsAutoDetectLanguage = 'notilus_tts_auto_detect_language';
+  static const String _keyTtsPreferredGender = 'notilus_tts_preferred_gender'; // 'Male' ou 'Female'
+  static const String _keyTtsBackendUrl = 'notilus_tts_backend_url';
+  static const String _keyTtsVolume = 'notilus_tts_volume'; // 0.0 - 1.0
+  static const String _keyTtsSpeed = 'notilus_tts_speed'; // 0.5 - 2.0
+  static const String _keyTtsPitch = 'notilus_tts_pitch'; // 0.5 - 2.0
   
   // DevTools
   static const String _keyDevToolsPosition = 'notilus_devtools_position'; // 'bottom', 'right', 'detached'
@@ -110,19 +117,6 @@ class SettingsService extends ChangeNotifier {
   static const String _keyNotificationDuration = 'notilus_notification_duration'; // en secondes
   static const String _keyNotificationMaxVisible = 'notilus_notification_max_visible';
   
-<<<<<<< HEAD
-=======
-  // TTS (Text-to-Speech)
-  static const String _keyTtsEnabled = 'notilus_tts_enabled';
-  static const String _keyTtsDefaultVoice = 'notilus_tts_default_voice';
-  static const String _keyTtsAutoDetectLanguage = 'notilus_tts_auto_detect_language';
-  static const String _keyTtsPreferredGender = 'notilus_tts_preferred_gender'; // 'Male' ou 'Female'
-  static const String _keyTtsBackendUrl = 'notilus_tts_backend_url';
-  static const String _keyTtsVolume = 'notilus_tts_volume'; // 0.0 - 1.0
-  static const String _keyTtsSpeed = 'notilus_tts_speed'; // 0.5 - 2.0
-  static const String _keyTtsPitch = 'notilus_tts_pitch'; // 0.5 - 2.0
-  
->>>>>>> origin/ai-tts
   // ============================================
   // INITIALISATION
   // ============================================
@@ -533,8 +527,6 @@ class SettingsService extends ChangeNotifier {
     await _prefs?.setBool(_keyAiProtection, value);
     notifyListeners();
   }
-<<<<<<< HEAD
-=======
   
   String get groqApiKey => _prefs?.getString(_keyGroqApiKey) ?? '';
   
@@ -578,7 +570,58 @@ class SettingsService extends ChangeNotifier {
     await _prefs?.remove(_keyAiSlidingMemory);
     notifyListeners();
   }
->>>>>>> origin/ai-tts
+
+  // ============================================
+  // TTS
+  // ============================================
+  
+  bool get ttsEnabled => _prefs?.getBool(_keyTtsEnabled) ?? false;
+  Future<void> setTtsEnabled(bool enabled) async {
+    await _prefs?.setBool(_keyTtsEnabled, enabled);
+    notifyListeners();
+  }
+  
+  String get ttsDefaultVoice => _prefs?.getString(_keyTtsDefaultVoice) ?? 'fr-FR-DeniseNeural';
+  Future<void> setTtsDefaultVoice(String voice) async {
+    await _prefs?.setString(_keyTtsDefaultVoice, voice);
+    notifyListeners();
+  }
+  
+  bool get ttsAutoDetectLanguage => _prefs?.getBool(_keyTtsAutoDetectLanguage) ?? true;
+  Future<void> setTtsAutoDetectLanguage(bool enabled) async {
+    await _prefs?.setBool(_keyTtsAutoDetectLanguage, enabled);
+    notifyListeners();
+  }
+  
+  String get ttsPreferredGender => _prefs?.getString(_keyTtsPreferredGender) ?? 'Female';
+  Future<void> setTtsPreferredGender(String gender) async {
+    await _prefs?.setString(_keyTtsPreferredGender, gender);
+    notifyListeners();
+  }
+  
+  String get ttsBackendUrl => _prefs?.getString(_keyTtsBackendUrl) ?? 'http://localhost:8000';
+  Future<void> setTtsBackendUrl(String url) async {
+    await _prefs?.setString(_keyTtsBackendUrl, url);
+    notifyListeners();
+  }
+  
+  double get ttsVolume => _prefs?.getDouble(_keyTtsVolume) ?? 1.0;
+  Future<void> setTtsVolume(double volume) async {
+    await _prefs?.setDouble(_keyTtsVolume, volume.clamp(0.0, 1.0));
+    notifyListeners();
+  }
+  
+  double get ttsSpeed => _prefs?.getDouble(_keyTtsSpeed) ?? 1.0;
+  Future<void> setTtsSpeed(double speed) async {
+    await _prefs?.setDouble(_keyTtsSpeed, speed.clamp(0.5, 2.0));
+    notifyListeners();
+  }
+  
+  double get ttsPitch => _prefs?.getDouble(_keyTtsPitch) ?? 1.0;
+  Future<void> setTtsPitch(double pitch) async {
+    await _prefs?.setDouble(_keyTtsPitch, pitch.clamp(0.5, 2.0));
+    notifyListeners();
+  }
 
   // ============================================
   // DEVTOOLS
@@ -726,64 +769,6 @@ class SettingsService extends ChangeNotifier {
     await _prefs?.setInt(_keyNotificationMaxVisible, count);
     notifyListeners();
   }
-<<<<<<< HEAD
-=======
-  
-  // ============================================
-  // TTS (Text-to-Speech)
-  // ============================================
-  
-  bool get ttsEnabled => _prefs?.getBool(_keyTtsEnabled) ?? false;
-  Future<void> setTtsEnabled(bool value) async {
-    await _prefs?.setBool(_keyTtsEnabled, value);
-    notifyListeners();
-  }
-  
-  String get ttsDefaultVoice => _prefs?.getString(_keyTtsDefaultVoice) ?? 'fr-FR-DeniseNeural';
-  Future<void> setTtsDefaultVoice(String voice) async {
-    await _prefs?.setString(_keyTtsDefaultVoice, voice);
-    notifyListeners();
-  }
-  
-  bool get ttsAutoDetectLanguage => _prefs?.getBool(_keyTtsAutoDetectLanguage) ?? true;
-  Future<void> setTtsAutoDetectLanguage(bool value) async {
-    await _prefs?.setBool(_keyTtsAutoDetectLanguage, value);
-    notifyListeners();
-  }
-  
-  String get ttsPreferredGender => _prefs?.getString(_keyTtsPreferredGender) ?? 'Female';
-  Future<void> setTtsPreferredGender(String gender) async {
-    await _prefs?.setString(_keyTtsPreferredGender, gender);
-    notifyListeners();
-  }
-  
-  String get ttsBackendUrl => _prefs?.getString(_keyTtsBackendUrl) ?? 'http://localhost:8000';
-  Future<void> setTtsBackendUrl(String url) async {
-    await _prefs?.setString(_keyTtsBackendUrl, url);
-    notifyListeners();
-  }
-  
-  double get ttsVolume => _prefs?.getDouble(_keyTtsVolume) ?? 1.0;
-  Future<void> setTtsVolume(double volume) async {
-    final clampedVolume = volume.clamp(0.0, 1.0);
-    await _prefs?.setDouble(_keyTtsVolume, clampedVolume);
-    notifyListeners();
-  }
-  
-  double get ttsSpeed => _prefs?.getDouble(_keyTtsSpeed) ?? 1.0;
-  Future<void> setTtsSpeed(double speed) async {
-    final clampedSpeed = speed.clamp(0.5, 2.0);
-    await _prefs?.setDouble(_keyTtsSpeed, clampedSpeed);
-    notifyListeners();
-  }
-  
-  double get ttsPitch => _prefs?.getDouble(_keyTtsPitch) ?? 1.0;
-  Future<void> setTtsPitch(double pitch) async {
-    final clampedPitch = pitch.clamp(0.5, 2.0);
-    await _prefs?.setDouble(_keyTtsPitch, clampedPitch);
-    notifyListeners();
-  }
->>>>>>> origin/ai-tts
 
   // ============================================
   // UTILITAIRES

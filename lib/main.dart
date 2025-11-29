@@ -197,15 +197,9 @@ class NotilusApp extends StatelessWidget {
           return TabGroupService(tabManager);
         }),
         ChangeNotifierProvider(create: (_) => DevToolsService()),
-<<<<<<< HEAD
-        // Services lourds avec lazy loading
-        ChangeNotifierProvider(create: (_) => ServiceFactory.getStudioService()),
-        ChangeNotifierProvider(create: (_) => ServiceFactory.getLighthouseService()),
-=======
         ChangeNotifierProvider(create: (_) => StudioService()),
         ChangeNotifierProvider(create: (_) => LighthouseService()),
         ChangeNotifierProvider(create: (_) => AdBlockerService()),
->>>>>>> origin/ai-tts
         ChangeNotifierProvider.value(value: mosaicService),
             ChangeNotifierProvider(
               create: (context) {
@@ -213,17 +207,11 @@ class NotilusApp extends StatelessWidget {
                 final downloadService = context.read<DownloadService>();
                 final studioService = context.read<StudioService>();
                 final lighthouseService = context.read<LighthouseService>();
-<<<<<<< HEAD
-                tabWebViewManager.setDownloadService(downloadService);
-                tabWebViewManager.setStudioService(studioService);
-                tabWebViewManager.setLighthouseService(lighthouseService);
-=======
                 final adBlockerService = context.read<AdBlockerService>();
                 tabWebViewManager.setDownloadService(downloadService);
                 tabWebViewManager.setStudioService(studioService);
                 tabWebViewManager.setLighthouseService(lighthouseService);
                 tabWebViewManager.setAdBlockerService(adBlockerService);
->>>>>>> origin/ai-tts
                 return tabWebViewManager;
               },
             ),
