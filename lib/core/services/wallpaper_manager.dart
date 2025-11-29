@@ -8,7 +8,7 @@ import '../../services/settings_service.dart';
 /// Gestionnaire global du fond d'écran (même wallpaper pour toutes les vues,
 /// avec rotation automatique dans le temps et cache).
 class WallpaperManager extends ChangeNotifier {
-  final List<String> _wallpapers = NotilusWallpapers.all;
+  final List<String> _wallpapers = [];
   final Random _random = Random();
   final Map<String, CachedNetworkImageProvider> _imageCache = {};
   final SettingsService _settings = SettingsService();
@@ -18,16 +18,50 @@ class WallpaperManager extends ChangeNotifier {
   Timer? _timer;
 
   WallpaperManager() {
+    // Initialiser avec les wallpapers par défaut
+    _wallpapers.addAll(NotilusWallpapers.all);
     _current = _pickRandom();
     _preloadImage(_current);
     _setupRotationTimer();
     
     // Écouter les changements de paramètres
     _settings.addListener(_onSettingsChanged);
+    
+    // Charger les wallpapers depuis Cloudinary si disponibles
+    _loadCloudinaryWallpapers();
   }
   
   void _onSettingsChanged() {
     _setupRotationTimer();
+    _loadCloudinaryWallpapers();
+  }
+  
+  void _loadCloudinaryWallpapers() {
+    final selectedBackgrounds = _settings.selectedBackgrounds;
+    final selectedVideos = _settings.selectedVideos;
+    
+    // Combiner les wallpapers par défaut avec ceux de Cloudinary
+    final cloudinaryWallpapers = <String>[];
+    cloudinaryWallpapers.addAll(selectedBackgrounds);
+    cloudinaryWallpapers.addAll(selectedVideos);
+    
+    if (cloudinaryWallpapers.isNotEmpty) {
+      // Utiliser uniquement les wallpapers Cloudinary si disponibles
+      _wallpapers.clear();
+      _wallpapers.addAll(cloudinaryWallpapers);
+      _wallpapers.addAll(NotilusWallpapers.all); // Ajouter les par défaut aussi
+      
+      // Mettre à jour le wallpaper actuel si nécessaire
+      if (!_wallpapers.contains(_current) && _wallpapers.isNotEmpty) {
+        _current = _pickRandom();
+        _preloadImage(_current);
+        notifyListeners();
+      }
+    } else {
+      // Utiliser uniquement les wallpapers par défaut
+      _wallpapers.clear();
+      _wallpapers.addAll(NotilusWallpapers.all);
+    }
   }
   
   void _setupRotationTimer() {

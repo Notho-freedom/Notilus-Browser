@@ -23,6 +23,8 @@ import '../../core/constants/notilus_fonts.dart';
 import '../../services/gx_notification_service.dart';
 import '../../services/tts_service.dart';
 import '../../services/ai_service.dart';
+import '../../services/cloudinary_service.dart';
+import 'cloudinary_media_manager.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
@@ -45,6 +47,11 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
   String _currentSection = 'appearance';
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  
+  // Controllers pour Cloudinary
+  late final TextEditingController _cloudinaryCloudNameController;
+  late final TextEditingController _cloudinaryApiKeyController;
+  late final TextEditingController _cloudinaryApiSecretController;
   
   // Cache pour optimiser les performances
   Timer? _searchDebounceTimer;
@@ -80,6 +87,22 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
     _settings.initialize();
     _searchController.addListener(_onSearchChanged);
     _buildSettingsIndex();
+    
+    // Initialiser les controllers Cloudinary
+    _cloudinaryCloudNameController = TextEditingController(text: _settings.cloudinaryCloudName ?? '');
+    _cloudinaryApiKeyController = TextEditingController(text: _settings.cloudinaryApiKey ?? '');
+    _cloudinaryApiSecretController = TextEditingController(text: _settings.cloudinaryApiSecret ?? '');
+    
+    // Écouter les changements
+    _cloudinaryCloudNameController.addListener(() {
+      _settings.setCloudinaryCloudName(_cloudinaryCloudNameController.text.isEmpty ? null : _cloudinaryCloudNameController.text);
+    });
+    _cloudinaryApiKeyController.addListener(() {
+      _settings.setCloudinaryApiKey(_cloudinaryApiKeyController.text.isEmpty ? null : _cloudinaryApiKeyController.text);
+    });
+    _cloudinaryApiSecretController.addListener(() {
+      _settings.setCloudinaryApiSecret(_cloudinaryApiSecretController.text.isEmpty ? null : _cloudinaryApiSecretController.text);
+    });
   }
   
   void _buildSettingsIndex() {
@@ -979,6 +1002,10 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
             SizedBox(height: spacing),
             _buildIntervalSelector(gxRed),
             SizedBox(height: spacing * 2),
+            _buildSubsectionTitle('Cloudinary - Médias personnalisés', gxRed, isCompact: isCompact, isMedium: isMedium),
+            SizedBox(height: spacing),
+            _buildCloudinaryConfig(context, gxRed, isCompact, isMedium, spacing),
+            SizedBox(height: spacing * 2),
             _buildSubsectionTitle('Aperçu', gxRed, isCompact: isCompact, isMedium: isMedium),
             SizedBox(height: spacing),
             Consumer<WallpaperManager>(
@@ -1015,6 +1042,60 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
           ],
         );
       },
+    );
+  }
+
+  Widget _buildCloudinaryConfig(BuildContext context, Color gxRed, bool isCompact, bool isMedium, double spacing) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Configuration Cloudinary
+        _buildSubsectionTitle('Configuration Cloudinary', gxRed, isCompact: isCompact, isMedium: isMedium),
+        SizedBox(height: spacing),
+        GxFuturisticInput(
+          label: 'Cloud Name',
+          controller: _cloudinaryCloudNameController,
+          hint: 'votre-cloud-name',
+        ),
+        SizedBox(height: spacing),
+        GxFuturisticInput(
+          label: 'API Key',
+          controller: _cloudinaryApiKeyController,
+          hint: 'Votre clé API',
+          obscureText: true,
+        ),
+        SizedBox(height: spacing),
+        GxFuturisticInput(
+          label: 'API Secret',
+          controller: _cloudinaryApiSecretController,
+          hint: 'Votre secret API',
+          obscureText: true,
+        ),
+        SizedBox(height: spacing * 2),
+        
+        // Gestion des backgrounds
+        CloudinaryMediaManager(
+          resourceType: CloudinaryResourceType.image,
+          title: 'Images de fond',
+          allowMultiple: true,
+        ),
+        SizedBox(height: spacing * 2),
+        
+        // Gestion des vidéos
+        CloudinaryMediaManager(
+          resourceType: CloudinaryResourceType.video,
+          title: 'Vidéos de fond',
+          allowMultiple: true,
+        ),
+        SizedBox(height: spacing * 2),
+        
+        // Gestion de la musique
+        CloudinaryMediaManager(
+          resourceType: CloudinaryResourceType.raw,
+          title: 'Musique de fond',
+          allowMultiple: false,
+        ),
+      ],
     );
   }
 

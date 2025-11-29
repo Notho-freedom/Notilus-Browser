@@ -24,6 +24,7 @@ import 'services/studio/studio_service.dart';
 import 'services/lighthouse/lighthouse_service.dart';
 import 'services/documentation_service.dart';
 import 'services/adblocker_service.dart';
+import 'services/cloudinary_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'services/auth/firebase_auth_service.dart';
@@ -200,6 +201,7 @@ class NotilusApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => StudioService()),
         ChangeNotifierProvider(create: (_) => LighthouseService()),
         ChangeNotifierProvider(create: (_) => AdBlockerService()),
+        ChangeNotifierProvider.value(value: CloudinaryService()),
         ChangeNotifierProvider.value(value: mosaicService),
             ChangeNotifierProvider(
               create: (context) {

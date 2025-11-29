@@ -99,6 +99,14 @@ class SettingsService extends ChangeNotifier {
   static const String _keyGcpTtsProjectId = 'notilus_gcp_tts_project_id';
   static const String _keyGcpTtsLocation = 'notilus_gcp_tts_location'; // 'global', 'us-central1', etc.
   
+  // Cloudinary
+  static const String _keyCloudinaryCloudName = 'notilus_cloudinary_cloud_name';
+  static const String _keyCloudinaryApiKey = 'notilus_cloudinary_api_key';
+  static const String _keyCloudinaryApiSecret = 'notilus_cloudinary_api_secret';
+  static const String _keySelectedBackgrounds = 'notilus_selected_backgrounds'; // Liste des URLs sélectionnées
+  static const String _keySelectedVideos = 'notilus_selected_videos'; // Liste des URLs sélectionnées
+  static const String _keySelectedMusic = 'notilus_selected_music'; // URL de la musique sélectionnée
+  
   // DevTools
   static const String _keyDevToolsPosition = 'notilus_devtools_position'; // 'bottom', 'right', 'detached'
   static const String _keyDevToolsHeight = 'notilus_devtools_height';
@@ -802,6 +810,82 @@ class SettingsService extends ChangeNotifier {
   int get notificationMaxVisible => _prefs?.getInt(_keyNotificationMaxVisible) ?? 5;
   Future<void> setNotificationMaxVisible(int count) async {
     await _prefs?.setInt(_keyNotificationMaxVisible, count);
+    notifyListeners();
+  }
+
+  // ============================================
+  // CLOUDINARY
+  // ============================================
+  
+  String? get cloudinaryCloudName => _prefs?.getString(_keyCloudinaryCloudName);
+  Future<void> setCloudinaryCloudName(String? value) async {
+    if (value == null || value.isEmpty) {
+      await _prefs?.remove(_keyCloudinaryCloudName);
+    } else {
+      await _prefs?.setString(_keyCloudinaryCloudName, value);
+    }
+    notifyListeners();
+  }
+  
+  String? get cloudinaryApiKey => _prefs?.getString(_keyCloudinaryApiKey);
+  Future<void> setCloudinaryApiKey(String? value) async {
+    if (value == null || value.isEmpty) {
+      await _prefs?.remove(_keyCloudinaryApiKey);
+    } else {
+      await _prefs?.setString(_keyCloudinaryApiKey, value);
+    }
+    notifyListeners();
+  }
+  
+  String? get cloudinaryApiSecret => _prefs?.getString(_keyCloudinaryApiSecret);
+  Future<void> setCloudinaryApiSecret(String? value) async {
+    if (value == null || value.isEmpty) {
+      await _prefs?.remove(_keyCloudinaryApiSecret);
+    } else {
+      await _prefs?.setString(_keyCloudinaryApiSecret, value);
+    }
+    notifyListeners();
+  }
+  
+  List<String> get selectedBackgrounds {
+    final json = _prefs?.getString(_keySelectedBackgrounds);
+    if (json == null) return [];
+    try {
+      final List<dynamic> list = jsonDecode(json);
+      return list.cast<String>();
+    } catch (e) {
+      return [];
+    }
+  }
+  
+  Future<void> setSelectedBackgrounds(List<String> urls) async {
+    await _prefs?.setString(_keySelectedBackgrounds, jsonEncode(urls));
+    notifyListeners();
+  }
+  
+  List<String> get selectedVideos {
+    final json = _prefs?.getString(_keySelectedVideos);
+    if (json == null) return [];
+    try {
+      final List<dynamic> list = jsonDecode(json);
+      return list.cast<String>();
+    } catch (e) {
+      return [];
+    }
+  }
+  
+  Future<void> setSelectedVideos(List<String> urls) async {
+    await _prefs?.setString(_keySelectedVideos, jsonEncode(urls));
+    notifyListeners();
+  }
+  
+  String? get selectedMusic => _prefs?.getString(_keySelectedMusic);
+  Future<void> setSelectedMusic(String? url) async {
+    if (url == null || url.isEmpty) {
+      await _prefs?.remove(_keySelectedMusic);
+    } else {
+      await _prefs?.setString(_keySelectedMusic, url);
+    }
     notifyListeners();
   }
 
