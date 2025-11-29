@@ -75,12 +75,14 @@ class NotilusDevTools extends StatefulWidget {
   final BrowserEngine? engine;
   final VoidCallback? onClose;
   final double? initialHeight;
+  final VoidCallback? onDetach; // Callback pour détacher vers mini DevTools
 
   const NotilusDevTools({
     super.key,
     this.engine,
     this.onClose,
     this.initialHeight,
+    this.onDetach,
   });
 
   @override
@@ -589,7 +591,20 @@ class _NotilusDevToolsState extends State<NotilusDevTools>
           _ActionButton(icon: Icons.settings_outlined, tooltip: 'Paramètres DevTools', accentColor: accentColor, onPressed: () {
             _showDevToolsSettings(context, accentColor);
           }),
-          _ActionButton(icon: _isDocked ? Icons.open_in_new : Icons.dock, tooltip: _isDocked ? 'Détacher' : 'Docker', accentColor: accentColor, onPressed: () => setState(() => _isDocked = !_isDocked)),
+          _ActionButton(
+            icon: _isDocked ? Icons.open_in_new : Icons.dock,
+            tooltip: _isDocked ? 'Détacher' : 'Docker',
+            accentColor: accentColor,
+            onPressed: () {
+              if (_isDocked && widget.onDetach != null) {
+                // Si docked et callback disponible, ouvrir mini DevTools
+                widget.onDetach!();
+              } else {
+                // Sinon, toggle dock state
+                setState(() => _isDocked = !_isDocked);
+              }
+            },
+          ),
           _ActionButton(icon: Icons.close, tooltip: 'Fermer (Echap)', accentColor: accentColor, onPressed: widget.onClose),
 
           const SizedBox(width: 4),

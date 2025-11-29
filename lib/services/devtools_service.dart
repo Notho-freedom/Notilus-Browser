@@ -407,7 +407,8 @@ class DevToolsService extends ChangeNotifier {
 
   void _startPolling() {
     _stopPolling();
-    _pollingTimer = Timer.periodic(const Duration(milliseconds: 500), (_) {
+    // Polling plus fréquent pour un temps réel plus rapide (100ms au lieu de 500ms)
+    _pollingTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
       _pollData();
     });
   }
@@ -442,6 +443,7 @@ class DevToolsService extends ChangeNotifier {
 
           // Traiter les requêtes réseau
           final requests = parsed['requests'] as List<dynamic>? ?? [];
+          bool hasNetworkUpdates = false;
           for (final req in requests) {
             final request =
                 NetworkRequest.fromJson(req as Map<String, dynamic>);
@@ -449,9 +451,17 @@ class DevToolsService extends ChangeNotifier {
             final existingIndex =
                 _networkRequests.indexWhere((r) => r.id == request.id);
             if (existingIndex >= 0) {
-              _networkRequests[existingIndex] = request;
+              // Vérifier si la requête a vraiment changé
+              final existing = _networkRequests[existingIndex];
+              if (existing.status != request.status ||
+                  existing.statusCode != request.statusCode ||
+                  existing.duration != request.duration) {
+                _networkRequests[existingIndex] = request;
+                hasNetworkUpdates = true;
+              }
             } else {
               _networkRequests.add(request);
+              hasNetworkUpdates = true;
             }
           }
 
@@ -463,7 +473,10 @@ class DevToolsService extends ChangeNotifier {
             _networkRequests.removeRange(0, _networkRequests.length - 500);
           }
 
-          notifyListeners();
+          // Notifier seulement s'il y a des changements
+          if (logs.isNotEmpty || hasNetworkUpdates) {
+            notifyListeners();
+          }
         } catch (e) {
           debugPrint('Error parsing polled data: $e');
         }
@@ -520,14 +533,46 @@ class DevToolsService extends ChangeNotifier {
         updateRequest: function(id, updates) {
           if (this.requestMap[id]) {
             Object.assign(this.requestMap[id], updates);
+            // S'assurer que la requête mise à jour est aussi dans requests pour le flush
+            var existingIndex = -1;
+            for (var i = 0; i < this.requests.length; i++) {
+              if (this.requests[i].id === id) {
+                existingIndex = i;
+                break;
+              }
+            }
+            if (existingIndex >= 0) {
+              Object.assign(this.requests[existingIndex], updates);
+            } else {
+              // Si pas dans requests, l'ajouter
+              this.requests.push(this.requestMap[id]);
+            }
           }
         },
         
         // Récupérer et vider les données
         flush: function() {
+          // Inclure toutes les requêtes mises à jour depuis requestMap
+          var allRequests = [];
+          var requestIds = new Set();
+          
+          // Ajouter les nouvelles requêtes
+          for (var i = 0; i < this.requests.length; i++) {
+            var req = this.requests[i];
+            requestIds.add(req.id);
+            allRequests.push(req);
+          }
+          
+          // Ajouter les requêtes mises à jour qui ne sont pas dans requests
+          for (var id in this.requestMap) {
+            if (!requestIds.has(id)) {
+              allRequests.push(this.requestMap[id]);
+            }
+          }
+          
           var data = {
             logs: this.logs.slice(),
-            requests: this.requests.slice()
+            requests: allRequests
           };
           this.logs = [];
           this.requests = [];

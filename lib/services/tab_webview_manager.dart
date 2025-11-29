@@ -17,9 +17,6 @@ class TabWebViewManager extends ChangeNotifier {
   LighthouseService? _lighthouseService;
   AdBlockerService? _adBlockerService;
   
-  // État de suspension des onglets
-  final Set<String> _suspendedTabs = {};
-  
   void setDownloadService(DownloadService service) {
     _downloadService = service;
   }
@@ -59,20 +56,28 @@ class TabWebViewManager extends ChangeNotifier {
         _tabUrlMap[tabId] = url;
         engine.navigate(url);
       }
-      // S'assurer que les services sont attachés (au cas où ils n'étaient pas attachés avant)
+      // Reporter l'attachement des services après le build pour éviter setState() pendant build
       if (_studioService != null && _studioService!.engine != engine) {
-        _studioService!.attachEngine(engine);
         final currentUrl = url ?? _tabUrlMap[tabId];
-        if (currentUrl != null) {
-          _studioService!.updateUrl(currentUrl);
-        }
+        Future.microtask(() {
+          if (_studioService != null && _studioService!.engine != engine) {
+            _studioService!.attachEngine(engine);
+            if (currentUrl != null) {
+              _studioService!.updateUrl(currentUrl);
+            }
+          }
+        });
       }
       if (_lighthouseService != null && _lighthouseService!.engine != engine) {
-        _lighthouseService!.attachEngine(engine);
         final currentUrl = url ?? _tabUrlMap[tabId];
-        if (currentUrl != null) {
-          _lighthouseService!.updateUrl(currentUrl);
-        }
+        Future.microtask(() {
+          if (_lighthouseService != null && _lighthouseService!.engine != engine) {
+            _lighthouseService!.attachEngine(engine);
+            if (currentUrl != null) {
+              _lighthouseService!.updateUrl(currentUrl);
+            }
+          }
+        });
       }
       return engine;
     }
@@ -87,21 +92,38 @@ class TabWebViewManager extends ChangeNotifier {
       _activeEngines[tabId] = engine!;
       _tabUrlMap[tabId] = url;
       debugPrint('✅ Réutilisation d\'un engine en cache pour $url');
-      // Attacher les services
-      if (_studioService != null) {
-        _studioService!.attachEngine(engine);
-        _studioService!.updateUrl(url);
+      // Reporter l'attachement des services après le build pour éviter setState() pendant build
+      final cachedEngine = engine; // Capturer la valeur non-nullable
+      if (_studioService != null && cachedEngine != null) {
+        Future.microtask(() {
+          if (_studioService != null && cachedEngine != null) {
+            _studioService!.attachEngine(cachedEngine);
+            _studioService!.updateUrl(url);
+          }
+        });
       }
-      if (_lighthouseService != null) {
-        _lighthouseService!.attachEngine(engine);
-        _lighthouseService!.updateUrl(url);
+      if (_lighthouseService != null && cachedEngine != null) {
+        Future.microtask(() {
+          if (_lighthouseService != null && cachedEngine != null) {
+            _lighthouseService!.attachEngine(cachedEngine);
+            _lighthouseService!.updateUrl(url);
+          }
+        });
       }
-      return engine;
+      // Attacher le service de blocage de publicités (ne déclenche pas notifyListeners)
+      if (_adBlockerService != null && cachedEngine is WebView2BrowserEngine) {
+        cachedEngine.setAdBlockerService(_adBlockerService);
+      }
+      return cachedEngine;
     }
     
     // Créer un nouvel engine
     if (Platform.isWindows) {
       engine = WebView2BrowserEngine();
+      // Attacher le service de blocage de publicités
+      if (_adBlockerService != null && engine is WebView2BrowserEngine) {
+        engine.setAdBlockerService(_adBlockerService);
+      }
     } else {
       engine = BrowserEngineFactory.create();
     }
@@ -190,56 +212,6 @@ class TabWebViewManager extends ChangeNotifier {
   /// Récupère le moteur d'un onglet (peut être null)
   BrowserEngine? getEngine(String tabId) {
     return _activeEngines[tabId];
-  }
-  
-  /// Suspend un onglet (arrête le polling, réduit l'activité)
-  void suspendTab(String tabId) {
-    if (_suspendedTabs.contains(tabId)) return;
-    
-    final engine = _activeEngines[tabId];
-    if (engine is WebView2BrowserEngine) {
-      _suspendedTabs.add(tabId);
-      // Arrêter le polling JavaScript (sera implémenté dans WebView2BrowserEngine)
-      // Pour l'instant, on marque juste comme suspendu
-      debugPrint('⏸️ Onglet suspendu: $tabId');
-    }
-  }
-  
-  /// Reprend un onglet suspendu
-  void resumeTab(String tabId) {
-    if (!_suspendedTabs.contains(tabId)) return;
-    
-    _suspendedTabs.remove(tabId);
-    final engine = _activeEngines[tabId];
-    if (engine is WebView2BrowserEngine) {
-      // Reprendre le polling si nécessaire
-      debugPrint('▶️ Onglet repris: $tabId');
-    }
-  }
-  
-  /// Précharge un onglet (crée l'engine mais ne l'affiche pas)
-  void preloadTab(String tabId, String url) {
-    if (_activeEngines.containsKey(tabId)) return;
-    
-    // Créer l'engine et le mettre en cache
-    BrowserEngine? engine;
-    if (Platform.isWindows) {
-      engine = WebView2BrowserEngine();
-    } else {
-      engine = BrowserEngineFactory.create();
-    }
-    
-    _activeEngines[tabId] = engine;
-    _tabUrlMap[tabId] = url;
-    
-    // Initialiser mais ne pas naviguer encore
-    engine.initialize();
-    debugPrint('📦 Onglet préchargé: $tabId ($url)');
-  }
-  
-  /// Vérifie si un onglet est suspendu
-  bool isTabSuspended(String tabId) {
-    return _suspendedTabs.contains(tabId);
   }
   
   /// Nettoie tous les moteurs (actifs et cache)
