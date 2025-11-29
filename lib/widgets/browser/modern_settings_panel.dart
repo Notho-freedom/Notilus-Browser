@@ -2381,30 +2381,147 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
             _buildSubsectionTitle('Mémoire contextuelle', gxRed),
             const SizedBox(height: 12),
             Text(
-              'La mémoire glissante stocke automatiquement le contexte (site web, console, réseau) pour améliorer les réponses de l\'IA.',
+              'La mémoire glissante stocke automatiquement le contexte (site web, console, réseau, utilisateur, dépôts GitHub) pour améliorer les réponses de l\'IA.',
               style: TextStyle(color: Colors.white60, fontSize: 11),
             ),
             const SizedBox(height: 12),
-            ElevatedButton.icon(
-              onPressed: () async {
-                await _settings.clearAiSlidingMemory();
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text('Mémoire contextuelle vidée avec succès'),
-                      backgroundColor: gxRed,
-                      duration: const Duration(seconds: 2),
-                    ),
-                  );
-                }
-              },
-              icon: const Icon(CupertinoIcons.trash, size: 14),
-              label: const Text('Vider la mémoire', style: TextStyle(fontSize: 11)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red.withOpacity(0.2),
-                foregroundColor: Colors.redAccent,
-                side: BorderSide(color: Colors.redAccent.withOpacity(0.5)),
+            // Afficher le contenu de la mémoire
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: gxRed.withOpacity(0.3)),
               ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(CupertinoIcons.info, size: 14, color: gxRed),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Contenu de la mémoire',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Builder(
+                    builder: (context) {
+                      final memory = _settings.aiSlidingMemory;
+                      if (memory.isEmpty) {
+                        return Text(
+                          'Aucune donnée en mémoire',
+                          style: TextStyle(color: Colors.white60, fontSize: 10),
+                        );
+                      }
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (memory.containsKey('current_url'))
+                            _buildMemoryItem('URL actuelle', memory['current_url'].toString()),
+                          if (memory.containsKey('current_title'))
+                            _buildMemoryItem('Titre', memory['current_title'].toString()),
+                          if (memory.containsKey('user_name'))
+                            _buildMemoryItem('Utilisateur', memory['user_name'].toString()),
+                          if (memory.containsKey('user_email'))
+                            _buildMemoryItem('Email', memory['user_email'].toString()),
+                          if (memory.containsKey('github_repos_count'))
+                            _buildMemoryItem('Dépôts GitHub', '${memory['github_repos_count']} dépôts'),
+                          if (memory.containsKey('network_status'))
+                            _buildMemoryItem('Réseau', memory['network_status'].toString()),
+                          if (memory.containsKey('console_lines_count'))
+                            _buildMemoryItem('Console', '${memory['console_lines_count']} lignes'),
+                          if (memory.containsKey('last_updated'))
+                            _buildMemoryItem('Dernière mise à jour', _formatMemoryDate(memory['last_updated'].toString())),
+                          const SizedBox(height: 8),
+                          TextButton.icon(
+                            onPressed: () {
+                              GxFuturisticDialog.show(
+                                context: context,
+                                title: 'Contenu complet de la mémoire',
+                                titleIcon: CupertinoIcons.info_circle_fill,
+                                accentColor: gxRed,
+                                width: 700,
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    maxHeight: MediaQuery.of(context).size.height * 0.7,
+                                    minWidth: 600,
+                                  ),
+                                  child: SingleChildScrollView(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: SelectableText(
+                                        _formatMemoryJson(memory),
+                                        style: NotilusFonts.rajdhani(
+                                          fontSize: 11,
+                                          color: Colors.white70,
+                                          height: 1.5,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                actions: [
+                                  Expanded(
+                                    child: Center(
+                                      child: GxFuturisticButton(
+                                        label: 'Fermer',
+                                        icon: CupertinoIcons.xmark,
+                                        variant: GxFuturisticButtonVariant.secondary,
+                                        accentColor: gxRed,
+                                        onPressed: () => Navigator.pop(context),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                            icon: Icon(CupertinoIcons.eye, size: 12, color: gxRed),
+                            label: Text(
+                              'Voir le contenu complet',
+                              style: TextStyle(fontSize: 10, color: gxRed),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      await _settings.clearAiSlidingMemory();
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: const Text('Mémoire contextuelle vidée avec succès'),
+                            backgroundColor: gxRed,
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      }
+                    },
+                    icon: const Icon(CupertinoIcons.trash, size: 14),
+                    label: const Text('Vider la mémoire', style: TextStyle(fontSize: 11)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red.withOpacity(0.2),
+                      foregroundColor: Colors.redAccent,
+                      side: BorderSide(color: Colors.redAccent.withOpacity(0.5)),
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 28),
             
@@ -2458,6 +2575,80 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
   // SECTION COMPOSANTS GX
   // ============================================
   
+  Widget _buildMemoryItem(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(
+              '$label:',
+              style: TextStyle(
+                color: Colors.white60,
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value.length > 50 ? '${value.substring(0, 50)}...' : value,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 10,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatMemoryDate(String dateStr) {
+    try {
+      final date = DateTime.parse(dateStr);
+      final now = DateTime.now();
+      final diff = now.difference(date);
+      
+      if (diff.inMinutes < 1) {
+        return 'Il y a ${diff.inSeconds} secondes';
+      } else if (diff.inHours < 1) {
+        return 'Il y a ${diff.inMinutes} minutes';
+      } else if (diff.inDays < 1) {
+        return 'Il y a ${diff.inHours} heures';
+      } else {
+        return 'Il y a ${diff.inDays} jours';
+      }
+    } catch (e) {
+      return dateStr;
+    }
+  }
+
+  String _formatMemoryJson(Map<String, dynamic> memory) {
+    try {
+      // Convertir en JSON formaté
+      final buffer = StringBuffer();
+      buffer.writeln('{');
+      memory.forEach((key, value) {
+        if (value is List) {
+          buffer.writeln('  "$key": [${value.length} éléments],');
+        } else if (value is Map) {
+          buffer.writeln('  "$key": {${value.length} clés},');
+        } else {
+          final str = value.toString();
+          final display = str.length > 100 ? '${str.substring(0, 100)}...' : str;
+          buffer.writeln('  "$key": "$display",');
+        }
+      });
+      buffer.writeln('}');
+      return buffer.toString();
+    } catch (e) {
+      return memory.toString();
+    }
+  }
+
   Widget _buildGxComponentsSection(BuildContext context, ThemeData theme, Color gxRed) {
     return ListenableBuilder(
       listenable: _settings,

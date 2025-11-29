@@ -13,6 +13,7 @@ import '../../services/settings_service.dart';
 import '../../services/ai_service.dart';
 import '../../services/auth/firebase_auth_service.dart';
 import '../../services/tab_manager.dart';
+import '../../services/github/github_repos_service.dart';
 import '../common/gx_futuristic_components.dart';
 import '../../services/gx_notification_service.dart';
 
@@ -89,24 +90,67 @@ class _GxFuturisticAiPanelState extends State<GxFuturisticAiPanel> {
       final tabManager = Provider.of<TabManager>(context, listen: false);
       final activeTab = tabManager.activeTab;
       
-      if (activeTab != null && activeTab.url != null && activeTab.url!.isNotEmpty) {
-        setState(() {
+      // Récupérer les infos utilisateur
+      final authService = Provider.of<FirebaseAuthService?>(context, listen: false);
+      final user = authService?.currentUser;
+      final githubUser = authService?.githubUser;
+      
+      // Récupérer les dépôts GitHub (limiter à 5 plus récents pour la mémoire)
+      final reposService = Provider.of<GitHubReposService?>(context, listen: false);
+      final githubRepos = <Map<String, dynamic>>[];
+      if (reposService != null && reposService.hasRepos) {
+        final repos = reposService.repos.take(5).toList(); // Top 5 dépôts récents
+        for (final repo in repos) {
+          githubRepos.add({
+            'name': repo.name,
+            'full_name': repo.fullName,
+            'description': repo.description,
+            'language': repo.language,
+            'stars': repo.stars,
+            'forks': repo.forks,
+            'is_private': repo.isPrivate,
+            'url': repo.url,
+            'updated_at': repo.updatedAt.toIso8601String(),
+          });
+        }
+      }
+      
+      setState(() {
+        // Informations du site web
+        if (activeTab != null && activeTab.url != null && activeTab.url!.isNotEmpty) {
           _slidingMemory['current_url'] = activeTab.url;
           _slidingMemory['current_title'] = activeTab.title ?? '';
-          
-          // Informations de la console (dernières lignes)
-          if (_consoleOutput.isNotEmpty) {
-            _slidingMemory['console_output'] = _consoleOutput.take(10).join('\n');
-            _slidingMemory['console_lines_count'] = _consoleOutput.length;
-          }
-          
-          // Informations réseau
-          _slidingMemory['network_status'] = _aiService.isConnected ? 'connected' : 'disconnected';
-          
-          _slidingMemory['last_updated'] = DateTime.now().toIso8601String();
-        });
-        _saveSlidingMemory();
-      }
+        }
+        
+        // Informations de la console (dernières lignes)
+        if (_consoleOutput.isNotEmpty) {
+          _slidingMemory['console_output'] = _consoleOutput.take(10).join('\n');
+          _slidingMemory['console_lines_count'] = _consoleOutput.length;
+        }
+        
+        // Informations réseau
+        _slidingMemory['network_status'] = _aiService.isConnected ? 'connected' : 'disconnected';
+        
+        // Informations utilisateur
+        if (user != null) {
+          _slidingMemory['user_name'] = user.displayName ?? user.email ?? 'Utilisateur';
+          _slidingMemory['user_email'] = user.email ?? '';
+          _slidingMemory['user_provider'] = 'firebase';
+        } else if (githubUser != null) {
+          _slidingMemory['user_name'] = githubUser.name ?? githubUser.email ?? 'Utilisateur';
+          _slidingMemory['user_email'] = githubUser.email ?? '';
+          _slidingMemory['user_provider'] = 'github';
+        }
+        
+        // Informations des dépôts GitHub
+        if (githubRepos.isNotEmpty) {
+          _slidingMemory['github_repositories'] = githubRepos;
+          _slidingMemory['github_repos_count'] = reposService?.repos.length ?? 0;
+        }
+        
+        _slidingMemory['last_updated'] = DateTime.now().toIso8601String();
+      });
+      _saveSlidingMemory();
     } catch (e) {
       // Ignorer les erreurs si TabManager n'est pas disponible
     }
@@ -147,10 +191,55 @@ class _GxFuturisticAiPanelState extends State<GxFuturisticAiPanel> {
       _lastTokensUsed = null;
     });
     
+    // Récupérer les infos utilisateur
+    final authService = Provider.of<FirebaseAuthService?>(context, listen: false);
+    final user = authService?.currentUser;
+    final githubUser = authService?.githubUser;
+    final userInfo = <String, dynamic>{};
+    
+    if (user != null) {
+      userInfo['user_name'] = user.displayName ?? user.email ?? 'Utilisateur';
+      userInfo['user_email'] = user.email ?? '';
+      userInfo['user_provider'] = 'firebase';
+    } else if (githubUser != null) {
+      userInfo['user_name'] = githubUser.name ?? githubUser.email ?? 'Utilisateur';
+      userInfo['user_email'] = githubUser.email ?? '';
+      userInfo['user_provider'] = 'github';
+    }
+    
+    // Récupérer les dépôts GitHub (limiter à 5 plus récents)
+    final reposService = Provider.of<GitHubReposService?>(context, listen: false);
+    final githubRepos = <Map<String, dynamic>>[];
+    if (reposService != null && reposService.hasRepos) {
+      final repos = reposService.repos.take(5).toList(); // Top 5 dépôts récents
+      for (final repo in repos) {
+        githubRepos.add({
+          'name': repo.name,
+          'full_name': repo.fullName,
+          'description': repo.description,
+          'language': repo.language,
+          'stars': repo.stars,
+          'forks': repo.forks,
+          'is_private': repo.isPrivate,
+          'url': repo.url,
+          'updated_at': repo.updatedAt.toIso8601String(),
+        });
+      }
+    }
+    
+    // Construire le contexte avec la mémoire glissante, les infos utilisateur et les dépôts GitHub
+    final aiContext = <String, dynamic>{
+      ..._slidingMemory,
+      if (userInfo.isNotEmpty) 'user': userInfo,
+      if (githubRepos.isNotEmpty) 'github_repositories': githubRepos,
+    };
+    
     try {
       final result = await _aiService.chat(
         prompt: prompt,
+        context: aiContext.isNotEmpty ? aiContext : null,
         type: 'general',
+        model: _selectedModel,
       );
       
       if (mounted) {
@@ -231,15 +320,53 @@ class _GxFuturisticAiPanelState extends State<GxFuturisticAiPanel> {
       }
     });
     
-    // Construire le contexte avec la mémoire glissante
-    final context = <String, dynamic>{
+    // Récupérer les infos utilisateur
+    final authService = Provider.of<FirebaseAuthService?>(context, listen: false);
+    final user = authService?.currentUser;
+    final githubUser = authService?.githubUser;
+    final userInfo = <String, dynamic>{};
+    
+    if (user != null) {
+      userInfo['user_name'] = user.displayName ?? user.email ?? 'Utilisateur';
+      userInfo['user_email'] = user.email ?? '';
+      userInfo['user_provider'] = 'firebase';
+    } else if (githubUser != null) {
+      userInfo['user_name'] = githubUser.name ?? githubUser.email ?? 'Utilisateur';
+      userInfo['user_email'] = githubUser.email ?? '';
+      userInfo['user_provider'] = 'github';
+    }
+    
+    // Récupérer les dépôts GitHub (limiter à 5 plus récents)
+    final reposService = Provider.of<GitHubReposService?>(context, listen: false);
+    final githubRepos = <Map<String, dynamic>>[];
+    if (reposService != null && reposService.hasRepos) {
+      final repos = reposService.repos.take(5).toList(); // Top 5 dépôts récents
+      for (final repo in repos) {
+        githubRepos.add({
+          'name': repo.name,
+          'full_name': repo.fullName,
+          'description': repo.description,
+          'language': repo.language,
+          'stars': repo.stars,
+          'forks': repo.forks,
+          'is_private': repo.isPrivate,
+          'url': repo.url,
+          'updated_at': repo.updatedAt.toIso8601String(),
+        });
+      }
+    }
+    
+    // Construire le contexte avec la mémoire glissante, les infos utilisateur et les dépôts GitHub
+    final aiContext = <String, dynamic>{
       ..._slidingMemory,
+      if (userInfo.isNotEmpty) 'user': userInfo,
+      if (githubRepos.isNotEmpty) 'github_repositories': githubRepos,
     };
     
     try {
       final result = await _aiService.chat(
         prompt: command,
-        context: context.isNotEmpty ? context : null,
+        context: aiContext.isNotEmpty ? aiContext : null,
         type: 'general',
         model: _selectedModel,
       );
