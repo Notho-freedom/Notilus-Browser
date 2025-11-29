@@ -6,6 +6,7 @@ import 'package:crypto/crypto.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 import 'settings_service.dart';
+import 'cloudinary_cache_service.dart';
 
 /// Service pour gérer les uploads vers Cloudinary
 class CloudinaryService extends ChangeNotifier {
@@ -45,6 +46,8 @@ class CloudinaryService extends ChangeNotifier {
   /// Initialise le service et charge les médias existants
   Future<void> initialize() async {
     await _loadMediaFromStorage();
+    // Initialiser le service de cache
+    await CloudinaryCacheService().initialize();
   }
 
   /// Vérifie si Cloudinary est configuré

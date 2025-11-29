@@ -7,6 +7,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:video_player/video_player.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../services/cloudinary_service.dart';
+import '../../services/cloudinary_cache_service.dart';
 import '../../services/settings_service.dart';
 import '../../core/services/color_theme_manager.dart';
 import '../../core/constants/notilus_fonts.dart';
@@ -479,16 +480,25 @@ class _MediaItem extends StatelessWidget {
         ),
         child: Stack(
           children: [
-            // Preview
+            // Preview avec thumbnail
             ClipRRect(
               borderRadius: BorderRadius.circular(11),
               child: resourceType == CloudinaryResourceType.image
-                  ? Image.network(
-                      media.secureUrl,
+                  ? CachedNetworkImage(
+                      imageUrl: media.secureUrl,
                       fit: BoxFit.cover,
                       width: double.infinity,
                       height: double.infinity,
-                      errorBuilder: (context, error, stackTrace) => Container(
+                      placeholder: (context, url) => Container(
+                        color: Colors.grey[900],
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            color: gxRed,
+                            strokeWidth: 2,
+                          ),
+                        ),
+                      ),
+                      errorWidget: (context, url, error) => Container(
                         color: Colors.grey[900],
                         child: Icon(
                           CupertinoIcons.photo,
@@ -496,16 +506,19 @@ class _MediaItem extends StatelessWidget {
                         ),
                       ),
                     )
-                  : Container(
-                      color: Colors.grey[900],
-                      child: Icon(
-                        resourceType == CloudinaryResourceType.video
-                            ? CupertinoIcons.play_circle
-                            : CupertinoIcons.music_note,
-                        size: 32,
-                        color: gxRed,
-                      ),
-                    ),
+                  : resourceType == CloudinaryResourceType.video
+                      ? _VideoThumbnail(
+                          media: media,
+                          gxRed: gxRed,
+                        )
+                      : Container(
+                          color: Colors.grey[900],
+                          child: Icon(
+                            CupertinoIcons.music_note,
+                            size: 32,
+                            color: gxRed,
+                          ),
+                        ),
             ),
 
             // Overlay de sélection
@@ -551,6 +564,96 @@ class _MediaItem extends StatelessWidget {
   }
 }
 
+/// Widget pour afficher le thumbnail d'une vidéo
+class _VideoThumbnail extends StatefulWidget {
+  final CloudinaryMedia media;
+  final Color gxRed;
+
+  const _VideoThumbnail({
+    required this.media,
+    required this.gxRed,
+  });
+
+  @override
+  State<_VideoThumbnail> createState() => _VideoThumbnailState();
+}
+
+class _VideoThumbnailState extends State<_VideoThumbnail> {
+  String? _thumbnailUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadThumbnail();
+  }
+
+  void _loadThumbnail() {
+    // Générer l'URL de thumbnail Cloudinary
+    _thumbnailUrl = CloudinaryCacheService.getThumbnailUrl(
+      widget.media.secureUrl,
+      width: 300,
+      height: 300,
+    );
+    setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // Thumbnail
+        if (_thumbnailUrl != null)
+          CachedNetworkImage(
+            imageUrl: _thumbnailUrl!,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            placeholder: (context, url) => Container(
+              color: Colors.grey[900],
+              child: Center(
+                child: CircularProgressIndicator(
+                  color: widget.gxRed,
+                  strokeWidth: 2,
+                ),
+              ),
+            ),
+            errorWidget: (context, url, error) => Container(
+              color: Colors.grey[900],
+              child: Icon(
+                CupertinoIcons.play_circle,
+                size: 32,
+                color: widget.gxRed,
+              ),
+            ),
+          )
+        else
+          Container(
+            color: Colors.grey[900],
+            child: Center(
+              child: CircularProgressIndicator(
+                color: widget.gxRed,
+                strokeWidth: 2,
+              ),
+            ),
+          ),
+        
+        // Overlay avec icône play
+        Container(
+          color: Colors.black.withOpacity(0.3),
+          child: Center(
+            child: Icon(
+              CupertinoIcons.play_circle_fill,
+              size: 40,
+              color: Colors.white.withOpacity(0.9),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 /// Widget pour prévisualiser un média Cloudinary
 class _MediaPreview extends StatefulWidget {
   final CloudinaryMedia media;
@@ -590,9 +693,24 @@ class _MediaPreviewState extends State<_MediaPreview> {
 
   Future<void> _initVideoPlayer() async {
     try {
-      _videoPlayerController = VideoPlayerController.networkUrl(
-        Uri.parse(widget.media.secureUrl),
-      );
+      final cacheService = CloudinaryCacheService();
+      await cacheService.initialize();
+      
+      // Essayer de récupérer le fichier en cache
+      File? cachedFile = await cacheService.getCachedFile(widget.media.secureUrl);
+      
+      if (cachedFile != null) {
+        // Utiliser le fichier en cache directement
+        _videoPlayerController = VideoPlayerController.file(cachedFile);
+      } else {
+        // Utiliser l'URL réseau pour lecture immédiate
+        _videoPlayerController = VideoPlayerController.networkUrl(
+          Uri.parse(widget.media.secureUrl),
+        );
+        
+        // Démarrer le téléchargement en arrière-plan pour la prochaine fois
+        _cacheVideoInBackground(cacheService);
+      }
       
       await _videoPlayerController!.initialize();
       
@@ -620,6 +738,20 @@ class _MediaPreviewState extends State<_MediaPreview> {
         });
       }
     }
+  }
+
+  /// Cache la vidéo en arrière-plan pour la prochaine utilisation
+  void _cacheVideoInBackground(CloudinaryCacheService cacheService) {
+    // Télécharger en streaming en arrière-plan sans bloquer
+    cacheService.cacheFileStreaming(
+      widget.media.secureUrl,
+      onProgress: (progress) {
+        // Optionnel : afficher la progression du téléchargement
+        if (progress >= 1.0) {
+          debugPrint('Vidéo mise en cache: ${widget.media.publicId}');
+        }
+      },
+    );
   }
 
   Future<void> _toggleVideoPlayPause() async {
