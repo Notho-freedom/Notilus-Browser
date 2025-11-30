@@ -45,6 +45,9 @@ class TabWebViewManager extends ChangeNotifier {
   // Maximum d'engines en cache (pour limiter la mémoire)
   static const int _maxCachedEngines = 10;
   
+  // Engines pré-chauffés pour accélérer le chargement
+  final Map<String, BrowserEngine> _preWarmedEngines = {};
+  
   String? _activeTabId;
   
   /// Définit l'onglet actif pour donner la priorité absolue
@@ -274,6 +277,40 @@ class TabWebViewManager extends ChangeNotifier {
   
   /// Retourne le nombre d'engines actifs
   int get activeEnginesCount => _activeEngines.length;
+  
+  /// Pré-chauffe un engine pour accélérer le chargement
+  Future<void> preWarmEngine() async {
+    if (!Platform.isWindows) return;
+    
+    try {
+      final engine = WebView2BrowserEngine();
+      await engine.initialize();
+      _preWarmedEngines['prewarmed'] = engine;
+      debugPrint('✅ Engine pré-chauffé');
+    } catch (e) {
+      debugPrint('⚠️ Erreur lors du pré-chauffage: $e');
+    }
+  }
+  
+  /// Récupère un engine pré-chauffé et l'associe à un onglet
+  BrowserEngine? getPreWarmedEngine(String tabId, {String? url}) {
+    final engine = _preWarmedEngines.remove('prewarmed');
+    if (engine != null) {
+      _activeEngines[tabId] = engine;
+      if (url != null) {
+        _tabUrlMap[tabId] = url;
+      }
+      debugPrint('✅ Engine pré-chauffé utilisé pour $tabId');
+      
+      // Attacher les services
+      if (_adBlockerService != null && engine is WebView2BrowserEngine) {
+        engine.setAdBlockerService(_adBlockerService);
+      }
+      
+      return engine;
+    }
+    return null;
+  }
 
   /// Efface tous les cookies de tous les engines
   Future<void> clearAllCookies() async {

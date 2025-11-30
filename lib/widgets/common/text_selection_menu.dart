@@ -26,15 +26,19 @@ class TextSelectionMenu extends StatelessWidget {
 
         // S'assurer que la position est dans les limites de l'écran
         final screenSize = MediaQuery.of(context).size;
-        final menuWidth = 120.0;
+        final menuWidth = 280.0; // Plus large pour accommoder les nouveaux boutons
         final menuHeight = 40.0;
         
-        // Les coordonnées du WebView sont relatives à la page web, pas à l'écran
-        // Pour l'instant, on les utilise telles quelles mais on les limite à l'écran visible
-        // TODO: Obtenir la position réelle du WebView pour convertir correctement
-        final adjustedX = position.dx.clamp(0.0, screenSize.width - menuWidth);
-        // Limiter la position Y pour qu'elle soit visible (les coordonnées du WebView peuvent être très grandes avec le scroll)
-        final adjustedY = (position.dy > screenSize.height ? screenSize.height - menuHeight - 20 : position.dy - 50).clamp(0.0, screenSize.height - menuHeight);
+        // Placer le menu exactement sur le curseur (position de la sélection)
+        // Les coordonnées du WebView sont relatives à la viewport
+        var adjustedX = position.dx - menuWidth / 2; // Centrer horizontalement sur le curseur
+        var adjustedY = position.dy + 20; // Placer juste en dessous du curseur
+        
+        // Ajuster si le menu sort de l'écran
+        if (adjustedX < 0) adjustedX = 8.0;
+        if (adjustedX + menuWidth > screenSize.width) adjustedX = screenSize.width - menuWidth - 8.0;
+        if (adjustedY + menuHeight > screenSize.height) adjustedY = position.dy - menuHeight - 20; // Au-dessus si pas de place en dessous
+        if (adjustedY < 0) adjustedY = 8.0;
         
         final settings = SettingsService();
         final panelOpacity = 1.0 - settings.panelTransparency;
@@ -77,9 +81,9 @@ class TextSelectionMenu extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           _GXMenuButton(
-                            icon: CupertinoIcons.doc_on_doc,
-                            label: 'Copier',
-                            onTap: () => selectionService.copyText(),
+                            icon: CupertinoIcons.textformat_abc,
+                            label: 'Traduire',
+                            onTap: () => selectionService.translateText(context),
                             accentColor: accentColor,
                           ),
                           Container(
@@ -89,9 +93,21 @@ class TextSelectionMenu extends StatelessWidget {
                             color: accentColor.withOpacity(0.2),
                           ),
                           _GXMenuButton(
-                            icon: CupertinoIcons.search,
-                            label: 'Rechercher',
-                            onTap: () => selectionService.searchText(),
+                            icon: CupertinoIcons.sparkles,
+                            label: 'IA',
+                            onTap: () => selectionService.analyzeText(context),
+                            accentColor: accentColor,
+                          ),
+                          Container(
+                            width: 1,
+                            height: 24,
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            color: accentColor.withOpacity(0.2),
+                          ),
+                          _GXMenuButton(
+                            icon: CupertinoIcons.doc_on_doc,
+                            label: 'Copier',
+                            onTap: () => selectionService.copyText(),
                             accentColor: accentColor,
                           ),
                           Container(

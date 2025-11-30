@@ -10,6 +10,7 @@ import '../../services/tab_manager.dart';
 import '../../services/favicon_service.dart';
 import '../../services/webview2_browser_engine.dart';
 import '../../services/settings_service.dart';
+import '../../core/utils/debouncer.dart';
 import 'home_pages/home_page_factory.dart';
 
 /// Widget pour afficher le contenu web avec WebView2
@@ -25,29 +26,31 @@ class WebContentView extends StatefulWidget {
   State<WebContentView> createState() => _WebContentViewState();
 }
 
-class _WebContentViewState extends State<WebContentView> with WidgetsBindingObserver {
-  bool _isLoading = false;
-  String? _currentUrl;
-  String? _currentTitle;
+class _WebContentViewState extends State<WebContentView> 
+    with WidgetsBindingObserver, AutomaticKeepAliveClientMixin {
+  
+  @override
+  bool get wantKeepAlive => true; // Garde l'état du widget
+  
+  // Remplacer les variables d'état par des ValueNotifier pour des updates plus rapides
+  final ValueNotifier<bool> _isLoading = ValueNotifier(false);
+  final ValueNotifier<String?> _currentUrl = ValueNotifier(null);
+  final ValueNotifier<String?> _currentTitle = ValueNotifier(null);
+  final ValueNotifier<bool> _isVisible = ValueNotifier(true);
+  
   WebviewController? _webView;
-  bool _isVisible = true;
   bool _isTabActive = true;
   TabWebViewManager? _tabWebViewManager;
   StreamSubscription<LoadingState>? _loadingStateSubscription;
+  Debouncer? _stateDebouncer;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _stateDebouncer = Debouncer(milliseconds: 100);
     _initializeEngine();
     _checkTabVisibility();
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Sauvegarder la référence au TabWebViewManager pour l'utiliser dans dispose()
-    _tabWebViewManager = Provider.of<TabWebViewManager>(context, listen: false);
   }
   
   @override
@@ -56,6 +59,13 @@ class _WebContentViewState extends State<WebContentView> with WidgetsBindingObse
     // Annuler la subscription au stream
     _loadingStateSubscription?.cancel();
     _loadingStateSubscription = null;
+    // Disposer des ValueNotifiers
+    _isLoading.dispose();
+    _currentUrl.dispose();
+    _currentTitle.dispose();
+    _isVisible.dispose();
+    // Disposer du debouncer
+    _stateDebouncer?.dispose();
     // Suspendre le WebView si nécessaire
     if (_webView != null && _isTabActive && widget.tab?.id != null && _tabWebViewManager != null) {
       try {
@@ -70,6 +80,14 @@ class _WebContentViewState extends State<WebContentView> with WidgetsBindingObse
     }
     super.dispose();
   }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Sauvegarder la référence au TabWebViewManager pour l'utiliser dans dispose()
+    _tabWebViewManager = Provider.of<TabWebViewManager>(context, listen: false);
+  }
+  
   
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -98,9 +116,9 @@ class _WebContentViewState extends State<WebContentView> with WidgetsBindingObse
   }
   
   void _setVisibility(bool isVisible) {
-    if (_isVisible == isVisible) return;
+    if (_isVisible.value == isVisible) return;
     
-    _isVisible = isVisible;
+    _isVisible.value = isVisible;
     
     // Mettre à jour l'état actif du WebView pour ajuster le polling
     if (_webView != null && widget.tab?.id != null) {
@@ -138,9 +156,7 @@ class _WebContentViewState extends State<WebContentView> with WidgetsBindingObse
 
   Future<void> _initializeEngine() async {
     if (widget.tab == null) {
-      setState(() {
-        _webView = null;
-      });
+      _webView = null;
       return;
     }
 
@@ -150,165 +166,87 @@ class _WebContentViewState extends State<WebContentView> with WidgetsBindingObse
 
     final tabManager = Provider.of<TabManager>(context, listen: false);
     final webViewManager = Provider.of<TabWebViewManager>(context, listen: false);
-    // Utiliser le nouveau système avec URL pour le cache
-    final engine = webViewManager.getEngineForTab(widget.tab!.id, url: widget.tab!.url);
     
-    // Configurer les callbacks
+    // Essayer d'abord un engine pré-chauffé
+    WebView2BrowserEngine? engine = webViewManager.getPreWarmedEngine(
+      widget.tab!.id, 
+      url: widget.tab!.url
+    ) as WebView2BrowserEngine?;
+    
+    // Sinon, créer un nouvel engine normalement
+    engine ??= webViewManager.getEngineForTab(widget.tab!.id, url: widget.tab!.url) as WebView2BrowserEngine?;
+    
+    if (engine == null) return;
+    
+    // Configuration optimisée des callbacks
+    _setupEngineCallbacks(engine, tabManager);
+
+    // Récupération rapide du controller
+    final controller = await engine.getController();
+    if (controller != null && controller is WebviewController) {
+      _setupWebView(controller, engine, tabManager);
+    }
+  }
+  
+  void _setupEngineCallbacks(WebView2BrowserEngine engine, TabManager tabManager) {
     engine.onNewWindowRequest = (url) {
-      // Créer un nouvel onglet dans Notilus pour tous les liens externes et target="_blank"
       tabManager.addTab(url: url);
     };
     
     engine.onUrlChanged = (url) {
-      if (mounted) {
-        setState(() {
-          _currentUrl = url;
-        });
-        tabManager.updateTab(widget.tab!.id, url: url);
-        // Charger le favicon automatiquement quand l'URL change
-        _loadFavicon(url, widget.tab!.id, tabManager);
-      }
+      _currentUrl.value = url;
+      tabManager.updateTab(widget.tab!.id, url: url);
+      _loadFavicon(url, widget.tab!.id, tabManager);
     };
     
     engine.onTitleChanged = (title) {
-      if (mounted) {
-        setState(() {
-          _currentTitle = title;
-        });
-        tabManager.updateTab(widget.tab!.id, title: title);
-      }
+      _currentTitle.value = title;
+      tabManager.updateTab(widget.tab!.id, title: title);
     };
     
+    // Utiliser un debouncer pour éviter les updates trop fréquentes
     engine.onStateChanged = (state) {
-      if (mounted) {
-        setState(() {
-          _isLoading = state == TabState.loading;
-        });
-        if (state is TabState) {
-          tabManager.updateTab(widget.tab!.id, state: state);
+      _stateDebouncer?.run(() {
+        if (mounted) {
+          _isLoading.value = state == TabState.loading;
+          if (state is TabState) {
+            tabManager.updateTab(widget.tab!.id, state: state);
+          }
         }
-      }
-    };
-
-    // Récupérer le WebView2
-    final controller = await engine.getController();
-    if (controller != null && controller is WebviewController) {
-      // Annuler l'ancienne subscription si elle existe
-      _loadingStateSubscription?.cancel();
-      
-      setState(() {
-        _webView = controller as WebviewController;
       });
-
-      // Écouter l'état de chargement réel du WebView pour synchronisation précise
-      // Utiliser le stream broadcast du WebView2BrowserEngine (permet plusieurs listeners)
-      final engine = _tabWebViewManager?.getEngine(widget.tab!.id);
-      if (engine != null && engine is WebView2BrowserEngine) {
-        _loadingStateSubscription = engine.loadingStateStream.listen((state) {
-          if (mounted) {
-            final isLoading = state == LoadingState.loading;
-            setState(() {
-              _isLoading = isLoading;
-            });
-            // Synchroniser avec TabManager immédiatement
-            if (isLoading) {
-              tabManager.updateTab(widget.tab!.id, state: TabState.loading);
-            } else if (state == LoadingState.navigationCompleted) {
-              // Forcer la mise à jour immédiate
-              setState(() {
-                _isLoading = false;
-              });
-              tabManager.updateTab(widget.tab!.id, state: TabState.loaded);
-            }
-          }
-        });
-      } else {
-        // Fallback : utiliser le stream direct si l'engine n'est pas disponible
-        _loadingStateSubscription = _webView!.loadingState.asBroadcastStream().listen((state) {
-          if (mounted) {
-            final isLoading = state == LoadingState.loading;
-            setState(() {
-              _isLoading = isLoading;
-            });
-            if (isLoading) {
-              tabManager.updateTab(widget.tab!.id, state: TabState.loading);
-            } else if (state == LoadingState.navigationCompleted) {
-              setState(() {
-                _isLoading = false;
-              });
-              tabManager.updateTab(widget.tab!.id, state: TabState.loaded);
-            }
-          }
-        });
-      }
-
-      // Naviguer vers l'URL si elle existe
-      if (widget.tab?.url != null && widget.tab!.url!.isNotEmpty && engine != null) {
-        await engine.navigate(widget.tab!.url!);
-        // Charger le favicon pour l'URL initiale
-        _loadFavicon(widget.tab!.url!, widget.tab!.id, tabManager);
-      }
-    } else if (widget.tab?.url != null && widget.tab!.url!.isNotEmpty) {
-      // Si le WebView n'est pas encore créé, naviguer via l'engine
-      final engine = _tabWebViewManager?.getEngine(widget.tab!.id);
-      if (engine != null) {
-        await engine.navigate(widget.tab!.url!);
-        // Charger le favicon pour l'URL initiale
-        _loadFavicon(widget.tab!.url!, widget.tab!.id, tabManager);
-        // Récupérer le controller après navigation
-        final newController = await engine.getController();
-        if (newController != null && newController is WebviewController) {
-        // Annuler l'ancienne subscription si elle existe AVANT de créer une nouvelle
-        _loadingStateSubscription?.cancel();
-        _loadingStateSubscription = null;
+    };
+  }
+  
+  void _setupWebView(WebviewController controller, WebView2BrowserEngine engine, TabManager tabManager) {
+    // Annuler l'ancienne subscription
+    _loadingStateSubscription?.cancel();
+    
+    _webView = controller;
+    
+    // Écouter l'état de chargement avec debouncer
+    final loadingDebouncer = Debouncer(milliseconds: 50);
+    _loadingStateSubscription = engine.loadingStateStream.listen((state) {
+      if (!mounted) return;
+      
+      loadingDebouncer.run(() {
+        if (!mounted) return;
         
-        setState(() {
-          _webView = newController;
-        });
+        final isLoading = state == LoadingState.loading;
+        _isLoading.value = isLoading;
         
-        // Écouter l'état de chargement réel du WebView
-        // Utiliser le stream broadcast du WebView2BrowserEngine (permet plusieurs listeners)
-        final engine = _tabWebViewManager?.getEngine(widget.tab!.id);
-        if (engine != null && engine is WebView2BrowserEngine) {
-          _loadingStateSubscription = engine.loadingStateStream.listen((state) {
-          if (mounted) {
-            final isLoading = state == LoadingState.loading;
-            setState(() {
-              _isLoading = isLoading;
-            });
-            // Synchroniser avec TabManager immédiatement
-            if (isLoading) {
-              tabManager.updateTab(widget.tab!.id, state: TabState.loading);
-            } else if (state == LoadingState.navigationCompleted) {
-              // Forcer la mise à jour immédiate
-              setState(() {
-                _isLoading = false;
-              });
-              tabManager.updateTab(widget.tab!.id, state: TabState.loaded);
-            }
-          }
-        });
-        } else {
-          // Fallback : utiliser le stream direct si l'engine n'est pas disponible
-          _loadingStateSubscription = _webView!.loadingState.asBroadcastStream().listen((state) {
-            if (mounted) {
-              final isLoading = state == LoadingState.loading;
-              setState(() {
-                _isLoading = isLoading;
-              });
-              if (isLoading) {
-                tabManager.updateTab(widget.tab!.id, state: TabState.loading);
-              } else if (state == LoadingState.navigationCompleted) {
-                setState(() {
-                  _isLoading = false;
-                });
-                tabManager.updateTab(widget.tab!.id, state: TabState.loaded);
-              }
-            }
-          });
+        if (isLoading) {
+          tabManager.updateTab(widget.tab!.id, state: TabState.loading);
+        } else if (state == LoadingState.navigationCompleted) {
+          _isLoading.value = false;
+          tabManager.updateTab(widget.tab!.id, state: TabState.loaded);
         }
-        }
-      }
+      });
+    });
+
+    // Navigation immédiate si nécessaire
+    if (widget.tab?.url != null && widget.tab!.url!.isNotEmpty) {
+      engine.navigate(widget.tab!.url!);
+      _loadFavicon(widget.tab!.url!, widget.tab!.id, tabManager);
     }
   }
 
@@ -331,10 +269,10 @@ class _WebContentViewState extends State<WebContentView> with WidgetsBindingObse
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Pour AutomaticKeepAliveClientMixin
     final theme = _getThemeFromContext();
 
     // Afficher la page d'accueil si pas d'onglet ou URL vide
-    // Utiliser HomePageFactory pour créer la bonne page selon les paramètres
     if (widget.tab == null || 
         widget.tab!.url == null || 
         widget.tab!.url!.isEmpty ||
@@ -347,144 +285,146 @@ class _WebContentViewState extends State<WebContentView> with WidgetsBindingObse
     }
 
     if (!Platform.isWindows) {
-      return Container(
-        color: theme.background,
-        child: Center(
-          child: Text(
-            'WebView2 non supporté sur cette plateforme',
-            style: TextStyle(
-              color: theme.textSecondary,
-              fontSize: 14,
-              fontFamily: 'Roboto Mono',
-            ),
+      return _buildUnsupportedPlatform(theme);
+    }
+
+    return ValueListenableBuilder<bool>(
+      valueListenable: _isLoading,
+      builder: (context, isLoading, _) {
+        return _buildWebContent(isLoading, theme);
+      },
+    );
+  }
+  
+  Widget _buildUnsupportedPlatform(AppTheme theme) {
+    return Container(
+      color: theme.background,
+      child: Center(
+        child: Text(
+          'WebView2 non supporté sur cette plateforme',
+          style: TextStyle(
+            color: theme.textSecondary,
+            fontSize: 14,
+            fontFamily: 'Roboto Mono',
           ),
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildWebContent(bool isLoading, AppTheme theme) {
+    if (isLoading && _webView == null) {
+      return _buildLoadingIndicator(theme);
+    }
+
+    if (widget.tab!.state == TabState.error) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 64,
+              color: theme.error,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Erreur de chargement',
+              style: TextStyle(
+                color: theme.error,
+                fontSize: 18,
+                fontFamily: 'Roboto Mono',
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              widget.tab?.url ?? '',
+              style: TextStyle(
+                color: theme.textSecondary,
+                fontSize: 12,
+                fontFamily: 'Roboto Mono',
+              ),
+            ),
+          ],
         ),
       );
     }
 
-    // Utiliser l'état réel du WebView (plus précis que TabState)
-    // Utiliser Consumer pour se mettre à jour automatiquement
-    return Consumer<TabWebViewManager>(
-      builder: (context, webViewManager, _) {
-        bool isLoading = _isLoading;
-        if (_webView != null && widget.tab != null) {
-          final engine = webViewManager.getEngine(widget.tab!.id);
-          if (engine is WebView2BrowserEngine) {
-            isLoading = engine.isLoading;
-            // Forcer la mise à jour si l'état local est différent
-            if (_isLoading != isLoading) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted) {
-                  setState(() {
-                    _isLoading = isLoading;
-                  });
-                }
-              });
-            }
-          }
-        }
+    return Stack(
+      children: [
+        // WebView principal
+        if (_webView != null)
+          RepaintBoundary(
+            child: ValueListenableBuilder<bool>(
+              valueListenable: _isVisible,
+              builder: (context, isVisible, _) {
+                return Visibility(
+                  visible: isVisible,
+                  maintainState: true,
+                  maintainAnimation: true,
+                  maintainInteractivity: false, // Désactive l'interactivité quand invisible
+                  child: Webview(_webView!),
+                );
+              },
+            ),
+          ),
         
-        if (isLoading) {
-          return Stack(
+        // Overlay de chargement conditionnel
+        if (isLoading)
+          _buildLoadingOverlay(theme),
+      ],
+    );
+  }
+  
+  Widget _buildLoadingIndicator(AppTheme theme) {
+    return Container(
+      color: theme.background,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(theme.primary),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Initialisation...',
+              style: TextStyle(
+                color: theme.textSecondary,
+                fontSize: 14,
+                fontFamily: 'Roboto Mono',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildLoadingOverlay(AppTheme theme) {
+    return Positioned.fill(
+      child: Container(
+        color: theme.background.withOpacity(0.7),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Afficher le WebView même pendant le chargement
-              if (_webView != null)
-                Webview(_webView!),
-              // Overlay de chargement
-              Container(
-                color: theme.background.withOpacity(0.8),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(theme.primary),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Chargement...',
-                        style: TextStyle(
-                          color: theme.textSecondary,
-                          fontSize: 14,
-                          fontFamily: 'Roboto Mono',
-                        ),
-                      ),
-                    ],
-                  ),
+              CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(theme.primary),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Chargement...',
+                style: TextStyle(
+                  color: theme.textSecondary,
+                  fontSize: 14,
+                  fontFamily: 'Roboto Mono',
                 ),
               ),
             ],
-          );
-        }
-
-        if (widget.tab!.state == TabState.error) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.error_outline,
-                  size: 64,
-                  color: theme.error,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Erreur de chargement',
-                  style: TextStyle(
-                    color: theme.error,
-                    fontSize: 18,
-                    fontFamily: 'Roboto Mono',
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  widget.tab?.url ?? '',
-                  style: TextStyle(
-                    color: theme.textSecondary,
-                    fontSize: 12,
-                    fontFamily: 'Roboto Mono',
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-
-        // Afficher le WebView2 avec RepaintBoundary pour optimiser le rendu
-        if (_webView != null) {
-          return RepaintBoundary(
-            child: Visibility(
-              visible: _isVisible,
-              maintainState: true, // Garder l'état même si invisible
-              child: Webview(_webView!),
-            ),
-          );
-        }
-
-        // Fallback si le WebView n'est pas encore initialisé
-        return Container(
-          color: theme.background,
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(theme.primary),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Initialisation de WebView2...',
-                  style: TextStyle(
-                    color: theme.textSecondary,
-                    fontSize: 14,
-                    fontFamily: 'Roboto Mono',
-                  ),
-                ),
-              ],
-            ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 

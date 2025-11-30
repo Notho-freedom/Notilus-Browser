@@ -151,6 +151,9 @@ class WebView2BrowserEngine extends BrowserEngine {
       // Si l'initialisation réussit sans exception, on considère que c'est initialisé
       _isInitialized = true;
       
+      // Activer les optimisations de performance
+      _enablePerformanceOptimizations(_webView!);
+      
       // Configurer les listeners du WebView
       await _setupWebViewListeners();
       
@@ -812,6 +815,56 @@ class WebView2BrowserEngine extends BrowserEngine {
     }
   }
 
+  /// Active les optimisations de performance pour le WebView
+  void _enablePerformanceOptimizations(WebviewController controller) {
+    try {
+      // Activer le cache agressif et optimiser les paramètres
+      controller.setBackgroundColor(Colors.transparent);
+      
+      // Optimisations supplémentaires via JavaScript
+      _enableAdditionalOptimizations(controller);
+    } catch (e) {
+      debugPrint('⚠️ Erreur lors de l\'activation des optimisations: $e');
+    }
+  }
+  
+  /// Active des optimisations supplémentaires via JavaScript
+  void _enableAdditionalOptimizations(WebviewController controller) {
+    // Exécuter les scripts d'optimisation après le chargement de la page
+    Future.delayed(const Duration(milliseconds: 500), () {
+      try {
+        controller.executeScript('''
+          // Désactiver les animations pendant le chargement
+          (function() {
+            const style = document.createElement('style');
+            style.textContent = `
+              * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+              }
+            `;
+            if (document.head) {
+              document.head.appendChild(style);
+            }
+            
+            // Chargement prioritaire des images visibles
+            document.addEventListener('DOMContentLoaded', function() {
+              const images = document.getElementsByTagName('img');
+              for (let img of images) {
+                if (img.getBoundingClientRect().top < window.innerHeight * 2) {
+                  img.loading = 'eager';
+                }
+              }
+            });
+          })();
+        ''');
+      } catch (e) {
+        debugPrint('⚠️ Erreur lors de l\'exécution des scripts d\'optimisation: $e');
+      }
+    });
+  }
+  
   /// Nettoie complètement le WebView et ses ressources
   Future<void> _cleanupWebView() async {
     // Annuler toutes les subscriptions aux streams

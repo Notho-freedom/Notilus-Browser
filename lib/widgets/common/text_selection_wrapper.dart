@@ -8,10 +8,12 @@ import 'text_selection_menu.dart';
 /// Wrapper pour détecter les sélections de texte et afficher le menu flottant
 class TextSelectionWrapper extends StatefulWidget {
   final Widget child;
+  final BuildContext? rootContext;
 
   const TextSelectionWrapper({
     super.key,
     required this.child,
+    this.rootContext,
   });
 
   @override
@@ -43,6 +45,39 @@ class _TextSelectionWrapperState extends State<TextSelectionWrapper> {
 
   @override
   Widget build(BuildContext context) {
+    // Utiliser le rootContext passé en paramètre, ou essayer de trouver un Navigator
+    BuildContext? navigatorContext = widget.rootContext;
+    
+    if (navigatorContext == null) {
+      // Essayer de trouver un contexte avec Navigator
+      try {
+        final navigator = Navigator.maybeOf(context, rootNavigator: true);
+        if (navigator != null) {
+          navigatorContext = navigator.context;
+        } else {
+          // Essayer avec Navigator.of
+          Navigator.of(context, rootNavigator: true);
+          navigatorContext = context;
+        }
+      } catch (e) {
+        // Si ce contexte n'a pas de Navigator, essayer de le trouver dans l'arbre
+        try {
+          final navigatorState = context.findAncestorStateOfType<NavigatorState>();
+          if (navigatorState != null) {
+            navigatorContext = navigatorState.context;
+          }
+        } catch (_) {}
+      }
+    }
+    
+    // Définir le contexte root qui contient le Navigator
+    if (navigatorContext != null) {
+      _selectionService.setRootContext(navigatorContext);
+    } else {
+      // Utiliser le contexte actuel comme fallback
+      _selectionService.setRootContext(context);
+    }
+    
     return ChangeNotifierProvider.value(
       value: _selectionService,
       child: Stack(

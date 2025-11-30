@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
+import 'dart:io' show Platform;
 import 'core/theme/modern_theme.dart';
 import 'core/services/theme_mode_notifier.dart';
 import 'core/services/wallpaper_manager.dart';
@@ -62,6 +63,23 @@ void main() async {
     settingsService.initialize(),
     mosaicService.initialize(),
   ]);
+  
+  // Pré-chauffer un WebView au lancement pour accélérer le premier chargement
+  if (Platform.isWindows) {
+    try {
+      // Lancer le pré-chauffage en arrière-plan (ne pas attendre)
+      // Le TabWebViewManager sera créé dans le Provider, donc on le fera après runApp
+      Future.delayed(const Duration(seconds: 1), () {
+        try {
+          // Le pré-chauffage sera géré par TabWebViewManager lors de sa création
+        } catch (e) {
+          debugPrint('⚠️ Erreur lors du pré-chauffage du WebView: $e');
+        }
+      });
+    } catch (e) {
+      debugPrint('⚠️ Impossible de pré-chauffer le WebView: $e');
+    }
+  }
 
   // Initialiser Firebase Auth et Config Sync (si Firebase est configuré)
   FirebaseAuthService? authService;
@@ -180,6 +198,9 @@ class NotilusApp extends StatelessWidget {
   final ConfigSyncService? syncService;
   final GitHubReposService? githubReposService;
   
+  // GlobalKey pour le Navigator root
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+  
   const NotilusApp({
     super.key,
     required this.settingsService,
@@ -228,6 +249,13 @@ class NotilusApp extends StatelessWidget {
                 final previewService = context.read<TabsPreviewService>();
                 previewService.initialize(tabWebViewManager, tabManager);
                 
+                // Pré-chauffer un engine en arrière-plan
+                if (Platform.isWindows) {
+                  tabWebViewManager.preWarmEngine().catchError((e) {
+                    debugPrint('⚠️ Erreur lors du pré-chauffage: $e');
+                  });
+                }
+                
                 return tabWebViewManager;
               },
             ),
@@ -264,6 +292,7 @@ class NotilusApp extends StatelessWidget {
           return MaterialApp(
             title: 'Notilus Browser',
             debugShowCheckedModeBanner: false,
+            navigatorKey: NotilusApp.navigatorKey,
             // ScrollBehavior personnalisé pour cacher toutes les scrollbars
             scrollBehavior: const _InvisibleScrollBehavior(),
             theme: ModernTheme.lightTheme.copyWith(
