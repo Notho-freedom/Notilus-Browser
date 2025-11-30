@@ -8,7 +8,7 @@ import 'package:flutter/services.dart';
 import '../../services/tab_manager.dart';
 import '../../services/settings_service.dart';
 import '../../services/mosaic_service.dart';
-import '../common/notilus_monogram.dart';
+import '../common/notilus_logo_image.dart';
 import '../common/notilus_tooltip.dart';
 
 // La couleur rouge est maintenant gérée par ColorThemeManager
@@ -222,7 +222,7 @@ class _GXSidebarState extends State<GXSidebar> {
             return Column(
               children: [
                 const SizedBox(height: 10),
-                const NotilusMonogram(
+                const NotilusMonogramImage(
                   size: 24,
                   showGlow: false,
                   showFrame: true,

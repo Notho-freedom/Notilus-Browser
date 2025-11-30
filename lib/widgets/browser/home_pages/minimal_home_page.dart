@@ -7,7 +7,7 @@ import '../../../services/tab_manager.dart';
 import '../../../core/services/wallpaper_manager.dart';
 import '../../../services/settings_service.dart';
 import '../../../core/services/color_theme_manager.dart';
-import '../../common/notilus_monogram.dart';
+import '../../common/notilus_logo_image.dart';
 
 /// Page d'accueil minimaliste - Focus sur l'essentiel, design épuré
 class MinimalHomePage extends StatefulWidget {
@@ -271,7 +271,7 @@ class _MinimalHomePageState extends State<MinimalHomePage>
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  NotilusMonogram(
+                  const NotilusMonogramImage(
                     size: 16,
                   ),
                   const SizedBox(width: 8),

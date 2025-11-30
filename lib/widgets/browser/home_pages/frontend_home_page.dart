@@ -8,7 +8,7 @@ import '../../../services/tab_manager.dart';
 import '../../../core/services/wallpaper_manager.dart';
 import '../../../services/settings_service.dart';
 import '../../../core/services/color_theme_manager.dart';
-import '../../common/notilus_monogram.dart';
+import '../../common/notilus_logo_image.dart';
 
 /// Page d'accueil Frontend Developer - Style moderne avec focus sur CSS/HTML/JS
 class FrontendHomePage extends StatefulWidget {
@@ -310,7 +310,7 @@ class _FrontendHomePageState extends State<FrontendHomePage>
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Row(
         children: [
-          const NotilusMonogram(size: 24),
+          const NotilusMonogramImage(size: 24),
           const SizedBox(width: 12),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),

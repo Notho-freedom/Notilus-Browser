@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import '../../core/services/color_theme_manager.dart';
-import 'notilus_logo.dart';
+import 'notilus_logo_image.dart';
 import 'gx_futuristic_components.dart';
 import 'gx_futuristic_dialog.dart';
 
@@ -33,14 +33,9 @@ class NotilusAboutCard extends StatelessWidget {
         accentColor: gxRed,
         padding: const EdgeInsets.all(40),
         child: Center(
-          child: NotilusLogo(
+          child: const NotilusLogoImage(
             size: 300,
-            animated: false,
-            showText: false,
             showGlow: false,
-            showParticles: false,
-            primaryColor: gxRed,
-            secondaryColor: Colors.white,
           ),
         ),
       ),

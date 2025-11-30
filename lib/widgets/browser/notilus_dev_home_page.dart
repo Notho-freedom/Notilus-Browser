@@ -14,7 +14,7 @@ import '../../models/history_item.dart';
 import '../../services/favicon_service.dart';
 import '../../core/utils/url_validator.dart';
 import '../../core/services/color_theme_manager.dart';
-import '../common/notilus_monogram.dart';
+import '../common/notilus_logo_image.dart';
 
 /// Page d'accueil Notilus Dev - Style développeur/IDE immersif
 class NotilusDevHomePage extends StatefulWidget {
@@ -325,7 +325,7 @@ class _NotilusDevHomePageState extends State<NotilusDevHomePage>
           // Logo + Version
           Row(
             children: [
-              NotilusMonogram(size: 18)
+              const NotilusMonogramImage(size: 18)
                   .animate(onPlay: (c) => c.repeat())
                   .shimmer(duration: 3000.ms, color: gxRed.withValues(alpha: 0.3)),
               const SizedBox(width: 10),

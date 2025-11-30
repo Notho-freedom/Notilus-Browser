@@ -17,7 +17,7 @@ import '../../models/bookmark.dart';
 import '../../services/favicon_service.dart';
 import '../../core/utils/url_validator.dart';
 import '../../core/services/color_theme_manager.dart';
-import '../common/notilus_monogram.dart';
+import '../common/notilus_logo_image.dart';
 import '../common/context_menu.dart';
 import '../common/gx_futuristic_dialog.dart';
 import '../common/gx_futuristic_components.dart';
@@ -306,7 +306,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
                               // Logo + titre
                               Column(
                                 children: [
-                                  const NotilusMonogram(
+                                  const NotilusMonogramImage(
                                     size: 78,
                                   )
                                       .animate()

@@ -9,7 +9,7 @@ import '../../../core/services/wallpaper_manager.dart';
 import '../../../services/settings_service.dart';
 import '../../../services/system_metrics_service.dart';
 import '../../../core/services/color_theme_manager.dart';
-import '../../common/notilus_monogram.dart';
+import '../../common/notilus_logo_image.dart';
 
 /// Page d'accueil DevOps - Style monitoring/infrastructure
 class DevOpsHomePage extends StatefulWidget {
@@ -251,7 +251,7 @@ class _DevOpsHomePageState extends State<DevOpsHomePage>
       ),
       child: Row(
         children: [
-          const NotilusMonogram(size: 24),
+          const NotilusMonogramImage(size: 24),
           const SizedBox(width: 16),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),

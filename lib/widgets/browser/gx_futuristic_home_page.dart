@@ -23,7 +23,7 @@ import '../../core/utils/url_validator.dart';
 import '../../core/services/color_theme_manager.dart';
 import '../../core/constants/notilus_colors.dart';
 import '../../core/constants/notilus_fonts.dart';
-import '../common/notilus_monogram.dart';
+import '../common/notilus_logo_image.dart';
 import '../common/context_menu.dart';
 import '../common/gx_futuristic_components.dart';
 import '../common/gx_futuristic_dialog.dart';
@@ -311,9 +311,10 @@ class _GxFuturisticHomePageState extends State<GxFuturisticHomePage>
                               const SizedBox(height: 20),
                               
                               // Logo avec effet de glow
-                              _GlowLogo(
-                                controller: _glowController,
-                                accentColor: accentColor,
+                              NotilusLogoImage(
+                                size: 100,
+                                showGlow: true,
+                                glowColor: accentColor,
                               )
                                   .animate()
                                   .fadeIn(duration: 600.ms)
@@ -802,44 +803,6 @@ class _GxFuturisticHomePageState extends State<GxFuturisticHomePage>
 // ============================================================================
 
 /// Logo avec effet de glow animé
-class _GlowLogo extends StatelessWidget {
-  final AnimationController controller;
-  final Color accentColor;
-
-  const _GlowLogo({
-    required this.controller,
-    required this.accentColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: controller,
-      builder: (context, child) {
-        final glowIntensity = (controller.value * 0.3 + 0.7).clamp(0.7, 1.0);
-        return Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: accentColor.withOpacity(0.3 * glowIntensity),
-                blurRadius: 40 * glowIntensity,
-                spreadRadius: 10 * glowIntensity,
-              ),
-              BoxShadow(
-                color: accentColor.withOpacity(0.2 * glowIntensity),
-                blurRadius: 60 * glowIntensity,
-                spreadRadius: 20 * glowIntensity,
-              ),
-            ],
-          ),
-          child: const NotilusMonogram(size: 100),
-        );
-      },
-    );
-  }
-}
 
 /// Barre de recherche futuriste
 class _FuturisticSearchBar extends StatefulWidget {

@@ -77,4 +77,6 @@ flutter:
   
   assets:
     - assets/soundeffects/
+    - assets/notilus-logo.png
+    - assets/notilus-logo.ico
 

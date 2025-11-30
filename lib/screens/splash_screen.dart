@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../core/constants/notilus_colors.dart';
 import '../core/constants/notilus_fonts.dart';
-import '../widgets/common/notilus_logo.dart';
+import '../widgets/common/notilus_logo_image.dart';
 
 /// Splash Screen Notilus - Page de lancement immersive
 /// Design inspiré de l'univers sous-marin/nautilus avec effets néon
@@ -119,12 +119,10 @@ class _NotilusSplashScreenState extends State<NotilusSplashScreen>
                 const Spacer(flex: 3),
 
                 // Logo Notilus animé
-                const NotilusLogo(
+                NotilusLogoImage(
                   size: 160,
-                  animated: true,
-                  showText: true,
                   showGlow: true,
-                  showParticles: true,
+                  glowColor: primary,
                 ),
 
                 const SizedBox(height: 60),

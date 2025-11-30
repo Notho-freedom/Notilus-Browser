@@ -16,7 +16,7 @@ import '../../models/bookmark.dart';
 import '../../core/services/color_theme_manager.dart';
 import '../../services/settings_service.dart';
 import '../../services/tab_group_service.dart';
-import '../common/notilus_monogram.dart';
+import '../common/notilus_logo_image.dart';
 import '../common/notilus_tooltip.dart';
 import '../common/context_menu.dart';
 import '../common/gx_futuristic_dialog.dart';
@@ -71,7 +71,7 @@ class _GXTabBarState extends State<GXTabBar> {
           if (!widget.isSidebarVisible) ...[
             const NotilusTooltip(
               message: 'Identité Notilus',
-              child: NotilusMonogram(
+              child: const NotilusMonogramImage(
                 size: 22,
                 showGlow: false,
               ),

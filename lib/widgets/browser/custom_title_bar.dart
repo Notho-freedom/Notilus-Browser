@@ -5,6 +5,7 @@ import 'package:window_manager/window_manager.dart';
 import 'package:provider/provider.dart';
 import 'dart:io' show Platform;
 import '../../core/services/color_theme_manager.dart';
+import '../common/notilus_logo_image.dart';
 
 /// Titlebar personnalisée style Opera GX
 class CustomTitleBar extends StatelessWidget {
@@ -59,40 +60,10 @@ class CustomTitleBar extends StatelessWidget {
                   children: [
                     const SizedBox(width: 12),
                     
-                    // Logo avec bordure néon rouge
-                    Builder(
-                      builder: (context) {
-                        final gxRed = Provider.of<ColorThemeManager>(context, listen: true).nativeSecondaryColor;
-                        return Container(
-                          width: 20,
-                          height: 20,
-                          decoration: BoxDecoration(
-                            color: Colors.transparent,
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(
-                              color: gxRed,
-                              width: 1.5,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: gxRed.withOpacity(0.4),
-                                blurRadius: 4,
-                                spreadRadius: 0,
-                              ),
-                            ],
-                          ),
-                          child: Center(
-                            child: Text(
-                              'N',
-                              style: TextStyle(
-                                color: gxRed,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
+                    // Logo Notilus
+                    const NotilusLogoImageCompact(
+                      size: 20,
+                      showGlow: false,
                     ),
                     
                     const SizedBox(width: 12),

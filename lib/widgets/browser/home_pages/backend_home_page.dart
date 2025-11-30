@@ -9,7 +9,7 @@ import '../../../core/services/wallpaper_manager.dart';
 import '../../../services/settings_service.dart';
 import '../../../services/system_metrics_service.dart';
 import '../../../core/services/color_theme_manager.dart';
-import '../../common/notilus_monogram.dart';
+import '../../common/notilus_logo_image.dart';
 
 /// Page d'accueil Backend Developer - Style terminal/serveur
 class BackendHomePage extends StatefulWidget {
