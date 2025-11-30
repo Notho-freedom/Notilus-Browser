@@ -390,16 +390,20 @@ class _NativeTerminalPanelState extends State<NativeTerminalPanel> {
   Widget build(BuildContext context) {
     final wallpaperManager = context.watch<WallpaperManager>();
 
+    final wallpaperUrl = wallpaperManager.currentImageUrl;
+    
     return Container(
       decoration: BoxDecoration(
-        image: DecorationImage(
-          image: NetworkImage(wallpaperManager.current),
-          fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(
-            Colors.black.withValues(alpha: 0.85),
-            BlendMode.srcOver,
-          ),
-        ),
+        image: wallpaperUrl.isNotEmpty
+            ? DecorationImage(
+                image: NetworkImage(wallpaperUrl),
+                fit: BoxFit.cover,
+                colorFilter: ColorFilter.mode(
+                  Colors.black.withValues(alpha: 0.85),
+                  BlendMode.srcOver,
+                ),
+              )
+            : null,
       ),
       child: Container(
         color: Colors.black.withValues(alpha: 0.3),

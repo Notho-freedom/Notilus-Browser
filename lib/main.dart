@@ -27,6 +27,7 @@ import 'services/lighthouse/lighthouse_service.dart';
 import 'services/documentation_service.dart';
 import 'services/adblocker_service.dart';
 import 'services/cloudinary_service.dart';
+import 'services/tabs_preview_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'services/auth/firebase_auth_service.dart';
@@ -210,10 +211,12 @@ class NotilusApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => LighthouseService()),
         ChangeNotifierProvider(create: (_) => AdBlockerService()),
         ChangeNotifierProvider.value(value: CloudinaryService()),
+        ChangeNotifierProvider.value(value: TabsPreviewService()),
         ChangeNotifierProvider.value(value: mosaicService),
             ChangeNotifierProvider(
               create: (context) {
                 final tabWebViewManager = TabWebViewManager();
+                final tabManager = context.read<TabManager>();
                 final downloadService = context.read<DownloadService>();
                 final studioService = context.read<StudioService>();
                 final lighthouseService = context.read<LighthouseService>();
@@ -222,6 +225,11 @@ class NotilusApp extends StatelessWidget {
                 tabWebViewManager.setStudioService(studioService);
                 tabWebViewManager.setLighthouseService(lighthouseService);
                 tabWebViewManager.setAdBlockerService(adBlockerService);
+                
+                // Initialiser le service de preview
+                final previewService = context.read<TabsPreviewService>();
+                previewService.initialize(tabWebViewManager, tabManager);
+                
                 return tabWebViewManager;
               },
             ),

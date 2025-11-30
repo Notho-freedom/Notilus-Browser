@@ -19,6 +19,7 @@ import '../common/notilus_tooltip.dart';
 import '../common/context_menu.dart';
 import '../common/gx_futuristic_dialog.dart';
 import '../common/gx_futuristic_components.dart';
+import '../../core/constants/notilus_fonts.dart';
 
 // La couleur rouge est maintenant gérée par ColorThemeManager
 
@@ -589,147 +590,112 @@ class _GXTabItemState extends State<_GXTabItem>
             child: SizedBox(
               width: widget.width,
               height: 32,
-              child: Column(
-                children: [
-                  // Indicateur animé en haut de l'onglet
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 250),
-                    curve: Curves.easeOutCubic,
-                    height: 3,
-                    width: widget.isActive ? widget.width : (_isHovered ? widget.width * 0.6 : 0),
-                    decoration: BoxDecoration(
-                      gradient: widget.isActive || _isHovered ? activeGradient : null,
-                      borderRadius: BorderRadius.circular(2),
-                      boxShadow: widget.isActive
-                          ? [
-                              BoxShadow(
-                                color: gxRed.withValues(alpha: 0.5),
-                                blurRadius: 6,
-                                spreadRadius: 0,
-                              ),
-                            ]
-                          : [],
-                    ),
-                  ),
-                  const SizedBox(height: 1),
-                  Expanded(
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      curve: Curves.easeOutCubic,
-                      decoration: BoxDecoration(
-                        gradient: widget.isActive
-                            ? activeGradient
-                            : null,
-                        color: widget.isActive
-                            ? null
-                            : (_isHovered
-                                ? const Color(0xFF1F1F23)
-                                : Colors.transparent),
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: _isHovered && !widget.isActive
-                            ? [
-                                BoxShadow(
-                                  color: gxRed.withValues(alpha: _glowAnimation.value * 0.15),
-                                  blurRadius: 10,
-                                  spreadRadius: 0,
-                                ),
-                              ]
-                            : [],
-                      ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child: Row(
-                        children: [
-                        // Favicon dynamique
-                        SizedBox(
-                          width: 24,
-                          child: Center(
-                            child: widget.tab.favicon != null && 
-                                   widget.tab.favicon!.isNotEmpty &&
-                                   !widget.tab.url!.startsWith('about:')
-                                ? Image.network(
-                                    widget.tab.favicon!,
-                                    width: 16,
-                                    height: 16,
-                                    fit: BoxFit.contain,
-                                    loadingBuilder: (context, child, loadingProgress) {
-                                      if (loadingProgress == null) return child;
-                                      return SizedBox(
-                                        width: 16,
-                                        height: 16,
-                                        child: Center(
-                                          child: SizedBox(
-                                            width: 12,
-                                            height: 12,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 1.5,
-                                              valueColor: AlwaysStoppedAnimation<Color>(
-                                                _gxRed.withValues(alpha: 0.6),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                    errorBuilder: (_, __, ___) => _defaultFavicon(),
-                                  )
-                                : _defaultFavicon(),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        // Title
-                        Expanded(
-                          child: Text(
-                            displayTitle,
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha:widget.isActive ? 0.95 : 0.8),
-                              fontSize: 12,
-                              fontWeight: widget.isActive ? FontWeight.w600 : FontWeight.w400,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        // Close button
-                        NotilusTooltip(
-                          message: 'Fermer cet onglet',
-                          child: MouseRegion(
-                            onEnter: (_) => setState(() => _closeHovered = true),
-                            onExit: (_) => setState(() => _closeHovered = false),
-                            child: GestureDetector(
-                              onTap: widget.onClose,
-                              child: Container(
-                                width: 22,
-                                height: 22,
-                                decoration: BoxDecoration(
-                                  color: _closeHovered
-                                      ? Colors.white.withValues(alpha:0.12)
-                                      : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Icon(
-                                  CupertinoIcons.xmark,
-                                  size: 12,
-                                  color: widget.isActive || _isHovered
-                                      ? Colors.white
-                                      : Colors.white.withValues(alpha:0.6),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+              child: Container(
+                decoration: BoxDecoration(
+                  color: widget.isActive
+                      ? gxRed.withOpacity(0.1)
+                      : (_isHovered
+                          ? Colors.white.withOpacity(0.05)
+                          : Colors.transparent),
+                  border: Border(
+                    bottom: BorderSide(
+                      color: widget.isActive ? gxRed : Colors.transparent,
+                      width: 2,
                     ),
                   ),
                 ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  child: Row(
+                    children: [
+                      // Favicon dynamique
+                      SizedBox(
+                        width: 24,
+                        child: Center(
+                          child: widget.tab.favicon != null && 
+                                 widget.tab.favicon!.isNotEmpty &&
+                                 widget.tab.url != null &&
+                                 !widget.tab.url!.startsWith('about:')
+                              ? Image.network(
+                                  widget.tab.favicon!,
+                                  width: 16,
+                                  height: 16,
+                                  fit: BoxFit.contain,
+                                  loadingBuilder: (context, child, loadingProgress) {
+                                    if (loadingProgress == null) return child;
+                                    return SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: Center(
+                                        child: SizedBox(
+                                          width: 12,
+                                          height: 12,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 1.5,
+                                            valueColor: AlwaysStoppedAnimation<Color>(
+                                              _gxRed.withValues(alpha: 0.6),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  errorBuilder: (_, __, ___) => _defaultFavicon(),
+                                )
+                              : _defaultFavicon(),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      // Title
+                      Expanded(
+                        child: Text(
+                          displayTitle,
+                          style: NotilusFonts.rajdhani(
+                            fontSize: 12,
+                            fontWeight: widget.isActive ? FontWeight.w700 : FontWeight.w500,
+                            color: widget.isActive ? gxRed : Colors.white.withOpacity(0.6),
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      // Close button
+                      NotilusTooltip(
+                        message: 'Fermer cet onglet',
+                        child: MouseRegion(
+                          onEnter: (_) => setState(() => _closeHovered = true),
+                          onExit: (_) => setState(() => _closeHovered = false),
+                          child: GestureDetector(
+                            onTap: widget.onClose,
+                            child: Container(
+                              width: 22,
+                              height: 22,
+                              decoration: BoxDecoration(
+                                color: _closeHovered
+                                    ? Colors.white.withValues(alpha:0.12)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Icon(
+                                CupertinoIcons.xmark,
+                                size: 12,
+                                color: widget.isActive || _isHovered
+                                    ? Colors.white
+                                    : Colors.white.withValues(alpha:0.6),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ],
+            ),
           ),
         ),
       ),
-    ),
-  ),
     );
   }
 

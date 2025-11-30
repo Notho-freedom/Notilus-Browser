@@ -1,10 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import '../../services/settings_service.dart';
 import '../../services/cloudinary_cache_service.dart';
-import 'dart:io' show Platform, File;
 
 /// Service pour gérer les vidéos de fond avec media_kit (ultra-robuste)
 class VideoBackgroundService extends ChangeNotifier {
@@ -38,20 +39,56 @@ class VideoBackgroundService extends ChangeNotifier {
   }
 
   void _onSettingsChanged() {
+    // Ne recharger que si les vidéos sélectionnées ont vraiment changé
+    final selectedVideos = _settings.selectedVideos;
+    final selectedBackgrounds = _settings.selectedBackgrounds;
+    
+    // Si une image est sélectionnée, arrêter la vidéo (les images ont la priorité)
+    if (selectedBackgrounds.isNotEmpty) {
+      if (_currentVideoUrl != null) {
+        stop(); // Ne pas await ici car c'est une méthode synchrone
+      }
+      return;
+    }
+    
+    // Si aucune image n'est sélectionnée, charger la vidéo si disponible
     _loadVideo();
   }
 
   Future<void> _loadVideo() async {
     final selectedVideos = _settings.selectedVideos;
+    final selectedBackgrounds = _settings.selectedBackgrounds;
+    
+    // Si une image est sélectionnée, ne pas charger la vidéo (les images ont la priorité)
+    if (selectedBackgrounds.isNotEmpty) {
+      if (_currentVideoUrl != null) {
+        await stop();
+      }
+      return;
+    }
     
     // Utiliser la première vidéo sélectionnée
     final newVideoUrl = selectedVideos.isNotEmpty ? selectedVideos.first : null;
     
-    if (newVideoUrl != _currentVideoUrl) {
-      await stop();
+    // Si aucune vidéo n'est sélectionnée, arrêter la vidéo actuelle
+    if (newVideoUrl == null) {
+      if (_currentVideoUrl != null) {
+        await stop();
+      }
+      return;
+    }
+    
+    // Ne recharger que si l'URL a vraiment changé ou si le player n'existe pas
+    if (newVideoUrl != _currentVideoUrl || _player == null) {
+      // Si on passe d'une vidéo à une autre ou de vidéo à rien
+      if (_currentVideoUrl != null && _currentVideoUrl != newVideoUrl) {
+        await stop();
+      }
+      
       _currentVideoUrl = newVideoUrl;
       
-      if (newVideoUrl != null && newVideoUrl.isNotEmpty) {
+      // Si une nouvelle vidéo est sélectionnée, la jouer
+      if (newVideoUrl.isNotEmpty) {
         await play(newVideoUrl);
       }
       
@@ -61,25 +98,61 @@ class VideoBackgroundService extends ChangeNotifier {
 
   Future<void> play(String url) async {
     try {
-      await stop();
-      
-      // Créer le player avec configuration optimisée
-      _player = Player(
-        configuration: const PlayerConfiguration(
-          bufferSize: 500 * 1024 * 1024, // 500MB – anti freeze
-        ),
-      );
-      
-      _controller = VideoController(_player!);
+      // Réutiliser le player existant si disponible, sinon en créer un nouveau
+      if (_player == null) {
+        // Créer le player avec configuration optimisée
+        _player = Player(
+          configuration: const PlayerConfiguration(
+            bufferSize: 500 * 1024 * 1024, // 500MB – anti freeze
+          ),
+        );
+        
+        _controller = VideoController(_player!);
+        
+        // #region agent log
+        try {
+          final logData = {
+            'sessionId': 'debug-session',
+            'runId': 'run3',
+            'hypothesisId': 'E',
+            'location': 'video_background_service.dart:109',
+            'message': 'VideoController created',
+            'data': {
+              'url': url.length > 100 ? '${url.substring(0, 100)}...' : url,
+              'controllerIsNull': _controller == null,
+            },
+            'timestamp': DateTime.now().millisecondsSinceEpoch,
+          };
+          final logFile = File(r'c:\Users\bobim\Notilus-Browser\.cursor\debug.log');
+          logFile.writeAsStringSync('${jsonEncode(logData)}\n', mode: FileMode.append);
+        } catch (_) {}
+        // #endregion
 
-      // Annuler l'ancienne subscription si elle existe
-      _playingSubscription?.cancel();
-      
-      // Écouter les changements d'état
-      _playingSubscription = _player!.stream.playing.listen((playing) {
-        _isPlaying = playing;
-        notifyListeners();
-      });
+        // Annuler l'ancienne subscription si elle existe
+        _playingSubscription?.cancel();
+        
+        // Écouter les changements d'état
+        _playingSubscription = _player!.stream.playing.listen((playing) {
+          _isPlaying = playing;
+          // Si la lecture s'arrête inopinément, la reprendre (sauf si c'est un stop() explicite)
+          if (!playing && _currentVideoUrl != null && _currentVideoUrl == url) {
+            // Attendre un peu avant de reprendre (peut être une pause temporaire)
+            Future.delayed(const Duration(seconds: 1), () {
+              if (_player != null && _currentVideoUrl == url && !_isPlaying) {
+                _player!.play();
+              }
+            });
+          }
+          notifyListeners();
+        });
+      } else {
+        // Si le player existe déjà, juste arrêter la lecture actuelle
+        try {
+          await _player!.stop();
+        } catch (e) {
+          // Ignorer les erreurs si le player est déjà arrêté
+        }
+      }
 
       // Vérifier d'abord si la vidéo est en cache
       final cacheService = CloudinaryCacheService();
@@ -114,6 +187,26 @@ class VideoBackgroundService extends ChangeNotifier {
       _hasAudio = !_isMuted && _volume > 0;
       _currentVideoUrl = url;
       
+      // #region agent log
+      try {
+        final logData = {
+          'sessionId': 'debug-session',
+          'runId': 'run3',
+          'hypothesisId': 'E',
+          'location': 'video_background_service.dart:162',
+          'message': 'Video play completed, notifying listeners',
+          'data': {
+            'url': url.length > 100 ? '${url.substring(0, 100)}...' : url,
+            'controllerIsNull': _controller == null,
+            'playerIsNull': _player == null,
+          },
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+        };
+        final logFile = File(r'c:\Users\bobim\Notilus-Browser\.cursor\debug.log');
+        logFile.writeAsStringSync('${jsonEncode(logData)}\n', mode: FileMode.append);
+      } catch (_) {}
+      // #endregion
+      
       notifyListeners();
       debugPrint('✅ Vidéo de fond démarrée (media_kit): $url');
     } catch (e) {
@@ -136,11 +229,25 @@ class VideoBackgroundService extends ChangeNotifier {
     _playingSubscription = null;
     
     if (_player != null) {
-      await _player!.stop();
-      await _player!.dispose();
+      final playerToDispose = _player;
       _player = null;
       _controller = null;
+      
+      try {
+        await playerToDispose!.stop();
+      } catch (e) {
+        // Le player peut déjà être arrêté ou disposé - ignorer silencieusement
+        // Ne pas logger car c'est un comportement attendu
+      }
+      
+      try {
+        await playerToDispose?.dispose();
+      } catch (e) {
+        // Le player peut déjà être disposé automatiquement par media_kit - ignorer silencieusement
+        // Ne pas logger car c'est un comportement attendu (assertion "[Player] has been disposed")
+      }
     }
+    _currentVideoUrl = null;
     _isPlaying = false;
     _hasAudio = false;
     notifyListeners();

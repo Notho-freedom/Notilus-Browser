@@ -41,6 +41,7 @@ import '../../widgets/github/github_repos_panel.dart';
 import '../../services/lighthouse/lighthouse_service.dart';
 import '../../services/studio/studio_service.dart';
 import '../../widgets/common/gx_test_panel.dart';
+import 'gx_3d_coverflow_tabs_view.dart';
 
 // Intent pour les raccourcis clavier
 class _ToggleMosaicIntent extends Intent {}
@@ -304,10 +305,25 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                           return GXTabBar(
                             onMenuTap: _toggleSidebar,
                             onGroupsPressed: groupingEnabled ? () {
-                              setState(() {
-                                _currentSection = SidebarSection.favorites;
-                                _isSidebarVisible = true;
-                              });
+                              // Créer ou activer l'onglet 3D Cover Flow
+                              final tabManager = Provider.of<TabManager>(context, listen: false);
+                              final existing3DTabs = tabManager.tabs.where(
+                                (tab) => tab.url == 'about:3dtabs',
+                              );
+                              
+                              if (existing3DTabs.isEmpty) {
+                                // Créer un nouvel onglet dédié
+                                final newTab = tabManager.createNewTab();
+                                tabManager.updateTab(
+                                  newTab.id,
+                                  url: 'about:3dtabs',
+                                  title: 'Onglets en 3D',
+                                );
+                                tabManager.selectTab(newTab.id);
+                              } else {
+                                // Activer l'onglet existant
+                                tabManager.selectTab(existing3DTabs.first.id);
+                              }
                             } : null,
                             isSidebarVisible: _isSidebarVisible,
                           );
@@ -316,12 +332,27 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                         // Mode classique (avec ou sans groupement)
                         return GroupedTabBar(
                           onMenuTap: _toggleSidebar,
-                          onGroupsPressed: groupingEnabled ? () {
-                            setState(() {
-                              _currentSection = SidebarSection.favorites;
-                              _isSidebarVisible = true;
-                            });
-                          } : null,
+                            onGroupsPressed: groupingEnabled ? () {
+                              // Créer ou activer l'onglet 3D Cover Flow
+                              final tabManager = Provider.of<TabManager>(context, listen: false);
+                              final existing3DTabs = tabManager.tabs.where(
+                                (tab) => tab.url == 'about:3dtabs',
+                              );
+                              
+                              if (existing3DTabs.isEmpty) {
+                                // Créer un nouvel onglet dédié
+                                final newTab = tabManager.createNewTab();
+                                tabManager.updateTab(
+                                  newTab.id,
+                                  url: 'about:3dtabs',
+                                  title: 'Onglets en 3D',
+                                );
+                                tabManager.selectTab(newTab.id);
+                              } else {
+                                // Activer l'onglet existant
+                                tabManager.selectTab(existing3DTabs.first.id);
+                              }
+                            } : null,
                           isSidebarVisible: _isSidebarVisible,
                         );
                       },
@@ -417,6 +448,21 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                                 activeTab.url == 'about:newtab') {
                               return _buildHomePageWidget();
                             }
+                            
+                            // Onglet 3D Cover Flow dédié
+                            if (activeTab.url == 'about:3dtabs') {
+                              return Gx3DCoverFlowTabsView(
+                                onClose: () {
+                                  // Fermer l'onglet 3D
+                                  final tabManager = context.read<TabManager>();
+                                  tabManager.closeTab(activeTab.id);
+                                },
+                                onTabSelected: () {
+                                  // L'onglet sélectionné sera automatiquement activé
+                                },
+                              );
+                            }
+                            
                             return WebContentView(tab: activeTab);
                           },
                         ),
@@ -449,32 +495,34 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                       ),
                   ],
                 ),
-                // Mini DevTools flottant
+                // Mini DevTools flottant (dans un Stack pour qu'il soit au-dessus)
                 if (_isMiniDevToolsVisible)
-                  Builder(
-                    builder: (context) {
-                      final tabWebViewManager = context.read<TabWebViewManager>();
-                      final tabManager = context.read<TabManager>();
-                      final activeTab = tabManager.activeTab;
-                      final engine = activeTab != null 
-                          ? tabWebViewManager.getEngineForTab(activeTab.id)
-                          : null;
-                      return NotilusMiniDevToolsPanel(
-                        isVisible: _isMiniDevToolsVisible,
-                        engine: engine,
-                        onClose: () {
-                          setState(() {
-                            _isMiniDevToolsVisible = false;
-                          });
-                        },
-                        onSwitchToNative: () {
-                          setState(() {
-                            _isMiniDevToolsVisible = false;
-                            _isDevToolsOpen = true;
-                          });
-                        },
-                      );
-                    },
+                  Positioned.fill(
+                    child: Builder(
+                      builder: (context) {
+                        final tabWebViewManager = context.read<TabWebViewManager>();
+                        final tabManager = context.read<TabManager>();
+                        final activeTab = tabManager.activeTab;
+                        final engine = activeTab != null 
+                            ? tabWebViewManager.getEngineForTab(activeTab.id)
+                            : null;
+                        return NotilusMiniDevToolsPanel(
+                          isVisible: _isMiniDevToolsVisible,
+                          engine: engine,
+                          onClose: () {
+                            setState(() {
+                              _isMiniDevToolsVisible = false;
+                            });
+                          },
+                          onSwitchToNative: () {
+                            setState(() {
+                              _isMiniDevToolsVisible = false;
+                              _isDevToolsOpen = true;
+                            });
+                          },
+                        );
+                      },
+                    ),
                   ),
                 // Menu latéral en position absolue à droite de la sidebar
                 Positioned(
@@ -815,20 +863,25 @@ class _NotilusWidgetsPanel extends StatelessWidget {
     
     return Selector<SettingsService, double>(
       selector: (_, settings) => settings.panelTransparency,
-      builder: (context, panelTransparency, _) => Container(
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: NetworkImage(context.watch<WallpaperManager>().current),
-            fit: BoxFit.cover,
-            colorFilter: ColorFilter.mode(
-              Colors.black.withValues(alpha: 0.85),
-              BlendMode.srcOver,
-            ),
+      builder: (context, panelTransparency, _) {
+        final wallpaperManager = context.watch<WallpaperManager>();
+        final wallpaperUrl = wallpaperManager.currentImageUrl;
+        return Container(
+          decoration: BoxDecoration(
+            image: wallpaperUrl.isNotEmpty
+                ? DecorationImage(
+                    image: NetworkImage(wallpaperUrl),
+                    fit: BoxFit.cover,
+                    colorFilter: ColorFilter.mode(
+                      Colors.black.withValues(alpha: 0.85),
+                      BlendMode.srcOver,
+                    ),
+                  )
+                : null,
           ),
-        ),
-        child: Container(
-          color: Colors.black.withValues(alpha: 1.0 - panelTransparency),
-          child: Column(
+          child: Container(
+            color: Colors.black.withValues(alpha: 1.0 - panelTransparency),
+            child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
@@ -917,7 +970,8 @@ class _NotilusWidgetsPanel extends StatelessWidget {
           ],
         ),
       ),
-      ),
+      );
+      },
     );
   }
 
@@ -1039,18 +1093,23 @@ class _NotilusAiPanelState extends State<_NotilusAiPanel> {
     final gxRed = Provider.of<ColorThemeManager>(context).nativeSecondaryColor;
     final gxRedDark = Provider.of<ColorThemeManager>(context).primaryDarkColor;
     
+    final wallpaperManager = context.watch<WallpaperManager>();
+    final wallpaperUrl = wallpaperManager.currentImageUrl;
+    
     return Container(
       decoration: BoxDecoration(
-        image: DecorationImage(
-          image: NetworkImage(context.watch<WallpaperManager>().current),
-          fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(
-            Colors.black.withValues(alpha: 0.85),
-            BlendMode.srcOver,
+        image: wallpaperUrl.isNotEmpty
+            ? DecorationImage(
+                image: NetworkImage(wallpaperUrl),
+                fit: BoxFit.cover,
+                colorFilter: ColorFilter.mode(
+                  Colors.black.withValues(alpha: 0.85),
+                  BlendMode.srcOver,
+                ),
+              )
+            : null,
           ),
-        ),
-      ),
-      child: Container(
+          child: Container(
         color: Colors.black.withValues(alpha: 0.5),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1418,18 +1477,23 @@ class _NotilusUpdatesPanelState extends State<_NotilusUpdatesPanel> {
     final theme = Theme.of(context);
     final gxRed = Provider.of<ColorThemeManager>(context).nativeSecondaryColor;
     
+    final wallpaperManager = context.watch<WallpaperManager>();
+    final wallpaperUrl = wallpaperManager.currentImageUrl;
+    
     return Container(
       decoration: BoxDecoration(
-        image: DecorationImage(
-          image: NetworkImage(context.watch<WallpaperManager>().current),
-          fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(
-            Colors.black.withValues(alpha: 0.85),
-            BlendMode.srcOver,
+        image: wallpaperUrl.isNotEmpty
+            ? DecorationImage(
+                image: NetworkImage(wallpaperUrl),
+                fit: BoxFit.cover,
+                colorFilter: ColorFilter.mode(
+                  Colors.black.withValues(alpha: 0.85),
+                  BlendMode.srcOver,
+                ),
+              )
+            : null,
           ),
-        ),
-      ),
-      child: Container(
+          child: Container(
         color: Colors.black.withValues(alpha: 0.5),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

@@ -894,6 +894,7 @@ class SettingsService extends ChangeNotifier {
   
   Future<void> setSelectedBackgrounds(List<String> urls) async {
     await _prefs?.setString(_keySelectedBackgrounds, jsonEncode(urls));
+    debugPrint('✅ setSelectedBackgrounds appelé avec ${urls.length} URLs');
     notifyListeners();
   }
   
@@ -910,6 +911,7 @@ class SettingsService extends ChangeNotifier {
   
   Future<void> setSelectedVideos(List<String> urls) async {
     await _prefs?.setString(_keySelectedVideos, jsonEncode(urls));
+    debugPrint('✅ setSelectedVideos appelé avec ${urls.length} URLs');
     notifyListeners();
   }
   

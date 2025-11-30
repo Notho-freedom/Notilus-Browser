@@ -343,16 +343,20 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
     final settings = SettingsService();
     final panelOpacity = 1.0 - settings.panelTransparency;
 
+    final wallpaperUrl = wallpaperManager.currentImageUrl;
+    
     return Container(
       decoration: BoxDecoration(
-        image: DecorationImage(
-          image: NetworkImage(wallpaperManager.current),
-          fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(
-            Colors.black.withOpacity(0.88),
-            BlendMode.srcOver,
-          ),
-        ),
+        image: wallpaperUrl.isNotEmpty
+            ? DecorationImage(
+                image: NetworkImage(wallpaperUrl),
+                fit: BoxFit.cover,
+                colorFilter: ColorFilter.mode(
+                  Colors.black.withOpacity(0.88),
+                  BlendMode.srcOver,
+                ),
+              )
+            : null,
       ),
       child: ListenableBuilder(
         listenable: _settings,
@@ -1013,10 +1017,13 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                       width: double.infinity,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
-                        image: DecorationImage(
-                          image: NetworkImage(wallpaperManager.current),
-                          fit: BoxFit.cover,
-                        ),
+                        image: () {
+                          final url = wallpaperManager.currentImageUrl;
+                          return url.isNotEmpty ? DecorationImage(
+                            image: NetworkImage(url),
+                            fit: BoxFit.cover,
+                          ) : null;
+                        }(),
                         border: Border.all(color: gxRed.withOpacity(0.3)),
                       ),
                     ),

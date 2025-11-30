@@ -193,60 +193,48 @@ class CloudinaryCacheService {
   }
 
   /// Génère l'URL de thumbnail Cloudinary
+  /// Pour les vidéos, utilise `/so_1/` pour extraire une frame à 1 seconde
   static String getThumbnailUrl(String secureUrl, {int width = 300, int height = 300}) {
     try {
       final uri = Uri.parse(secureUrl);
       final pathSegments = uri.pathSegments;
       
-      // Cloudinary URL format: https://res.cloudinary.com/{cloud_name}/{resource_type}/upload/{transformations}/{public_id}.{format}
-      // Pour les vidéos, on peut aussi utiliser /video/upload/v{timestamp}/{transformations}/{public_id}
-      
       if (pathSegments.length >= 3) {
+        final cloudName = pathSegments[0];
         final resourceType = pathSegments[1]; // 'image', 'video', 'raw'
-        final uploadIndex = pathSegments.indexOf('upload');
         
-        if (uploadIndex != -1 && uploadIndex < pathSegments.length - 1) {
-          // Extraire le public_id (tout après 'upload' jusqu'à la fin)
-          final publicIdParts = pathSegments.sublist(uploadIndex + 1);
-          
-          // Vérifier si des transformations existent déjà
-          bool hasTransformations = false;
-          if (publicIdParts.isNotEmpty) {
-            // Les transformations sont généralement des chaînes avec des underscores ou des caractères spéciaux
-            final firstPart = publicIdParts[0];
-            hasTransformations = firstPart.contains('_') || firstPart.contains(',') || 
-                                firstPart.contains('w_') || firstPart.contains('h_');
+        // Pour les vidéos, utiliser so_1 pour extraire une frame à 1 seconde
+        if (resourceType == 'video') {
+          // Extraire le public_id (tout après 'upload' jusqu'à la fin, sans extension)
+          final uploadIndex = pathSegments.indexOf('upload');
+          if (uploadIndex != -1 && uploadIndex < pathSegments.length - 1) {
+            final publicIdParts = pathSegments.sublist(uploadIndex + 1);
+            
+            // Retirer les transformations existantes et l'extension
+            String publicId = publicIdParts.join('/');
+            // Retirer l'extension .mp4, .webm, etc.
+            publicId = publicId.replaceAll(RegExp(r'\.(mp4|webm|mov|avi)$'), '');
+            
+            // Construire l'URL avec so_1 pour extraire une frame à 1 seconde
+            final thumbnailPath = '/$cloudName/video/upload/so_1/$publicId.jpg';
+            return '${uri.scheme}://${uri.host}$thumbnailPath';
           }
-          
-          String publicId;
-          if (hasTransformations && publicIdParts.length > 1) {
-            // Les transformations sont le premier élément, le public_id est le reste
-            publicId = publicIdParts.sublist(1).join('/');
-          } else if (hasTransformations) {
-            // Pas de public_id visible, utiliser l'URL originale
-            publicId = publicIdParts.join('/');
-          } else {
-            publicId = publicIdParts.join('/');
+        } else {
+          // Pour les images, utiliser les transformations standard
+          final uploadIndex = pathSegments.indexOf('upload');
+          if (uploadIndex != -1 && uploadIndex < pathSegments.length - 1) {
+            final publicIdParts = pathSegments.sublist(uploadIndex + 1);
+            String publicId = publicIdParts.join('/');
+            
+            // Transformation pour les images
+            final transformation = 'w_$width,h_$height,c_fill,q_auto,f_auto';
+            final thumbnailPath = '/$cloudName/$resourceType/upload/$transformation/$publicId';
+            return '${uri.scheme}://${uri.host}$thumbnailPath';
           }
-          
-          // Pour les vidéos, générer un thumbnail avec une transformation
-          final transformation = resourceType == 'video'
-              ? 'w_$width,h_$height,c_fill,q_auto,f_jpg' // f_jpg pour forcer une image
-              : 'w_$width,h_$height,c_fill,q_auto,f_auto';
-          
-          // Construire la nouvelle URL
-          final newPath = '/${pathSegments[0]}/$resourceType/upload/$transformation/$publicId';
-          return '${uri.scheme}://${uri.host}$newPath';
         }
       }
       
-      // Fallback : ajouter les transformations à la fin du chemin
-      final transformation = 'w_$width,h_$height,c_fill,q_auto,f_auto';
-      final path = uri.path;
-      if (path.contains('/upload/')) {
-        return path.replaceFirst('/upload/', '/upload/$transformation/');
-      }
-      
+      // Fallback : retourner l'URL originale si on ne peut pas générer de thumbnail
       return secureUrl;
     } catch (e) {
       debugPrint('Erreur lors de la génération du thumbnail: $e');

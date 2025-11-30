@@ -261,19 +261,23 @@ class _GxFuturisticHomePageState extends State<GxFuturisticHomePage>
     
     return ListenableBuilder(
       listenable: _settings,
-      builder: (context, _) => Container(
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: CachedNetworkImageProvider(wallpaperManager.current),
-            fit: BoxFit.cover,
-            colorFilter: ColorFilter.mode(
-              Colors.black.withOpacity(0.7),
-              BlendMode.srcOver,
-            ),
+      builder: (context, _) {
+        final currentUrl = wallpaperManager.current;
+        return Container(
+          decoration: BoxDecoration(
+            image: currentUrl.isNotEmpty && !wallpaperManager.isVideo
+                ? DecorationImage(
+                    image: CachedNetworkImageProvider(currentUrl),
+                    fit: BoxFit.cover,
+                    colorFilter: ColorFilter.mode(
+                      Colors.black.withOpacity(0.7),
+                      BlendMode.srcOver,
+                    ),
+                  )
+                : null,
           ),
-        ),
-        child: Stack(
-          children: [
+          child: Stack(
+            children: [
             // Particules animées en arrière-plan
             _ParticleBackground(
               controller: _particleController,
@@ -439,7 +443,8 @@ class _GxFuturisticHomePageState extends State<GxFuturisticHomePage>
             _buildSideLabels(context, accentColor),
           ],
         ),
-      ),
+      );
+      },
     );
   }
 

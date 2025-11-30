@@ -512,27 +512,49 @@ class _MediaItem extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(11),
               child: resourceType == CloudinaryResourceType.image
-                  ? CachedNetworkImage(
-                      imageUrl: media.secureUrl,
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      height: double.infinity,
-                      placeholder: (context, url) => Container(
-                        color: Colors.grey[900],
-                        child: Center(
-                          child: CircularProgressIndicator(
-                            color: gxRed,
-                            strokeWidth: 2,
+                  ? Builder(
+                      builder: (context) {
+                        // Vérifier que l'URL n'est pas une vidéo
+                        final url = media.secureUrl;
+                        final isVideoUrl = url.contains('.mp4') || 
+                                           url.contains('video/upload') ||
+                                           url.endsWith('.webm') ||
+                                           url.endsWith('.mov') ||
+                                           url.endsWith('.avi');
+                        
+                        if (isVideoUrl) {
+                          return Container(
+                            color: Colors.grey[900],
+                            child: Icon(
+                              CupertinoIcons.exclamationmark_triangle,
+                              color: Colors.grey[600],
+                            ),
+                          );
+                        }
+                        
+                        return CachedNetworkImage(
+                          imageUrl: url,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: double.infinity,
+                          placeholder: (context, url) => Container(
+                            color: Colors.grey[900],
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                color: gxRed,
+                                strokeWidth: 2,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                      errorWidget: (context, url, error) => Container(
-                        color: Colors.grey[900],
-                        child: Icon(
-                          CupertinoIcons.photo,
-                          color: Colors.grey[600],
-                        ),
-                      ),
+                          errorWidget: (context, url, error) => Container(
+                            color: Colors.grey[900],
+                            child: Icon(
+                              CupertinoIcons.photo,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        );
+                      },
                     )
                   : resourceType == CloudinaryResourceType.video
                       ? _VideoThumbnail(
@@ -616,7 +638,7 @@ class _VideoThumbnailState extends State<_VideoThumbnail> {
   }
 
   void _loadThumbnail() {
-    // Générer l'URL de thumbnail Cloudinary
+    // Générer l'URL de thumbnail Cloudinary avec so_1 pour extraire une frame à 1 seconde
     _thumbnailUrl = CloudinaryCacheService.getThumbnailUrl(
       widget.media.secureUrl,
       width: 300,
@@ -992,12 +1014,33 @@ class _MediaPreviewState extends State<_MediaPreview> {
   }
 
   Widget _buildImagePreview() {
+    // Vérifier que l'URL n'est pas une vidéo avant d'afficher
+    final url = widget.media.secureUrl;
+    final isVideoUrl = url.contains('.mp4') || 
+                       url.contains('video/upload') ||
+                       url.endsWith('.webm') ||
+                       url.endsWith('.mov') ||
+                       url.endsWith('.avi');
+    
+    if (isVideoUrl) {
+      return Container(
+        color: widget.bgColor.withOpacity(0.3),
+        child: Center(
+          child: Icon(
+            CupertinoIcons.exclamationmark_triangle,
+            size: 64,
+            color: widget.gxRed.withOpacity(0.5),
+          ),
+        ),
+      );
+    }
+    
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
       child: Container(
         constraints: const BoxConstraints.expand(),
         child: CachedNetworkImage(
-          imageUrl: widget.media.secureUrl,
+          imageUrl: url,
           fit: BoxFit.contain,
           placeholder: (context, url) => Container(
             color: widget.bgColor.withOpacity(0.3),
@@ -1155,13 +1198,20 @@ class _MediaPreviewState extends State<_MediaPreview> {
                           ),
                           const SizedBox(width: 6),
                           Expanded(
-                            child: Slider(
-                              value: _videoVolume,
-                              min: 0.0,
-                              max: 1.0,
-                              activeColor: widget.gxRed,
-                              inactiveColor: widget.gxRed.withOpacity(0.3),
-                              onChanged: (value) => _setVideoVolume(value),
+                            child: SliderTheme(
+                              data: SliderTheme.of(context).copyWith(
+                                trackHeight: 1.5,
+                                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 4),
+                                overlayShape: const RoundSliderOverlayShape(overlayRadius: 8),
+                              ),
+                              child: Slider(
+                                value: _videoVolume,
+                                min: 0.0,
+                                max: 1.0,
+                                activeColor: widget.gxRed,
+                                inactiveColor: widget.gxRed.withOpacity(0.3),
+                                onChanged: (value) => _setVideoVolume(value),
+                              ),
                             ),
                           ),
                           const SizedBox(width: 6),
@@ -1259,13 +1309,20 @@ class _MediaPreviewState extends State<_MediaPreview> {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Slider(
-                  value: _audioVolume,
-                  min: 0.0,
-                  max: 1.0,
-                  activeColor: widget.gxRed,
-                  inactiveColor: widget.gxRed.withOpacity(0.3),
-                  onChanged: (value) => _setAudioVolume(value),
+                child: SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    trackHeight: 1.5,
+                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 4),
+                    overlayShape: const RoundSliderOverlayShape(overlayRadius: 8),
+                  ),
+                  child: Slider(
+                    value: _audioVolume,
+                    min: 0.0,
+                    max: 1.0,
+                    activeColor: widget.gxRed,
+                    inactiveColor: widget.gxRed.withOpacity(0.3),
+                    onChanged: (value) => _setAudioVolume(value),
+                  ),
                 ),
               ),
             ],

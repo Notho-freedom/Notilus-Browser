@@ -55,6 +55,10 @@ class WebView2BrowserEngine extends BrowserEngine {
   bool _isPageLoaded = false;
   bool _isLoading = false; // État de chargement réel
   
+  // StreamController pour rebroadcast loadingState (permet plusieurs listeners)
+  StreamController<LoadingState>? _loadingStateController;
+  StreamSubscription<LoadingState>? _loadingStateSubscription;
+  
   // Cache des résultats de polling pour éviter les appels répétés
   String? _lastNewWindowUrl;
   
@@ -115,8 +119,14 @@ class WebView2BrowserEngine extends BrowserEngine {
       // Configurer l'interception des téléchargements
       _setupDownloadInterceptor();
       
-      // Gérer les états de chargement (UN SEUL LISTENER pour éviter les conflits)
-      _webView!.loadingState.listen((state) {
+      // Créer un StreamController pour rebroadcast loadingState (permet plusieurs listeners)
+      _loadingStateController = StreamController<LoadingState>.broadcast();
+      
+      // Écouter le stream original et rebroadcast vers le controller
+      _loadingStateSubscription = _webView!.loadingState.listen((state) {
+        // Rebroadcast vers le controller (permet plusieurs listeners)
+        _loadingStateController?.add(state);
+        
         final wasLoading = _isLoading;
         _isLoading = state == LoadingState.loading;
         _isPageLoaded = state == LoadingState.navigationCompleted;
@@ -381,6 +391,10 @@ class WebView2BrowserEngine extends BrowserEngine {
   
   /// Obtient l'état de chargement réel du WebView (plus précis que TabState)
   bool get isLoading => _isLoading;
+  
+  /// Stream broadcast pour loadingState (permet plusieurs listeners)
+  Stream<LoadingState> get loadingStateStream => 
+      _loadingStateController?.stream ?? const Stream<LoadingState>.empty();
 
   /// Démarre le polling pour détecter les nouvelles fenêtres avec fréquence adaptative
   void _startNewWindowPolling() {
@@ -740,7 +754,13 @@ class WebView2BrowserEngine extends BrowserEngine {
     }
   }
 
+  @override
   void dispose() {
+    // Nettoyer le StreamController et la subscription
+    _loadingStateSubscription?.cancel();
+    _loadingStateSubscription = null;
+    _loadingStateController?.close();
+    _loadingStateController = null;
     _stopNewWindowPolling();
     _downloadPollingTimer?.cancel();
     _downloadPollingTimer = null;

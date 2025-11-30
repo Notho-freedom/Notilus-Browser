@@ -57,6 +57,14 @@ class BackgroundMusicService extends ChangeNotifier with WidgetsBindingObserver 
   }
 
   void _onSettingsChanged() {
+    // Ne recharger que si la musique sélectionnée a vraiment changé
+    final selectedMusic = _settings.selectedMusic;
+    
+    // Si la musique n'a pas changé, ne rien faire
+    if (selectedMusic == _currentMusicUrl) {
+      return;
+    }
+    
     _loadMusic();
   }
 
@@ -65,13 +73,19 @@ class BackgroundMusicService extends ChangeNotifier with WidgetsBindingObserver 
     
     // Ne pas charger la musique si la vidéo a du son
     if (_videoService.hasAudio) {
+      // Si la vidéo a du son et qu'on joue de la musique, l'arrêter
+      if (_isPlaying) {
+        await pause();
+      }
       return;
     }
     
-    // Si la musique a changé ou n'est plus sélectionnée
+    // Si la musique a vraiment changé
     if (selectedMusic != _currentMusicUrl) {
-      // Arrêter la musique actuelle
-      await stop();
+      // Arrêter la musique actuelle seulement si on passe à une autre ou à rien
+      if (_currentMusicUrl != null) {
+        await stop();
+      }
       
       _currentMusicUrl = selectedMusic;
       
@@ -81,6 +95,9 @@ class BackgroundMusicService extends ChangeNotifier with WidgetsBindingObserver 
       }
       
       notifyListeners();
+    } else if (selectedMusic == _currentMusicUrl && selectedMusic != null && !_isPlaying && _isEnabled && !_videoService.hasAudio) {
+      // Si la musique est la même mais qu'elle n'est pas en cours de lecture, la reprendre
+      await resume();
     }
   }
 
@@ -137,6 +154,12 @@ class BackgroundMusicService extends ChangeNotifier with WidgetsBindingObserver 
       return;
     }
     
+    // Vérifier que l'URL n'est pas vide
+    if (url.isEmpty) {
+      debugPrint('⚠️ URL musique vide, impossible de jouer');
+      return;
+    }
+    
     try {
       // Arrêter la musique actuelle si elle existe
       await stop();
@@ -145,21 +168,35 @@ class BackgroundMusicService extends ChangeNotifier with WidgetsBindingObserver 
       _audioPlayer!.setReleaseMode(ReleaseMode.loop); // Boucle infinie
       _audioPlayer!.setVolume(_isAppInForeground ? _volume : 0.0);
       
-      await _audioPlayer!.setSource(UrlSource(url));
-      
-      if (_isAppInForeground) {
-        await _audioPlayer!.resume();
-        _isPlaying = true;
+      try {
+        await _audioPlayer!.setSource(UrlSource(url));
+        
+        if (_isAppInForeground) {
+          await _audioPlayer!.resume();
+          _isPlaying = true;
+        }
+        
+        _currentMusicUrl = url;
+        
+        notifyListeners();
+        
+        debugPrint('Musique de fond démarrée: $url');
+      } catch (sourceError) {
+        debugPrint('Erreur chargement source musique: $sourceError');
+        _isPlaying = false;
+        _currentMusicUrl = null;
+        await _audioPlayer?.dispose();
+        _audioPlayer = null;
+        notifyListeners();
       }
-      
-      _currentMusicUrl = url;
-      
-      notifyListeners();
-      
-      debugPrint('Musique de fond démarrée: $url');
     } catch (e) {
       debugPrint('Erreur lors de la lecture de la musique de fond: $e');
       _isPlaying = false;
+      _currentMusicUrl = null;
+      if (_audioPlayer != null) {
+        await _audioPlayer!.dispose();
+        _audioPlayer = null;
+      }
       notifyListeners();
     }
   }

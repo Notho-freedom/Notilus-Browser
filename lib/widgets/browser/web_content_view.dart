@@ -201,49 +201,10 @@ class _WebContentViewState extends State<WebContentView> with WidgetsBindingObse
       });
 
       // Écouter l'état de chargement réel du WebView pour synchronisation précise
-      // Utiliser un StreamSubscription pour pouvoir l'annuler si nécessaire
-      _loadingStateSubscription = _webView!.loadingState.listen((state) {
-        if (mounted) {
-          final isLoading = state == LoadingState.loading;
-          setState(() {
-            _isLoading = isLoading;
-          });
-          // Synchroniser avec TabManager immédiatement
-          if (isLoading) {
-            tabManager.updateTab(widget.tab!.id, state: TabState.loading);
-          } else if (state == LoadingState.navigationCompleted) {
-            // Forcer la mise à jour immédiate
-            setState(() {
-              _isLoading = false;
-            });
-            tabManager.updateTab(widget.tab!.id, state: TabState.loaded);
-          }
-        }
-      });
-
-      // Naviguer vers l'URL si elle existe
-      if (widget.tab?.url != null && widget.tab!.url!.isNotEmpty) {
-        await engine.navigate(widget.tab!.url!);
-        // Charger le favicon pour l'URL initiale
-        _loadFavicon(widget.tab!.url!, widget.tab!.id, tabManager);
-      }
-    } else if (widget.tab?.url != null && widget.tab!.url!.isNotEmpty) {
-      // Si le WebView n'est pas encore créé, naviguer via l'engine
-      await engine.navigate(widget.tab!.url!);
-      // Charger le favicon pour l'URL initiale
-      _loadFavicon(widget.tab!.url!, widget.tab!.id, tabManager);
-      // Récupérer le controller après navigation
-      final newController = await engine.getController();
-      if (newController != null && newController is WebviewController) {
-        // Annuler l'ancienne subscription si elle existe
-        _loadingStateSubscription?.cancel();
-        
-        setState(() {
-          _webView = newController;
-        });
-        
-        // Écouter l'état de chargement réel du WebView
-        _loadingStateSubscription = _webView!.loadingState.listen((state) {
+      // Utiliser le stream broadcast du WebView2BrowserEngine (permet plusieurs listeners)
+      final engine = _tabWebViewManager?.getEngine(widget.tab!.id);
+      if (engine != null && engine is WebView2BrowserEngine) {
+        _loadingStateSubscription = engine.loadingStateStream.listen((state) {
           if (mounted) {
             final isLoading = state == LoadingState.loading;
             setState(() {
@@ -261,6 +222,92 @@ class _WebContentViewState extends State<WebContentView> with WidgetsBindingObse
             }
           }
         });
+      } else {
+        // Fallback : utiliser le stream direct si l'engine n'est pas disponible
+        _loadingStateSubscription = _webView!.loadingState.asBroadcastStream().listen((state) {
+          if (mounted) {
+            final isLoading = state == LoadingState.loading;
+            setState(() {
+              _isLoading = isLoading;
+            });
+            if (isLoading) {
+              tabManager.updateTab(widget.tab!.id, state: TabState.loading);
+            } else if (state == LoadingState.navigationCompleted) {
+              setState(() {
+                _isLoading = false;
+              });
+              tabManager.updateTab(widget.tab!.id, state: TabState.loaded);
+            }
+          }
+        });
+      }
+
+      // Naviguer vers l'URL si elle existe
+      if (widget.tab?.url != null && widget.tab!.url!.isNotEmpty && engine != null) {
+        await engine.navigate(widget.tab!.url!);
+        // Charger le favicon pour l'URL initiale
+        _loadFavicon(widget.tab!.url!, widget.tab!.id, tabManager);
+      }
+    } else if (widget.tab?.url != null && widget.tab!.url!.isNotEmpty) {
+      // Si le WebView n'est pas encore créé, naviguer via l'engine
+      final engine = _tabWebViewManager?.getEngine(widget.tab!.id);
+      if (engine != null) {
+        await engine.navigate(widget.tab!.url!);
+        // Charger le favicon pour l'URL initiale
+        _loadFavicon(widget.tab!.url!, widget.tab!.id, tabManager);
+        // Récupérer le controller après navigation
+        final newController = await engine.getController();
+        if (newController != null && newController is WebviewController) {
+        // Annuler l'ancienne subscription si elle existe AVANT de créer une nouvelle
+        _loadingStateSubscription?.cancel();
+        _loadingStateSubscription = null;
+        
+        setState(() {
+          _webView = newController;
+        });
+        
+        // Écouter l'état de chargement réel du WebView
+        // Utiliser le stream broadcast du WebView2BrowserEngine (permet plusieurs listeners)
+        final engine = _tabWebViewManager?.getEngine(widget.tab!.id);
+        if (engine != null && engine is WebView2BrowserEngine) {
+          _loadingStateSubscription = engine.loadingStateStream.listen((state) {
+          if (mounted) {
+            final isLoading = state == LoadingState.loading;
+            setState(() {
+              _isLoading = isLoading;
+            });
+            // Synchroniser avec TabManager immédiatement
+            if (isLoading) {
+              tabManager.updateTab(widget.tab!.id, state: TabState.loading);
+            } else if (state == LoadingState.navigationCompleted) {
+              // Forcer la mise à jour immédiate
+              setState(() {
+                _isLoading = false;
+              });
+              tabManager.updateTab(widget.tab!.id, state: TabState.loaded);
+            }
+          }
+        });
+        } else {
+          // Fallback : utiliser le stream direct si l'engine n'est pas disponible
+          _loadingStateSubscription = _webView!.loadingState.asBroadcastStream().listen((state) {
+            if (mounted) {
+              final isLoading = state == LoadingState.loading;
+              setState(() {
+                _isLoading = isLoading;
+              });
+              if (isLoading) {
+                tabManager.updateTab(widget.tab!.id, state: TabState.loading);
+              } else if (state == LoadingState.navigationCompleted) {
+                setState(() {
+                  _isLoading = false;
+                });
+                tabManager.updateTab(widget.tab!.id, state: TabState.loaded);
+              }
+            }
+          });
+        }
+        }
       }
     }
   }

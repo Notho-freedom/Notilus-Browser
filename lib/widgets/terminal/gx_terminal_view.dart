@@ -113,17 +113,21 @@ class _GXTerminalViewState extends State<GXTerminalView> {
   Widget build(BuildContext context) {
     final wallpaperManager = context.watch<WallpaperManager>();
 
+    final wallpaperUrl = wallpaperManager.currentImageUrl;
+    
     if (!_isInitialized) {
       return Container(
         decoration: BoxDecoration(
-          image: DecorationImage(
-            image: NetworkImage(wallpaperManager.current),
-            fit: BoxFit.cover,
-            colorFilter: ColorFilter.mode(
-              Colors.black.withOpacity(0.85),
-              BlendMode.srcOver,
-            ),
-          ),
+          image: wallpaperUrl.isNotEmpty
+              ? DecorationImage(
+                  image: NetworkImage(wallpaperUrl),
+                  fit: BoxFit.cover,
+                  colorFilter: ColorFilter.mode(
+                    Colors.black.withOpacity(0.85),
+                    BlendMode.srcOver,
+                  ),
+                )
+              : null,
         ),
         child: Center(
           child: CircularProgressIndicator(
@@ -135,15 +139,17 @@ class _GXTerminalViewState extends State<GXTerminalView> {
 
     return Container(
       decoration: BoxDecoration(
-        image: DecorationImage(
-          image: NetworkImage(wallpaperManager.current),
-          fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(
-            Colors.black.withOpacity(0.85),
-            BlendMode.srcOver,
+        image: wallpaperUrl.isNotEmpty
+            ? DecorationImage(
+                image: NetworkImage(wallpaperUrl),
+                fit: BoxFit.cover,
+                colorFilter: ColorFilter.mode(
+                  Colors.black.withOpacity(0.85),
+                  BlendMode.srcOver,
+                ),
+              )
+            : null,
           ),
-        ),
-      ),
       child: Container(
         color: Colors.black.withOpacity(0.5),
         padding: const EdgeInsets.all(16),
