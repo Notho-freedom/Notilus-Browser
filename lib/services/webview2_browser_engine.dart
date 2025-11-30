@@ -78,112 +78,25 @@ class WebView2BrowserEngine extends BrowserEngine {
   Future<void> initialize() async {
     if (_isInitialized) return;
     
+    // S'assurer qu'on ferme complètement l'ancien WebView s'il existe
+    if (_webView != null) {
+      await _cleanupWebView();
+    }
+    
     try {
       _webView = WebviewController();
       await _webView!.initialize();
+      
+      // Si l'initialisation réussit sans exception, on considère que c'est initialisé
       _isInitialized = true;
       
-      // Configurer les callbacks WebView2 via les streams
-      _webView!.url.listen((url) {
-        _currentUrl = url;
-        onStateChanged?.call(TabState.loaded);
-        onUrlChanged?.call(url);
-        
-        // Injecter les handlers après chaque navigation (une seule fois)
-        if (url.isNotEmpty && url != 'about:blank' && !_scriptInjected) {
-          Future.delayed(const Duration(milliseconds: 1500), () async {
-            try {
-              // Injecter le handler pour les nouvelles fenêtres (script minifié)
-              if (onNewWindowRequest != null) {
-                await _injectScriptOnce();
-                // Démarrer le polling pour détecter les nouvelles fenêtres
-                _startNewWindowPolling();
-              }
-            } catch (e) {
-              debugPrint('Error injecting handlers: $e');
-            }
-          });
-        }
-      });
-      
-      // Configurer le listener pour les messages WebView (DevTools)
-      setupWebMessageListener();
-      
-      _webView!.title.listen((title) {
-        if (title.isNotEmpty) {
-          _currentTitle = title;
-          onTitleChanged?.call(title);
-        }
-      });
-      
-      // Configurer l'interception des téléchargements
-      _setupDownloadInterceptor();
-      
-      // Créer un StreamController pour rebroadcast loadingState (permet plusieurs listeners)
-      _loadingStateController = StreamController<LoadingState>.broadcast();
-      
-      // Écouter le stream original et rebroadcast vers le controller
-      _loadingStateSubscription = _webView!.loadingState.listen((state) {
-        // Rebroadcast vers le controller (permet plusieurs listeners)
-        _loadingStateController?.add(state);
-        
-        final wasLoading = _isLoading;
-        _isLoading = state == LoadingState.loading;
-        _isPageLoaded = state == LoadingState.navigationCompleted;
-        
-        // Annuler le timeout si la page se charge correctement
-        _loadingTimeoutTimer?.cancel();
-        _loadingTimeoutTimer = null;
-        
-        // Notifier immédiatement les changements d'état
-        if (state == LoadingState.loading) {
-          _isLoading = true;
-          onStateChanged?.call(TabState.loading);
-          
-          // Timeout de sécurité : forcer l'arrêt du loader après 30 secondes
-          _loadingTimeoutTimer = Timer(const Duration(seconds: 30), () {
-            if (_isLoading) {
-              debugPrint('⚠️ Timeout de chargement, forcer l\'arrêt du loader');
-              _isLoading = false;
-              _isPageLoaded = true;
-              onStateChanged?.call(TabState.loaded);
-            }
-          });
-        } else if (state == LoadingState.navigationCompleted) {
-          // Forcer la mise à jour immédiate de l'état
-          _isLoading = false;
-          _isPageLoaded = true;
-          onStateChanged?.call(TabState.loaded);
-          // Ajuster la fréquence du polling après chargement
-          _startNewWindowPolling();
-          debugPrint('✅ Page chargée: $_currentUrl');
-        }
-        
-        // Debug pour vérifier la synchronisation
-        if (wasLoading != _isLoading) {
-          debugPrint('🔄 Loading state changed: $_isLoading (${state.toString()})');
-        }
-      });
-      
-      // Gérer l'historique (API moderne)
-      _webView!.historyChanged.listen((history) {
-        _canGoBack = history.canGoBack;
-        _canGoForward = history.canGoForward;
-        onCanGoBackChanged?.call(_canGoBack);
-        onCanGoForwardChanged?.call(_canGoForward);
-      });
-      
-      // Gérer les erreurs de chargement
-      _webView!.onLoadError.listen((error) {
-        onStateChanged?.call(TabState.error);
-      });
-      
-      // Gérer les nouvelles fenêtres (liens target="_blank")
-      // webview_windows n'a pas onNewWindowRequest, on utilise une injection JavaScript
-      // L'injection sera faite après chaque navigation dans la méthode navigate()
+      // Configurer les listeners du WebView
+      await _setupWebViewListeners();
       
     } catch (e) {
       debugPrint('WebView2 initialization error: $e');
+      _isInitialized = false;
+      rethrow;
     }
   }
 
@@ -235,12 +148,23 @@ class WebView2BrowserEngine extends BrowserEngine {
           additionalData: {'url': url},
         );
         
-        // Tentative de récupération
+        // Tentative de récupération : fermer complètement avant de recréer
         final recovered = await WebViewRecovery.recoverWebView(
           recreateWebView: () async {
-            await _webView!.dispose();
+            // Fermer complètement l'ancien WebView
+            await _cleanupWebView();
+            
+            // Attendre un peu pour que les ressources soient libérées
+            await Future.delayed(const Duration(milliseconds: 100));
+            
+            // Recréer le WebView
             _webView = WebviewController();
             await _webView!.initialize();
+            
+            // Réinitialiser les listeners
+            await _setupWebViewListeners();
+            
+            // Naviguer vers l'URL
             await _webView!.loadUrl(url);
           },
         );
@@ -754,9 +678,151 @@ class WebView2BrowserEngine extends BrowserEngine {
     }
   }
 
+  /// Nettoie complètement le WebView et ses ressources
+  Future<void> _cleanupWebView() async {
+    // Annuler toutes les subscriptions aux streams
+    _loadingStateSubscription?.cancel();
+    _loadingStateSubscription = null;
+    
+    // Fermer le StreamController
+    await _loadingStateController?.close();
+    _loadingStateController = null;
+    
+    // Arrêter tous les timers
+    _stopNewWindowPolling();
+    _downloadPollingTimer?.cancel();
+    _downloadPollingTimer = null;
+    _loadingTimeoutTimer?.cancel();
+    _loadingTimeoutTimer = null;
+    
+    // Disposer le WebView
+    try {
+      await _webView?.dispose();
+    } catch (e) {
+      debugPrint('Erreur lors de la fermeture du WebView: $e');
+    }
+    _webView = null;
+    
+    // Réinitialiser les flags
+    _isInitialized = false;
+    _scriptInjected = false;
+    _isPageLoaded = false;
+    _isLoading = false;
+  }
+
+  /// Configure tous les listeners du WebView (séparé pour réutilisation)
+  Future<void> _setupWebViewListeners() async {
+    if (_webView == null || !_isInitialized) return;
+    
+    try {
+      // Configurer les callbacks WebView2 via les streams
+      _webView!.url.listen((url) {
+        _currentUrl = url;
+        onStateChanged?.call(TabState.loaded);
+        onUrlChanged?.call(url);
+        
+        // Injecter les handlers après chaque navigation (une seule fois)
+        if (url.isNotEmpty && url != 'about:blank' && !_scriptInjected) {
+          Future.delayed(const Duration(milliseconds: 1500), () async {
+            try {
+              // Injecter le handler pour les nouvelles fenêtres (script minifié)
+              if (onNewWindowRequest != null) {
+                await _injectScriptOnce();
+                // Démarrer le polling pour détecter les nouvelles fenêtres
+                _startNewWindowPolling();
+              }
+            } catch (e) {
+              debugPrint('Error injecting handlers: $e');
+            }
+          });
+        }
+      });
+      
+      // Configurer le listener pour les messages WebView (DevTools)
+      setupWebMessageListener();
+      
+      _webView!.title.listen((title) {
+        if (title.isNotEmpty) {
+          _currentTitle = title;
+          onTitleChanged?.call(title);
+        }
+      });
+      
+      // Configurer l'interception des téléchargements
+      _setupDownloadInterceptor();
+      
+      // Créer un StreamController pour rebroadcast loadingState (permet plusieurs listeners)
+      _loadingStateController = StreamController<LoadingState>.broadcast();
+      
+      // Écouter le stream original et rebroadcast vers le controller
+      _loadingStateSubscription = _webView!.loadingState.listen((state) {
+        // Rebroadcast vers le controller (permet plusieurs listeners)
+        _loadingStateController?.add(state);
+        
+        final wasLoading = _isLoading;
+        _isLoading = state == LoadingState.loading;
+        _isPageLoaded = state == LoadingState.navigationCompleted;
+        
+        // Annuler le timeout si la page se charge correctement
+        _loadingTimeoutTimer?.cancel();
+        _loadingTimeoutTimer = null;
+        
+        // Notifier immédiatement les changements d'état
+        if (state == LoadingState.loading) {
+          _isLoading = true;
+          onStateChanged?.call(TabState.loading);
+          
+          // Timeout de sécurité : forcer l'arrêt du loader après 30 secondes
+          _loadingTimeoutTimer = Timer(const Duration(seconds: 30), () {
+            if (_isLoading) {
+              debugPrint('⚠️ Timeout de chargement, forcer l\'arrêt du loader');
+              _isLoading = false;
+              _isPageLoaded = true;
+              onStateChanged?.call(TabState.loaded);
+            }
+          });
+        } else if (state == LoadingState.navigationCompleted) {
+          // Forcer la mise à jour immédiate de l'état
+          _isLoading = false;
+          _isPageLoaded = true;
+          onStateChanged?.call(TabState.loaded);
+          // Ajuster la fréquence du polling après chargement
+          _startNewWindowPolling();
+          debugPrint('✅ Page chargée: $_currentUrl');
+        }
+        
+        // Debug pour vérifier la synchronisation
+        if (wasLoading != _isLoading) {
+          debugPrint('🔄 Loading state changed: $_isLoading (${state.toString()})');
+        }
+      });
+      
+      // Gérer l'historique (API moderne)
+      _webView!.historyChanged.listen((history) {
+        _canGoBack = history.canGoBack;
+        _canGoForward = history.canGoForward;
+        onCanGoBackChanged?.call(_canGoBack);
+        onCanGoForwardChanged?.call(_canGoForward);
+      });
+      
+      // Gérer les erreurs de chargement
+      _webView!.onLoadError.listen((error) {
+        onStateChanged?.call(TabState.error);
+      });
+      
+      // Gérer les nouvelles fenêtres (liens target="_blank")
+      // webview_windows n'a pas onNewWindowRequest, on utilise une injection JavaScript
+      // L'injection sera faite après chaque navigation dans la méthode navigate()
+      
+    } catch (e) {
+      debugPrint('Erreur lors de la configuration des listeners WebView: $e');
+      rethrow;
+    }
+  }
+
   @override
   void dispose() {
-    // Nettoyer le StreamController et la subscription
+    // Nettoyer de manière synchrone (les opérations async seront gérées en arrière-plan)
     _loadingStateSubscription?.cancel();
     _loadingStateSubscription = null;
     _loadingStateController?.close();
@@ -766,7 +832,17 @@ class WebView2BrowserEngine extends BrowserEngine {
     _downloadPollingTimer = null;
     _loadingTimeoutTimer?.cancel();
     _loadingTimeoutTimer = null;
-    _webView?.dispose();
+    
+    // Disposer le WebView (peut être async mais on ne peut pas attendre dans dispose)
+    _webView?.dispose().catchError((e) {
+      debugPrint('Erreur lors de la fermeture du WebView dans dispose: $e');
+    });
     _webView = null;
+    
+    // Réinitialiser les flags
+    _isInitialized = false;
+    _scriptInjected = false;
+    _isPageLoaded = false;
+    _isLoading = false;
   }
 }
