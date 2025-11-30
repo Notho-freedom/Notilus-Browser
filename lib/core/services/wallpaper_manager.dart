@@ -62,14 +62,14 @@ class WallpaperManager extends ChangeNotifier {
     final hasChanged = _wallpapers.length != previousWallpapers.length ||
         !_wallpapers.every((w) => previousWallpapers.contains(w));
     
-    // Mettre à jour le wallpaper actuel si nécessaire
-    if (!_wallpapers.contains(_current) && _wallpapers.isNotEmpty) {
-      _current = _pickRandom();
-      _preloadImage(_current);
-      notifyListeners();
-    } else if (hasChanged) {
-      // Notifier même si le wallpaper actuel est toujours valide
-      // pour que l'UI se mette à jour avec les nouveaux wallpapers disponibles
+    // Toujours notifier si les wallpapers ont changé
+    if (hasChanged) {
+      // Si le wallpaper actuel n'est plus dans la liste, en choisir un nouveau
+      if (!_wallpapers.contains(_current) && _wallpapers.isNotEmpty) {
+        _current = _pickRandom();
+        _preloadImage(_current);
+      }
+      // Notifier pour que l'UI se mette à jour
       notifyListeners();
     }
   }

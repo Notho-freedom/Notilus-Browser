@@ -6,6 +6,7 @@ import 'core/theme/modern_theme.dart';
 import 'core/services/theme_mode_notifier.dart';
 import 'core/services/wallpaper_manager.dart';
 import 'core/services/color_theme_manager.dart';
+import 'core/services/background_music_service.dart';
 import 'screens/home_screen.dart';
 import 'screens/splash_screen.dart';
 import 'services/tab_manager.dart';
@@ -191,6 +192,7 @@ class NotilusApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ThemeModeNotifier()),
         ChangeNotifierProvider(create: (_) => ColorThemeManager()),
         ChangeNotifierProvider(create: (_) => WallpaperManager()),
+        ChangeNotifierProvider.value(value: BackgroundMusicService()),
         ChangeNotifierProvider(create: (_) => DownloadService()),
         ChangeNotifierProvider(create: (_) => TabManager()),
         ChangeNotifierProvider(create: (context) {

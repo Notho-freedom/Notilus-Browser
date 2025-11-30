@@ -46,9 +46,9 @@ class _CloudinaryMediaManagerState extends State<CloudinaryMediaManager> {
 
   void _loadSelectedMedia() {
     if (widget.resourceType == CloudinaryResourceType.image) {
-      _selectedUrls = _settings.selectedBackgrounds;
+      _selectedUrls = List.from(_settings.selectedBackgrounds);
     } else if (widget.resourceType == CloudinaryResourceType.video) {
-      _selectedUrls = _settings.selectedVideos;
+      _selectedUrls = List.from(_settings.selectedVideos);
     } else if (widget.resourceType == CloudinaryResourceType.raw) {
       final music = _settings.selectedMusic;
       if (music != null) _selectedUrls = [music];
@@ -209,11 +209,15 @@ class _CloudinaryMediaManagerState extends State<CloudinaryMediaManager> {
 
   Future<void> _saveSelection() async {
     if (widget.resourceType == CloudinaryResourceType.image) {
-      await _settings.setSelectedBackgrounds(_selectedUrls);
+      await _settings.setSelectedBackgrounds(List.from(_selectedUrls));
     } else if (widget.resourceType == CloudinaryResourceType.video) {
-      await _settings.setSelectedVideos(_selectedUrls);
+      await _settings.setSelectedVideos(List.from(_selectedUrls));
     } else if (widget.resourceType == CloudinaryResourceType.raw) {
       await _settings.setSelectedMusic(_selectedUrls.isNotEmpty ? _selectedUrls.first : null);
+    }
+    // Forcer une mise à jour de l'UI
+    if (mounted) {
+      setState(() {});
     }
   }
 
