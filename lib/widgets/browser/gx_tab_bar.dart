@@ -707,7 +707,7 @@ class _GXTabItemState extends State<_GXTabItem>
 }
 
 /// Widget pour les onglets insérés dans la tab bar quand un groupe est expandé (style GX)
-class _GXExpandedTabItem extends StatelessWidget {
+class _GXExpandedTabItem extends StatefulWidget {
   final TabModel tab;
   final bool isActive;
   final int colorCode;
@@ -725,113 +725,205 @@ class _GXExpandedTabItem extends StatelessWidget {
   });
 
   @override
+  State<_GXExpandedTabItem> createState() => _GXExpandedTabItemState();
+}
+
+class _GXExpandedTabItemState extends State<_GXExpandedTabItem>
+    with SingleTickerProviderStateMixin {
+  bool _isHovered = false;
+  bool _closeHovered = false;
+  bool _isPressed = false;
+  late AnimationController _animController;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.02).animate(
+      CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic),
+    );
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
+  }
+
+  void _handleHoverChange(bool hover) {
+    setState(() => _isHovered = hover);
+    if (hover) {
+      _animController.forward();
+    } else if (!_isPressed) {
+      _animController.reverse();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onSelect ?? () => tabManager.selectTab(tab.id),
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        height: 28,
-        decoration: BoxDecoration(
-          color: isActive
-              ? Color(colorCode).withOpacity(0.3)
-              : Colors.white.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(
-            color: isActive
-                ? Color(colorCode).withOpacity(0.6)
-                : Color(colorCode).withOpacity(0.2),
-            width: isActive ? 1.5 : 1,
+    final displayTitle = widget.tab.title ?? 'Speed Dial';
+    final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: true);
+    final gxRed = colorThemeManager.nativeSecondaryColor;
+    final domainColor = Color(widget.colorCode);
+    
+    return NotilusTooltip(
+      message: widget.tab.title ?? widget.tab.url ?? 'Onglet',
+      child: MouseRegion(
+        onEnter: (_) => _handleHoverChange(true),
+        onExit: (_) => _handleHoverChange(false),
+        child: GestureDetector(
+          onTapDown: (_) => setState(() => _isPressed = true),
+          onTapUp: (_) {
+            setState(() => _isPressed = false);
+            if (widget.onSelect != null) {
+              widget.onSelect!();
+            } else {
+              widget.tabManager.selectTab(widget.tab.id);
+            }
+          },
+          onTapCancel: () => setState(() => _isPressed = false),
+          child: AnimatedBuilder(
+            animation: _animController,
+            builder: (context, child) {
+              return Transform.scale(
+                scale: _isPressed ? 0.97 : _scaleAnimation.value,
+                child: child,
+              );
+            },
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+              height: 32,
+              decoration: BoxDecoration(
+                color: widget.isActive
+                    ? domainColor.withOpacity(0.15)
+                    : (_isHovered
+                        ? Colors.white.withOpacity(0.05)
+                        : Colors.transparent),
+                border: Border(
+                  bottom: BorderSide(
+                    color: widget.isActive ? domainColor : Colors.transparent,
+                    width: 2,
+                  ),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Favicon dynamique
+                    SizedBox(
+                      width: 24,
+                      child: Center(
+                        child: widget.tab.favicon != null && 
+                               widget.tab.favicon!.isNotEmpty &&
+                               widget.tab.url != null &&
+                               !widget.tab.url!.startsWith('about:')
+                            ? Image.network(
+                                widget.tab.favicon!,
+                                width: 16,
+                                height: 16,
+                                fit: BoxFit.contain,
+                                loadingBuilder: (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: Center(
+                                      child: SizedBox(
+                                        width: 12,
+                                        height: 12,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 1.5,
+                                          valueColor: AlwaysStoppedAnimation<Color>(
+                                            domainColor.withValues(alpha: 0.6),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                                errorBuilder: (_, __, ___) => _defaultFavicon(),
+                              )
+                            : _defaultFavicon(),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    // Title
+                    Flexible(
+                      child: Text(
+                        displayTitle,
+                        style: NotilusFonts.rajdhani(
+                          fontSize: 12,
+                          fontWeight: widget.isActive ? FontWeight.w700 : FontWeight.w500,
+                          color: widget.isActive ? domainColor : Colors.white.withOpacity(0.6),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    // Close button
+                    NotilusTooltip(
+                      message: 'Fermer cet onglet',
+                      child: MouseRegion(
+                        onEnter: (_) => setState(() => _closeHovered = true),
+                        onExit: (_) => setState(() => _closeHovered = false),
+                        child: GestureDetector(
+                          onTap: () {
+                            final webViewManager = Provider.of<TabWebViewManager>(
+                              context,
+                              listen: false,
+                            );
+                            webViewManager.removeEngineForTab(widget.tab.id);
+                            widget.tabManager.closeTab(widget.tab.id);
+                          },
+                          child: Container(
+                            width: 22,
+                            height: 22,
+                            decoration: BoxDecoration(
+                              color: _closeHovered
+                                  ? Colors.white.withValues(alpha:0.12)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Icon(
+                              CupertinoIcons.xmark,
+                              size: 12,
+                              color: widget.isActive || _isHovered
+                                  ? Colors.white
+                                  : Colors.white.withValues(alpha:0.6),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Favicon ou icône
-            _buildFavicon(),
-            const SizedBox(width: 6),
-            // Titre (tronqué)
-            Flexible(
-              child: Text(
-                tab.title ?? tab.url ?? 'Nouvel onglet',
-                style: NotilusFonts.rajdhani(
-                  fontSize: 11,
-                  fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                  color: isActive ? Colors.white : Colors.white70,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(width: 4),
-            // Bouton fermer
-            GestureDetector(
-              onTap: () {
-                final webViewManager = Provider.of<TabWebViewManager>(
-                  context,
-                  listen: false,
-                );
-                webViewManager.removeEngineForTab(tab.id);
-                tabManager.closeTab(tab.id);
-              },
-              child: Container(
-                padding: const EdgeInsets.all(2),
-                child: Icon(
-                  CupertinoIcons.xmark,
-                  size: 12,
-                  color: Colors.white.withOpacity(0.4),
-                ),
-              ),
-            ),
-          ],
         ),
       ),
     );
   }
 
-  Widget _buildFavicon() {
-    if (tab.favicon != null && tab.favicon!.isNotEmpty) {
-      try {
-        // Essayer de décoder en base64 d'abord
-        try {
-          final faviconBytes = base64Decode(tab.favicon!);
-          return Image.memory(
-            faviconBytes,
-            width: 16,
-            height: 16,
-            errorBuilder: (context, error, stackTrace) {
-              return Icon(
-                CupertinoIcons.globe,
-                size: 14,
-                color: Color(colorCode),
-              );
-            },
-          );
-        } catch (e) {
-          // Si ce n'est pas du base64, c'est probablement une URL
-          return Image.network(
-            tab.favicon!,
-            width: 16,
-            height: 16,
-            errorBuilder: (context, error, stackTrace) {
-              return Icon(
-                CupertinoIcons.globe,
-                size: 14,
-                color: Color(colorCode),
-              );
-            },
-          );
-        }
-      } catch (e) {
-        // En cas d'erreur, afficher l'icône par défaut
-      }
-    }
-    
+  Widget _defaultFavicon() {
+    final domainColor = Color(widget.colorCode);
     return Icon(
       CupertinoIcons.globe,
-      size: 14,
-      color: Color(colorCode),
+      size: 16,
+      color: widget.isActive ? domainColor : _gxRed,
     );
+  }
+
+  Color get _gxRed {
+    final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: false);
+    return colorThemeManager.nativeSecondaryColor;
   }
 }
 
