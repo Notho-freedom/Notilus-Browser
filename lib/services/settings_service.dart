@@ -51,6 +51,7 @@ class SettingsService extends ChangeNotifier {
   static const String _keyShowSystemWidgets = 'notilus_show_system_widgets';
   static const String _keyShowQuickAccess = 'notilus_show_quick_access';
   static const String _keyHomePageBlur = 'notilus_home_page_blur';
+  static const String _keyHomePageOverlayOpacity = 'notilus_home_page_overlay_opacity';
   static const String _keyShowRecentHistory = 'notilus_show_recent_history';
   static const String _keyHomePageStyle = 'notilus_home_page_style'; // 'modern', 'notilus_dev', 'frontend', 'backend', 'devops', 'data_science', 'minimal'
   static const String _keyDevProfile = 'notilus_dev_profile'; // 'frontend', 'backend', 'fullstack', 'devops', 'data_science', 'mobile', 'gamedev', 'security'
@@ -371,6 +372,18 @@ class SettingsService extends ChangeNotifier {
       throw ArgumentError('Value must be between 0.0 and 1.0');
     }
     await _prefs?.setDouble(_keyHomePageBlur, value);
+    notifyListeners();
+  }
+  
+  /// Opacité de l'overlay noir sur l'image de fond (0.0 = transparent, 1.0 = opaque)
+  /// Plus la valeur est basse, plus l'image de fond est visible
+  double get homePageOverlayOpacity => _prefs?.getDouble(_keyHomePageOverlayOpacity) ?? 0.7;
+  
+  Future<void> setHomePageOverlayOpacity(double value) async {
+    if (value < 0.0 || value > 1.0) {
+      throw ArgumentError('Value must be between 0.0 and 1.0');
+    }
+    await _prefs?.setDouble(_keyHomePageOverlayOpacity, value);
     notifyListeners();
   }
   

@@ -1693,11 +1693,19 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
             ),
             const SizedBox(height: 12),
             _buildTransparencySlider(
-              label: 'Page d\'accueil',
+              label: 'Page d\'accueil (gradient)',
               value: _settings.homePageBlur,
               onChanged: (v) => _settings.setHomePageBlur(v),
               gxRed: gxRed,
-              tooltip: 'Contrôle l\'opacité du fond d\'écran et du flou sur la page d\'accueil',
+              tooltip: 'Contrôle l\'opacité du gradient de fond sur la page d\'accueil',
+            ),
+            const SizedBox(height: 12),
+            _buildTransparencySlider(
+              label: 'Visibilité du fond',
+              value: 1.0 - _settings.homePageOverlayOpacity,
+              onChanged: (v) => _settings.setHomePageOverlayOpacity(1.0 - v),
+              gxRed: gxRed,
+              tooltip: 'Contrôle la visibilité de l\'image/vidéo de fond. Plus la valeur est élevée, plus le fond est visible',
             ),
             const SizedBox(height: 12),
             Row(

@@ -270,7 +270,7 @@ class _ModernHomePageState extends State<ModernHomePage> {
       listenable: _settings,
       builder: (context, _) => WallpaperBackground(
         colorFilter: ColorFilter.mode(
-          Colors.black.withOpacity(isDark ? 0.65 : 0.75),
+          Colors.black.withOpacity(_settings.homePageOverlayOpacity),
           BlendMode.srcOver,
         ),
         child: Container(
