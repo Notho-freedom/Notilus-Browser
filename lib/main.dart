@@ -32,6 +32,9 @@ import 'firebase_options.dart';
 import 'services/auth/firebase_auth_service.dart';
 import 'services/auth/config_sync_service.dart';
 import 'services/github/github_repos_service.dart';
+import 'services/text_selection_service.dart';
+import 'widgets/common/text_selection_wrapper.dart';
+import 'widgets/common/text_selection_wrapper.dart' show CustomTextSelectionControls;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -242,6 +245,7 @@ class NotilusApp extends StatelessWidget {
           ChangeNotifierProvider.value(value: syncService),
         if (githubReposService != null)
           ChangeNotifierProvider<GitHubReposService>.value(value: githubReposService!),
+        ChangeNotifierProvider.value(value: TextSelectionService()),
       ],
       child: Consumer<ThemeModeNotifier>(
         builder: (context, themeModeNotifier, _) {
@@ -269,6 +273,11 @@ class NotilusApp extends StatelessWidget {
               scrollbarTheme: invisibleScrollbarTheme,
             ),
             themeMode: themeModeNotifier.mode,
+            builder: (context, child) {
+              return TextSelectionWrapper(
+                child: child ?? const SizedBox.shrink(),
+              );
+            },
             home: const _SplashWrapper(),
           );
         },

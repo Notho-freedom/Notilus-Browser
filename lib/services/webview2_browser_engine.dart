@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:webview_windows/webview_windows.dart';
 import 'browser_engine.dart';
 import '../models/tab_model.dart';
 import 'error_handler.dart';
 import 'adblocker_service.dart';
+import 'text_selection_service.dart';
 
 /// Implémentation réelle du moteur de rendu avec WebView2 (Option #1 - Production-ready)
 /// WebView2 est le moteur moderne de Microsoft basé sur Chromium
@@ -64,7 +66,65 @@ class WebView2BrowserEngine extends BrowserEngine {
   
   // Script JavaScript minifié et cache pour éviter la réinjection
   bool _scriptInjected = false;
+  bool _textSelectionScriptInjected = false;
   static const String _minifiedNewWindowScript = '''(function(){var o=window.open;window.open=function(u,t,f){if(!t||t==="_blank"||t==="blank"){if(u&&typeof u==="string"){if(document.body){document.body.setAttribute("data-new-window-url",u);document.body.dispatchEvent(new Event("notilus-new-window"));}}return null;}return o.apply(window,arguments);};var h=function(e){var t=e.target;while(t&&t.tagName!=="A"){t=t.parentElement;}if(t&&t.tagName==="A"){var h=t.getAttribute("href"),a=t.getAttribute("target"),r=(t.getAttribute("rel")||"").toLowerCase(),e=!1,n=a==="_blank"||a==="blank";if(h&&h.startsWith("http")){try{var i=window.location.hostname,c=new URL(h,window.location.href);e=c.hostname!==i;}catch(e){}}if(r.includes("external")){e=!0;}if(n||e){e.preventDefault();e.stopPropagation();if(document.body&&h){try{var u=new URL(h,window.location.href).href;document.body.setAttribute("data-new-window-url",u);document.body.dispatchEvent(new Event("notilus-new-window"));}catch(e){document.body.setAttribute("data-new-window-url",h);document.body.dispatchEvent(new Event("notilus-new-window"));}}return!1;}}};if(window._flutterNewWindowHandler){document.removeEventListener("click",window._flutterNewWindowHandler,!0);}window._flutterNewWindowHandler=h;document.addEventListener("click",h,!0);if(!window._flutterMutationObserver){window._flutterMutationObserver=new MutationObserver(function(e){e.forEach(function(e){e.addedNodes.forEach(function(e){if(1===e.nodeType){var t=e.querySelectorAll?e.querySelectorAll('a[target="_blank"],a[rel*="external"]'):[];t.forEach(function(e){e.addEventListener("click",h,!0);});}});});});window._flutterMutationObserver.observe(document.body,{childList:!0,subtree:!0});}})();''';
+  
+  // Script pour détecter les sélections de texte
+  static const String _textSelectionScript = '''
+(function() {
+  if (window._notilusTextSelectionHandler) return;
+  
+  window._notilusTextSelectionHandler = function() {
+    try {
+      var selection = window.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        var text = selection.toString().trim();
+        if (text.length > 0) {
+          var range = selection.getRangeAt(0);
+          var rect = range.getBoundingClientRect();
+          
+          // Stocker les informations de sélection avec scroll
+          if (document.body) {
+            var x = Math.round(rect.left + rect.width / 2 + window.scrollX);
+            var y = Math.round(rect.top + window.scrollY);
+            document.body.setAttribute('data-selected-text', encodeURIComponent(text));
+            document.body.setAttribute('data-selection-x', x.toString());
+            document.body.setAttribute('data-selection-y', y.toString());
+            console.log('Notilus: Sélection détectée:', text.substring(0, 50), 'à', x, y);
+          }
+        } else {
+          // Effacer la sélection si vide
+          if (document.body) {
+            document.body.removeAttribute('data-selected-text');
+            document.body.removeAttribute('data-selection-x');
+            document.body.removeAttribute('data-selection-y');
+          }
+        }
+      } else {
+        // Effacer la sélection
+        if (document.body) {
+          document.body.removeAttribute('data-selected-text');
+          document.body.removeAttribute('data-selection-x');
+          document.body.removeAttribute('data-selection-y');
+        }
+      }
+    } catch (e) {
+      console.error('Notilus: Erreur dans le handler de sélection:', e);
+    }
+  };
+  
+  // Utiliser un délai pour mouseup pour s'assurer que la sélection est complète
+  document.addEventListener('mouseup', function() {
+    setTimeout(window._notilusTextSelectionHandler, 100);
+  }, true);
+  document.addEventListener('keyup', window._notilusTextSelectionHandler, true);
+  document.addEventListener('selectionchange', window._notilusTextSelectionHandler, true);
+  
+  console.log('Notilus: Script de sélection de texte installé');
+})();
+''';
+  
+  Timer? _textSelectionPollingTimer;
   
   /// Service de blocage de publicités
   AdBlockerService? _adBlockerService;
@@ -122,6 +182,7 @@ class WebView2BrowserEngine extends BrowserEngine {
     if (_webView != null) {
       // Réinitialiser le flag d'injection pour la nouvelle page
       _scriptInjected = false;
+      _textSelectionScriptInjected = false;
       _isPageLoaded = false;
       
       // Forcer l'état de chargement immédiatement
@@ -443,6 +504,81 @@ class WebView2BrowserEngine extends BrowserEngine {
       debugPrint('Erreur setup webMessage listener: $e');
     }
   }
+  
+  /// Injecte le script de détection de sélection de texte
+  Future<void> _injectTextSelectionScript() async {
+    if (_textSelectionScriptInjected || _webView == null) return;
+    
+    try {
+      await _webView!.executeScript(_textSelectionScript);
+      _textSelectionScriptInjected = true;
+      debugPrint('✅ Script de sélection de texte injecté');
+      _startTextSelectionPolling();
+    } catch (e) {
+      debugPrint('Erreur injection script sélection texte: $e');
+    }
+  }
+  
+  /// Démarre le polling pour détecter les sélections de texte
+  void _startTextSelectionPolling() {
+    _textSelectionPollingTimer?.cancel();
+    _textSelectionPollingTimer = Timer.periodic(const Duration(milliseconds: 200), (timer) async {
+      if (_webView == null || !_isInitialized) {
+        timer.cancel();
+        return;
+      }
+      
+      try {
+        final result = await _webView!.executeScript('''
+          (function() {
+            if (!document.body) return null;
+            var text = document.body.getAttribute('data-selected-text');
+            var x = document.body.getAttribute('data-selection-x');
+            var y = document.body.getAttribute('data-selection-y');
+            if (text && x && y) {
+              // Effacer les attributs après lecture
+              document.body.removeAttribute('data-selected-text');
+              document.body.removeAttribute('data-selection-x');
+              document.body.removeAttribute('data-selection-y');
+              return JSON.stringify({text: decodeURIComponent(text), x: parseInt(x), y: parseInt(y)});
+            }
+            return null;
+          })();
+        ''');
+        
+        if (result != null && result is String && result.isNotEmpty && result != 'null') {
+          try {
+            final data = jsonDecode(result) as Map<String, dynamic>;
+            final selectedText = data['text'] as String?;
+            final x = data['x'] as int?;
+            final y = data['y'] as int?;
+            
+            if (selectedText != null && selectedText.isNotEmpty && x != null && y != null) {
+              debugPrint('📝 Sélection détectée: "$selectedText" à ($x, $y)');
+              // Obtenir la position du WebView dans l'écran
+              // Note: On ne peut pas obtenir directement la position du WebView depuis le service
+              // On utilisera une position approximative basée sur les coordonnées de la sélection
+              final selectionService = TextSelectionService();
+              // Convertir les coordonnées relatives à la page en coordonnées globales
+              // Pour l'instant, on utilise les coordonnées telles quelles (sera ajusté par le widget)
+              selectionService.showMenu(selectedText, Offset(x.toDouble(), y.toDouble()));
+              debugPrint('✅ Menu affiché pour: "$selectedText"');
+            }
+          } catch (e) {
+            debugPrint('Erreur parsing sélection texte: $e');
+          }
+        }
+      } catch (e) {
+        // Ignorer les erreurs silencieusement
+      }
+    });
+  }
+  
+  /// Arrête le polling de sélection de texte
+  void _stopTextSelectionPolling() {
+    _textSelectionPollingTimer?.cancel();
+    _textSelectionPollingTimer = null;
+  }
 
   /// Configure l'interception des téléchargements
   void _setupDownloadInterceptor() {
@@ -690,6 +826,7 @@ class WebView2BrowserEngine extends BrowserEngine {
     
     // Arrêter tous les timers
     _stopNewWindowPolling();
+    _stopTextSelectionPolling();
     _downloadPollingTimer?.cancel();
     _downloadPollingTimer = null;
     _loadingTimeoutTimer?.cancel();
@@ -706,6 +843,7 @@ class WebView2BrowserEngine extends BrowserEngine {
     // Réinitialiser les flags
     _isInitialized = false;
     _scriptInjected = false;
+    _textSelectionScriptInjected = false;
     _isPageLoaded = false;
     _isLoading = false;
   }
@@ -731,6 +869,8 @@ class WebView2BrowserEngine extends BrowserEngine {
                 // Démarrer le polling pour détecter les nouvelles fenêtres
                 _startNewWindowPolling();
               }
+              // Injecter le script de détection de sélection de texte
+              await _injectTextSelectionScript();
             } catch (e) {
               debugPrint('Error injecting handlers: $e');
             }
