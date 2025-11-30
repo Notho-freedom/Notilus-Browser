@@ -20,7 +20,6 @@ class TextSelectionWrapper extends StatefulWidget {
 
 class _TextSelectionWrapperState extends State<TextSelectionWrapper> {
   final TextSelectionService _selectionService = TextSelectionService();
-  OverlayEntry? _overlayEntry;
 
   @override
   void initState() {
@@ -31,50 +30,34 @@ class _TextSelectionWrapperState extends State<TextSelectionWrapper> {
   @override
   void dispose() {
     _selectionService.removeListener(_onSelectionChanged);
-    _removeOverlay();
     super.dispose();
   }
 
   void _onSelectionChanged() {
-    debugPrint('🔄 _onSelectionChanged: visible=${_selectionService.isVisible}');
-    if (_selectionService.isVisible) {
-      _showOverlay();
-    } else {
-      _removeOverlay();
+    if (mounted) {
+      setState(() {
+        // Forcer le rebuild pour afficher/cacher le menu
+      });
     }
-  }
-
-  void _showOverlay() {
-    debugPrint('📌 _showOverlay appelé');
-    _removeOverlay();
-    final overlayState = Overlay.of(context);
-    if (overlayState != null && mounted) {
-      debugPrint('✅ OverlayState trouvé, insertion du menu');
-      _overlayEntry = OverlayEntry(
-        builder: (context) => TextSelectionMenu(),
-      );
-      overlayState.insert(_overlayEntry!);
-      debugPrint('✅ Menu inséré dans l\'overlay');
-    } else {
-      debugPrint('⚠️ OverlayState null ou widget non monté');
-    }
-  }
-
-  void _removeOverlay() {
-    _overlayEntry?.remove();
-    _overlayEntry = null;
   }
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider.value(
       value: _selectionService,
-      child: GestureDetector(
-        onTapDown: (details) {
-          // Ne pas cacher immédiatement, laisser le menu s'afficher d'abord
-          // Le menu se cachera automatiquement si on clique sur le bouton fermer
-        },
-        child: widget.child,
+      child: Stack(
+        children: [
+          GestureDetector(
+            onTapDown: (details) {
+              // Ne pas cacher immédiatement, laisser le menu s'afficher d'abord
+              // Le menu se cachera automatiquement si on clique sur le bouton fermer
+            },
+            child: widget.child,
+          ),
+          // Afficher le menu directement dans le Stack
+          if (_selectionService.isVisible && _selectionService.selectionPosition != null)
+            TextSelectionMenu(),
+        ],
       ),
     );
   }

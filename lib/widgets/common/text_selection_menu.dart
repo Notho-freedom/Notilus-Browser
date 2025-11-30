@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import '../../services/text_selection_service.dart';
 import '../../core/services/color_theme_manager.dart';
 import '../../core/constants/notilus_fonts.dart';
-import 'notilus_tooltip.dart';
 
 /// Menu flottant pour les sélections de texte
 class TextSelectionMenu extends StatelessWidget {
@@ -28,8 +27,12 @@ class TextSelectionMenu extends StatelessWidget {
         final menuWidth = 120.0;
         final menuHeight = 40.0;
         
+        // Les coordonnées du WebView sont relatives à la page web, pas à l'écran
+        // Pour l'instant, on les utilise telles quelles mais on les limite à l'écran visible
+        // TODO: Obtenir la position réelle du WebView pour convertir correctement
         final adjustedX = position.dx.clamp(0.0, screenSize.width - menuWidth);
-        final adjustedY = (position.dy - 50).clamp(0.0, screenSize.height - menuHeight);
+        // Limiter la position Y pour qu'elle soit visible (les coordonnées du WebView peuvent être très grandes avec le scroll)
+        final adjustedY = (position.dy > screenSize.height ? screenSize.height - menuHeight - 20 : position.dy - 50).clamp(0.0, screenSize.height - menuHeight);
         
         return Positioned(
           left: adjustedX,
@@ -113,28 +116,25 @@ class _MenuButtonState extends State<_MenuButton> {
 
   @override
   Widget build(BuildContext context) {
-    return NotilusTooltip(
-      message: widget.tooltip,
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _isHovered = true),
-        onExit: (_) => setState(() => _isHovered = false),
-        child: GestureDetector(
-          onTap: widget.onTap,
-          child: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: _isHovered
-                  ? widget.accentColor.withOpacity(0.2)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Icon(
-              widget.icon,
-              size: 16,
-              color: _isHovered
-                  ? widget.accentColor
-                  : widget.accentColor.withOpacity(0.8),
-            ),
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: _isHovered
+                ? widget.accentColor.withOpacity(0.2)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Icon(
+            widget.icon,
+            size: 16,
+            color: _isHovered
+                ? widget.accentColor
+                : widget.accentColor.withOpacity(0.8),
           ),
         ),
       ),

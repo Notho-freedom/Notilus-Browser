@@ -83,10 +83,11 @@ class WebView2BrowserEngine extends BrowserEngine {
           var range = selection.getRangeAt(0);
           var rect = range.getBoundingClientRect();
           
-          // Stocker les informations de sélection avec scroll
+          // Stocker les informations de sélection (coordonnées viewport, pas absolues)
           if (document.body) {
-            var x = Math.round(rect.left + rect.width / 2 + window.scrollX);
-            var y = Math.round(rect.top + window.scrollY);
+            // Utiliser getBoundingClientRect qui donne les coordonnées relatives à la viewport
+            var x = Math.round(rect.left + rect.width / 2);
+            var y = Math.round(rect.top);
             document.body.setAttribute('data-selected-text', encodeURIComponent(text));
             document.body.setAttribute('data-selection-x', x.toString());
             document.body.setAttribute('data-selection-y', y.toString());
@@ -555,12 +556,9 @@ class WebView2BrowserEngine extends BrowserEngine {
             
             if (selectedText != null && selectedText.isNotEmpty && x != null && y != null) {
               debugPrint('📝 Sélection détectée: "$selectedText" à ($x, $y)');
-              // Obtenir la position du WebView dans l'écran
-              // Note: On ne peut pas obtenir directement la position du WebView depuis le service
-              // On utilisera une position approximative basée sur les coordonnées de la sélection
               final selectionService = TextSelectionService();
-              // Convertir les coordonnées relatives à la page en coordonnées globales
-              // Pour l'instant, on utilise les coordonnées telles quelles (sera ajusté par le widget)
+              // Les coordonnées sont relatives à la page web avec scroll
+              // On les utilise telles quelles, le widget TextSelectionMenu ajustera pour l'écran visible
               selectionService.showMenu(selectedText, Offset(x.toDouble(), y.toDouble()));
               debugPrint('✅ Menu affiché pour: "$selectedText"');
             }
