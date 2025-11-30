@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../../services/settings_service.dart';
-import 'video_background_service.dart';
 
 /// Service pour gérer la musique de fond
 class BackgroundMusicService extends ChangeNotifier with WidgetsBindingObserver {
@@ -15,7 +14,6 @@ class BackgroundMusicService extends ChangeNotifier with WidgetsBindingObserver 
   BackgroundMusicService._internal();
 
   final SettingsService _settings = SettingsService();
-  final VideoBackgroundService _videoService = VideoBackgroundService();
   AudioPlayer? _audioPlayer;
   String? _currentMusicUrl;
   bool _isPlaying = false;
@@ -32,7 +30,6 @@ class BackgroundMusicService extends ChangeNotifier with WidgetsBindingObserver 
   void _initialize() {
     WidgetsBinding.instance.addObserver(this);
     _settings.addListener(_onSettingsChanged);
-    _videoService.addListener(_onVideoChanged);
     _loadMusic();
   }
 
@@ -44,15 +41,6 @@ class BackgroundMusicService extends ChangeNotifier with WidgetsBindingObserver 
       _fadeIn();
     } else {
       _fadeOut();
-    }
-  }
-
-  void _onVideoChanged() {
-    // Si la vidéo a du son activé, ne pas jouer la musique de fond
-    if (_videoService.hasAudio && _isPlaying) {
-      pause();
-    } else if (!_videoService.hasAudio && _currentMusicUrl != null && _isEnabled && !_isPlaying) {
-      resume();
     }
   }
 
@@ -71,15 +59,6 @@ class BackgroundMusicService extends ChangeNotifier with WidgetsBindingObserver 
   Future<void> _loadMusic() async {
     final selectedMusic = _settings.selectedMusic;
     
-    // Ne pas charger la musique si la vidéo a du son
-    if (_videoService.hasAudio) {
-      // Si la vidéo a du son et qu'on joue de la musique, l'arrêter
-      if (_isPlaying) {
-        await pause();
-      }
-      return;
-    }
-    
     // Si la musique a vraiment changé
     if (selectedMusic != _currentMusicUrl) {
       // Arrêter la musique actuelle seulement si on passe à une autre ou à rien
@@ -90,19 +69,19 @@ class BackgroundMusicService extends ChangeNotifier with WidgetsBindingObserver 
       _currentMusicUrl = selectedMusic;
       
       // Si une nouvelle musique est sélectionnée, la jouer
-      if (selectedMusic != null && selectedMusic.isNotEmpty && _isEnabled && !_videoService.hasAudio) {
+      if (selectedMusic != null && selectedMusic.isNotEmpty && _isEnabled) {
         await play(selectedMusic);
       }
       
       notifyListeners();
-    } else if (selectedMusic == _currentMusicUrl && selectedMusic != null && !_isPlaying && _isEnabled && !_videoService.hasAudio) {
+    } else if (selectedMusic == _currentMusicUrl && selectedMusic != null && !_isPlaying && _isEnabled) {
       // Si la musique est la même mais qu'elle n'est pas en cours de lecture, la reprendre
       await resume();
     }
   }
 
   Future<void> _fadeIn() async {
-    if (_audioPlayer != null && _currentMusicUrl != null && _isEnabled && !_videoService.hasAudio) {
+    if (_audioPlayer != null && _currentMusicUrl != null && _isEnabled) {
       _fadeTimer?.cancel();
       const steps = 20;
       const duration = Duration(milliseconds: 500);
@@ -149,11 +128,6 @@ class BackgroundMusicService extends ChangeNotifier with WidgetsBindingObserver 
   }
 
   Future<void> play(String url) async {
-    // Ne pas jouer si la vidéo a du son
-    if (_videoService.hasAudio) {
-      return;
-    }
-    
     // Vérifier que l'URL n'est pas vide
     if (url.isEmpty) {
       debugPrint('⚠️ URL musique vide, impossible de jouer');
@@ -249,7 +223,6 @@ class BackgroundMusicService extends ChangeNotifier with WidgetsBindingObserver 
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _settings.removeListener(_onSettingsChanged);
-    _videoService.removeListener(_onVideoChanged);
     _fadeTimer?.cancel();
     stop();
     super.dispose();

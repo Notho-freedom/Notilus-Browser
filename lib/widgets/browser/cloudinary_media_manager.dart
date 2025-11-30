@@ -52,12 +52,11 @@ class _CloudinaryMediaManagerState extends State<CloudinaryMediaManager> {
   void _loadSelectedMedia() {
     if (widget.resourceType == CloudinaryResourceType.image) {
       _selectedUrls = List.from(_settings.selectedBackgrounds);
-    } else if (widget.resourceType == CloudinaryResourceType.video) {
-      _selectedUrls = List.from(_settings.selectedVideos);
     } else if (widget.resourceType == CloudinaryResourceType.raw) {
       final music = _settings.selectedMusic;
       if (music != null) _selectedUrls = [music];
     }
+    // Plus de support pour les vidéos
   }
 
   Future<void> _uploadFile() async {
@@ -77,11 +76,6 @@ class _CloudinaryMediaManagerState extends State<CloudinaryMediaManager> {
         type: FileType.image,
         allowMultiple: widget.allowMultiple,
       );
-    } else if (widget.resourceType == CloudinaryResourceType.video) {
-      result = await FilePicker.platform.pickFiles(
-        type: FileType.video,
-        allowMultiple: widget.allowMultiple,
-      );
     } else if (widget.resourceType == CloudinaryResourceType.raw) {
       result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
@@ -96,9 +90,7 @@ class _CloudinaryMediaManagerState extends State<CloudinaryMediaManager> {
         final fileObj = File(file.path!);
         final folder = widget.resourceType == CloudinaryResourceType.image
             ? 'backgrounds'
-            : widget.resourceType == CloudinaryResourceType.video
-                ? 'videos'
-                : 'music';
+            : 'music';
 
         return _cloudinaryService.uploadFile(
           file: fileObj,
@@ -165,16 +157,13 @@ class _CloudinaryMediaManagerState extends State<CloudinaryMediaManager> {
     final gxRed = colorThemeManager.nativeSecondaryColor;
     final bgColor = colorThemeManager.nativeBackgroundColor;
     final isSelected = _selectedUrls.contains(media.secureUrl);
-    bool? videoHasAudio;
 
     await GxFuturisticDialog.show(
       context: context,
       title: 'Prévisualisation',
       titleIcon: widget.resourceType == CloudinaryResourceType.image
           ? CupertinoIcons.photo
-          : widget.resourceType == CloudinaryResourceType.video
-              ? CupertinoIcons.play_circle
-              : CupertinoIcons.music_note,
+          : CupertinoIcons.music_note,
       accentColor: gxRed,
       width: 700,
       height: null, // Hauteur automatique basée sur le contenu
@@ -195,15 +184,6 @@ class _CloudinaryMediaManagerState extends State<CloudinaryMediaManager> {
             Navigator.of(context).pop();
             await _toggleSelection(media.secureUrl);
             
-            // Si c'est une vidéo avec son activé, désactiver la musique de fond
-            if (widget.resourceType == CloudinaryResourceType.video && 
-                videoHasAudio == true) {
-              final backgroundMusic = Provider.of<BackgroundMusicService>(context, listen: false);
-              if (backgroundMusic.isPlaying) {
-                await backgroundMusic.pause();
-              }
-            }
-            
             GxNotificationService().showSuccess(
               title: isSelected ? 'Média désélectionné' : 'Média appliqué',
               message: isSelected 
@@ -219,9 +199,7 @@ class _CloudinaryMediaManagerState extends State<CloudinaryMediaManager> {
         resourceType: widget.resourceType,
         gxRed: gxRed,
         bgColor: bgColor,
-        onAudioStateChanged: widget.resourceType == CloudinaryResourceType.video
-            ? (hasAudio) => videoHasAudio = hasAudio
-            : null,
+        onAudioStateChanged: null, // Plus de support vidéo
       ),
     );
   }
@@ -229,11 +207,10 @@ class _CloudinaryMediaManagerState extends State<CloudinaryMediaManager> {
   Future<void> _saveSelection() async {
     if (widget.resourceType == CloudinaryResourceType.image) {
       await _settings.setSelectedBackgrounds(List.from(_selectedUrls));
-    } else if (widget.resourceType == CloudinaryResourceType.video) {
-      await _settings.setSelectedVideos(List.from(_selectedUrls));
     } else if (widget.resourceType == CloudinaryResourceType.raw) {
       await _settings.setSelectedMusic(_selectedUrls.isNotEmpty ? _selectedUrls.first : null);
     }
+    // Plus de support pour les vidéos
     // Forcer une mise à jour de l'UI
     if (mounted) {
       setState(() {});
@@ -302,9 +279,7 @@ class _CloudinaryMediaManagerState extends State<CloudinaryMediaManager> {
       builder: (context, service, _) {
         final mediaList = widget.resourceType == CloudinaryResourceType.image
             ? service.uploadedBackgrounds
-            : widget.resourceType == CloudinaryResourceType.video
-                ? service.uploadedVideos
-                : service.uploadedMusic;
+            : service.uploadedMusic;
 
         // Utilise isLoading avec le type spécifique
         final isLoading = service.isLoading(widget.resourceType);
@@ -556,12 +531,7 @@ class _MediaItem extends StatelessWidget {
                         );
                       },
                     )
-                  : resourceType == CloudinaryResourceType.video
-                      ? _VideoThumbnail(
-                          media: media,
-                          gxRed: gxRed,
-                        )
-                      : Container(
+                  : Container(
                           color: Colors.grey[900],
                           child: Icon(
                             CupertinoIcons.music_note,
@@ -726,16 +696,9 @@ class _MediaPreview extends StatefulWidget {
 
 class _MediaPreviewState extends State<_MediaPreview> {
   AudioPlayer? _audioPlayer;
-  Player? _videoPlayer;
-  VideoController? _videoController;
   bool _isPlaying = false;
-  StreamSubscription<bool>? _playingSubscription;
-  StreamSubscription<Duration>? _positionSubscription;
-  bool _isVideoInitialized = false;
   Duration _duration = Duration.zero;
   Duration _position = Duration.zero;
-  double _videoVolume = 1.0;
-  bool _isVideoMuted = false;
   double _audioVolume = 1.0;
 
   @override
@@ -744,119 +707,11 @@ class _MediaPreviewState extends State<_MediaPreview> {
     if (widget.resourceType == CloudinaryResourceType.raw) {
       _audioPlayer = AudioPlayer();
       _initAudioPlayer();
-    } else if (widget.resourceType == CloudinaryResourceType.video) {
-      _initVideoPlayer();
     }
+    // Plus de support pour les vidéos
   }
 
-  Future<void> _initVideoPlayer() async {
-    try {
-      // Créer le player avec configuration optimisée
-      _videoPlayer = Player(
-        configuration: const PlayerConfiguration(
-          bufferSize: 500 * 1024 * 1024, // 500MB – anti freeze
-        ),
-      );
-      
-      _videoController = VideoController(_videoPlayer!);
-
-      // Annuler les anciennes subscriptions si elles existent
-      _playingSubscription?.cancel();
-      _positionSubscription?.cancel();
-
-      // Écouter les changements d'état
-      _playingSubscription = _videoPlayer!.stream.playing.listen((playing) {
-        if (mounted) {
-          setState(() {
-            _isPlaying = playing;
-          });
-        }
-      });
-
-      _positionSubscription = _videoPlayer!.stream.position.listen((position) {
-        if (mounted) {
-          setState(() {
-            _position = position;
-          });
-        }
-      });
-
-      _videoPlayer!.stream.duration.listen((duration) {
-        if (mounted) {
-          setState(() {
-            _duration = duration;
-          });
-        }
-      });
-
-      // Vérifier d'abord si la vidéo est en cache
-      final cacheService = CloudinaryCacheService();
-      await cacheService.initialize();
-      final cachedFile = await cacheService.getCachedFile(widget.media.secureUrl);
-      
-      // Utiliser le fichier en cache s'il existe, sinon utiliser l'URL
-      final mediaSource = cachedFile != null 
-          ? Media(cachedFile.path)
-          : Media(widget.media.secureUrl);
-      
-      // Ouvrir la vidéo
-      await _videoPlayer!.open(mediaSource, play: false);
-      
-      // Si pas en cache, démarrer le cache en arrière-plan
-      if (cachedFile == null) {
-        _cacheVideoInBackground(cacheService);
-      }
-      
-      // Configurer le volume et le mute (media_kit n'a pas setMuted, utiliser setVolume)
-      await _videoPlayer!.setVolume(_isVideoMuted ? 0.0 : _videoVolume);
-      
-      _updateAudioState();
-      
-      if (mounted) {
-        setState(() {
-          _isVideoInitialized = true;
-        });
-      }
-    } catch (e) {
-      debugPrint('❌ Erreur lors de l\'initialisation du lecteur vidéo (media_kit): $e');
-      // Nettoyer le player en cas d'erreur
-      try {
-        await _videoPlayer?.dispose();
-      } catch (_) {}
-      _videoPlayer = null;
-      _videoController = null;
-      
-      if (mounted) {
-        setState(() {
-          _isVideoInitialized = false;
-        });
-      }
-    }
-  }
-
-  /// Cache la vidéo en arrière-plan pour la prochaine utilisation
-  void _cacheVideoInBackground(CloudinaryCacheService cacheService) {
-    // Télécharger en streaming en arrière-plan sans bloquer
-    cacheService.cacheFileStreaming(
-      widget.media.secureUrl,
-      onProgress: (progress) {
-        // Optionnel : afficher la progression du téléchargement
-        if (progress >= 1.0) {
-          debugPrint('Vidéo mise en cache: ${widget.media.publicId}');
-        }
-      },
-    );
-  }
-
-  Future<void> _toggleVideoPlayPause() async {
-    if (_videoPlayer == null || !_isVideoInitialized) return;
-
-    if (_isPlaying) {
-      await _videoPlayer!.pause();
-    } else {
-      await _videoPlayer!.play();
-    }
-  }
+  // Plus de support pour les vidéos - méthodes supprimées
 
   void _initAudioPlayer() async {
     if (_audioPlayer == null) return;
@@ -885,30 +740,7 @@ class _MediaPreviewState extends State<_MediaPreview> {
     });
   }
   
-  Future<void> _setVideoVolume(double volume) async {
-    _videoVolume = volume.clamp(0.0, 1.0);
-    if (_videoPlayer != null) {
-      // media_kit n'a pas setMuted, utiliser setVolume
-      await _videoPlayer!.setVolume(_isVideoMuted ? 0.0 : _videoVolume);
-      _updateAudioState();
-      setState(() {});
-    }
-  }
-  
-  Future<void> _setVideoMuted(bool muted) async {
-    _isVideoMuted = muted;
-    if (_videoPlayer != null) {
-      // media_kit n'a pas setMuted, utiliser setVolume
-      await _videoPlayer!.setVolume(muted ? 0.0 : _videoVolume);
-      _updateAudioState();
-      setState(() {});
-    }
-  }
-  
-  void _updateAudioState() {
-    final hasAudio = !_isVideoMuted && _videoVolume > 0;
-    widget.onAudioStateChanged?.call(hasAudio);
-  }
+  // Plus de support pour les vidéos - méthodes supprimées
   
   Future<void> _setAudioVolume(double volume) async {
     _audioVolume = volume.clamp(0.0, 1.0);
@@ -956,14 +788,7 @@ class _MediaPreviewState extends State<_MediaPreview> {
 
   @override
   void dispose() {
-    // Annuler les subscriptions
-    _playingSubscription?.cancel();
-    _positionSubscription?.cancel();
-    _playingSubscription = null;
-    _positionSubscription = null;
-    
     _audioPlayer?.dispose();
-    _videoPlayer?.dispose();
     super.dispose();
   }
 
@@ -973,9 +798,7 @@ class _MediaPreviewState extends State<_MediaPreview> {
     // Hauteur adaptative selon le type de média
     final previewHeight = widget.resourceType == CloudinaryResourceType.image
         ? (screenSize.height * 0.6).clamp(400.0, 600.0) // Images : 60% de l'écran, max 600px
-        : widget.resourceType == CloudinaryResourceType.video
-            ? 300.0 // Vidéos : hauteur fixe
-            : 250.0; // Audio : hauteur fixe
+        : 250.0; // Audio : hauteur fixe
     
     return Padding(
       padding: const EdgeInsets.all(24),
@@ -1004,9 +827,7 @@ class _MediaPreviewState extends State<_MediaPreview> {
           else
             SizedBox(
               height: previewHeight,
-              child: widget.resourceType == CloudinaryResourceType.image
-                  ? _buildImagePreview()
-                  : _buildVideoPreview(),
+              child: _buildImagePreview(),
             ),
         ],
       ),
@@ -1063,219 +884,7 @@ class _MediaPreviewState extends State<_MediaPreview> {
     );
   }
 
-  Widget _buildVideoPreview() {
-    if (!_isVideoInitialized || _videoController == null) {
-      return SizedBox(
-        height: 300,
-        child: Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: widget.bgColor.withOpacity(0.3),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: widget.gxRed.withOpacity(0.3)),
-          ),
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(color: widget.gxRed),
-                const SizedBox(height: 16),
-                Text(
-                  'Chargement de la vidéo...',
-                  style: NotilusFonts.rajdhani(
-                    fontSize: 14,
-                    color: Colors.white.withOpacity(0.8),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Si le chargement est trop long, la vidéo peut ne pas être supportée sur cette plateforme.',
-                  style: NotilusFonts.rajdhani(
-                    fontSize: 11,
-                    color: Colors.white.withOpacity(0.5),
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.black,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: widget.gxRed.withOpacity(0.3)),
-      ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // Lecteur vidéo (media_kit)
-          ClipRRect(
-            borderRadius: BorderRadius.circular(11),
-            child: Video(
-              controller: _videoController!,
-              controls: null, // Contrôles custom
-              fill: Colors.black,
-              alignment: Alignment.center,
-            ),
-          ),
-          
-          // Contrôles overlay (play/pause au centre, mais pas sur les contrôles)
-          Positioned.fill(
-            child: Stack(
-              children: [
-                // Zone cliquable pour play/pause (sauf en bas où sont les contrôles)
-                Positioned.fill(
-                  bottom: 120, // Laisser de l'espace pour les contrôles en bas
-                  child: GestureDetector(
-                    onTap: _toggleVideoPlayPause,
-                    behavior: HitTestBehavior.translucent,
-                    child: Container(
-                      color: Colors.transparent,
-                      child: Center(
-                        child: Icon(
-                          _isPlaying ? CupertinoIcons.pause_circle_fill : CupertinoIcons.play_circle_fill,
-                          size: 64,
-                          color: Colors.white.withOpacity(0.8),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          // Barre de progression en bas avec contrôles de volume
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Colors.black.withOpacity(0.95),
-                  ],
-                ),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                    // Contrôles de volume (vidéo uniquement) - Plus visibles
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.8),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: widget.gxRed.withOpacity(0.6),
-                          width: 1.5,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: Icon(
-                              _isVideoMuted ? CupertinoIcons.speaker_slash : CupertinoIcons.speaker_2,
-                              size: 20,
-                              color: Colors.white,
-                            ),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                            onPressed: () => _setVideoMuted(!_isVideoMuted),
-                            tooltip: _isVideoMuted ? 'Activer le son' : 'Désactiver le son',
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: SliderTheme(
-                              data: SliderTheme.of(context).copyWith(
-                                trackHeight: 1.5,
-                                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 4),
-                                overlayShape: const RoundSliderOverlayShape(overlayRadius: 8),
-                              ),
-                              child: Slider(
-                                value: _videoVolume,
-                                min: 0.0,
-                                max: 1.0,
-                                activeColor: widget.gxRed,
-                                inactiveColor: widget.gxRed.withOpacity(0.3),
-                                onChanged: (value) => _setVideoVolume(value),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          SizedBox(
-                            width: 35,
-                            child: Text(
-                              '${(_videoVolume * 100).toInt()}%',
-                              style: NotilusFonts.rajdhani(
-                                fontSize: 11,
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                              ),
-                              textAlign: TextAlign.right,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    // Slider de progression
-                    if (_duration != Duration.zero)
-                      Slider(
-                        value: _position.inSeconds.toDouble().clamp(0.0, _duration.inSeconds.toDouble()),
-                        min: 0,
-                        max: _duration.inSeconds.toDouble(),
-                        activeColor: widget.gxRed,
-                        inactiveColor: widget.gxRed.withOpacity(0.3),
-                        onChanged: (value) {
-                          _videoPlayer?.seek(Duration(seconds: value.toInt()));
-                        },
-                      ),
-                    
-                    // Temps
-                    if (_duration != Duration.zero)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              _formatDuration(_position),
-                              style: NotilusFonts.rajdhani(
-                                fontSize: 11,
-                                color: Colors.white.withOpacity(0.9),
-                              ),
-                            ),
-                            Text(
-                              _formatDuration(_duration),
-                              style: NotilusFonts.rajdhani(
-                                fontSize: 11,
-                                color: Colors.white.withOpacity(0.9),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // Plus de support pour les vidéos - méthode _buildVideoPreview supprimée
 
   Widget _buildAudioPreview() {
     // Intégration full dans la dialog sans conteneur visible

@@ -7,10 +7,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../constants/wallpapers.dart';
 import '../../services/settings_service.dart';
 
-/// Type de wallpaper
+/// Type de wallpaper (uniquement images maintenant)
 enum WallpaperType {
   image,
-  video,
 }
 
 /// Source du wallpaper
@@ -24,7 +23,6 @@ enum WallpaperSource {
 class WallpaperManager extends ChangeNotifier {
   final List<String> _defaultWallpapers = [];
   final List<String> _cloudinaryImages = [];
-  final List<String> _cloudinaryVideos = [];
   final Random _random = Random();
   final Map<String, CachedNetworkImageProvider> _imageCache = {};
   final SettingsService _settings = SettingsService();
@@ -80,31 +78,8 @@ class WallpaperManager extends ChangeNotifier {
   
   void _loadCloudinaryWallpapers() {
     final selectedBackgrounds = _settings.selectedBackgrounds;
-    final selectedVideos = _settings.selectedVideos;
-    
-    // #region agent log
-    try {
-      final logData = {
-        'sessionId': 'debug-session',
-        'runId': 'run2',
-        'hypothesisId': 'D',
-        'location': 'wallpaper_manager.dart:81',
-        'message': '_loadCloudinaryWallpapers called',
-        'data': {
-          'selectedBackgroundsCount': selectedBackgrounds.length,
-          'selectedVideosCount': selectedVideos.length,
-          'selectedBackgrounds': selectedBackgrounds.take(3).toList(),
-          'selectedVideos': selectedVideos.take(3).toList(),
-        },
-        'timestamp': DateTime.now().millisecondsSinceEpoch,
-      };
-      final logFile = File(r'c:\Users\bobim\Notilus-Browser\.cursor\debug.log');
-      logFile.writeAsStringSync('${jsonEncode(logData)}\n', mode: FileMode.append);
-    } catch (_) {}
-    // #endregion
     
     final previousCloudinaryImages = List<String>.from(_cloudinaryImages);
-    final previousCloudinaryVideos = List<String>.from(_cloudinaryVideos);
     
     _cloudinaryImages.clear();
     // Filtrer les URLs vidéo de selectedBackgrounds
@@ -116,39 +91,12 @@ class WallpaperManager extends ChangeNotifier {
       }
     }
     
-    _cloudinaryVideos.clear();
-    _cloudinaryVideos.addAll(selectedVideos);
-    
-    // #region agent log
-    try {
-      final logData = {
-        'sessionId': 'debug-session',
-        'runId': 'run2',
-        'hypothesisId': 'D',
-        'location': 'wallpaper_manager.dart:99',
-        'message': '_loadCloudinaryWallpapers after filtering',
-        'data': {
-          '_cloudinaryImagesCount': _cloudinaryImages.length,
-          '_cloudinaryVideosCount': _cloudinaryVideos.length,
-          '_currentType': _currentType.toString(),
-          '_currentSource': _currentSource.toString(),
-          '_current': _current.length > 100 ? '${_current.substring(0, 100)}...' : _current,
-        },
-        'timestamp': DateTime.now().millisecondsSinceEpoch,
-      };
-      final logFile = File(r'c:\Users\bobim\Notilus-Browser\.cursor\debug.log');
-      logFile.writeAsStringSync('${jsonEncode(logData)}\n', mode: FileMode.append);
-    } catch (_) {}
-    // #endregion
-    
     // Vérifier si les wallpapers ont changé
     final imagesChanged = _cloudinaryImages.length != previousCloudinaryImages.length ||
         !_cloudinaryImages.every((w) => previousCloudinaryImages.contains(w));
-    final videosChanged = _cloudinaryVideos.length != previousCloudinaryVideos.length ||
-        !_cloudinaryVideos.every((w) => previousCloudinaryVideos.contains(w));
     
     // Si aucune sélection Cloudinary, utiliser les images par défaut
-    if (_cloudinaryImages.isEmpty && _cloudinaryVideos.isEmpty) {
+    if (_cloudinaryImages.isEmpty) {
       if (_currentSource != WallpaperSource.default_ || _currentType != WallpaperType.image) {
         _currentSource = WallpaperSource.default_;
         _currentType = WallpaperType.image;
@@ -161,49 +109,18 @@ class WallpaperManager extends ChangeNotifier {
         }
       }
     } else {
-      // Priorité : images > vidéos Cloudinary (si l'utilisateur sélectionne une image, il veut voir une image)
-      if (_cloudinaryImages.isNotEmpty) {
-        // Utiliser une image Cloudinary
-        if (_currentSource != WallpaperSource.cloudinary || 
-            _currentType != WallpaperType.image ||
-            !_cloudinaryImages.contains(_current) ||
-            imagesChanged) {
-          _currentSource = WallpaperSource.cloudinary;
-          _currentType = WallpaperType.image;
-          final newImage = _pickRandomFrom(_cloudinaryImages);
-          // Double vérification : s'assurer que ce n'est pas une vidéo
-          if (!_isVideoUrl(newImage)) {
-            _current = newImage;
-            _preloadImage(_current);
-            // #region agent log
-            try {
-              final logData = {
-                'sessionId': 'debug-session',
-                'runId': 'run2',
-                'hypothesisId': 'D',
-                'location': 'wallpaper_manager.dart:187',
-                'message': 'Setting new Cloudinary image',
-                'data': {
-                  'newImage': _current.length > 100 ? '${_current.substring(0, 100)}...' : _current,
-                },
-                'timestamp': DateTime.now().millisecondsSinceEpoch,
-              };
-              final logFile = File(r'c:\Users\bobim\Notilus-Browser\.cursor\debug.log');
-              logFile.writeAsStringSync('${jsonEncode(logData)}\n', mode: FileMode.append);
-            } catch (_) {}
-            // #endregion
-            notifyListeners();
-          }
-        }
-      } else if (_cloudinaryVideos.isNotEmpty) {
-        // Utiliser une vidéo Cloudinary seulement si aucune image n'est sélectionnée
-        if (_currentSource != WallpaperSource.cloudinary || 
-            _currentType != WallpaperType.video ||
-            !_cloudinaryVideos.contains(_current) ||
-            videosChanged) {
-          _currentSource = WallpaperSource.cloudinary;
-          _currentType = WallpaperType.video;
-          _current = _cloudinaryVideos.first; // Utiliser la première vidéo
+      // Utiliser une image Cloudinary
+      if (_currentSource != WallpaperSource.cloudinary || 
+          _currentType != WallpaperType.image ||
+          !_cloudinaryImages.contains(_current) ||
+          imagesChanged) {
+        _currentSource = WallpaperSource.cloudinary;
+        _currentType = WallpaperType.image;
+        final newImage = _pickRandomFrom(_cloudinaryImages);
+        // Double vérification : s'assurer que ce n'est pas une vidéo
+        if (!_isVideoUrl(newImage)) {
+          _current = newImage;
+          _preloadImage(_current);
           notifyListeners();
         }
       }
@@ -211,10 +128,7 @@ class WallpaperManager extends ChangeNotifier {
   }
   
   List<String> get _activeWallpapers {
-    if (_cloudinaryImages.isNotEmpty || _cloudinaryVideos.isNotEmpty) {
-      if (_cloudinaryVideos.isNotEmpty) {
-        return _cloudinaryVideos;
-      }
+    if (_cloudinaryImages.isNotEmpty) {
       return _cloudinaryImages;
     }
     return _defaultWallpapers;
@@ -255,9 +169,8 @@ class WallpaperManager extends ChangeNotifier {
           '_currentType': _currentType.toString(),
           '_current': _current.length > 100 ? '${_current.substring(0, 100)}...' : _current,
           'isVideoUrl': _isVideoUrl(_current),
-          'isVideo': _currentType == WallpaperType.video,
+          'isVideo': false, // Plus de support vidéo
           '_cloudinaryImagesCount': _cloudinaryImages.length,
-          '_cloudinaryVideosCount': _cloudinaryVideos.length,
         },
         'timestamp': DateTime.now().millisecondsSinceEpoch,
       };
@@ -283,8 +196,8 @@ class WallpaperManager extends ChangeNotifier {
       }
     }
     
-    // Si c'est une vidéo, retourner une chaîne vide pour éviter qu'elle soit utilisée comme image
-    final returnValue = _currentType == WallpaperType.video ? '' : _current;
+    // Retourner l'URL de l'image (plus de support vidéo)
+    final returnValue = _current;
     
     // #region agent log
     try {
@@ -297,7 +210,7 @@ class WallpaperManager extends ChangeNotifier {
         'data': {
           'returnValue': returnValue.isEmpty ? 'EMPTY' : (returnValue.length > 100 ? '${returnValue.substring(0, 100)}...' : returnValue),
           '_currentType': _currentType.toString(),
-          'willReturnVideo': _currentType == WallpaperType.video,
+          'willReturnVideo': false, // Plus de support vidéo
         },
         'timestamp': DateTime.now().millisecondsSinceEpoch,
       };
@@ -309,19 +222,19 @@ class WallpaperManager extends ChangeNotifier {
     return returnValue;
   }
   
-  /// Retourne l'URL du wallpaper pour les images uniquement (retourne une chaîne vide pour les vidéos)
+  String? get previous => _previous;
+  WallpaperType get currentType => _currentType;
+  WallpaperSource get currentSource => _currentSource;
+  bool get isVideo => false; // Plus de support vidéo
+  bool get isCloudinary => _currentSource == WallpaperSource.cloudinary;
+  
+  /// Retourne l'URL du wallpaper pour les images uniquement
   String get currentImageUrl {
-    if (_currentType == WallpaperType.video || _current.isEmpty) {
+    if (_current.isEmpty || _isVideoUrl(_current)) {
       return '';
     }
     return _current;
   }
-  
-  String? get previous => _previous;
-  WallpaperType get currentType => _currentType;
-  WallpaperSource get currentSource => _currentSource;
-  bool get isVideo => _currentType == WallpaperType.video;
-  bool get isCloudinary => _currentSource == WallpaperSource.cloudinary;
 
   String _pickRandomFrom(List<String> list, {String? exclude}) {
     if (list.isEmpty) return '';
@@ -372,19 +285,16 @@ class WallpaperManager extends ChangeNotifier {
 
   /// Permet de forcer le changement de fond d'écran depuis l'UI.
   void next() {
-    // Ne changer que si c'est une image (pas de vidéo)
-    if (_currentType == WallpaperType.image) {
-      _previous = _current;
-      final activeList = _currentSource == WallpaperSource.cloudinary 
-          ? (_cloudinaryImages.isNotEmpty ? _cloudinaryImages : _defaultWallpapers)
-          : _defaultWallpapers;
-      final newImage = _pickRandomFrom(activeList, exclude: _current);
-      // Vérifier que ce n'est pas une vidéo avant de l'utiliser
-      if (!_isVideoUrl(newImage)) {
-        _current = newImage;
-        _preloadImage(_current);
-        notifyListeners();
-      }
+    _previous = _current;
+    final activeList = _currentSource == WallpaperSource.cloudinary 
+        ? (_cloudinaryImages.isNotEmpty ? _cloudinaryImages : _defaultWallpapers)
+        : _defaultWallpapers;
+    final newImage = _pickRandomFrom(activeList, exclude: _current);
+    // Vérifier que ce n'est pas une vidéo avant de l'utiliser
+    if (!_isVideoUrl(newImage)) {
+      _current = newImage;
+      _preloadImage(_current);
+      notifyListeners();
     }
   }
 
