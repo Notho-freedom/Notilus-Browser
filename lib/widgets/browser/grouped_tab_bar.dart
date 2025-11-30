@@ -75,7 +75,7 @@ class _GroupedTabBarState extends State<GroupedTabBar> {
           // Zone des onglets avec scroll
           Expanded(
             child: ClipRect(
-              child: _buildTabBar(context, tabManager, groupService, accentColor),
+              child: _buildTabBar(context, tabManager, groupService, accentColor, groupingEnabled),
             ),
           ),
           const SizedBox(width: 4),
