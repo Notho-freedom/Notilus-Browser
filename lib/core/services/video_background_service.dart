@@ -23,6 +23,7 @@ class VideoBackgroundService extends ChangeNotifier {
   bool _isMuted = false;
   double _volume = 1.0;
   bool _hasAudio = false; // Si la vidéo a du son activé
+  StreamSubscription<bool>? _playingSubscription;
 
   bool get isPlaying => _isPlaying;
   bool get isMuted => _isMuted;
@@ -71,14 +72,39 @@ class VideoBackgroundService extends ChangeNotifier {
       
       _controller = VideoController(_player!);
 
+      // Annuler l'ancienne subscription si elle existe
+      _playingSubscription?.cancel();
+      
       // Écouter les changements d'état
-      _player!.stream.playing.listen((playing) {
+      _playingSubscription = _player!.stream.playing.listen((playing) {
         _isPlaying = playing;
         notifyListeners();
       });
 
+      // Vérifier d'abord si la vidéo est en cache
+      final cacheService = CloudinaryCacheService();
+      await cacheService.initialize();
+      final cachedFile = await cacheService.getCachedFile(url);
+      
+      // Utiliser le fichier en cache s'il existe, sinon utiliser l'URL
+      final mediaSource = cachedFile != null 
+          ? Media(cachedFile.path)
+          : Media(url);
+      
       // Ouvrir la vidéo
-      await _player!.open(Media(url), play: true);
+      await _player!.open(mediaSource, play: true);
+      
+      // Si pas en cache, démarrer le cache en arrière-plan
+      if (cachedFile == null) {
+        cacheService.cacheFileStreaming(
+          url,
+          onProgress: (progress) {
+            if (progress >= 1.0) {
+              debugPrint('✅ Vidéo de fond mise en cache: $url');
+            }
+          },
+        );
+      }
       
       // Configurer le volume et le mute (media_kit n'a pas setMuted, utiliser setVolume)
       await _player!.setVolume(_isMuted ? 0.0 : _volume);
@@ -105,6 +131,10 @@ class VideoBackgroundService extends ChangeNotifier {
   }
 
   Future<void> stop() async {
+    // Annuler la subscription avant de disposer le player
+    _playingSubscription?.cancel();
+    _playingSubscription = null;
+    
     if (_player != null) {
       await _player!.stop();
       await _player!.dispose();
@@ -154,6 +184,9 @@ class VideoBackgroundService extends ChangeNotifier {
   @override
   void dispose() {
     _settings.removeListener(_onSettingsChanged);
+    // Annuler la subscription
+    _playingSubscription?.cancel();
+    _playingSubscription = null;
     stop();
     super.dispose();
   }

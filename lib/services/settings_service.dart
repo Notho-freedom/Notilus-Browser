@@ -61,6 +61,10 @@ class SettingsService extends ChangeNotifier {
   static const String _keyOverlayTransparency = 'notilus_overlay_transparency'; // 0.0 - 1.0
   static const String _keyGlassBlurIntensity = 'notilus_glass_blur_intensity'; // 0 - 30
   
+  // Dialogs
+  static const String _keyDialogBarrierOpacity = 'notilus_dialog_barrier_opacity'; // 0.0 - 1.0
+  static const String _keyDialogBlurIntensity = 'notilus_dialog_blur_intensity'; // 0.0 - 20.0
+  
   // Personnalisation avancée
   static const String _keyShowClock = 'notilus_show_clock';
   static const String _keyShowWeather = 'notilus_show_weather';
@@ -433,6 +437,26 @@ class SettingsService extends ChangeNotifier {
   
   Future<void> setGlassBlurIntensity(double value) async {
     await _prefs?.setDouble(_keyGlassBlurIntensity, value.clamp(0.0, 30.0));
+    notifyListeners();
+  }
+
+  // ============================================
+  // DIALOGS
+  // ============================================
+  
+  /// Opacité du fond assombri des dialogs (0.0 = transparent, 1.0 = opaque)
+  double get dialogBarrierOpacity => _prefs?.getDouble(_keyDialogBarrierOpacity) ?? 0.4;
+  
+  Future<void> setDialogBarrierOpacity(double value) async {
+    await _prefs?.setDouble(_keyDialogBarrierOpacity, value.clamp(0.0, 1.0));
+    notifyListeners();
+  }
+  
+  /// Intensité du flou des dialogs (0.0 - 20.0)
+  double get dialogBlurIntensity => _prefs?.getDouble(_keyDialogBlurIntensity) ?? 2.0;
+  
+  Future<void> setDialogBlurIntensity(double value) async {
+    await _prefs?.setDouble(_keyDialogBlurIntensity, value.clamp(0.0, 20.0));
     notifyListeners();
   }
 

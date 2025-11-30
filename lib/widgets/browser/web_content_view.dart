@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:io' show Platform;
+import 'dart:async';
 import 'package:webview_windows/webview_windows.dart';
 import '../../models/tab_model.dart';
 import '../../core/theme/app_theme.dart';
@@ -32,6 +33,7 @@ class _WebContentViewState extends State<WebContentView> with WidgetsBindingObse
   bool _isVisible = true;
   bool _isTabActive = true;
   TabWebViewManager? _tabWebViewManager;
+  StreamSubscription<LoadingState>? _loadingStateSubscription;
 
   @override
   void initState() {
@@ -51,6 +53,9 @@ class _WebContentViewState extends State<WebContentView> with WidgetsBindingObse
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    // Annuler la subscription au stream
+    _loadingStateSubscription?.cancel();
+    _loadingStateSubscription = null;
     // Suspendre le WebView si nécessaire
     if (_webView != null && _isTabActive && widget.tab?.id != null && _tabWebViewManager != null) {
       try {
@@ -188,13 +193,16 @@ class _WebContentViewState extends State<WebContentView> with WidgetsBindingObse
     // Récupérer le WebView2
     final controller = await engine.getController();
     if (controller != null && controller is WebviewController) {
+      // Annuler l'ancienne subscription si elle existe
+      _loadingStateSubscription?.cancel();
+      
       setState(() {
         _webView = controller as WebviewController;
       });
 
       // Écouter l'état de chargement réel du WebView pour synchronisation précise
       // Utiliser un StreamSubscription pour pouvoir l'annuler si nécessaire
-      _webView!.loadingState.listen((state) {
+      _loadingStateSubscription = _webView!.loadingState.listen((state) {
         if (mounted) {
           final isLoading = state == LoadingState.loading;
           setState(() {
@@ -227,12 +235,15 @@ class _WebContentViewState extends State<WebContentView> with WidgetsBindingObse
       // Récupérer le controller après navigation
       final newController = await engine.getController();
       if (newController != null && newController is WebviewController) {
+        // Annuler l'ancienne subscription si elle existe
+        _loadingStateSubscription?.cancel();
+        
         setState(() {
           _webView = newController;
         });
         
         // Écouter l'état de chargement réel du WebView
-        _webView!.loadingState.listen((state) {
+        _loadingStateSubscription = _webView!.loadingState.listen((state) {
           if (mounted) {
             final isLoading = state == LoadingState.loading;
             setState(() {

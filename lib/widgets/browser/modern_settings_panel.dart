@@ -1723,6 +1723,52 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
             
             const SizedBox(height: 28),
             
+            // === PARAMÈTRES DES DIALOGS ===
+            _buildSubsectionTitle('Paramètres des dialogs', gxRed),
+            const SizedBox(height: 4),
+            Text(
+              'Contrôlez l\'assombrissement et le flou des pop-ups et dialogs',
+              style: TextStyle(color: Colors.white60, fontSize: 10),
+            ),
+            const SizedBox(height: 16),
+            _buildTransparencySlider(
+              label: 'Assombrissement du fond',
+              value: _settings.dialogBarrierOpacity,
+              onChanged: (v) => _settings.setDialogBarrierOpacity(v),
+              gxRed: gxRed,
+              tooltip: 'Opacité du fond assombri derrière les dialogs (0 = transparent, 1 = opaque)',
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Text('Intensité du flou des dialogs', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    '${_settings.dialogBlurIntensity.toStringAsFixed(1)}',
+                    style: TextStyle(color: gxRed, fontSize: 11, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Slider(
+              value: _settings.dialogBlurIntensity,
+              min: 0,
+              max: 20,
+              divisions: 40,
+              activeColor: gxRed,
+              inactiveColor: Colors.white24,
+              onChanged: (v) => _settings.setDialogBlurIntensity(v),
+            ),
+            
+            const SizedBox(height: 28),
+            
             // === PERSONNALISATION AVANCÉE ===
             _buildSubsectionTitle('Personnalisation avancée', gxRed),
             const SizedBox(height: 12),

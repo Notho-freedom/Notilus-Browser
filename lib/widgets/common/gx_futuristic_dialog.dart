@@ -54,10 +54,13 @@ class GxFuturisticDialog extends StatelessWidget {
     // Jouer le son d'ouverture
     SoundEffectsService().playPopOpen();
     
+    final settings = SettingsService();
+    final barrierOpacity = settings.dialogBarrierOpacity;
+    
     return showDialog<T>(
       context: context,
       barrierDismissible: barrierDismissible,
-      barrierColor: Colors.black.withOpacity(0.4),
+      barrierColor: Colors.black.withOpacity(barrierOpacity),
       builder: (context) => GxFuturisticDialog(
         title: title,
         titleIcon: titleIcon,
@@ -112,7 +115,10 @@ class GxFuturisticDialog extends StatelessWidget {
             ),
             child: ClipRect(
               child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 2, sigmaY: 2),
+                filter: ImageFilter.blur(
+                  sigmaX: settings.dialogBlurIntensity,
+                  sigmaY: settings.dialogBlurIntensity,
+                ),
                 child: Container(
                   decoration: BoxDecoration(
                     color: bgColor.withOpacity(panelOpacity.clamp(0.0, 1.0)),

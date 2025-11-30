@@ -17,9 +17,10 @@ class CloudinaryCacheService {
   final Map<String, bool> _downloadingFiles = {}; // URL -> en cours de téléchargement
 
   /// Initialise le répertoire de cache
+  /// Utilise getApplicationDocumentsDirectory() pour une persistance permanente
   Future<void> initialize() async {
-    final tempDir = await getTemporaryDirectory();
-    _cacheDir = Directory(path.join(tempDir.path, 'cloudinary_cache'));
+    final appDir = await getApplicationDocumentsDirectory();
+    _cacheDir = Directory(path.join(appDir.path, 'cloudinary_cache'));
     if (!await _cacheDir!.exists()) {
       await _cacheDir!.create(recursive: true);
     }

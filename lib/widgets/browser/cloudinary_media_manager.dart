@@ -707,6 +707,8 @@ class _MediaPreviewState extends State<_MediaPreview> {
   Player? _videoPlayer;
   VideoController? _videoController;
   bool _isPlaying = false;
+  StreamSubscription<bool>? _playingSubscription;
+  StreamSubscription<Duration>? _positionSubscription;
   bool _isVideoInitialized = false;
   Duration _duration = Duration.zero;
   Duration _position = Duration.zero;
@@ -736,8 +738,12 @@ class _MediaPreviewState extends State<_MediaPreview> {
       
       _videoController = VideoController(_videoPlayer!);
 
+      // Annuler les anciennes subscriptions si elles existent
+      _playingSubscription?.cancel();
+      _positionSubscription?.cancel();
+
       // Écouter les changements d'état
-      _videoPlayer!.stream.playing.listen((playing) {
+      _playingSubscription = _videoPlayer!.stream.playing.listen((playing) {
         if (mounted) {
           setState(() {
             _isPlaying = playing;
@@ -745,7 +751,7 @@ class _MediaPreviewState extends State<_MediaPreview> {
         }
       });
 
-      _videoPlayer!.stream.position.listen((position) {
+      _positionSubscription = _videoPlayer!.stream.position.listen((position) {
         if (mounted) {
           setState(() {
             _position = position;
@@ -761,8 +767,23 @@ class _MediaPreviewState extends State<_MediaPreview> {
         }
       });
 
+      // Vérifier d'abord si la vidéo est en cache
+      final cacheService = CloudinaryCacheService();
+      await cacheService.initialize();
+      final cachedFile = await cacheService.getCachedFile(widget.media.secureUrl);
+      
+      // Utiliser le fichier en cache s'il existe, sinon utiliser l'URL
+      final mediaSource = cachedFile != null 
+          ? Media(cachedFile.path)
+          : Media(widget.media.secureUrl);
+      
       // Ouvrir la vidéo
-      await _videoPlayer!.open(Media(widget.media.secureUrl), play: false);
+      await _videoPlayer!.open(mediaSource, play: false);
+      
+      // Si pas en cache, démarrer le cache en arrière-plan
+      if (cachedFile == null) {
+        _cacheVideoInBackground(cacheService);
+      }
       
       // Configurer le volume et le mute (media_kit n'a pas setMuted, utiliser setVolume)
       await _videoPlayer!.setVolume(_isVideoMuted ? 0.0 : _videoVolume);
@@ -882,7 +903,19 @@ class _MediaPreviewState extends State<_MediaPreview> {
       await _audioPlayer!.pause();
     } else {
       if (_position == Duration.zero) {
-        await _audioPlayer!.setSource(UrlSource(widget.media.secureUrl));
+        // Vérifier d'abord si l'audio est en cache
+        final cacheService = CloudinaryCacheService();
+        await cacheService.initialize();
+        final cachedFile = await cacheService.getCachedFile(widget.media.secureUrl);
+        
+        // Utiliser le fichier en cache s'il existe, sinon utiliser l'URL
+        if (cachedFile != null) {
+          await _audioPlayer!.setSource(DeviceFileSource(cachedFile.path));
+        } else {
+          await _audioPlayer!.setSource(UrlSource(widget.media.secureUrl));
+          // Mettre en cache en arrière-plan
+          cacheService.cacheFile(widget.media.secureUrl);
+        }
       }
       await _audioPlayer!.resume();
     }
@@ -901,6 +934,12 @@ class _MediaPreviewState extends State<_MediaPreview> {
 
   @override
   void dispose() {
+    // Annuler les subscriptions
+    _playingSubscription?.cancel();
+    _positionSubscription?.cancel();
+    _playingSubscription = null;
+    _positionSubscription = null;
+    
     _audioPlayer?.dispose();
     _videoPlayer?.dispose();
     super.dispose();
