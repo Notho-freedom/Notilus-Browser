@@ -1188,9 +1188,64 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
             _buildSubsectionTitle('Nouvel onglet', gxRed, isCompact: isCompact, isMedium: isMedium),
             SizedBox(height: spacing),
             _buildNewTabBehaviorSelector(gxRed),
+            SizedBox(height: spacing * 2),
+            _buildSubsectionTitle('Style des onglets', gxRed, isCompact: isCompact, isMedium: isMedium),
+            SizedBox(height: spacing),
+            _buildTabModeSelector(gxRed, isCompact: isCompact, isMedium: isMedium),
+            SizedBox(height: spacing),
+            _buildSettingSwitch(
+              title: 'Groupement automatique',
+              subtitle: 'Groupe automatiquement les onglets par domaine',
+              value: _settings.tabGroupingEnabled,
+              onChanged: (v) => _settings.setTabGroupingEnabled(v),
+              gxRed: gxRed,
+              isCompact: isCompact,
+              isMedium: isMedium,
+            ),
           ],
         );
       },
+    );
+  }
+
+  Widget _buildTabModeSelector(Color gxRed, {bool isCompact = false, bool isMedium = false}) {
+    final modes = {
+      'classic': 'Mode classique',
+      'native': 'Mode natif (GX Futuriste)',
+    };
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: modes.entries.map((entry) {
+            final isSelected = _settings.tabMode == entry.key;
+            return ChoiceChip(
+              label: Text(entry.value),
+              selected: isSelected,
+              onSelected: (_) => _settings.setTabMode(entry.key),
+              selectedColor: gxRed.withOpacity(0.2),
+              backgroundColor: Colors.white.withOpacity(0.05),
+              side: BorderSide(color: isSelected ? gxRed : Colors.white24),
+              labelStyle: TextStyle(
+                color: isSelected ? gxRed : Colors.white70,
+                fontSize: isCompact ? 10 : (isMedium ? 11 : 12),
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          _settings.tabMode == 'classic'
+              ? 'Affichage classique des onglets sans groupement'
+              : 'Affichage futuriste GX avec style natif',
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.6),
+            fontSize: isCompact ? 10 : (isMedium ? 11 : 12),
+          ),
+        ),
+      ],
     );
   }
 
@@ -4119,29 +4174,37 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
             ),
             OutlinedButton.icon(
               onPressed: () {
-                showDialog(
+                GxFuturisticDialog.show<bool>(
                   context: context,
-                  builder: (ctx) => AlertDialog(
-                    backgroundColor: const Color(0xFF15151A),
-                    title: const Text('Réinitialiser tout', style: TextStyle(color: Colors.white)),
-                    content: const Text(
-                      'Cette action va réinitialiser tous les paramètres aux valeurs par défaut.',
-                      style: TextStyle(color: Colors.white70),
+                  title: 'Réinitialiser tout',
+                  titleIcon: CupertinoIcons.refresh,
+                  accentColor: Colors.red,
+                  width: 450,
+                  child: Text(
+                    'Cette action va réinitialiser tous les paramètres aux valeurs par défaut.',
+                    style: NotilusFonts.rajdhani(
+                      fontSize: 13,
+                      color: Colors.white.withOpacity(0.7),
                     ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        child: const Text('Annuler'),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          _settings.resetAllSettings();
-                          Navigator.pop(ctx);
-                        },
-                        child: Text('Réinitialiser', style: TextStyle(color: Colors.red)),
-                      ),
-                    ],
                   ),
+                  actions: [
+                    GxFuturisticButton(
+                      label: 'Annuler',
+                      variant: GxFuturisticButtonVariant.secondary,
+                      accentColor: gxRed,
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                    GxFuturisticButton(
+                      label: 'Réinitialiser',
+                      icon: CupertinoIcons.refresh,
+                      variant: GxFuturisticButtonVariant.primary,
+                      accentColor: Colors.red,
+                      onPressed: () {
+                        _settings.resetAllSettings();
+                        Navigator.pop(context);
+                      },
+                    ),
+                  ],
                 );
               },
               icon: const Icon(CupertinoIcons.refresh, size: 14),

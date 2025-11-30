@@ -4,8 +4,12 @@ import 'package:flutter/cupertino.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:audioplayers/audioplayers.dart';
-import 'package:video_player/video_player.dart';
+import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'dart:async';
+import 'dart:io' show Platform, File;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import '../../services/cloudinary_service.dart';
 import '../../services/cloudinary_cache_service.dart';
 import '../../services/settings_service.dart';
@@ -176,17 +180,17 @@ class _CloudinaryMediaManagerState extends State<CloudinaryMediaManager> {
       height: null, // Hauteur automatique basée sur le contenu
       disableScroll: true, // Pas de scroll, la modal s'adapte au contenu
       actions: [
-        TextButton(
+        GxFuturisticButton(
+          label: 'Annuler',
+          variant: GxFuturisticButtonVariant.secondary,
+          accentColor: gxRed,
           onPressed: () => Navigator.of(context).pop(),
-          child: Text(
-            'Annuler',
-            style: NotilusFonts.rajdhani(color: Colors.white70),
-          ),
         ),
         GxFuturisticButton(
           label: isSelected ? 'Désélectionner' : 'Appliquer',
           icon: isSelected ? CupertinoIcons.xmark_circle : CupertinoIcons.checkmark,
           variant: GxFuturisticButtonVariant.primary,
+          accentColor: gxRed,
           onPressed: () async {
             Navigator.of(context).pop();
             await _toggleSelection(media.secureUrl);
@@ -239,31 +243,35 @@ class _CloudinaryMediaManagerState extends State<CloudinaryMediaManager> {
   Future<void> _deleteMedia(CloudinaryMedia media) async {
     final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: false);
     final gxRed = colorThemeManager.nativeSecondaryColor;
-    final bgColor = colorThemeManager.nativeBackgroundColor;
     
-    final confirmed = await showDialog<bool>(
+    final confirmed = await GxFuturisticDialog.show<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: bgColor.withOpacity(0.95),
-        title: Text(
-          'Supprimer le média',
-          style: NotilusFonts.orbitron(color: gxRed),
+      title: 'Supprimer le média',
+      titleIcon: CupertinoIcons.delete,
+      accentColor: Colors.red,
+      width: 400,
+      child: Text(
+        'Êtes-vous sûr de vouloir supprimer ce média de Cloudinary ?',
+        style: NotilusFonts.rajdhani(
+          fontSize: 13,
+          color: Colors.white.withOpacity(0.7),
         ),
-        content: Text(
-          'Êtes-vous sûr de vouloir supprimer ce média de Cloudinary ?',
-          style: NotilusFonts.rajdhani(),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text('Annuler', style: NotilusFonts.rajdhani(color: Colors.white70)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text('Supprimer', style: NotilusFonts.rajdhani(color: gxRed)),
-          ),
-        ],
       ),
+      actions: [
+        GxFuturisticButton(
+          label: 'Annuler',
+          variant: GxFuturisticButtonVariant.secondary,
+          accentColor: gxRed,
+          onPressed: () => Navigator.pop(context, false),
+        ),
+        GxFuturisticButton(
+          label: 'Supprimer',
+          icon: CupertinoIcons.delete,
+          variant: GxFuturisticButtonVariant.danger,
+          accentColor: Colors.red,
+          onPressed: () => Navigator.pop(context, true),
+        ),
+      ],
     );
 
     if (confirmed == true) {
@@ -696,7 +704,8 @@ class _MediaPreview extends StatefulWidget {
 
 class _MediaPreviewState extends State<_MediaPreview> {
   AudioPlayer? _audioPlayer;
-  VideoPlayerController? _videoPlayerController;
+  Player? _videoPlayer;
+  VideoController? _videoController;
   bool _isPlaying = false;
   bool _isVideoInitialized = false;
   Duration _duration = Duration.zero;
@@ -718,39 +727,47 @@ class _MediaPreviewState extends State<_MediaPreview> {
 
   Future<void> _initVideoPlayer() async {
     try {
-      final cacheService = CloudinaryCacheService();
-      await cacheService.initialize();
+      // Créer le player avec configuration optimisée
+      _videoPlayer = Player(
+        configuration: const PlayerConfiguration(
+          bufferSize: 500 * 1024 * 1024, // 500MB – anti freeze
+        ),
+      );
       
-      // Essayer de récupérer le fichier en cache
-      File? cachedFile = await cacheService.getCachedFile(widget.media.secureUrl);
-      
-      if (cachedFile != null) {
-        // Utiliser le fichier en cache directement
-        _videoPlayerController = VideoPlayerController.file(cachedFile);
-      } else {
-        // Utiliser l'URL réseau pour lecture immédiate
-        _videoPlayerController = VideoPlayerController.networkUrl(
-          Uri.parse(widget.media.secureUrl),
-        );
-        
-        // Démarrer le téléchargement en arrière-plan pour la prochaine fois
-        _cacheVideoInBackground(cacheService);
-      }
-      
-      await _videoPlayerController!.initialize();
-      await _videoPlayerController!.setVolume(_isVideoMuted ? 0.0 : _videoVolume);
-      _updateAudioState();
-      
-      _videoPlayerController!.addListener(() {
+      _videoController = VideoController(_videoPlayer!);
+
+      // Écouter les changements d'état
+      _videoPlayer!.stream.playing.listen((playing) {
         if (mounted) {
           setState(() {
-            _isVideoInitialized = _videoPlayerController!.value.isInitialized;
-            _isPlaying = _videoPlayerController!.value.isPlaying;
-            _duration = _videoPlayerController!.value.duration;
-            _position = _videoPlayerController!.value.position;
+            _isPlaying = playing;
           });
         }
       });
+
+      _videoPlayer!.stream.position.listen((position) {
+        if (mounted) {
+          setState(() {
+            _position = position;
+          });
+        }
+      });
+
+      _videoPlayer!.stream.duration.listen((duration) {
+        if (mounted) {
+          setState(() {
+            _duration = duration;
+          });
+        }
+      });
+
+      // Ouvrir la vidéo
+      await _videoPlayer!.open(Media(widget.media.secureUrl), play: false);
+      
+      // Configurer le volume et le mute (media_kit n'a pas setMuted, utiliser setVolume)
+      await _videoPlayer!.setVolume(_isVideoMuted ? 0.0 : _videoVolume);
+      
+      _updateAudioState();
       
       if (mounted) {
         setState(() {
@@ -758,7 +775,14 @@ class _MediaPreviewState extends State<_MediaPreview> {
         });
       }
     } catch (e) {
-      debugPrint('Erreur lors de l\'initialisation du lecteur vidéo: $e');
+      debugPrint('❌ Erreur lors de l\'initialisation du lecteur vidéo (media_kit): $e');
+      // Nettoyer le player en cas d'erreur
+      try {
+        await _videoPlayer?.dispose();
+      } catch (_) {}
+      _videoPlayer = null;
+      _videoController = null;
+      
       if (mounted) {
         setState(() {
           _isVideoInitialized = false;
@@ -782,12 +806,12 @@ class _MediaPreviewState extends State<_MediaPreview> {
   }
 
   Future<void> _toggleVideoPlayPause() async {
-    if (_videoPlayerController == null || !_isVideoInitialized) return;
+    if (_videoPlayer == null || !_isVideoInitialized) return;
 
-    if (_videoPlayerController!.value.isPlaying) {
-      await _videoPlayerController!.pause();
+    if (_isPlaying) {
+      await _videoPlayer!.pause();
     } else {
-      await _videoPlayerController!.play();
+      await _videoPlayer!.play();
     }
   }
 
@@ -820,8 +844,9 @@ class _MediaPreviewState extends State<_MediaPreview> {
   
   Future<void> _setVideoVolume(double volume) async {
     _videoVolume = volume.clamp(0.0, 1.0);
-    if (_videoPlayerController != null) {
-      await _videoPlayerController!.setVolume(_isVideoMuted ? 0.0 : _videoVolume);
+    if (_videoPlayer != null) {
+      // media_kit n'a pas setMuted, utiliser setVolume
+      await _videoPlayer!.setVolume(_isVideoMuted ? 0.0 : _videoVolume);
       _updateAudioState();
       setState(() {});
     }
@@ -829,8 +854,9 @@ class _MediaPreviewState extends State<_MediaPreview> {
   
   Future<void> _setVideoMuted(bool muted) async {
     _isVideoMuted = muted;
-    if (_videoPlayerController != null) {
-      await _videoPlayerController!.setVolume(muted ? 0.0 : _videoVolume);
+    if (_videoPlayer != null) {
+      // media_kit n'a pas setMuted, utiliser setVolume
+      await _videoPlayer!.setVolume(muted ? 0.0 : _videoVolume);
       _updateAudioState();
       setState(() {});
     }
@@ -876,7 +902,7 @@ class _MediaPreviewState extends State<_MediaPreview> {
   @override
   void dispose() {
     _audioPlayer?.dispose();
-    _videoPlayerController?.dispose();
+    _videoPlayer?.dispose();
     super.dispose();
   }
 
@@ -895,31 +921,32 @@ class _MediaPreviewState extends State<_MediaPreview> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Afficher le nom du fichier
-          Text(
-            widget.media.publicId.split('/').last,
-            style: NotilusFonts.orbitron(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: widget.gxRed,
+          // Afficher le nom du fichier (sauf pour audio)
+          if (widget.resourceType != CloudinaryResourceType.raw)
+            Text(
+              widget.media.publicId.split('/').last,
+              style: NotilusFonts.orbitron(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: widget.gxRed,
+              ),
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
-            textAlign: TextAlign.center,
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
-          ),
-          const SizedBox(height: 20),
+          if (widget.resourceType != CloudinaryResourceType.raw)
+            const SizedBox(height: 20),
           
           // Contenu selon le type avec hauteur adaptative
-          SizedBox(
-            height: previewHeight,
-            child: widget.resourceType == CloudinaryResourceType.image
-                ? _buildImagePreview()
-                : widget.resourceType == CloudinaryResourceType.video
-                    ? _buildVideoPreview()
-                    : SingleChildScrollView(
-                        child: _buildAudioPreview(),
-                      ),
-          ),
+          if (widget.resourceType == CloudinaryResourceType.raw)
+            _buildAudioPreview()
+          else
+            SizedBox(
+              height: previewHeight,
+              child: widget.resourceType == CloudinaryResourceType.image
+                  ? _buildImagePreview()
+                  : _buildVideoPreview(),
+            ),
         ],
       ),
     );
@@ -955,29 +982,41 @@ class _MediaPreviewState extends State<_MediaPreview> {
   }
 
   Widget _buildVideoPreview() {
-    if (!_isVideoInitialized || _videoPlayerController == null) {
-      return Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: widget.bgColor.withOpacity(0.3),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: widget.gxRed.withOpacity(0.3)),
-        ),
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(color: widget.gxRed),
-              const SizedBox(height: 16),
-              Text(
-                'Chargement de la vidéo...',
-                style: NotilusFonts.rajdhani(
-                  fontSize: 14,
-                  color: Colors.white.withOpacity(0.8),
+    if (!_isVideoInitialized || _videoController == null) {
+      return SizedBox(
+        height: 300,
+        child: Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: widget.bgColor.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: widget.gxRed.withOpacity(0.3)),
+          ),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(color: widget.gxRed),
+                const SizedBox(height: 16),
+                Text(
+                  'Chargement de la vidéo...',
+                  style: NotilusFonts.rajdhani(
+                    fontSize: 14,
+                    color: Colors.white.withOpacity(0.8),
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 8),
+                Text(
+                  'Si le chargement est trop long, la vidéo peut ne pas être supportée sur cette plateforme.',
+                  style: NotilusFonts.rajdhani(
+                    fontSize: 11,
+                    color: Colors.white.withOpacity(0.5),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -993,117 +1032,153 @@ class _MediaPreviewState extends State<_MediaPreview> {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Lecteur vidéo
+          // Lecteur vidéo (media_kit)
           ClipRRect(
             borderRadius: BorderRadius.circular(11),
-            child: AspectRatio(
-              aspectRatio: _videoPlayerController!.value.aspectRatio,
-              child: VideoPlayer(_videoPlayerController!),
+            child: Video(
+              controller: _videoController!,
+              controls: null, // Contrôles custom
+              fill: Colors.black,
+              alignment: Alignment.center,
             ),
           ),
           
-          // Contrôles overlay
+          // Contrôles overlay (play/pause au centre, mais pas sur les contrôles)
           Positioned.fill(
-            child: GestureDetector(
-              onTap: _toggleVideoPlayPause,
-              child: Container(
-                color: Colors.transparent,
-                child: Center(
-                  child: Icon(
-                    _isPlaying ? CupertinoIcons.pause_circle_fill : CupertinoIcons.play_circle_fill,
-                    size: 64,
-                    color: Colors.white.withOpacity(0.8),
+            child: Stack(
+              children: [
+                // Zone cliquable pour play/pause (sauf en bas où sont les contrôles)
+                Positioned.fill(
+                  bottom: 120, // Laisser de l'espace pour les contrôles en bas
+                  child: GestureDetector(
+                    onTap: _toggleVideoPlayPause,
+                    behavior: HitTestBehavior.translucent,
+                    child: Container(
+                      color: Colors.transparent,
+                      child: Center(
+                        child: Icon(
+                          _isPlaying ? CupertinoIcons.pause_circle_fill : CupertinoIcons.play_circle_fill,
+                          size: 64,
+                          color: Colors.white.withOpacity(0.8),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              ),
+              ],
             ),
           ),
           
-          // Barre de progression en bas
+          // Barre de progression en bas avec contrôles de volume
           Positioned(
             bottom: 0,
             left: 0,
             right: 0,
             child: Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
                     Colors.transparent,
-                    Colors.black.withOpacity(0.7),
+                    Colors.black.withOpacity(0.95),
                   ],
                 ),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Contrôles de volume (vidéo uniquement)
-                  Row(
-                    children: [
-                      Icon(
-                        _isVideoMuted ? CupertinoIcons.speaker_slash : CupertinoIcons.speaker_2,
-                        size: 20,
-                        color: Colors.white,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Slider(
-                          value: _videoVolume,
-                          min: 0.0,
-                          max: 1.0,
-                          activeColor: widget.gxRed,
-                          inactiveColor: widget.gxRed.withOpacity(0.3),
-                          onChanged: (value) => _setVideoVolume(value),
+                    // Contrôles de volume (vidéo uniquement) - Plus visibles
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.8),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: widget.gxRed.withOpacity(0.6),
+                          width: 1.5,
                         ),
                       ),
-                      IconButton(
-                        icon: Icon(
-                          _isVideoMuted ? CupertinoIcons.speaker_slash : CupertinoIcons.speaker_2,
-                          size: 20,
-                          color: Colors.white,
-                        ),
-                        onPressed: () => _setVideoMuted(!_isVideoMuted),
-                        tooltip: _isVideoMuted ? 'Activer le son' : 'Désactiver le son',
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  // Slider de progression
-                  if (_duration != Duration.zero)
-                    Slider(
-                      value: _position.inSeconds.toDouble().clamp(0.0, _duration.inSeconds.toDouble()),
-                      min: 0,
-                      max: _duration.inSeconds.toDouble(),
-                      activeColor: widget.gxRed,
-                      inactiveColor: widget.gxRed.withOpacity(0.3),
-                      onChanged: (value) {
-                        _videoPlayerController?.seekTo(Duration(seconds: value.toInt()));
-                      },
-                    ),
-                  
-                  // Temps
-                  if (_duration != Duration.zero)
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          _formatDuration(_position),
-                          style: NotilusFonts.rajdhani(
-                            fontSize: 12,
-                            color: Colors.white.withOpacity(0.9),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: Icon(
+                              _isVideoMuted ? CupertinoIcons.speaker_slash : CupertinoIcons.speaker_2,
+                              size: 20,
+                              color: Colors.white,
+                            ),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                            onPressed: () => _setVideoMuted(!_isVideoMuted),
+                            tooltip: _isVideoMuted ? 'Activer le son' : 'Désactiver le son',
                           ),
-                        ),
-                        Text(
-                          _formatDuration(_duration),
-                          style: NotilusFonts.rajdhani(
-                            fontSize: 12,
-                            color: Colors.white.withOpacity(0.9),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Slider(
+                              value: _videoVolume,
+                              min: 0.0,
+                              max: 1.0,
+                              activeColor: widget.gxRed,
+                              inactiveColor: widget.gxRed.withOpacity(0.3),
+                              onChanged: (value) => _setVideoVolume(value),
+                            ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 6),
+                          SizedBox(
+                            width: 35,
+                            child: Text(
+                              '${(_videoVolume * 100).toInt()}%',
+                              style: NotilusFonts.rajdhani(
+                                fontSize: 11,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              textAlign: TextAlign.right,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
+                    const SizedBox(height: 8),
+                    // Slider de progression
+                    if (_duration != Duration.zero)
+                      Slider(
+                        value: _position.inSeconds.toDouble().clamp(0.0, _duration.inSeconds.toDouble()),
+                        min: 0,
+                        max: _duration.inSeconds.toDouble(),
+                        activeColor: widget.gxRed,
+                        inactiveColor: widget.gxRed.withOpacity(0.3),
+                        onChanged: (value) {
+                          _videoPlayer?.seek(Duration(seconds: value.toInt()));
+                        },
+                      ),
+                    
+                    // Temps
+                    if (_duration != Duration.zero)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              _formatDuration(_position),
+                              style: NotilusFonts.rajdhani(
+                                fontSize: 11,
+                                color: Colors.white.withOpacity(0.9),
+                              ),
+                            ),
+                            Text(
+                              _formatDuration(_duration),
+                              style: NotilusFonts.rajdhani(
+                                fontSize: 11,
+                                color: Colors.white.withOpacity(0.9),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                 ],
               ),
             ),
@@ -1114,43 +1189,26 @@ class _MediaPreviewState extends State<_MediaPreview> {
   }
 
   Widget _buildAudioPreview() {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: widget.bgColor.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: widget.gxRed.withOpacity(0.3)),
-      ),
-      padding: const EdgeInsets.all(16),
+    // Intégration full dans la dialog sans conteneur visible
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 20),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            CupertinoIcons.music_note,
-            size: 48,
-            color: widget.gxRed,
-          ),
-          const SizedBox(height: 12),
-          
-          // Contrôles audio
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(
-                onPressed: _togglePlayPause,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                icon: Icon(
-                  _isPlaying ? CupertinoIcons.pause_circle_fill : CupertinoIcons.play_circle_fill,
-                  size: 40,
-                  color: widget.gxRed,
-                ),
-              ),
-            ],
+          // Bouton play/pause
+          IconButton(
+            onPressed: _togglePlayPause,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            icon: Icon(
+              _isPlaying ? CupertinoIcons.pause_circle_fill : CupertinoIcons.play_circle_fill,
+              size: 64,
+              color: widget.gxRed,
+            ),
           ),
           
-          const SizedBox(height: 12),
+          const SizedBox(height: 24),
           
           // Contrôle de volume (audio)
           Row(
@@ -1160,7 +1218,7 @@ class _MediaPreviewState extends State<_MediaPreview> {
                 size: 20,
                 color: widget.gxRed,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 12),
               Expanded(
                 child: Slider(
                   value: _audioVolume,
@@ -1173,7 +1231,8 @@ class _MediaPreviewState extends State<_MediaPreview> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          
+          const SizedBox(height: 16),
           
           // Barre de progression
           if (_duration != Duration.zero) ...[
@@ -1195,22 +1254,21 @@ class _MediaPreviewState extends State<_MediaPreview> {
                   Text(
                     _formatDuration(_position),
                     style: NotilusFonts.rajdhani(
-                      fontSize: 11,
+                      fontSize: 12,
                       color: Colors.white.withOpacity(0.8),
                     ),
                   ),
                   Text(
                     _formatDuration(_duration),
                     style: NotilusFonts.rajdhani(
-                      fontSize: 11,
+                      fontSize: 12,
                       color: Colors.white.withOpacity(0.8),
                     ),
                   ),
                 ],
               ),
             ),
-          ] else
-            const SizedBox(height: 8),
+          ],
         ],
       ),
     );

@@ -9,7 +9,10 @@ import '../../services/tab_manager.dart';
 import '../../services/tab_group_service.dart';
 import '../../core/services/color_theme_manager.dart';
 import '../../models/tab_model.dart';
+import '../../services/settings_service.dart';
 import '../common/notilus_tooltip.dart';
+import '../common/gx_futuristic_dialog.dart';
+import '../common/gx_futuristic_components.dart';
 
 /// Tab bar avec regroupements automatiques et codes couleur
 class GroupedTabBar extends StatefulWidget {
@@ -43,6 +46,8 @@ class _GroupedTabBarState extends State<GroupedTabBar> {
     final accentColor = colorThemeManager.nativeSecondaryColor;
     final tabManager = Provider.of<TabManager>(context);
     final groupService = Provider.of<TabGroupService>(context);
+    final settings = Provider.of<SettingsService>(context);
+    final groupingEnabled = settings.tabGroupingEnabled;
 
     return Container(
       height: 36,
@@ -87,13 +92,15 @@ class _GroupedTabBarState extends State<GroupedTabBar> {
             tooltip: 'Rechercher un onglet',
             onPressed: () => _openTabSearch(context),
           ),
-          const SizedBox(width: 4),
-          // Bouton groupes
-          _TabBarIconButton(
-            icon: CupertinoIcons.rectangle_stack,
-            tooltip: 'Groupes d\'onglets',
-            onPressed: widget.onGroupsPressed,
-          ),
+          // Bouton groupes (seulement si le groupement est activé)
+          if (groupingEnabled) ...[
+            const SizedBox(width: 4),
+            _TabBarIconButton(
+              icon: CupertinoIcons.rectangle_stack,
+              tooltip: 'Groupes d\'onglets',
+              onPressed: widget.onGroupsPressed,
+            ),
+          ],
           const SizedBox(width: 6),
           const _WindowControls(),
           const SizedBox(width: 6),
@@ -106,45 +113,60 @@ class _GroupedTabBarState extends State<GroupedTabBar> {
     final tabManager = context.read<TabManager>();
     final controller = TextEditingController();
     
-    await showDialog(
+    final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: false);
+    final gxRed = colorThemeManager.nativeSecondaryColor;
+    
+    await GxFuturisticDialog.show(
       context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF1A1A20),
-          title: const Text('Rechercher un onglet', style: TextStyle(color: Colors.white)),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              hintText: 'Tapez pour rechercher...',
-              hintStyle: TextStyle(color: Colors.white38),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            onSubmitted: (value) {
-              final matchingTabs = tabManager.tabs.where((tab) {
-                final title = tab.title?.toLowerCase() ?? '';
-                final url = tab.url?.toLowerCase() ?? '';
-                final query = value.toLowerCase();
-                return title.contains(query) || url.contains(query);
-              }).toList();
-              
-              if (matchingTabs.isNotEmpty && dialogContext.mounted) {
-                tabManager.selectTab(matchingTabs.first.id);
-                Navigator.of(dialogContext).pop();
-              }
-            },
+      title: 'Rechercher un onglet',
+      titleIcon: CupertinoIcons.search,
+      accentColor: gxRed,
+      width: 450,
+      child: TextField(
+        controller: controller,
+        autofocus: true,
+        cursorColor: gxRed,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          hintText: 'Tapez pour rechercher...',
+          hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: gxRed.withOpacity(0.3)),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Annuler'),
-            ),
-          ],
-        );
-      },
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: gxRed, width: 2),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: gxRed.withOpacity(0.3)),
+          ),
+          fillColor: Colors.white.withOpacity(0.05),
+          filled: true,
+        ),
+        onSubmitted: (value) {
+          final matchingTabs = tabManager.tabs.where((tab) {
+            final title = tab.title?.toLowerCase() ?? '';
+            final url = tab.url?.toLowerCase() ?? '';
+            final query = value.toLowerCase();
+            return title.contains(query) || url.contains(query);
+          }).toList();
+          
+          if (matchingTabs.isNotEmpty && context.mounted) {
+            tabManager.selectTab(matchingTabs.first.id);
+            Navigator.of(context).pop();
+          }
+        },
+      ),
+      actions: [
+        GxFuturisticButton(
+          label: 'Annuler',
+          variant: GxFuturisticButtonVariant.secondary,
+          accentColor: gxRed,
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ],
     );
   }
 
@@ -153,8 +175,9 @@ class _GroupedTabBarState extends State<GroupedTabBar> {
     TabManager tabManager,
     TabGroupService groupService,
     Color accentColor,
+    bool groupingEnabled,
   ) {
-    final groups = groupService.orderedGroups;
+    final groups = groupingEnabled ? groupService.orderedGroups : [];
     final allTabs = tabManager.tabs;
     
     // Vérifier s'il y a des onglets (groupés ou non)

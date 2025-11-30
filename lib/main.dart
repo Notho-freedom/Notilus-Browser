@@ -32,9 +32,13 @@ import 'firebase_options.dart';
 import 'services/auth/firebase_auth_service.dart';
 import 'services/auth/config_sync_service.dart';
 import 'services/github/github_repos_service.dart';
+import 'package:media_kit/media_kit.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialiser MediaKit pour la lecture vidéo
+  MediaKit.ensureInitialized();
 
   // Initialiser Firebase (si configuré)
   try {

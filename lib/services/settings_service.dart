@@ -32,6 +32,8 @@ class SettingsService extends ChangeNotifier {
   static const String _keyStartOnHome = 'notilus_start_on_home';
   static const String _keyNewTabBehavior = 'notilus_new_tab_behavior'; // 'home', 'blank', 'url'
   static const String _keyNewTabUrl = 'notilus_new_tab_url';
+  static const String _keyTabMode = 'notilus_tab_mode'; // 'classic' ou 'native'
+  static const String _keyTabGroupingEnabled = 'notilus_tab_grouping_enabled';
   
   // Téléchargements
   static const String _keyDownloadFolder = 'notilus_download_folder';
@@ -252,6 +254,25 @@ class SettingsService extends ChangeNotifier {
   
   Future<void> setNewTabUrl(String url) async {
     await _prefs?.setString(_keyNewTabUrl, url);
+    notifyListeners();
+  }
+  
+  /// Mode d'affichage des onglets : 'classic' ou 'native' (futuriste GX)
+  String get tabMode => _prefs?.getString(_keyTabMode) ?? 'classic';
+  
+  Future<void> setTabMode(String mode) async {
+    if (mode != 'classic' && mode != 'native') {
+      throw ArgumentError('tabMode must be "classic" or "native"');
+    }
+    await _prefs?.setString(_keyTabMode, mode);
+    notifyListeners();
+  }
+  
+  /// Active ou désactive le groupement automatique des onglets
+  bool get tabGroupingEnabled => _prefs?.getBool(_keyTabGroupingEnabled) ?? false;
+  
+  Future<void> setTabGroupingEnabled(bool enabled) async {
+    await _prefs?.setBool(_keyTabGroupingEnabled, enabled);
     notifyListeners();
   }
 

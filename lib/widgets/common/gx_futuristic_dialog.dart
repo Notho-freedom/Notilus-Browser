@@ -9,6 +9,7 @@ import '../../core/constants/notilus_colors.dart';
 import '../../core/constants/notilus_fonts.dart';
 import '../../core/services/color_theme_manager.dart';
 import '../../services/settings_service.dart';
+import '../../services/sound_effects_service.dart';
 import 'gx_futuristic_components.dart';
 
 /// Dialog futuriste avec contours géométriques façon OS SF
@@ -50,10 +51,13 @@ class GxFuturisticDialog extends StatelessWidget {
     bool barrierDismissible = true,
     bool disableScroll = false,
   }) {
+    // Jouer le son d'ouverture
+    SoundEffectsService().playPopOpen();
+    
     return showDialog<T>(
       context: context,
       barrierDismissible: barrierDismissible,
-      barrierColor: Colors.black.withOpacity(0.85),
+      barrierColor: Colors.black.withOpacity(0.4),
       builder: (context) => GxFuturisticDialog(
         title: title,
         titleIcon: titleIcon,
@@ -65,7 +69,11 @@ class GxFuturisticDialog extends StatelessWidget {
         disableScroll: disableScroll,
         child: child,
       ),
-    );
+    ).then((value) {
+      // Jouer le son de fermeture
+      SoundEffectsService().playPopClose();
+      return value;
+    });
   }
 
   @override
@@ -104,7 +112,7 @@ class GxFuturisticDialog extends StatelessWidget {
             ),
             child: ClipRect(
               child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                filter: ImageFilter.blur(sigmaX: 2, sigmaY: 2),
                 child: Container(
                   decoration: BoxDecoration(
                     color: bgColor.withOpacity(panelOpacity.clamp(0.0, 1.0)),

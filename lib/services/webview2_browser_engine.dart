@@ -48,10 +48,12 @@ class WebView2BrowserEngine extends BrowserEngine {
   bool _isInitialized = false;
   Timer? _newWindowPollingTimer;
   Timer? _downloadPollingTimer;
+  Timer? _loadingTimeoutTimer; // Timeout pour forcer l'arrêt du loader
   
   // État de visibilité pour adapter la fréquence du polling
   bool _isTabActive = true;
   bool _isPageLoaded = false;
+  bool _isLoading = false; // État de chargement réel
   
   // Cache des résultats de polling pour éviter les appels répétés
   String? _lastNewWindowUrl;
@@ -113,12 +115,43 @@ class WebView2BrowserEngine extends BrowserEngine {
       // Configurer l'interception des téléchargements
       _setupDownloadInterceptor();
       
-      // Gérer les états de chargement
+      // Gérer les états de chargement (UN SEUL LISTENER pour éviter les conflits)
       _webView!.loadingState.listen((state) {
+        final wasLoading = _isLoading;
+        _isLoading = state == LoadingState.loading;
+        _isPageLoaded = state == LoadingState.navigationCompleted;
+        
+        // Annuler le timeout si la page se charge correctement
+        _loadingTimeoutTimer?.cancel();
+        _loadingTimeoutTimer = null;
+        
+        // Notifier immédiatement les changements d'état
         if (state == LoadingState.loading) {
+          _isLoading = true;
           onStateChanged?.call(TabState.loading);
+          
+          // Timeout de sécurité : forcer l'arrêt du loader après 30 secondes
+          _loadingTimeoutTimer = Timer(const Duration(seconds: 30), () {
+            if (_isLoading) {
+              debugPrint('⚠️ Timeout de chargement, forcer l\'arrêt du loader');
+              _isLoading = false;
+              _isPageLoaded = true;
+              onStateChanged?.call(TabState.loaded);
+            }
+          });
         } else if (state == LoadingState.navigationCompleted) {
+          // Forcer la mise à jour immédiate de l'état
+          _isLoading = false;
+          _isPageLoaded = true;
           onStateChanged?.call(TabState.loaded);
+          // Ajuster la fréquence du polling après chargement
+          _startNewWindowPolling();
+          debugPrint('✅ Page chargée: $_currentUrl');
+        }
+        
+        // Debug pour vérifier la synchronisation
+        if (wasLoading != _isLoading) {
+          debugPrint('🔄 Loading state changed: $_isLoading (${state.toString()})');
         }
       });
       
@@ -128,14 +161,6 @@ class WebView2BrowserEngine extends BrowserEngine {
         _canGoForward = history.canGoForward;
         onCanGoBackChanged?.call(_canGoBack);
         onCanGoForwardChanged?.call(_canGoForward);
-      });
-      
-      // Marquer la page comme chargée
-      _webView!.loadingState.listen((state) {
-        _isPageLoaded = state == LoadingState.navigationCompleted;
-        if (_isPageLoaded) {
-          _startNewWindowPolling(); // Ajuster la fréquence après chargement
-        }
       });
       
       // Gérer les erreurs de chargement
@@ -158,9 +183,16 @@ class WebView2BrowserEngine extends BrowserEngine {
       await initialize();
     }
     
+    // Forcer l'état de chargement immédiatement
+    _isLoading = true;
+    onStateChanged?.call(TabState.loading);
+    
     // Optimisation : ne pas recharger si l'URL est déjà chargée
-    if (_currentUrl == url && _webView != null) {
+    if (_currentUrl == url && _webView != null && _isPageLoaded) {
       debugPrint('✅ URL déjà chargée, pas de rechargement: $url');
+      // S'assurer que l'état est bien "loaded"
+      _isLoading = false;
+      onStateChanged?.call(TabState.loaded);
       return;
     }
     
@@ -169,6 +201,8 @@ class WebView2BrowserEngine extends BrowserEngine {
       _scriptInjected = false;
       _isPageLoaded = false;
       
+      // Forcer l'état de chargement immédiatement
+      _isLoading = true;
       onStateChanged?.call(TabState.loading);
       onUrlChanged?.call(url);
       
@@ -344,6 +378,9 @@ class WebView2BrowserEngine extends BrowserEngine {
     }
     return _webView;
   }
+  
+  /// Obtient l'état de chargement réel du WebView (plus précis que TabState)
+  bool get isLoading => _isLoading;
 
   /// Démarre le polling pour détecter les nouvelles fenêtres avec fréquence adaptative
   void _startNewWindowPolling() {
@@ -362,10 +399,26 @@ class WebView2BrowserEngine extends BrowserEngine {
   }
   
   /// Définit l'état actif/inactif de l'onglet
+  /// Priorité absolue pour l'onglet actif
   void setTabActive(bool isActive) {
     if (_isTabActive != isActive) {
       _isTabActive = isActive;
-      _startNewWindowPolling(); // Redémarrer avec la nouvelle fréquence
+      
+      if (isActive) {
+        // Onglet actif : priorité absolue
+        // Réduire le polling des autres onglets (fait automatiquement)
+        _startNewWindowPolling();
+        
+        // Le WebView2 gère automatiquement la priorité pour l'onglet actif
+        // Pas besoin de forcer le focus, le navigate() le fait déjà
+      } else {
+        // Onglet inactif : réduire les ressources
+        // Augmenter l'intervalle de polling
+        _stopNewWindowPolling();
+        _newWindowPollingTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+          _checkForNewWindowRequests();
+        });
+      }
     }
   }
   
@@ -691,6 +744,8 @@ class WebView2BrowserEngine extends BrowserEngine {
     _stopNewWindowPolling();
     _downloadPollingTimer?.cancel();
     _downloadPollingTimer = null;
+    _loadingTimeoutTimer?.cancel();
+    _loadingTimeoutTimer = null;
     _webView?.dispose();
     _webView = null;
   }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:video_player/video_player.dart';
+import 'package:media_kit_video/media_kit_video.dart';
 import '../../core/services/wallpaper_manager.dart';
 import '../../core/services/video_background_service.dart';
 
@@ -29,16 +29,13 @@ class WallpaperBackground extends StatelessWidget {
     if (wallpaperManager.isVideo && videoService.controller != null) {
       return Stack(
         children: [
-          // Vidéo de fond
+          // Vidéo de fond (media_kit)
           Positioned.fill(
-            child: FittedBox(
-              fit: fit,
+            child: Video(
+              controller: videoService.controller!,
+              controls: null,
+              fill: Colors.black,
               alignment: alignment,
-              child: SizedBox(
-                width: videoService.controller!.value.size.width,
-                height: videoService.controller!.value.size.height,
-                child: VideoPlayer(videoService.controller!),
-              ),
             ),
           ),
           // Overlay avec filtre de couleur si fourni

@@ -79,6 +79,21 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
       curve: Curves.easeInOutCubic,
     );
     _sidebarAnimationController.forward();
+    
+    // Connecter TabManager à TabWebViewManager pour la synchronisation
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final context = this.context;
+      if (mounted && context != null) {
+        final tabManager = Provider.of<TabManager>(context, listen: false);
+        final webViewManager = Provider.of<TabWebViewManager>(context, listen: false);
+        tabManager.setWebViewManager(webViewManager);
+        
+        // Définir l'onglet actif initial
+        if (tabManager.activeTab != null) {
+          webViewManager.setActiveTab(tabManager.activeTab!.id);
+        }
+      }
+    });
   }
 
   @override
@@ -278,15 +293,38 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
               children: [
                 Column(
                   children: [
-                    GroupedTabBar(
-                      onMenuTap: _toggleSidebar,
-                      onGroupsPressed: () {
-                        setState(() {
-                          _currentSection = SidebarSection.favorites;
-                          _isSidebarVisible = true;
-                        });
+                    // Sélectionner le composant d'onglets selon le mode
+                    Consumer<SettingsService>(
+                      builder: (context, settings, _) {
+                        final tabMode = settings.tabMode;
+                        final groupingEnabled = settings.tabGroupingEnabled;
+                        
+                        // Mode natif GX
+                        if (tabMode == 'native') {
+                          return GXTabBar(
+                            onMenuTap: _toggleSidebar,
+                            onGroupsPressed: groupingEnabled ? () {
+                              setState(() {
+                                _currentSection = SidebarSection.favorites;
+                                _isSidebarVisible = true;
+                              });
+                            } : null,
+                            isSidebarVisible: _isSidebarVisible,
+                          );
+                        }
+                        
+                        // Mode classique (avec ou sans groupement)
+                        return GroupedTabBar(
+                          onMenuTap: _toggleSidebar,
+                          onGroupsPressed: groupingEnabled ? () {
+                            setState(() {
+                              _currentSection = SidebarSection.favorites;
+                              _isSidebarVisible = true;
+                            });
+                          } : null,
+                          isSidebarVisible: _isSidebarVisible,
+                        );
                       },
-                      isSidebarVisible: _isSidebarVisible,
                     ),
                     GXAddressBar(
                       onWidgetsPressed: () {

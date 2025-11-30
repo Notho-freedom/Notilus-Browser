@@ -78,7 +78,14 @@ class _WebContentViewState extends State<WebContentView> with WidgetsBindingObse
   
   void _checkTabVisibility() {
     final tabManager = Provider.of<TabManager>(context, listen: false);
+    final webViewManager = Provider.of<TabWebViewManager>(context, listen: false);
     final isActive = widget.tab?.id == tabManager.activeTab?.id;
+    
+    // Mettre à jour la priorité dans TabWebViewManager
+    if (isActive) {
+      webViewManager.setActiveTab(widget.tab!.id);
+    }
+    
     if (_isTabActive != isActive) {
       _isTabActive = isActive;
       _setVisibility(isActive);
@@ -185,6 +192,27 @@ class _WebContentViewState extends State<WebContentView> with WidgetsBindingObse
         _webView = controller as WebviewController;
       });
 
+      // Écouter l'état de chargement réel du WebView pour synchronisation précise
+      // Utiliser un StreamSubscription pour pouvoir l'annuler si nécessaire
+      _webView!.loadingState.listen((state) {
+        if (mounted) {
+          final isLoading = state == LoadingState.loading;
+          setState(() {
+            _isLoading = isLoading;
+          });
+          // Synchroniser avec TabManager immédiatement
+          if (isLoading) {
+            tabManager.updateTab(widget.tab!.id, state: TabState.loading);
+          } else if (state == LoadingState.navigationCompleted) {
+            // Forcer la mise à jour immédiate
+            setState(() {
+              _isLoading = false;
+            });
+            tabManager.updateTab(widget.tab!.id, state: TabState.loaded);
+          }
+        }
+      });
+
       // Naviguer vers l'URL si elle existe
       if (widget.tab?.url != null && widget.tab!.url!.isNotEmpty) {
         await engine.navigate(widget.tab!.url!);
@@ -201,6 +229,26 @@ class _WebContentViewState extends State<WebContentView> with WidgetsBindingObse
       if (newController != null && newController is WebviewController) {
         setState(() {
           _webView = newController;
+        });
+        
+        // Écouter l'état de chargement réel du WebView
+        _webView!.loadingState.listen((state) {
+          if (mounted) {
+            final isLoading = state == LoadingState.loading;
+            setState(() {
+              _isLoading = isLoading;
+            });
+            // Synchroniser avec TabManager immédiatement
+            if (isLoading) {
+              tabManager.updateTab(widget.tab!.id, state: TabState.loading);
+            } else if (state == LoadingState.navigationCompleted) {
+              // Forcer la mise à jour immédiate
+              setState(() {
+                _isLoading = false;
+              });
+              tabManager.updateTab(widget.tab!.id, state: TabState.loaded);
+            }
+          }
         });
       }
     }
@@ -256,105 +304,129 @@ class _WebContentViewState extends State<WebContentView> with WidgetsBindingObse
       );
     }
 
-    if (_isLoading || widget.tab!.state == TabState.loading) {
-      return Stack(
-        children: [
-          // Afficher le WebView même pendant le chargement
-          if (_webView != null)
-            Webview(_webView!),
-          // Overlay de chargement
-          Container(
-            color: theme.background.withOpacity(0.8),
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(theme.primary),
+    // Utiliser l'état réel du WebView (plus précis que TabState)
+    // Utiliser Consumer pour se mettre à jour automatiquement
+    return Consumer<TabWebViewManager>(
+      builder: (context, webViewManager, _) {
+        bool isLoading = _isLoading;
+        if (_webView != null && widget.tab != null) {
+          final engine = webViewManager.getEngine(widget.tab!.id);
+          if (engine is WebView2BrowserEngine) {
+            isLoading = engine.isLoading;
+            // Forcer la mise à jour si l'état local est différent
+            if (_isLoading != isLoading) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  setState(() {
+                    _isLoading = isLoading;
+                  });
+                }
+              });
+            }
+          }
+        }
+        
+        if (isLoading) {
+          return Stack(
+            children: [
+              // Afficher le WebView même pendant le chargement
+              if (_webView != null)
+                Webview(_webView!),
+              // Overlay de chargement
+              Container(
+                color: theme.background.withOpacity(0.8),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(theme.primary),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Chargement...',
+                        style: TextStyle(
+                          color: theme.textSecondary,
+                          fontSize: 14,
+                          fontFamily: 'Roboto Mono',
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Chargement...',
-                    style: TextStyle(
-                      color: theme.textSecondary,
-                      fontSize: 14,
-                      fontFamily: 'Roboto Mono',
-                    ),
-                  ),
-                ],
+                ),
               ),
+            ],
+          );
+        }
+
+        if (widget.tab!.state == TabState.error) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  size: 64,
+                  color: theme.error,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Erreur de chargement',
+                  style: TextStyle(
+                    color: theme.error,
+                    fontSize: 18,
+                    fontFamily: 'Roboto Mono',
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  widget.tab?.url ?? '',
+                  style: TextStyle(
+                    color: theme.textSecondary,
+                    fontSize: 12,
+                    fontFamily: 'Roboto Mono',
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        // Afficher le WebView2 avec RepaintBoundary pour optimiser le rendu
+        if (_webView != null) {
+          return RepaintBoundary(
+            child: Visibility(
+              visible: _isVisible,
+              maintainState: true, // Garder l'état même si invisible
+              child: Webview(_webView!),
+            ),
+          );
+        }
+
+        // Fallback si le WebView n'est pas encore initialisé
+        return Container(
+          color: theme.background,
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(theme.primary),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Initialisation de WebView2...',
+                  style: TextStyle(
+                    color: theme.textSecondary,
+                    fontSize: 14,
+                    fontFamily: 'Roboto Mono',
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
-      );
-    }
-
-    if (widget.tab!.state == TabState.error) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.error_outline,
-              size: 64,
-              color: theme.error,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Erreur de chargement',
-              style: TextStyle(
-                color: theme.error,
-                fontSize: 18,
-                fontFamily: 'Roboto Mono',
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              widget.tab?.url ?? '',
-              style: TextStyle(
-                color: theme.textSecondary,
-                fontSize: 12,
-                fontFamily: 'Roboto Mono',
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // Afficher le WebView2 avec RepaintBoundary pour optimiser le rendu
-    if (_webView != null) {
-      return RepaintBoundary(
-        child: Visibility(
-          visible: _isVisible,
-          maintainState: true, // Garder l'état même si invisible
-          child: Webview(_webView!),
-        ),
-      );
-    }
-
-    // Fallback si le WebView n'est pas encore initialisé
-    return Container(
-      color: theme.background,
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(theme.primary),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Initialisation de WebView2...',
-              style: TextStyle(
-                color: theme.textSecondary,
-                fontSize: 14,
-                fontFamily: 'Roboto Mono',
-              ),
-            ),
-          ],
-        ),
-      ),
+        );
+      },
     );
   }
 

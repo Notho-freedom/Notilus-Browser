@@ -45,12 +45,47 @@ class TabWebViewManager extends ChangeNotifier {
   // Maximum d'engines en cache (pour limiter la mémoire)
   static const int _maxCachedEngines = 10;
   
+  String? _activeTabId;
+  
+  /// Définit l'onglet actif pour donner la priorité absolue
+  void setActiveTab(String? tabId) {
+    if (_activeTabId == tabId) return;
+    
+    final previousActiveId = _activeTabId;
+    _activeTabId = tabId;
+    
+    // Suspendre l'onglet précédent s'il existe
+    if (previousActiveId != null && _activeEngines.containsKey(previousActiveId)) {
+      final previousEngine = _activeEngines[previousActiveId];
+      if (previousEngine is WebView2BrowserEngine) {
+        previousEngine.setTabActive(false);
+      }
+    }
+    
+    // Activer l'onglet actuel avec priorité absolue
+    if (tabId != null && _activeEngines.containsKey(tabId)) {
+      final activeEngine = _activeEngines[tabId];
+      if (activeEngine is WebView2BrowserEngine) {
+        activeEngine.setTabActive(true);
+      }
+    }
+    
+    notifyListeners();
+  }
+  
   /// Récupère ou crée le moteur pour un onglet
   /// Réutilise un engine en cache si l'URL correspond
   BrowserEngine getEngineForTab(String tabId, {String? url}) {
     // Si l'onglet a déjà un engine actif, le retourner
     if (_activeEngines.containsKey(tabId)) {
       final engine = _activeEngines[tabId]!;
+      
+      // Donner la priorité absolue à l'onglet actif
+      final isActive = tabId == _activeTabId;
+      if (engine is WebView2BrowserEngine) {
+        engine.setTabActive(isActive);
+      }
+      
       // Si l'URL est fournie et différente, naviguer sans recréer
       if (url != null && url != _tabUrlMap[tabId]) {
         _tabUrlMap[tabId] = url;
@@ -131,6 +166,12 @@ class TabWebViewManager extends ChangeNotifier {
     _activeEngines[tabId] = engine;
     if (url != null) {
       _tabUrlMap[tabId] = url;
+    }
+    
+    // Donner la priorité absolue à l'onglet actif
+    final isActive = tabId == _activeTabId;
+    if (engine is WebView2BrowserEngine) {
+      engine.setTabActive(isActive);
     }
     
     // Les services Studio et Lighthouse seront attachés depuis le widget

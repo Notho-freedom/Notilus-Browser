@@ -61,8 +61,11 @@ dependencies:
   # Audio
   audioplayers: ^5.2.1
   
-  # Video
-  video_player: ^2.8.2
+  # Video - media_kit (solution robuste cross-platform)
+  media_kit: ^1.1.11
+  media_kit_video: ^1.2.3
+  # Windows
+  media_kit_libs_windows_video: ^1.0.11
 
 dev_dependencies:
   flutter_test:
@@ -72,8 +75,6 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   
-  # Assets (to be added later)
-  # assets:
-  #   - assets/images/
-  #   - assets/icons/
+  assets:
+    - assets/soundeffects/
 

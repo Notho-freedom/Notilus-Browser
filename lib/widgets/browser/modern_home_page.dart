@@ -17,6 +17,8 @@ import '../../core/utils/url_validator.dart';
 import '../../core/services/color_theme_manager.dart';
 import '../common/notilus_monogram.dart';
 import '../common/context_menu.dart';
+import '../common/gx_futuristic_dialog.dart';
+import '../common/gx_futuristic_components.dart';
 
 class ModernHomePage extends StatefulWidget {
   final VoidCallback? onTerminalSelected;
@@ -123,44 +125,54 @@ class _ModernHomePageState extends State<ModernHomePage> {
 
   Future<void> _addQuickAccessSite() async {
     final controller = TextEditingController();
-    final result = await showDialog<String>(
+    final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: false);
+    final gxRed = colorThemeManager.nativeSecondaryColor;
+    
+    final result = await GxFuturisticDialog.show<String>(
       context: context,
-      builder: (dialogContext) {
-        final gxRed = Provider.of<ColorThemeManager>(dialogContext, listen: true).nativeSecondaryColor;
-        return AlertDialog(
-          backgroundColor: const Color(0xFF15151A),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-            side: BorderSide(color: gxRed.withValues(alpha: 0.6), width: 1),
+      title: 'Ajouter un site rapide',
+      titleIcon: CupertinoIcons.add_circled,
+      accentColor: gxRed,
+      width: 450,
+      child: TextField(
+        controller: controller,
+        autofocus: true,
+        cursorColor: gxRed,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          hintText: 'https://example.com',
+          hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: gxRed.withOpacity(0.3)),
           ),
-          title: const Text('Ajouter un site rapide', style: TextStyle(color: Colors.white)),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            cursorColor: gxRed,
-            style: const TextStyle(color: Colors.white),
-            decoration: const InputDecoration(
-              hintText: 'https://example.com',
-              hintStyle: TextStyle(color: Colors.white54),
-              border: InputBorder.none,
-              focusedBorder: InputBorder.none,
-              enabledBorder: InputBorder.none,
-              fillColor: Colors.transparent,
-              filled: true,
-            ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: gxRed, width: 2),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Annuler', style: TextStyle(color: Colors.white70)),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(controller.text),
-              child: Text('Ajouter', style: TextStyle(color: gxRed)),
-            ),
-          ],
-        );
-      },
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: gxRed.withOpacity(0.3)),
+          ),
+          fillColor: Colors.white.withOpacity(0.05),
+          filled: true,
+        ),
+      ),
+      actions: [
+        GxFuturisticButton(
+          label: 'Annuler',
+          variant: GxFuturisticButtonVariant.secondary,
+          accentColor: gxRed,
+          onPressed: () => Navigator.pop(context),
+        ),
+        GxFuturisticButton(
+          label: 'Ajouter',
+          icon: CupertinoIcons.add_circled,
+          variant: GxFuturisticButtonVariant.primary,
+          accentColor: gxRed,
+          onPressed: () => Navigator.pop(context, controller.text),
+        ),
+      ],
     );
 
     if (result != null && result.isNotEmpty) {

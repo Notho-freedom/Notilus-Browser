@@ -1,11 +1,12 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:video_player/video_player.dart';
+import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
 import '../../services/settings_service.dart';
 import '../../services/cloudinary_cache_service.dart';
-import 'dart:io';
+import 'dart:io' show Platform, File;
 
-/// Service pour gérer les vidéos de fond
+/// Service pour gérer les vidéos de fond avec media_kit (ultra-robuste)
 class VideoBackgroundService extends ChangeNotifier {
   static final VideoBackgroundService _instance = VideoBackgroundService._internal();
   factory VideoBackgroundService() {
@@ -15,7 +16,8 @@ class VideoBackgroundService extends ChangeNotifier {
   VideoBackgroundService._internal();
 
   final SettingsService _settings = SettingsService();
-  VideoPlayerController? _videoController;
+  Player? _player;
+  VideoController? _controller;
   String? _currentVideoUrl;
   bool _isPlaying = false;
   bool _isMuted = false;
@@ -27,7 +29,7 @@ class VideoBackgroundService extends ChangeNotifier {
   double get volume => _volume;
   bool get hasAudio => _hasAudio;
   String? get currentVideoUrl => _currentVideoUrl;
-  VideoPlayerController? get controller => _videoController;
+  VideoController? get controller => _controller;
 
   void _initialize() {
     _settings.addListener(_onSettingsChanged);
@@ -60,55 +62,54 @@ class VideoBackgroundService extends ChangeNotifier {
     try {
       await stop();
       
-      final cacheService = CloudinaryCacheService();
-      await cacheService.initialize();
+      // Créer le player avec configuration optimisée
+      _player = Player(
+        configuration: const PlayerConfiguration(
+          bufferSize: 500 * 1024 * 1024, // 500MB – anti freeze
+        ),
+      );
       
-      File? cachedFile = await cacheService.getCachedFile(url);
+      _controller = VideoController(_player!);
+
+      // Écouter les changements d'état
+      _player!.stream.playing.listen((playing) {
+        _isPlaying = playing;
+        notifyListeners();
+      });
+
+      // Ouvrir la vidéo
+      await _player!.open(Media(url), play: true);
       
-      if (cachedFile != null) {
-        _videoController = VideoPlayerController.file(cachedFile);
-      } else {
-        _videoController = VideoPlayerController.networkUrl(Uri.parse(url));
-        // Cache en arrière-plan
-        cacheService.cacheFileStreaming(url, onProgress: (_) {});
-      }
+      // Configurer le volume et le mute (media_kit n'a pas setMuted, utiliser setVolume)
+      await _player!.setVolume(_isMuted ? 0.0 : _volume);
+      await _player!.setPlaylistMode(PlaylistMode.loop);
       
-      await _videoController!.initialize();
-      _videoController!.setLooping(true);
-      _videoController!.setVolume(_isMuted ? 0.0 : _volume);
-      
-      _videoController!.addListener(_onVideoStateChanged);
-      
-      await _videoController!.play();
       _isPlaying = true;
       _hasAudio = !_isMuted && _volume > 0;
+      _currentVideoUrl = url;
       
       notifyListeners();
-      debugPrint('Vidéo de fond démarrée: $url');
+      debugPrint('✅ Vidéo de fond démarrée (media_kit): $url');
     } catch (e) {
-      debugPrint('Erreur lors de la lecture de la vidéo de fond: $e');
+      debugPrint('❌ Erreur lors de la lecture de la vidéo de fond: $e');
+      // Nettoyer le player en cas d'erreur
+      try {
+        await _player?.dispose();
+      } catch (_) {}
+      _player = null;
+      _controller = null;
       _isPlaying = false;
+      _hasAudio = false;
       notifyListeners();
-    }
-  }
-
-  void _onVideoStateChanged() {
-    if (_videoController != null) {
-      final wasPlaying = _isPlaying;
-      _isPlaying = _videoController!.value.isPlaying;
-      
-      if (wasPlaying != _isPlaying) {
-        notifyListeners();
-      }
     }
   }
 
   Future<void> stop() async {
-    if (_videoController != null) {
-      _videoController!.removeListener(_onVideoStateChanged);
-      await _videoController!.pause();
-      await _videoController!.dispose();
-      _videoController = null;
+    if (_player != null) {
+      await _player!.stop();
+      await _player!.dispose();
+      _player = null;
+      _controller = null;
     }
     _isPlaying = false;
     _hasAudio = false;
@@ -117,8 +118,8 @@ class VideoBackgroundService extends ChangeNotifier {
 
   Future<void> setVolume(double volume) async {
     _volume = volume.clamp(0.0, 1.0);
-    if (_videoController != null) {
-      await _videoController!.setVolume(_isMuted ? 0.0 : _volume);
+    if (_player != null) {
+      await _player!.setVolume(_isMuted ? 0.0 : _volume);
       _hasAudio = !_isMuted && _volume > 0;
       notifyListeners();
     }
@@ -126,24 +127,25 @@ class VideoBackgroundService extends ChangeNotifier {
 
   Future<void> setMuted(bool muted) async {
     _isMuted = muted;
-    if (_videoController != null) {
-      await _videoController!.setVolume(muted ? 0.0 : _volume);
+    if (_player != null) {
+      // media_kit n'a pas setMuted, utiliser setVolume
+      await _player!.setVolume(muted ? 0.0 : _volume);
       _hasAudio = !muted && _volume > 0;
       notifyListeners();
     }
   }
 
   Future<void> pause() async {
-    if (_videoController != null && _isPlaying) {
-      await _videoController!.pause();
+    if (_player != null && _isPlaying) {
+      await _player!.pause();
       _isPlaying = false;
       notifyListeners();
     }
   }
 
   Future<void> resume() async {
-    if (_videoController != null && !_isPlaying) {
-      await _videoController!.play();
+    if (_player != null && !_isPlaying) {
+      await _player!.play();
       _isPlaying = true;
       notifyListeners();
     }
@@ -156,4 +158,3 @@ class VideoBackgroundService extends ChangeNotifier {
     super.dispose();
   }
 }
-

@@ -13,9 +13,12 @@ import '../../models/tab_model.dart';
 import '../../services/terminal_manager.dart';
 import '../../models/bookmark.dart';
 import '../../core/services/color_theme_manager.dart';
+import '../../services/settings_service.dart';
 import '../common/notilus_monogram.dart';
 import '../common/notilus_tooltip.dart';
 import '../common/context_menu.dart';
+import '../common/gx_futuristic_dialog.dart';
+import '../common/gx_futuristic_components.dart';
 
 // La couleur rouge est maintenant gérée par ColorThemeManager
 
@@ -274,10 +277,16 @@ class _GXTabBarState extends State<GXTabBar> {
                 tooltip: 'Rechercher un onglet',
                 onPressed: () => _openTabSearch(context),
               ),
-              _GXTabBarIconButton(
-                icon: CupertinoIcons.rectangle_stack,
-                tooltip: 'Groupes d\'onglets',
-                onPressed: widget.onGroupsPressed,
+              // Bouton groupes (seulement si le groupement est activé)
+              Consumer<SettingsService>(
+                builder: (context, settings, _) {
+                  if (!settings.tabGroupingEnabled) return const SizedBox.shrink();
+                  return _GXTabBarIconButton(
+                    icon: CupertinoIcons.rectangle_stack,
+                    tooltip: 'Groupes d\'onglets',
+                    onPressed: widget.onGroupsPressed,
+                  );
+                },
               ),
             ],
           ),
@@ -294,66 +303,66 @@ class _GXTabBarState extends State<GXTabBar> {
     final controller = TextEditingController();
     String query = '';
 
-    await showDialog(
+    final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: false);
+    final gxRed = colorThemeManager.nativeSecondaryColor;
+    
+    await GxFuturisticDialog.show(
       context: context,
-      builder: (dialogContext) {
-        final colorThemeManager = Provider.of<ColorThemeManager>(dialogContext, listen: true);
-        final gxRed = colorThemeManager.nativeSecondaryColor;
-        return StatefulBuilder(
-          builder: (context, setState) {
-            final filteredTabs = tabManager.tabs.where((tab) {
-              if (query.isEmpty) return true;
-              final q = query.toLowerCase();
-              return (tab.title?.toLowerCase().contains(q) ?? false) ||
-                  (tab.url?.toLowerCase().contains(q) ?? false);
-            }).toList();
+      title: 'Rechercher un onglet',
+      titleIcon: CupertinoIcons.search,
+      accentColor: gxRed,
+      width: 450,
+      height: 350,
+      child: StatefulBuilder(
+        builder: (context, setState) {
+          final filteredTabs = tabManager.tabs.where((tab) {
+            if (query.isEmpty) return true;
+            final q = query.toLowerCase();
+            return (tab.title?.toLowerCase().contains(q) ?? false) ||
+                (tab.url?.toLowerCase().contains(q) ?? false);
+          }).toList();
 
-            return AlertDialog(
-              backgroundColor: const Color(0xFF15151A),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-                side: BorderSide(color: gxRed.withValues(alpha: 0.6), width: 1),
-              ),
-              titlePadding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-              contentPadding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-              title: Row(
-                children: [
-                  Icon(CupertinoIcons.search, size: 16, color: gxRed),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: TextField(
-                      controller: controller,
-                      autofocus: true,
-                      cursorColor: gxRed,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: const InputDecoration(
-                        hintText: 'Rechercher un onglet...',
-                        hintStyle: TextStyle(color: Colors.white54),
-                        border: InputBorder.none,
-                        focusedBorder: InputBorder.none,
-                        enabledBorder: InputBorder.none,
-                        isDense: true,
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                      onChanged: (value) => setState(() => query = value.trim()),
-                    ),
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: controller,
+                autofocus: true,
+                cursorColor: gxRed,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'Rechercher un onglet...',
+                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: gxRed.withOpacity(0.3)),
                   ),
-                ],
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: gxRed, width: 2),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: gxRed.withOpacity(0.3)),
+                  ),
+                  fillColor: Colors.white.withOpacity(0.05),
+                  filled: true,
+                ),
+                onChanged: (value) => setState(() => query = value.trim()),
               ),
-              content: SizedBox(
-                width: 420,
-                height: 260,
+              const SizedBox(height: 16),
+              Expanded(
                 child: filteredTabs.isEmpty
-                    ? const Center(
+                    ? Center(
                         child: Text(
                           'Aucun onglet trouvé',
-                          style: TextStyle(color: Colors.white54),
+                          style: TextStyle(color: Colors.white.withOpacity(0.5)),
                         ),
                       )
                     : ListView.separated(
                         itemCount: filteredTabs.length,
                         separatorBuilder: (_, __) => Divider(
-                          color: Colors.white.withValues(alpha:0.08),
+                          color: Colors.white.withOpacity(0.08),
                           height: 16,
                         ),
                         itemBuilder: (context, index) {
@@ -365,25 +374,17 @@ class _GXTabBarState extends State<GXTabBar> {
                                     width: 18,
                                     height: 18,
                                     errorBuilder: (_, __, ___) {
-                                      final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: false);
-                                      final gxRed = colorThemeManager.nativeSecondaryColor;
                                       return Icon(
                                         CupertinoIcons.globe,
                                         size: 18,
-                                        color: gxRed.withValues(alpha: 0.85),
+                                        color: gxRed.withOpacity(0.85),
                                       );
                                     },
                                   )
-                                : Builder(
-                                    builder: (context) {
-                                      final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: false);
-                                      final gxRed = colorThemeManager.nativeSecondaryColor;
-                                      return Icon(
-                                        CupertinoIcons.globe,
-                                        size: 18,
-                                        color: gxRed.withValues(alpha: 0.85),
-                                      );
-                                    },
+                                : Icon(
+                                    CupertinoIcons.globe,
+                                    size: 18,
+                                    color: gxRed.withOpacity(0.85),
                                   ),
                             title: Text(
                               tab.title ?? 'Sans titre',
@@ -397,8 +398,8 @@ class _GXTabBarState extends State<GXTabBar> {
                             subtitle: tab.url != null
                                 ? Text(
                                     tab.url!,
-                                    style: const TextStyle(
-                                      color: Colors.white38,
+                                    style: TextStyle(
+                                      color: Colors.white.withOpacity(0.38),
                                       fontSize: 11,
                                     ),
                                     maxLines: 1,
@@ -406,17 +407,17 @@ class _GXTabBarState extends State<GXTabBar> {
                                   )
                                 : null,
                             onTap: () {
-                              Navigator.of(dialogContext).pop();
+                              Navigator.of(context).pop();
                               tabManager.selectTab(tab.id);
                             },
                           );
                         },
                       ),
               ),
-            );
-          },
-        );
-      },
+            ],
+          );
+        },
+      ),
     );
   }
 }

@@ -4,6 +4,7 @@ import '../models/tab_group_model.dart';
 import 'storage_service.dart';
 import 'tab_performance_manager.dart';
 import 'tab_grouping_service.dart';
+import 'tab_webview_manager.dart';
 
 class TabManager extends ChangeNotifier {
   final List<TabModel> _tabs = [];
@@ -112,6 +113,13 @@ class TabManager extends ChangeNotifier {
     return createNewTab(url: url, groupId: groupId);
   }
 
+  TabWebViewManager? _webViewManager;
+  
+  /// Définit le TabWebViewManager pour la synchronisation
+  void setWebViewManager(TabWebViewManager manager) {
+    _webViewManager = manager;
+  }
+  
   void selectTab(String tabId) {
     // Deselect all tabs
     for (int i = 0; i < _tabs.length; i++) {
@@ -125,6 +133,9 @@ class TabManager extends ChangeNotifier {
     if (index != -1) {
       _tabs[index] = _tabs[index].copyWith(isSelected: true);
       _activeTabId = tabId;
+      
+      // Donner la priorité absolue à l'onglet actif
+      _webViewManager?.setActiveTab(tabId);
       
       // Marquer comme actif pour la performance
       _performanceManager.markTabAsActive(tabId, _tabs[index]);
