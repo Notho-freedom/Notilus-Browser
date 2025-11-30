@@ -831,24 +831,12 @@ class WebView2BrowserEngine extends BrowserEngine {
   /// Active des optimisations supplémentaires via JavaScript
   void _enableAdditionalOptimizations(WebviewController controller) {
     // Exécuter les scripts d'optimisation après le chargement de la page
+    // Retirer les optimisations trop agressives qui causent des écrans noirs
     Future.delayed(const Duration(milliseconds: 500), () {
       try {
         controller.executeScript('''
-          // Désactiver les animations pendant le chargement
+          // Chargement prioritaire des images visibles (optimisation légère)
           (function() {
-            const style = document.createElement('style');
-            style.textContent = `
-              * {
-                animation-duration: 0.01ms !important;
-                animation-iteration-count: 1 !important;
-                transition-duration: 0.01ms !important;
-              }
-            `;
-            if (document.head) {
-              document.head.appendChild(style);
-            }
-            
-            // Chargement prioritaire des images visibles
             document.addEventListener('DOMContentLoaded', function() {
               const images = document.getElementsByTagName('img');
               for (let img of images) {

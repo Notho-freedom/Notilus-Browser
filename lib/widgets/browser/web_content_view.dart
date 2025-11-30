@@ -129,18 +129,8 @@ class _WebContentViewState extends State<WebContentView>
       }
     }
     
-    // Désactiver les animations CSS quand en arrière-plan
-    if (_webView != null && !isVisible) {
-      _webView!.executeScript('''
-        document.body.style.animationPlayState = 'paused';
-        document.body.style.transition = 'none';
-      ''');
-    } else if (_webView != null && isVisible) {
-      _webView!.executeScript('''
-        document.body.style.animationPlayState = 'running';
-        document.body.style.transition = '';
-      ''');
-    }
+    // Ne plus désactiver les animations CSS - cela causait des écrans noirs
+    // Les optimisations de performance sont gérées par le TabWebViewManager
   }
 
   @override
@@ -352,21 +342,10 @@ class _WebContentViewState extends State<WebContentView>
 
     return Stack(
       children: [
-        // WebView principal
+        // WebView principal - toujours visible pour éviter les écrans noirs
         if (_webView != null)
           RepaintBoundary(
-            child: ValueListenableBuilder<bool>(
-              valueListenable: _isVisible,
-              builder: (context, isVisible, _) {
-                return Visibility(
-                  visible: isVisible,
-                  maintainState: true,
-                  maintainAnimation: true,
-                  maintainInteractivity: false, // Désactive l'interactivité quand invisible
-                  child: Webview(_webView!),
-                );
-              },
-            ),
+            child: Webview(_webView!),
           ),
         
         // Overlay de chargement conditionnel
