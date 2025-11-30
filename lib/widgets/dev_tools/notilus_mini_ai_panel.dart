@@ -392,13 +392,13 @@ Réponds UNIQUEMENT en JSON, sans texte avant ou après.''';
     final gxRed = colorThemeManager.nativeSecondaryColor;
     final bgColor = colorThemeManager.nativeBackgroundColor;
 
-    return FadeTransition(
-      opacity: _fadeAnimation,
-      child: SlideTransition(
-        position: _slideAnimation,
-        child: Positioned(
-          left: _position.dx,
-          top: _position.dy,
+    return Positioned(
+      left: _position.dx,
+      top: _position.dy,
+      child: FadeTransition(
+        opacity: _fadeAnimation,
+        child: SlideTransition(
+          position: _slideAnimation,
           child: GestureDetector(
             onPanStart: _onPanStart,
             onPanUpdate: _onPanUpdate,
