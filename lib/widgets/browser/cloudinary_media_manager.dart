@@ -9,6 +9,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../services/cloudinary_service.dart';
 import '../../services/cloudinary_cache_service.dart';
 import '../../services/settings_service.dart';
+import '../../core/services/background_music_service.dart';
 import '../../core/services/color_theme_manager.dart';
 import '../../core/constants/notilus_fonts.dart';
 import '../../services/gx_notification_service.dart';
@@ -160,6 +161,7 @@ class _CloudinaryMediaManagerState extends State<CloudinaryMediaManager> {
     final gxRed = colorThemeManager.nativeSecondaryColor;
     final bgColor = colorThemeManager.nativeBackgroundColor;
     final isSelected = _selectedUrls.contains(media.secureUrl);
+    bool? videoHasAudio;
 
     await GxFuturisticDialog.show(
       context: context,
@@ -188,6 +190,16 @@ class _CloudinaryMediaManagerState extends State<CloudinaryMediaManager> {
           onPressed: () async {
             Navigator.of(context).pop();
             await _toggleSelection(media.secureUrl);
+            
+            // Si c'est une vidéo avec son activé, désactiver la musique de fond
+            if (widget.resourceType == CloudinaryResourceType.video && 
+                videoHasAudio == true) {
+              final backgroundMusic = Provider.of<BackgroundMusicService>(context, listen: false);
+              if (backgroundMusic.isPlaying) {
+                await backgroundMusic.pause();
+              }
+            }
+            
             GxNotificationService().showSuccess(
               title: isSelected ? 'Média désélectionné' : 'Média appliqué',
               message: isSelected 
@@ -203,6 +215,9 @@ class _CloudinaryMediaManagerState extends State<CloudinaryMediaManager> {
         resourceType: widget.resourceType,
         gxRed: gxRed,
         bgColor: bgColor,
+        onAudioStateChanged: widget.resourceType == CloudinaryResourceType.video
+            ? (hasAudio) => videoHasAudio = hasAudio
+            : null,
       ),
     );
   }
@@ -665,12 +680,14 @@ class _MediaPreview extends StatefulWidget {
   final CloudinaryResourceType resourceType;
   final Color gxRed;
   final Color bgColor;
+  final Function(bool hasAudio)? onAudioStateChanged;
 
   const _MediaPreview({
     required this.media,
     required this.resourceType,
     required this.gxRed,
     required this.bgColor,
+    this.onAudioStateChanged,
   });
 
   @override
@@ -684,6 +701,9 @@ class _MediaPreviewState extends State<_MediaPreview> {
   bool _isVideoInitialized = false;
   Duration _duration = Duration.zero;
   Duration _position = Duration.zero;
+  double _videoVolume = 1.0;
+  bool _isVideoMuted = false;
+  double _audioVolume = 1.0;
 
   @override
   void initState() {
@@ -718,6 +738,8 @@ class _MediaPreviewState extends State<_MediaPreview> {
       }
       
       await _videoPlayerController!.initialize();
+      await _videoPlayerController!.setVolume(_isVideoMuted ? 0.0 : _videoVolume);
+      _updateAudioState();
       
       _videoPlayerController!.addListener(() {
         if (mounted) {
@@ -772,6 +794,8 @@ class _MediaPreviewState extends State<_MediaPreview> {
   void _initAudioPlayer() async {
     if (_audioPlayer == null) return;
     
+    _audioPlayer!.setVolume(_audioVolume);
+    
     _audioPlayer!.onDurationChanged.listen((duration) {
       if (mounted) {
         setState(() => _duration = duration);
@@ -792,6 +816,37 @@ class _MediaPreviewState extends State<_MediaPreview> {
         });
       }
     });
+  }
+  
+  Future<void> _setVideoVolume(double volume) async {
+    _videoVolume = volume.clamp(0.0, 1.0);
+    if (_videoPlayerController != null) {
+      await _videoPlayerController!.setVolume(_isVideoMuted ? 0.0 : _videoVolume);
+      _updateAudioState();
+      setState(() {});
+    }
+  }
+  
+  Future<void> _setVideoMuted(bool muted) async {
+    _isVideoMuted = muted;
+    if (_videoPlayerController != null) {
+      await _videoPlayerController!.setVolume(muted ? 0.0 : _videoVolume);
+      _updateAudioState();
+      setState(() {});
+    }
+  }
+  
+  void _updateAudioState() {
+    final hasAudio = !_isVideoMuted && _videoVolume > 0;
+    widget.onAudioStateChanged?.call(hasAudio);
+  }
+  
+  Future<void> _setAudioVolume(double volume) async {
+    _audioVolume = volume.clamp(0.0, 1.0);
+    if (_audioPlayer != null) {
+      await _audioPlayer!.setVolume(_audioVolume);
+      setState(() {});
+    }
   }
 
   Future<void> _togglePlayPause() async {
@@ -984,6 +1039,37 @@ class _MediaPreviewState extends State<_MediaPreview> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // Contrôles de volume (vidéo uniquement)
+                  Row(
+                    children: [
+                      Icon(
+                        _isVideoMuted ? CupertinoIcons.speaker_slash : CupertinoIcons.speaker_2,
+                        size: 20,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Slider(
+                          value: _videoVolume,
+                          min: 0.0,
+                          max: 1.0,
+                          activeColor: widget.gxRed,
+                          inactiveColor: widget.gxRed.withOpacity(0.3),
+                          onChanged: (value) => _setVideoVolume(value),
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          _isVideoMuted ? CupertinoIcons.speaker_slash : CupertinoIcons.speaker_2,
+                          size: 20,
+                          color: Colors.white,
+                        ),
+                        onPressed: () => _setVideoMuted(!_isVideoMuted),
+                        tooltip: _isVideoMuted ? 'Activer le son' : 'Désactiver le son',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
                   // Slider de progression
                   if (_duration != Duration.zero)
                     Slider(
@@ -1064,6 +1150,29 @@ class _MediaPreviewState extends State<_MediaPreview> {
             ],
           ),
           
+          const SizedBox(height: 12),
+          
+          // Contrôle de volume (audio)
+          Row(
+            children: [
+              Icon(
+                CupertinoIcons.speaker_2,
+                size: 20,
+                color: widget.gxRed,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Slider(
+                  value: _audioVolume,
+                  min: 0.0,
+                  max: 1.0,
+                  activeColor: widget.gxRed,
+                  inactiveColor: widget.gxRed.withOpacity(0.3),
+                  onChanged: (value) => _setAudioVolume(value),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 12),
           
           // Barre de progression
