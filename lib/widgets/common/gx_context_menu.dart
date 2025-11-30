@@ -125,7 +125,6 @@ class _GxContextMenuOverlayState extends State<_GxContextMenuOverlay>
   Widget build(BuildContext context) {
     final themeManager = Provider.of<ColorThemeManager>(context, listen: false);
     final primaryColor = themeManager.primaryColor;
-    final secondaryColor = themeManager.nativeSecondaryColor;
     final settings = SettingsService();
     final contextMenuOpacity = settings.contextMenuOpacity;
 
@@ -148,7 +147,7 @@ class _GxContextMenuOverlayState extends State<_GxContextMenuOverlay>
                       color: primaryColor.withOpacity(contextMenuOpacity),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: secondaryColor.withOpacity(0.6),
+                        color: primaryColor.withOpacity(0.6),
                         width: 1.5,
                       ),
                       boxShadow: [
@@ -158,7 +157,7 @@ class _GxContextMenuOverlayState extends State<_GxContextMenuOverlay>
                           offset: const Offset(0, 8),
                         ),
                         BoxShadow(
-                          color: secondaryColor.withOpacity(0.3),
+                          color: primaryColor.withOpacity(0.3),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),
@@ -219,7 +218,7 @@ class _GxContextMenuItemState extends State<_GxContextMenuItem> {
   @override
   Widget build(BuildContext context) {
     final themeManager = Provider.of<ColorThemeManager>(context, listen: false);
-    final secondaryColor = themeManager.nativeSecondaryColor;
+    final primaryColor = themeManager.primaryColor;
     
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
@@ -231,13 +230,13 @@ class _GxContextMenuItemState extends State<_GxContextMenuItem> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             color: _isHovered
-                ? secondaryColor.withOpacity(0.15)
+                ? Colors.white.withOpacity(0.15)
                 : Colors.transparent,
             border: widget.isLast
                 ? null
                 : Border(
                     bottom: BorderSide(
-                      color: secondaryColor.withOpacity(0.1),
+                      color: Colors.white.withOpacity(0.1),
                       width: 1,
                     ),
                   ),
@@ -250,7 +249,7 @@ class _GxContextMenuItemState extends State<_GxContextMenuItem> {
                 size: 18,
                 color: widget.action.isDestructive
                     ? NotilusColors.neonRed
-                    : secondaryColor,
+                    : Colors.white,
               ),
               const SizedBox(width: 12),
               Flexible(
@@ -261,7 +260,7 @@ class _GxContextMenuItemState extends State<_GxContextMenuItem> {
                     fontWeight: FontWeight.w600,
                     color: widget.action.isDestructive
                         ? NotilusColors.neonRed
-                        : secondaryColor,
+                        : Colors.white,
                   ),
                 ),
               ),

@@ -248,6 +248,22 @@ class CloudinaryService extends ChangeNotifier {
     String? folder,
     Map<String, dynamic>? transformation,
   }) async {
+    return uploadFromUrlWithProgress(
+      url: url,
+      resourceType: resourceType,
+      folder: folder,
+      transformation: transformation,
+    );
+  }
+  
+  /// Upload depuis une URL avec suivi de progression
+  Future<CloudinaryMedia?> uploadFromUrlWithProgress({
+    required String url,
+    required CloudinaryResourceType resourceType,
+    String? folder,
+    Map<String, dynamic>? transformation,
+    void Function(double progress)? onProgress,
+  }) async {
     if (!isConfigured) {
       _error = 'Cloudinary n\'est pas configuré.';
       notifyListeners();
@@ -255,6 +271,16 @@ class CloudinaryService extends ChangeNotifier {
     }
 
     _error = null;
+    final fileName = url.split('/').last.split('?').first;
+    final uploadId = '${DateTime.now().millisecondsSinceEpoch}_$fileName';
+    
+    // Initialiser la progression
+    _uploadProgressMap[uploadId] = UploadProgress(
+      fileName: fileName,
+      progress: 0.0,
+      resourceType: resourceType,
+    );
+    onProgress?.call(0.0);
     notifyListeners();
 
     try {
@@ -274,26 +300,71 @@ class CloudinaryService extends ChangeNotifier {
         params['transformation'] = jsonEncode(transformation);
       }
 
+      // Mettre à jour la progression à 30% (début de l'envoi)
+      _uploadProgressMap[uploadId] = UploadProgress(
+        fileName: fileName,
+        progress: 0.30,
+        resourceType: resourceType,
+      );
+      onProgress?.call(0.30);
+      notifyListeners();
+
       final uri = Uri.parse('https://api.cloudinary.com/v1_1/$cloudName/${resourceType.name}/upload');
+      
+      // Mettre à jour la progression à 60% (envoi en cours)
+      _uploadProgressMap[uploadId] = UploadProgress(
+        fileName: fileName,
+        progress: 0.60,
+        resourceType: resourceType,
+      );
+      onProgress?.call(0.60);
+      notifyListeners();
+      
       // Pas de timeout pour les uploads depuis URL
       final response = await http.post(uri, body: params);
+
+      // Mettre à jour la progression à 90% (réponse reçue)
+      _uploadProgressMap[uploadId] = UploadProgress(
+        fileName: fileName,
+        progress: 0.90,
+        resourceType: resourceType,
+      );
+      onProgress?.call(0.90);
+      notifyListeners();
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         final media = CloudinaryMedia.fromJson(data);
         
+        // Mettre à jour la progression à 100%
+        _uploadProgressMap[uploadId] = UploadProgress(
+          fileName: fileName,
+          progress: 1.0,
+          resourceType: resourceType,
+        );
+        onProgress?.call(1.0);
+        notifyListeners();
+        
         _addToCache(media, resourceType);
         await _saveMediaToStorage();
         
+        // Petit délai pour afficher le 100%
+        await Future.delayed(const Duration(milliseconds: 300));
+        
+        // Nettoyer l'upload
+        _uploadProgressMap.remove(uploadId);
         notifyListeners();
+        
         return media;
       } else {
         _error = 'Erreur lors de l\'upload: ${response.statusCode}';
+        _uploadProgressMap.remove(uploadId);
         notifyListeners();
         return null;
       }
     } catch (e) {
       _error = 'Erreur lors de l\'upload: $e';
+      _uploadProgressMap.remove(uploadId);
       notifyListeners();
       return null;
     }

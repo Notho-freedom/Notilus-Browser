@@ -14,6 +14,8 @@ import '../../services/settings_service.dart';
 import '../../core/utils/debouncer.dart';
 import '../../widgets/common/gx_context_menu.dart';
 import '../../services/download_service.dart';
+import '../../services/cloudinary_service.dart';
+import '../../services/gx_notification_service.dart';
 import 'package:flutter/services.dart';
 import 'home_pages/home_page_factory.dart';
 
@@ -299,6 +301,17 @@ class _WebContentViewState extends State<WebContentView>
           },
         ),
       );
+      
+      // Option "Send to Cloud"
+      actions.add(
+        GxContextMenuAction(
+          label: 'Envoyer vers Cloudinary',
+          icon: CupertinoIcons.cloud_upload,
+          onTap: () {
+            _uploadImageToCloudinary(context, imageUrl);
+          },
+        ),
+      );
     }
     
     // Options pour les liens
@@ -349,6 +362,73 @@ class _WebContentViewState extends State<WebContentView>
       actions: actions,
       position: position,
     );
+  }
+  
+  /// Upload une image vers Cloudinary avec suivi de progression
+  Future<void> _uploadImageToCloudinary(BuildContext context, String imageUrl) async {
+    final cloudinaryService = CloudinaryService();
+    final notificationService = GxNotificationService();
+    
+    if (!cloudinaryService.isConfigured) {
+      notificationService.showError(
+        title: 'Cloudinary non configuré',
+        message: 'Veuillez configurer Cloudinary dans les paramètres',
+        context: context,
+      );
+      return;
+    }
+    
+    // Créer une notification avec progression
+    final notificationId = DateTime.now().millisecondsSinceEpoch.toString();
+    final fileName = imageUrl.split('/').last.split('?').first;
+    
+    // Afficher la notification initiale avec progression
+    notificationService.show(
+      title: 'Upload en cours...',
+      message: fileName,
+      type: GxNotificationType.info,
+      icon: CupertinoIcons.cloud_upload,
+      duration: null, // Ne pas auto-dismiss
+      showProgress: true,
+      progress: 0.0,
+      context: context,
+    );
+    
+    try {
+      // Upload avec suivi de progression
+      final media = await cloudinaryService.uploadFromUrlWithProgress(
+        url: imageUrl,
+        resourceType: CloudinaryResourceType.image,
+        folder: 'images',
+        onProgress: (progress) {
+          // Mettre à jour la notification avec la progression
+          notificationService.updateProgress(notificationId, progress);
+        },
+      );
+      
+      if (media != null) {
+        notificationService.dismiss(notificationId);
+        notificationService.showSuccess(
+          title: 'Upload réussi',
+          message: 'L\'image a été uploadée vers Cloudinary',
+          context: context,
+        );
+      } else {
+        notificationService.dismiss(notificationId);
+        notificationService.showError(
+          title: 'Erreur d\'upload',
+          message: cloudinaryService.error ?? 'Impossible d\'uploader l\'image',
+          context: context,
+        );
+      }
+    } catch (e) {
+      notificationService.dismiss(notificationId);
+      notificationService.showError(
+        title: 'Erreur d\'upload',
+        message: e.toString(),
+        context: context,
+      );
+    }
   }
 
   /// Charge le favicon pour une URL et met à jour l'onglet
