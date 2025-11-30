@@ -14,6 +14,7 @@ import '../../services/terminal_manager.dart';
 import '../../models/bookmark.dart';
 import '../../core/services/color_theme_manager.dart';
 import '../../services/settings_service.dart';
+import '../../services/tab_group_service.dart';
 import '../common/notilus_monogram.dart';
 import '../common/notilus_tooltip.dart';
 import '../common/context_menu.dart';
@@ -86,14 +87,145 @@ class _GXTabBarState extends State<GXTabBar> {
           const SizedBox(width: 10),
           // Tabs container
           Expanded(
-            child: Consumer<TabManager>(
-              builder: (context, tabManager, _) {
+            child: Consumer4<TabManager, TabGroupService, SettingsService, ColorThemeManager>(
+              builder: (context, tabManager, groupService, settings, colorThemeManager, _) {
+                final groupingEnabled = settings.tabGroupingEnabled;
+                final groups = groupingEnabled ? groupService.orderedGroups : [];
+                final allTabs = tabManager.tabs;
+                
                 return LayoutBuilder(
                   builder: (context, constraints) {
-                    final tabCount = tabManager.tabs.isEmpty ? 1 : tabManager.tabs.length;
-                    final double tabWidth = (constraints.maxWidth / (tabCount + 0.4))
-                        .clamp(110, 210)
-                        .toDouble();
+                    // Calculer la largeur des onglets
+                    final tabCount = allTabs.length + groups.length;
+                    final double tabWidth = tabCount > 0
+                        ? (constraints.maxWidth / (tabCount + 0.4))
+                            .clamp(110, 210)
+                            .toDouble()
+                        : 150.0;
+
+                    // Construire la liste des widgets à afficher
+                    final List<Widget> tabBarItems = [];
+                    
+                    // Identifier les onglets qui sont dans un groupe
+                    final tabsInGroups = <String>{};
+                    for (final group in groups) {
+                      tabsInGroups.addAll(group.tabIds);
+                    }
+                    
+                    // Afficher les onglets non groupés (domaines avec un seul onglet)
+                    for (final tab in allTabs) {
+                      if (!tabsInGroups.contains(tab.id)) {
+                        final isActive = tab.id == tabManager.activeTab?.id;
+                        // Extraire le domaine de l'URL
+                        String domain = _extractDomain(tab.url);
+                        final colorCode = groupService.getColorForDomain(domain);
+                        
+                        tabBarItems.add(
+                          _buildGXTabItem(
+                            context: context,
+                            tab: tab,
+                            tabWidth: tabWidth,
+                            isActive: isActive,
+                            colorCode: colorCode,
+                            colorThemeManager: colorThemeManager,
+                            tabManager: tabManager,
+                          ),
+                        );
+                      }
+                    }
+                    
+                    // Afficher les groupes (domaines avec plusieurs onglets)
+                    for (final group in groups) {
+                      // Si le groupe est expandé, insérer ses onglets avant le groupe
+                      if (group.isExpanded) {
+                        final selectedGroupId = groupService.selectedGroupId;
+                        final isSelected = selectedGroupId == group.id;
+                        
+                        // Si un groupe est sélectionné et ce n'est pas celui-ci, ne pas afficher les onglets
+                        if (selectedGroupId != null && !isSelected) {
+                          // Ne rien ajouter, juste le groupe
+                        } else {
+                          // Ajouter les onglets du groupe
+                          for (final tabId in group.tabIds) {
+                            try {
+                              final tab = tabManager.tabs.firstWhere((t) => t.id == tabId);
+                              final isActive = tab.id == tabManager.activeTab?.id;
+                              
+                              // Si le groupe est sélectionné, n'afficher que l'onglet actif
+                              if (isSelected && !isActive) {
+                                continue;
+                              }
+                              
+                              tabBarItems.add(
+                                _buildGXTabItem(
+                                  context: context,
+                                  tab: tab,
+                                  tabWidth: tabWidth,
+                                  isActive: isActive,
+                                  colorCode: group.colorCode,
+                                  colorThemeManager: colorThemeManager,
+                                  tabManager: tabManager,
+                                ),
+                              );
+                            } catch (e) {
+                              // Onglet introuvable, ignorer
+                            }
+                          }
+                        }
+                      }
+                      
+                      // Ajouter le widget du groupe
+                      tabBarItems.add(
+                        _buildGXGroupWidget(
+                          context: context,
+                          group: group,
+                          tabManager: tabManager,
+                          groupService: groupService,
+                          colorThemeManager: colorThemeManager,
+                          tabWidth: tabWidth,
+                        ),
+                      );
+                    }
+                    
+                    // Ajouter le bouton "nouvel onglet" à la fin
+                    tabBarItems.add(
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: _GXTabBarIconButton(
+                          icon: CupertinoIcons.add,
+                          tooltip: 'Nouvel onglet (maintenir pour menu)',
+                          compact: true,
+                          onPressed: () => tabManager.createNewTab(),
+                          onLongPress: () {
+                            // Menu contextuel pour choisir le type d'onglet
+                            final RenderBox renderBox = context.findRenderObject() as RenderBox;
+                            final Offset offset = renderBox.localToGlobal(Offset.zero);
+                            
+                            showMenu(
+                              context: context,
+                              position: RelativeRect.fromLTRB(
+                                offset.dx,
+                                offset.dy + 30,
+                                offset.dx + 100,
+                                offset.dy + 100,
+                              ),
+                              items: [
+                                PopupMenuItem(
+                                  child: const Row(
+                                    children: [
+                                      Icon(CupertinoIcons.globe, size: 16),
+                                      SizedBox(width: 8),
+                                      Text('Nouvel onglet web'),
+                                    ],
+                                  ),
+                                  onTap: () => tabManager.createNewTab(),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                      ),
+                    );
 
                     return Scrollbar(
                       controller: _scrollController,
@@ -104,161 +236,9 @@ class _GXTabBarState extends State<GXTabBar> {
                         controller: _scrollController,
                         scrollDirection: Axis.horizontal,
                         padding: const EdgeInsets.symmetric(horizontal: 8),
-                        itemCount: tabManager.tabs.length + 1,
+                        itemCount: tabBarItems.length,
                         itemBuilder: (context, index) {
-                          if (index == tabManager.tabs.length) {
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 4),
-                              child: _GXTabBarIconButton(
-                                icon: CupertinoIcons.add,
-                                tooltip: 'Nouvel onglet (maintenir pour menu)',
-                                compact: true,
-                                onPressed: () => tabManager.createNewTab(),
-                                onLongPress: () {
-                                  // Menu contextuel pour choisir le type d'onglet
-                                  final RenderBox renderBox = context.findRenderObject() as RenderBox;
-                                  final Offset offset = renderBox.localToGlobal(Offset.zero);
-                                  
-                                  showMenu(
-                                    context: context,
-                                    position: RelativeRect.fromLTRB(
-                                      offset.dx,
-                                      offset.dy + 30,
-                                      offset.dx + 100,
-                                      offset.dy + 100,
-                                    ),
-                                    items: [
-                                      PopupMenuItem(
-                                        child: const Row(
-                                          children: [
-                                            Icon(CupertinoIcons.globe, size: 16),
-                                            SizedBox(width: 8),
-                                            Text('Nouvel onglet web'),
-                                          ],
-                                        ),
-                                        onTap: () => tabManager.createNewTab(),
-                                      ),
-                                    ],
-                                  );
-                                },
-                              ),
-                            );
-                          }
-
-                          final tab = tabManager.tabs[index];
-                          final isActive = tab.isSelected;
-
-                          return DragTarget<TabModel>(
-                            onWillAccept: (data) => data != null && data.id != tab.id,
-                            onAccept: (draggedTab) {
-                              if (draggedTab.id != tab.id) {
-                                final oldIndex = tabManager.tabs.indexWhere((t) => t.id == draggedTab.id);
-                                final newIndex = index;
-                                if (oldIndex != -1) {
-                                  tabManager.reorderTab(oldIndex, newIndex);
-                                  HapticFeedback.mediumImpact();
-                                }
-                              }
-                            },
-                            onMove: (details) {
-                              // Feedback visuel pendant le drag
-                            },
-                            onLeave: (data) {
-                              // Feedback visuel quand on quitte la zone
-                            },
-                            builder: (context, candidateData, rejectedData) {
-                              return LongPressDraggable<TabModel>(
-                                key: ValueKey(tab.id),
-                                data: tab,
-                                dragAnchorStrategy: pointerDragAnchorStrategy,
-                                delay: const Duration(milliseconds: 300), // Délai raisonnable pour permettre les clics
-                                feedback: Material(
-                                  color: Colors.transparent,
-                                  child: Transform.scale(
-                                    scale: 1.05,
-                                    child: Container(
-                                      width: tabWidth,
-                                      height: 32,
-                                      decoration: BoxDecoration(
-                                        color: colorThemeManager.nativeBackgroundColor,
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(
-                                          color: gxRed,
-                                          width: 2.5,
-                                        ),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: gxRed.withValues(alpha:0.5),
-                                            blurRadius: 12,
-                                            spreadRadius: 2,
-                                          ),
-                                        ],
-                                      ),
-                                      child: _GXTabItem(
-                                        tab: tab,
-                                        width: tabWidth,
-                                        isActive: true,
-                                        onTap: () {},
-                                        onClose: () {},
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                childWhenDragging: AnimatedOpacity(
-                                  opacity: 0.2,
-                                  duration: const Duration(milliseconds: 200),
-                                  child: _GXTabItem(
-                                    tab: tab,
-                                    width: tabWidth,
-                                    isActive: isActive,
-                                    onTap: () => tabManager.selectTab(tab.id),
-                                    onClose: () {
-                                      final webViewManager = Provider.of<TabWebViewManager>(
-                                        context,
-                                        listen: false,
-                                      );
-                                      webViewManager.removeEngineForTab(tab.id);
-                                      tabManager.closeTab(tab.id);
-                                    },
-                                  ),
-                                ),
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  curve: Curves.easeOutCubic,
-                                  decoration: candidateData.isNotEmpty
-                                      ? BoxDecoration(
-                                          border: Border.all(
-                                            color: gxRed,
-                                            width: 2.5,
-                                          ),
-                                          borderRadius: BorderRadius.circular(6),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: gxRed.withValues(alpha:0.3),
-                                              blurRadius: 8,
-                                              spreadRadius: 1,
-                                            ),
-                                          ],
-                                        )
-                                      : null,
-                                  child: _GXTabItem(
-                                    tab: tab,
-                                    width: tabWidth,
-                                    isActive: isActive,
-                                    onTap: () => tabManager.selectTab(tab.id),
-                                    onClose: () {
-                                      final webViewManager = Provider.of<TabWebViewManager>(
-                                        context,
-                                        listen: false,
-                                      );
-                                      webViewManager.removeEngineForTab(tab.id);
-                                      tabManager.closeTab(tab.id);
-                                    },
-                                  ),
-                                ),
-                              );
-                            },
-                          );
+                          return tabBarItems[index];
                         },
                       ),
                     );
@@ -295,6 +275,255 @@ class _GXTabBarState extends State<GXTabBar> {
           const GXWindowControls(),
           const SizedBox(width: 6),
         ],
+      ),
+    );
+  }
+
+  /// Extrait le domaine d'une URL
+  String _extractDomain(String? url) {
+    if (url == null || url.isEmpty) {
+      return 'local';
+    }
+    
+    try {
+      final uri = Uri.parse(url);
+      if (uri.host.isNotEmpty) {
+        // Retirer www. si présent
+        return uri.host.replaceFirst(RegExp(r'^www\.'), '');
+      }
+    } catch (e) {
+      // Ignorer les erreurs de parsing
+    }
+    
+    // Pour les URLs spéciales (about:, file:, etc.)
+    if (url.startsWith('about:')) {
+      return 'about';
+    } else if (url.startsWith('file:')) {
+      return 'local';
+    }
+    
+    return 'unknown';
+  }
+  
+  /// Construit un widget d'onglet GX avec couleur du domaine
+  Widget _buildGXTabItem({
+    required BuildContext context,
+    required TabModel tab,
+    required double tabWidth,
+    required bool isActive,
+    required int colorCode,
+    required ColorThemeManager colorThemeManager,
+    required TabManager tabManager,
+  }) {
+    final gxRed = colorThemeManager.nativeSecondaryColor;
+    final domainColor = Color(colorCode);
+    
+    return DragTarget<TabModel>(
+      onWillAccept: (data) => data != null && data.id != tab.id,
+      onAccept: (draggedTab) {
+        if (draggedTab.id != tab.id) {
+          final oldIndex = tabManager.tabs.indexWhere((t) => t.id == draggedTab.id);
+          final newIndex = tabManager.tabs.indexWhere((t) => t.id == tab.id);
+          if (oldIndex != -1 && newIndex != -1) {
+            tabManager.reorderTab(oldIndex, newIndex);
+            HapticFeedback.mediumImpact();
+          }
+        }
+      },
+      builder: (context, candidateData, rejectedData) {
+        return LongPressDraggable<TabModel>(
+          key: ValueKey(tab.id),
+          data: tab,
+          dragAnchorStrategy: pointerDragAnchorStrategy,
+          delay: const Duration(milliseconds: 300),
+          feedback: Material(
+            color: Colors.transparent,
+            child: Transform.scale(
+              scale: 1.05,
+              child: Container(
+                width: tabWidth,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: colorThemeManager.nativeBackgroundColor,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: domainColor,
+                    width: 2.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: domainColor.withOpacity(0.5),
+                      blurRadius: 12,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: _GXTabItem(
+                  tab: tab,
+                  width: tabWidth,
+                  isActive: true,
+                  colorCode: colorCode,
+                  onTap: () {},
+                  onClose: () {},
+                ),
+              ),
+            ),
+          ),
+          childWhenDragging: AnimatedOpacity(
+            opacity: 0.2,
+            duration: const Duration(milliseconds: 200),
+            child: _GXTabItem(
+              tab: tab,
+              width: tabWidth,
+              isActive: isActive,
+              colorCode: colorCode,
+              onTap: () => tabManager.selectTab(tab.id),
+              onClose: () {
+                final webViewManager = Provider.of<TabWebViewManager>(
+                  context,
+                  listen: false,
+                );
+                webViewManager.removeEngineForTab(tab.id);
+                tabManager.closeTab(tab.id);
+              },
+            ),
+          ),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOutCubic,
+            decoration: candidateData.isNotEmpty
+                ? BoxDecoration(
+                    border: Border.all(
+                      color: domainColor,
+                      width: 2.5,
+                    ),
+                    borderRadius: BorderRadius.circular(6),
+                    boxShadow: [
+                      BoxShadow(
+                        color: domainColor.withOpacity(0.3),
+                        blurRadius: 8,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  )
+                : null,
+            child: _GXTabItem(
+              tab: tab,
+              width: tabWidth,
+              isActive: isActive,
+              colorCode: colorCode,
+              onTap: () => tabManager.selectTab(tab.id),
+              onClose: () {
+                final webViewManager = Provider.of<TabWebViewManager>(
+                  context,
+                  listen: false,
+                );
+                webViewManager.removeEngineForTab(tab.id);
+                tabManager.closeTab(tab.id);
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+  
+  /// Construit un widget de groupe GX
+  Widget _buildGXGroupWidget({
+    required BuildContext context,
+    required TabGroup group,
+    required TabManager tabManager,
+    required TabGroupService groupService,
+    required ColorThemeManager colorThemeManager,
+    required double tabWidth,
+  }) {
+    final gxRed = colorThemeManager.nativeSecondaryColor;
+    final domainColor = Color(group.colorCode);
+    final activeTab = tabManager.activeTab;
+    final isGroupActive = group.tabIds.contains(activeTab?.id);
+    final selectedGroupId = groupService.selectedGroupId;
+    final isSelected = selectedGroupId == group.id;
+    
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxWidth: tabWidth * 1.5,
+        minWidth: 120,
+      ),
+      child: GestureDetector(
+        onTap: () {
+          groupService.toggleGroup(group.id);
+        },
+        child: Container(
+          height: 32,
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: domainColor.withOpacity(isGroupActive ? 0.2 : 0.1),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: isGroupActive
+                  ? domainColor.withOpacity(0.6)
+                  : domainColor.withOpacity(0.3),
+              width: isGroupActive ? 1.5 : 1,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Indicateur de couleur
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: domainColor,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.3),
+                    width: 1,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              // Nom du groupe
+              Expanded(
+                child: Text(
+                  group.displayName,
+                  style: NotilusFonts.rajdhani(
+                    fontSize: 11,
+                    fontWeight: isGroupActive ? FontWeight.w700 : FontWeight.w500,
+                    color: isGroupActive ? domainColor : Colors.white.withOpacity(0.6),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+              ),
+              const SizedBox(width: 4),
+              // Badge avec nombre d'onglets
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                decoration: BoxDecoration(
+                  color: domainColor.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '${group.tabCount}',
+                  style: TextStyle(
+                    color: domainColor,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              // Icône expand/collapse
+              Icon(
+                group.isExpanded ? CupertinoIcons.chevron_down : CupertinoIcons.chevron_right,
+                size: 10,
+                color: isGroupActive ? domainColor : Colors.white.withOpacity(0.4),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -427,6 +656,7 @@ class _GXTabItem extends StatefulWidget {
   final TabModel tab;
   final double width;
   final bool isActive;
+  final int colorCode;
   final VoidCallback onTap;
   final VoidCallback onClose;
 
@@ -434,6 +664,7 @@ class _GXTabItem extends StatefulWidget {
     required this.tab,
     required this.width,
     required this.isActive,
+    required this.colorCode,
     required this.onTap,
     required this.onClose,
   });
@@ -548,16 +779,10 @@ class _GXTabItemState extends State<_GXTabItem>
     final displayTitle = widget.tab.title ?? 'Speed Dial';
     final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: true);
     final gxRed = colorThemeManager.nativeSecondaryColor;
-    final gxRedDark = colorThemeManager.primaryDarkColor;
+    final domainColor = Color(widget.colorCode);
     
-    final activeGradient = LinearGradient(
-      colors: [
-        gxRed,
-        gxRedDark,
-      ],
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-    );
+    // Utiliser la couleur du domaine si l'onglet est actif, sinon utiliser gxRed
+    final activeColor = widget.isActive ? domainColor : gxRed;
 
     return NotilusTooltip(
       message: widget.tab.title ?? widget.tab.url ?? 'Onglet',
@@ -593,13 +818,13 @@ class _GXTabItemState extends State<_GXTabItem>
               child: Container(
                 decoration: BoxDecoration(
                   color: widget.isActive
-                      ? gxRed.withOpacity(0.1)
+                      ? domainColor.withOpacity(0.15)
                       : (_isHovered
                           ? Colors.white.withOpacity(0.05)
                           : Colors.transparent),
                   border: Border(
                     bottom: BorderSide(
-                      color: widget.isActive ? gxRed : Colors.transparent,
+                      color: widget.isActive ? domainColor : Colors.transparent,
                       width: 2,
                     ),
                   ),
@@ -653,7 +878,7 @@ class _GXTabItemState extends State<_GXTabItem>
                           style: NotilusFonts.rajdhani(
                             fontSize: 12,
                             fontWeight: widget.isActive ? FontWeight.w700 : FontWeight.w500,
-                            color: widget.isActive ? gxRed : Colors.white.withOpacity(0.6),
+                            color: widget.isActive ? domainColor : Colors.white.withOpacity(0.6),
                           ),
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1,
@@ -700,10 +925,11 @@ class _GXTabItemState extends State<_GXTabItem>
   }
 
   Widget _defaultFavicon() {
+    final domainColor = Color(widget.colorCode);
     return Icon(
       CupertinoIcons.globe,
       size: 16,
-      color: _gxRed,
+      color: widget.isActive ? domainColor : _gxRed,
     );
   }
 }
