@@ -164,48 +164,82 @@ Réponds UNIQUEMENT en JSON, sans texte avant ou après.''';
       if (response != null && mounted) {
         try {
           final content = response['content'] as String? ?? response['response'] as String? ?? '';
-          // Parser le JSON de la réponse
-          final jsonMatch = RegExp(r'\{[^}]*"explanation"[^}]*"solution"[^}]*\}', dotAll: true).firstMatch(content);
-          if (jsonMatch != null) {
-            final jsonStr = jsonMatch.group(0);
-            if (jsonStr != null) {
-              final parsed = jsonDecode(jsonStr);
+          
+          // Fonction pour extraire le JSON de la réponse
+          String? extractJsonString(String text) {
+            // Chercher le premier { qui commence un objet JSON
+            int startIndex = text.indexOf('{');
+            if (startIndex == -1) return null;
+            
+            // Compter les accolades pour trouver la fin de l'objet JSON
+            int braceCount = 0;
+            bool inString = false;
+            bool escapeNext = false;
+            
+            for (int i = startIndex; i < text.length; i++) {
+              final char = text[i];
+              
+              if (escapeNext) {
+                escapeNext = false;
+                continue;
+              }
+              
+              if (char == '\\') {
+                escapeNext = true;
+                continue;
+              }
+              
+              if (char == '"') {
+                inString = !inString;
+                continue;
+              }
+              
+              if (!inString) {
+                if (char == '{') {
+                  braceCount++;
+                } else if (char == '}') {
+                  braceCount--;
+                  if (braceCount == 0) {
+                    // On a trouvé la fin de l'objet JSON
+                    return text.substring(startIndex, i + 1);
+                  }
+                }
+              }
+            }
+            
+            return null;
+          }
+          
+          // Essayer d'extraire le JSON
+          String? jsonStr = extractJsonString(content);
+          
+          if (jsonStr != null) {
+            try {
+              // Nettoyer le JSON (enlever les backticks markdown si présents)
+              jsonStr = jsonStr.replaceAll(RegExp(r'^```json\s*'), '');
+              jsonStr = jsonStr.replaceAll(RegExp(r'^```\s*'), '');
+              jsonStr = jsonStr.replaceAll(RegExp(r'\s*```$'), '');
+              jsonStr = jsonStr.trim();
+              
+              final parsed = jsonDecode(jsonStr) as Map<String, dynamic>;
+              
               setState(() {
-                _explanation = parsed['explanation'] as String?;
-                _solution = parsed['solution'] as String?;
+                _explanation = parsed['explanation']?.toString().trim();
+                _solution = parsed['solution']?.toString().trim();
                 _isLoading = false;
               });
-            } else {
-              // Fallback si jsonStr est null
-              setState(() {
-                _explanation = content.contains('explanation') 
-                    ? content.split('explanation')[1].split('solution')[0].trim()
-                    : 'Erreur analysée';
-                _solution = content.contains('solution')
-                    ? content.split('solution')[1].trim()
-                    : 'Vérifiez la console pour plus de détails';
-                _isLoading = false;
-              });
+            } catch (e) {
+              // Si le parsing échoue, essayer d'extraire manuellement
+              _extractFromText(content);
             }
           } else {
-            // Fallback : extraire explanation et solution du texte
-            setState(() {
-              _explanation = content.contains('explanation') 
-                  ? content.split('explanation')[1].split('solution')[0].trim()
-                  : 'Erreur analysée';
-              _solution = content.contains('solution')
-                  ? content.split('solution')[1].trim()
-                  : 'Vérifiez la console pour plus de détails';
-              _isLoading = false;
-            });
+            // Pas de JSON trouvé, essayer d'extraire depuis le texte
+            _extractFromText(content);
           }
         } catch (e) {
-          // Si le parsing JSON échoue, utiliser la réponse brute
-          setState(() {
-            _explanation = response['content'] as String? ?? response['response'] as String? ?? 'Erreur analysée';
-            _solution = 'Vérifiez la console pour plus de détails';
-            _isLoading = false;
-          });
+          // Si tout échoue, afficher la réponse brute mais formatée
+          final content = response['content'] as String? ?? response['response'] as String? ?? '';
+          _extractFromText(content);
         }
       } else {
         setState(() {
@@ -249,6 +283,88 @@ Réponds UNIQUEMENT en JSON, sans texte avant ou après.''';
   void _onPanEnd(DragEndDetails details) {
     setState(() {
       _isDragging = false;
+    });
+  }
+
+  String _cleanQuotes(String? text) {
+    if (text == null || text.isEmpty) return '';
+    String cleaned = text.trim();
+    // Enlever les guillemets au début et à la fin
+    if (cleaned.startsWith('"') || cleaned.startsWith("'")) {
+      cleaned = cleaned.substring(1);
+    }
+    if (cleaned.endsWith('"') || cleaned.endsWith("'")) {
+      cleaned = cleaned.substring(0, cleaned.length - 1);
+    }
+    return cleaned.trim();
+  }
+
+  void _extractFromText(String content) {
+    // Essayer d'extraire explanation et solution depuis le texte
+    String? explanation;
+    String? solution;
+    
+    // Chercher "explanation" (insensible à la casse)
+    final explanationMatch = RegExp(
+      r'"explanation"\s*:\s*"([^"]*(?:\\.[^"]*)*)"',
+      caseSensitive: false,
+      dotAll: true,
+    ).firstMatch(content);
+    
+    if (explanationMatch != null) {
+      explanation = explanationMatch.group(1)?.replaceAll('\\"', '"').replaceAll('\\n', '\n');
+    } else {
+      // Fallback : chercher après le mot "explanation"
+      final explanationIndex = content.toLowerCase().indexOf('explanation');
+      if (explanationIndex != -1) {
+        final afterExplanation = content.substring(explanationIndex + 'explanation'.length);
+        final colonIndex = afterExplanation.indexOf(':');
+        if (colonIndex != -1) {
+          final valueStart = afterExplanation.substring(colonIndex + 1).trim();
+          // Prendre jusqu'à "solution" ou jusqu'à la fin
+          final solutionIndex = valueStart.toLowerCase().indexOf('solution');
+          if (solutionIndex != -1) {
+            explanation = valueStart.substring(0, solutionIndex).trim();
+            // Nettoyer les guillemets et autres caractères
+            explanation = _cleanQuotes(explanation);
+          } else {
+            explanation = _cleanQuotes(valueStart);
+          }
+        }
+      }
+    }
+    
+    // Chercher "solution" (insensible à la casse)
+    final solutionMatch = RegExp(
+      r'"solution"\s*:\s*"([^"]*(?:\\.[^"]*)*)"',
+      caseSensitive: false,
+      dotAll: true,
+    ).firstMatch(content);
+    
+    if (solutionMatch != null) {
+      solution = solutionMatch.group(1)?.replaceAll('\\"', '"').replaceAll('\\n', '\n');
+    } else {
+      // Fallback : chercher après le mot "solution"
+      final solutionIndex = content.toLowerCase().indexOf('solution');
+      if (solutionIndex != -1) {
+        final afterSolution = content.substring(solutionIndex + 'solution'.length);
+        final colonIndex = afterSolution.indexOf(':');
+        if (colonIndex != -1) {
+          solution = afterSolution.substring(colonIndex + 1).trim();
+          // Nettoyer les guillemets et autres caractères
+          solution = _cleanQuotes(solution);
+        }
+      }
+    }
+    
+    setState(() {
+      _explanation = explanation?.isNotEmpty == true 
+          ? explanation 
+          : (content.length > 200 ? content.substring(0, 200) + '...' : content);
+      _solution = solution?.isNotEmpty == true 
+          ? solution 
+          : 'Vérifiez la console pour plus de détails';
+      _isLoading = false;
     });
   }
 
