@@ -65,13 +65,15 @@ class TabsPreviewService extends ChangeNotifier {
     final currentTabIds = tabs.map((t) => t.id).toSet();
     
     // Nettoyer les timers des onglets fermés
-    _captureTimers.forEach((tabId, timer) {
+    // Créer une copie de la liste des clés pour éviter la modification concurrente
+    final timerKeys = _captureTimers.keys.toList();
+    for (final tabId in timerKeys) {
       if (!currentTabIds.contains(tabId)) {
-        timer.cancel();
+        _captureTimers[tabId]?.cancel();
         _captureTimers.remove(tabId);
         _previewCache.remove(tabId);
       }
-    });
+    }
     
     // Démarrer la capture pour les nouveaux onglets
     for (final tab in tabs) {

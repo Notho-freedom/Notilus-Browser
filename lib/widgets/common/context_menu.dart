@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:provider/provider.dart';
 import '../../core/constants/notilus_colors.dart';
+import '../../core/services/color_theme_manager.dart';
+import '../../services/settings_service.dart';
 
 class ContextMenuAction {
   final String label;
@@ -67,6 +70,12 @@ class _ContextMenuOverlay extends StatefulWidget {
 class _ContextMenuOverlayState extends State<_ContextMenuOverlay> {
   @override
   Widget build(BuildContext context) {
+    final themeManager = Provider.of<ColorThemeManager>(context, listen: false);
+    final primaryColor = themeManager.primaryColor;
+    final secondaryColor = themeManager.nativeSecondaryColor;
+    final settings = SettingsService();
+    final contextMenuOpacity = settings.contextMenuOpacity;
+    
     return GestureDetector(
       onTap: () => Navigator.of(context).pop(),
       child: Material(
@@ -81,11 +90,11 @@ class _ContextMenuOverlayState extends State<_ContextMenuOverlay> {
                 child: Container(
                   constraints: const BoxConstraints(minWidth: 200),
                   decoration: BoxDecoration(
-                    color: NotilusColors.chromeLight,
+                    color: primaryColor.withOpacity(contextMenuOpacity),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: NotilusColors.neonRed.withOpacity(0.3),
-                      width: 1,
+                      color: secondaryColor.withOpacity(0.6),
+                      width: 1.5,
                     ),
                     boxShadow: [
                       BoxShadow(
@@ -109,22 +118,23 @@ class _ContextMenuOverlayState extends State<_ContextMenuOverlay> {
                             vertical: 12,
                           ),
                           child: Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
                                 action.icon,
                                 size: 16,
                                 color: action.isDestructive
                                     ? NotilusColors.neonRed
-                                    : Colors.white.withOpacity(0.8),
+                                    : secondaryColor,
                               ),
                               const SizedBox(width: 12),
-                              Expanded(
+                              Flexible(
                                 child: Text(
                                   action.label,
                                   style: TextStyle(
                                     color: action.isDestructive
                                         ? NotilusColors.neonRed
-                                        : Colors.white,
+                                        : secondaryColor,
                                     fontSize: 13,
                                     fontWeight: FontWeight.w500,
                                   ),

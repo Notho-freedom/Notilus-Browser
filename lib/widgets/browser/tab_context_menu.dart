@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
+import 'package:provider/provider.dart';
 import '../../models/tab_model.dart';
 import '../../core/theme/app_theme.dart';
-import '../../widgets/common/glassmorphic_container.dart';
+import '../../core/constants/notilus_colors.dart';
+import '../../core/services/color_theme_manager.dart';
+import '../../services/settings_service.dart';
 
 class TabContextMenu extends StatelessWidget {
   final TabModel tab;
@@ -29,23 +33,50 @@ class TabContextMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = _getThemeFromContext();
+    final themeManager = Provider.of<ColorThemeManager>(context, listen: false);
+    final primaryColor = themeManager.primaryColor;
+    final secondaryColor = themeManager.nativeSecondaryColor;
+    final settings = SettingsService();
+    final contextMenuOpacity = settings.contextMenuOpacity;
 
     return Positioned(
       left: position.dx,
       top: position.dy,
-      child: GlassmorphicContainer(
+      child: Container(
         width: 200,
         padding: const EdgeInsets.symmetric(vertical: 4),
-        showNeonBorder: true,
-        child: Column(
+        decoration: BoxDecoration(
+          color: primaryColor.withOpacity(contextMenuOpacity),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: secondaryColor.withOpacity(0.6),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.5),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+            BoxShadow(
+              color: secondaryColor.withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (onReload != null)
               _buildMenuItem(
                 context,
-                theme,
+                secondaryColor,
                 icon: Icons.refresh,
                 label: 'Recharger',
                 onTap: () {
@@ -56,7 +87,7 @@ class TabContextMenu extends StatelessWidget {
             if (onDuplicate != null)
               _buildMenuItem(
                 context,
-                theme,
+                secondaryColor,
                 icon: Icons.copy,
                 label: 'Dupliquer',
                 onTap: () {
@@ -67,7 +98,7 @@ class TabContextMenu extends StatelessWidget {
             if (onPin != null)
               _buildMenuItem(
                 context,
-                theme,
+                secondaryColor,
                 icon: tab.isPinned ? Icons.push_pin : Icons.push_pin_outlined,
                 label: tab.isPinned ? 'Désépingler' : 'Épingler',
                 onTap: () {
@@ -79,7 +110,7 @@ class TabContextMenu extends StatelessWidget {
             if (onAddToGroup != null)
               _buildMenuItem(
                 context,
-                theme,
+                secondaryColor,
                 icon: Icons.folder,
                 label: 'Ajouter à un groupe',
                 onTap: () {
@@ -91,7 +122,7 @@ class TabContextMenu extends StatelessWidget {
             if (onCloseOthers != null)
               _buildMenuItem(
                 context,
-                theme,
+                secondaryColor,
                 icon: Icons.close,
                 label: 'Fermer les autres',
                 onTap: () {
@@ -102,7 +133,7 @@ class TabContextMenu extends StatelessWidget {
             if (onCloseToRight != null)
               _buildMenuItem(
                 context,
-                theme,
+                secondaryColor,
                 icon: Icons.arrow_forward,
                 label: 'Fermer à droite',
                 onTap: () {
@@ -112,7 +143,7 @@ class TabContextMenu extends StatelessWidget {
               ),
             _buildMenuItem(
               context,
-              theme,
+              secondaryColor,
               icon: Icons.close,
               label: 'Fermer',
               onTap: () {
@@ -129,7 +160,7 @@ class TabContextMenu extends StatelessWidget {
 
   Widget _buildMenuItem(
     BuildContext context,
-    AppTheme theme, {
+    Color secondaryColor, {
     required IconData icon,
     required String label,
     required VoidCallback onTap,
@@ -144,13 +175,13 @@ class TabContextMenu extends StatelessWidget {
             Icon(
               icon,
               size: 18,
-              color: isDanger ? theme.error : theme.text,
+              color: isDanger ? NotilusColors.neonRed : secondaryColor,
             ),
             const SizedBox(width: 12),
             Text(
               label,
               style: TextStyle(
-                color: isDanger ? theme.error : theme.text,
+                color: isDanger ? NotilusColors.neonRed : secondaryColor,
                 fontSize: 14,
                 fontFamily: 'Roboto Mono',
               ),
@@ -158,25 +189,6 @@ class TabContextMenu extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-
-  AppTheme _getThemeFromContext() {
-    return const AppTheme(
-      name: 'Default',
-      background: Color(0xFF0D0D0D),
-      surface: Color(0xFF1A1A1A),
-      primary: Color(0xFFFF0040),
-      secondary: Color(0xFFFF3366),
-      accent: Color(0xFF00FF88),
-      text: Color(0xFFE0E0E0),
-      textSecondary: Color(0xFF888888),
-      error: Color(0xFFFF0040),
-      success: Color(0xFF00FF88),
-      warning: Color(0xFFFFAA00),
-      border: Color(0xFF333333),
-      hover: Color(0xFF2A2A2A),
-      selected: Color(0xFFFF0040),
     );
   }
 }

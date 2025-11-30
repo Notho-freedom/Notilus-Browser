@@ -127,6 +127,109 @@ class WebView2BrowserEngine extends BrowserEngine {
   
   Timer? _textSelectionPollingTimer;
   
+  // Script pour détecter les clics droits (menu contextuel)
+  static const String _contextMenuScript = '''
+(function() {
+  if (window._notilusContextMenuHandler) return;
+  
+  window._notilusContextMenuHandler = function(e) {
+    try {
+      e.preventDefault(); // Empêcher le menu contextuel par défaut
+      
+      var target = e.target;
+      var elementType = 'text';
+      var url = null;
+      var imageUrl = null;
+      var linkUrl = null;
+      var text = null;
+      
+      // Vérifier si c'est une image
+      if (target.tagName === 'IMG') {
+        elementType = 'image';
+        imageUrl = target.src || target.getAttribute('data-src') || target.getAttribute('data-lazy-src');
+        // Chercher un lien parent
+        var parent = target.parentElement;
+        while (parent && parent.tagName !== 'A' && parent !== document.body) {
+          parent = parent.parentElement;
+        }
+        if (parent && parent.tagName === 'A') {
+          linkUrl = parent.href;
+        }
+      }
+      // Vérifier si c'est un lien
+      else if (target.tagName === 'A') {
+        elementType = 'link';
+        linkUrl = target.href;
+        // Vérifier si le lien contient une image
+        var img = target.querySelector('img');
+        if (img) {
+          imageUrl = img.src || img.getAttribute('data-src') || img.getAttribute('data-lazy-src');
+        }
+        text = target.textContent || target.innerText;
+      }
+      // Vérifier si on est dans un lien
+      else {
+        var parent = target;
+        while (parent && parent.tagName !== 'A' && parent !== document.body) {
+          parent = parent.parentElement;
+        }
+        if (parent && parent.tagName === 'A') {
+          elementType = 'link';
+          linkUrl = parent.href;
+          var img = parent.querySelector('img');
+          if (img) {
+            imageUrl = img.src || img.getAttribute('data-src') || img.getAttribute('data-lazy-src');
+          }
+          text = parent.textContent || parent.innerText;
+        } else {
+          // Texte sélectionné
+          var selection = window.getSelection();
+          if (selection && selection.rangeCount > 0) {
+            text = selection.toString().trim();
+            if (text.length > 0) {
+              elementType = 'text';
+            }
+          }
+        }
+      }
+      
+      // Stocker les informations dans document.body
+      if (document.body) {
+        var rect = target.getBoundingClientRect();
+        var x = Math.round(e.clientX);
+        var y = Math.round(e.clientY);
+        
+        document.body.setAttribute('data-context-type', elementType);
+        document.body.setAttribute('data-context-x', x.toString());
+        document.body.setAttribute('data-context-y', y.toString());
+        
+        if (imageUrl) {
+          document.body.setAttribute('data-context-image-url', encodeURIComponent(imageUrl));
+        }
+        if (linkUrl) {
+          document.body.setAttribute('data-context-link-url', encodeURIComponent(linkUrl));
+        }
+        if (text) {
+          document.body.setAttribute('data-context-text', encodeURIComponent(text));
+        }
+        
+        console.log('Notilus: Menu contextuel détecté:', elementType, 'à', x, y);
+      }
+    } catch (err) {
+      console.error('Notilus: Erreur dans le handler de menu contextuel:', err);
+    }
+  };
+  
+  // Intercepter le menu contextuel
+  document.addEventListener('contextmenu', window._notilusContextMenuHandler, true);
+  
+  console.log('Notilus: Script de menu contextuel installé');
+})();
+''';
+  
+  Timer? _contextMenuPollingTimer;
+  Function(String type, String? imageUrl, String? linkUrl, String? text, Offset position)? onContextMenuRequest;
+  
   /// Service de blocage de publicités
   AdBlockerService? _adBlockerService;
   
@@ -580,6 +683,96 @@ class WebView2BrowserEngine extends BrowserEngine {
     _textSelectionPollingTimer?.cancel();
     _textSelectionPollingTimer = null;
   }
+  
+  /// Injecte le script de menu contextuel
+  Future<void> _injectContextMenuScript() async {
+    if (_webView == null || !_isInitialized) return;
+    
+    try {
+      await _webView!.executeScript(_contextMenuScript);
+      _startContextMenuPolling();
+    } catch (e) {
+      debugPrint('Erreur injection script menu contextuel: $e');
+    }
+  }
+  
+  /// Démarre le polling pour détecter les clics droits
+  void _startContextMenuPolling() {
+    _contextMenuPollingTimer?.cancel();
+    _contextMenuPollingTimer = Timer.periodic(const Duration(milliseconds: 200), (timer) async {
+      if (_webView == null || !_isInitialized || onContextMenuRequest == null) {
+        timer.cancel();
+        return;
+      }
+      
+      try {
+        final result = await _webView!.executeScript('''
+          (function() {
+            if (!document.body) return null;
+            var type = document.body.getAttribute('data-context-type');
+            var x = document.body.getAttribute('data-context-x');
+            var y = document.body.getAttribute('data-context-y');
+            if (type && x && y) {
+              var imageUrl = document.body.getAttribute('data-context-image-url');
+              var linkUrl = document.body.getAttribute('data-context-link-url');
+              var text = document.body.getAttribute('data-context-text');
+              
+              // Effacer les attributs après lecture
+              document.body.removeAttribute('data-context-type');
+              document.body.removeAttribute('data-context-x');
+              document.body.removeAttribute('data-context-y');
+              document.body.removeAttribute('data-context-image-url');
+              document.body.removeAttribute('data-context-link-url');
+              document.body.removeAttribute('data-context-text');
+              
+              return JSON.stringify({
+                type: type,
+                x: parseInt(x),
+                y: parseInt(y),
+                imageUrl: imageUrl ? decodeURIComponent(imageUrl) : null,
+                linkUrl: linkUrl ? decodeURIComponent(linkUrl) : null,
+                text: text ? decodeURIComponent(text) : null
+              });
+            }
+            return null;
+          })();
+        ''');
+        
+        if (result != null && result is String && result.isNotEmpty && result != 'null') {
+          try {
+            final data = jsonDecode(result) as Map<String, dynamic>;
+            final type = data['type'] as String?;
+            final x = data['x'] as int?;
+            final y = data['y'] as int?;
+            final imageUrl = data['imageUrl'] as String?;
+            final linkUrl = data['linkUrl'] as String?;
+            final text = data['text'] as String?;
+            
+            if (type != null && x != null && y != null) {
+              debugPrint('🖱️ Menu contextuel détecté: $type à ($x, $y)');
+              onContextMenuRequest?.call(
+                type,
+                imageUrl,
+                linkUrl,
+                text,
+                Offset(x.toDouble(), y.toDouble()),
+              );
+            }
+          } catch (e) {
+            debugPrint('Erreur parsing menu contextuel: $e');
+          }
+        }
+      } catch (e) {
+        // Ignorer les erreurs silencieusement
+      }
+    });
+  }
+  
+  /// Arrête le polling de menu contextuel
+  void _stopContextMenuPolling() {
+    _contextMenuPollingTimer?.cancel();
+    _contextMenuPollingTimer = null;
+  }
 
   /// Configure l'interception des téléchargements
   void _setupDownloadInterceptor() {
@@ -866,6 +1059,7 @@ class WebView2BrowserEngine extends BrowserEngine {
     // Arrêter tous les timers
     _stopNewWindowPolling();
     _stopTextSelectionPolling();
+    _stopContextMenuPolling();
     _downloadPollingTimer?.cancel();
     _downloadPollingTimer = null;
     _loadingTimeoutTimer?.cancel();
@@ -910,6 +1104,8 @@ class WebView2BrowserEngine extends BrowserEngine {
               }
               // Injecter le script de détection de sélection de texte
               await _injectTextSelectionScript();
+              // Injecter le script de menu contextuel
+              await _injectContextMenuScript();
             } catch (e) {
               debugPrint('Error injecting handlers: $e');
             }

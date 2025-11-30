@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import 'dart:io' show Platform;
 import 'dart:async';
@@ -11,6 +12,9 @@ import '../../services/favicon_service.dart';
 import '../../services/webview2_browser_engine.dart';
 import '../../services/settings_service.dart';
 import '../../core/utils/debouncer.dart';
+import '../../widgets/common/gx_context_menu.dart';
+import '../../services/download_service.dart';
+import 'package:flutter/services.dart';
 import 'home_pages/home_page_factory.dart';
 
 /// Widget pour afficher le contenu web avec WebView2
@@ -104,15 +108,20 @@ class _WebContentViewState extends State<WebContentView>
     final webViewManager = Provider.of<TabWebViewManager>(context, listen: false);
     final isActive = widget.tab?.id == tabManager.activeTab?.id;
     
-    // Mettre à jour la priorité dans TabWebViewManager
-    if (isActive) {
-      webViewManager.setActiveTab(widget.tab!.id);
-    }
-    
-    if (_isTabActive != isActive) {
-      _isTabActive = isActive;
-      _setVisibility(isActive);
-    }
+    // Utiliser addPostFrameCallback pour éviter setState() pendant le build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      
+      // Mettre à jour la priorité dans TabWebViewManager
+      if (isActive) {
+        webViewManager.setActiveTab(widget.tab!.id);
+      }
+      
+      if (_isTabActive != isActive) {
+        _isTabActive = isActive;
+        _setVisibility(isActive);
+      }
+    });
   }
   
   void _setVisibility(bool isVisible) {
@@ -170,6 +179,11 @@ class _WebContentViewState extends State<WebContentView>
     
     // Configuration optimisée des callbacks
     _setupEngineCallbacks(engine, tabManager);
+    
+    // Configurer le menu contextuel
+    engine.onContextMenuRequest = (type, imageUrl, linkUrl, text, position) {
+      _showContextMenu(type, imageUrl, linkUrl, text, position, tabManager);
+    };
 
     // Récupération rapide du controller
     final controller = await engine.getController();
@@ -238,6 +252,103 @@ class _WebContentViewState extends State<WebContentView>
       engine.navigate(widget.tab!.url!);
       _loadFavicon(widget.tab!.url!, widget.tab!.id, tabManager);
     }
+  }
+  
+  /// Affiche le menu contextuel selon le type d'élément
+  void _showContextMenu(
+    String type,
+    String? imageUrl,
+    String? linkUrl,
+    String? text,
+    Offset position,
+    TabManager tabManager,
+  ) {
+    if (!mounted) return;
+    
+    final actions = <GxContextMenuAction>[];
+    
+    // Options pour les images
+    if (type == 'image' && imageUrl != null) {
+      actions.add(
+        GxContextMenuAction(
+          label: 'Télécharger l\'image',
+          icon: CupertinoIcons.arrow_down_circle,
+          onTap: () {
+            final downloadService = Provider.of<DownloadService>(context, listen: false);
+            downloadService.addDownload(imageUrl);
+          },
+        ),
+      );
+      
+      actions.add(
+        GxContextMenuAction(
+          label: 'Ouvrir l\'image dans un nouvel onglet',
+          icon: CupertinoIcons.square_split_2x2,
+          onTap: () {
+            tabManager.addTab(url: imageUrl);
+          },
+        ),
+      );
+      
+      actions.add(
+        GxContextMenuAction(
+          label: 'Copier le lien de l\'image',
+          icon: CupertinoIcons.doc_on_clipboard,
+          onTap: () {
+            Clipboard.setData(ClipboardData(text: imageUrl));
+          },
+        ),
+      );
+    }
+    
+    // Options pour les liens
+    if (linkUrl != null && linkUrl.isNotEmpty) {
+      if (type != 'image') {
+        // Ne pas dupliquer si c'est déjà une image
+        actions.add(
+          GxContextMenuAction(
+            label: 'Ouvrir dans un nouvel onglet',
+            icon: CupertinoIcons.square_split_2x2,
+            onTap: () {
+              tabManager.addTab(url: linkUrl);
+            },
+          ),
+        );
+        
+        actions.add(
+          GxContextMenuAction(
+            label: 'Copier le lien',
+            icon: CupertinoIcons.doc_on_clipboard,
+            onTap: () {
+              Clipboard.setData(ClipboardData(text: linkUrl));
+            },
+          ),
+        );
+      }
+    }
+    
+    // Options pour le texte
+    if (text != null && text.isNotEmpty && type == 'text') {
+      actions.add(
+        GxContextMenuAction(
+          label: 'Copier',
+          icon: CupertinoIcons.doc_on_clipboard,
+          onTap: () {
+            Clipboard.setData(ClipboardData(text: text));
+          },
+        ),
+      );
+    }
+    
+    // Si aucune action, ne pas afficher le menu
+    if (actions.isEmpty) return;
+    
+    // Afficher le menu contextuel GX
+    GxContextMenu.show(
+      context: context,
+      actions: actions,
+      position: position,
+    );
   }
 
   /// Charge le favicon pour une URL et met à jour l'onglet

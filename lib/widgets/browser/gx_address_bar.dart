@@ -128,9 +128,15 @@ class _GXAddressBarState extends State<GXAddressBar> {
   void _hideSuggestionsOverlay() {
     _overlayEntry?.remove();
     _overlayEntry = null;
-    setState(() {
+    // Ne pas appeler setState() si le widget est en train d'être démonté
+    if (mounted) {
+      setState(() {
+        _showSuggestions = false;
+      });
+    } else {
+      // Si le widget n'est plus monté, juste mettre à jour la variable
       _showSuggestions = false;
-    });
+    }
   }
   
   void _updateSuggestionsOverlay() {

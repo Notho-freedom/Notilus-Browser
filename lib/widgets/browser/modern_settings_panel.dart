@@ -1754,6 +1754,14 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
               tooltip: 'Opacité du fond assombri derrière les dialogs (0 = transparent, 1 = opaque)',
             ),
             const SizedBox(height: 12),
+            _buildTransparencySlider(
+              label: 'Menus contextuels',
+              value: _settings.contextMenuOpacity,
+              onChanged: (v) => _settings.setContextMenuOpacity(v),
+              gxRed: gxRed,
+              tooltip: 'Opacité des menus contextuels (0 = transparent, 1 = opaque)',
+            ),
+            const SizedBox(height: 12),
             Row(
               children: [
                 Text('Intensité du flou des dialogs', style: TextStyle(color: Colors.white70, fontSize: 12)),

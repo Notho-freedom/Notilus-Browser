@@ -65,6 +65,7 @@ class SettingsService extends ChangeNotifier {
   // Dialogs
   static const String _keyDialogBarrierOpacity = 'notilus_dialog_barrier_opacity'; // 0.0 - 1.0
   static const String _keyDialogBlurIntensity = 'notilus_dialog_blur_intensity'; // 0.0 - 20.0
+  static const String _keyContextMenuOpacity = 'notilus_context_menu_opacity'; // 0.0 - 1.0
   
   // Personnalisation avancée
   static const String _keyShowClock = 'notilus_show_clock';
@@ -470,6 +471,17 @@ class SettingsService extends ChangeNotifier {
   
   Future<void> setDialogBlurIntensity(double value) async {
     await _prefs?.setDouble(_keyDialogBlurIntensity, value.clamp(0.0, 20.0));
+    notifyListeners();
+  }
+  
+  /// Opacité des menus contextuels (0.0 - 1.0)
+  double get contextMenuOpacity => _prefs?.getDouble(_keyContextMenuOpacity) ?? 0.85;
+  
+  Future<void> setContextMenuOpacity(double value) async {
+    if (value < 0.0 || value > 1.0) {
+      throw ArgumentError('Value must be between 0.0 and 1.0');
+    }
+    await _prefs?.setDouble(_keyContextMenuOpacity, value.clamp(0.0, 1.0));
     notifyListeners();
   }
 
