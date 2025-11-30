@@ -27,12 +27,40 @@ class SoundEffectsService {
     if (!_isEnabled) return;
 
     try {
-      await _player.stop();
+      // Arrêter et libérer le player avant de jouer un nouveau son
+      try {
+        await _player.stop();
+      } catch (_) {
+        // Ignorer les erreurs d'arrêt
+      }
+      
+      // Attendre un peu pour que le fichier soit libéré
+      await Future.delayed(const Duration(milliseconds: 50));
+      
+      // Réinitialiser le player pour éviter les verrous de fichier
       await _player.setReleaseMode(ReleaseMode.release);
       await _player.setVolume(volume ?? _volume);
+      
+      // Jouer le nouveau son
       await _player.play(AssetSource(assetPath));
     } catch (e) {
-      debugPrint('Erreur lors de la lecture de l\'effet sonore $assetPath: $e');
+      // Si l'erreur est liée à un fichier verrouillé, réessayer après un court délai
+      if (e.toString().contains('PathAccessException') || 
+          e.toString().contains('Cannot open file') ||
+          e.toString().contains('utilisé par un autre processus')) {
+        try {
+          await Future.delayed(const Duration(milliseconds: 100));
+          await _player.stop();
+          await Future.delayed(const Duration(milliseconds: 50));
+          await _player.setReleaseMode(ReleaseMode.release);
+          await _player.setVolume(volume ?? _volume);
+          await _player.play(AssetSource(assetPath));
+        } catch (retryError) {
+          debugPrint('Erreur lors de la lecture de l\'effet sonore $assetPath (après réessai): $retryError');
+        }
+      } else {
+        debugPrint('Erreur lors de la lecture de l\'effet sonore $assetPath: $e');
+      }
     }
   }
 
