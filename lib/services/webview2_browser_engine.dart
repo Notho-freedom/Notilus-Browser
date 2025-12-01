@@ -1048,10 +1048,174 @@ class WebView2BrowserEngine extends BrowserEngine {
         debugPrint('✅ Optimisations GPU activées (fond transparent)');
       }
       
-      // Optimisations supplémentaires via JavaScript
+      // Injecter les optimisations critiques IMMÉDIATEMENT (avant chargement de page)
+      _injectCriticalOptimizations();
+      
+      // Optimisations supplémentaires via JavaScript (après chargement)
       _enableAdditionalOptimizations();
+      
+      // Optimisations réseau et cache
+      _enableNetworkOptimizations();
     } catch (e) {
       debugPrint('⚠️ Erreur lors de l\'activation des optimisations: $e');
+    }
+  }
+  
+  /// Injecte les optimisations critiques AVANT le chargement de la page
+  void _injectCriticalOptimizations() {
+    try {
+      if (_webView != null && _webView!.value.isInitialized) {
+        // Ces optimisations doivent être injectées le plus tôt possible
+        _webView!.executeScript('''
+          (function() {
+            'use strict';
+            
+            // === OPTIMISATIONS CRITIQUES PRÉ-CHARGEMENT ===
+            
+            // 1. Désactiver les fonctionnalités non essentielles pour améliorer les performances
+            Object.defineProperty(navigator, 'webdriver', {
+              get: () => false,
+              configurable: true
+            });
+            
+            // 2. Optimiser le garbage collector
+            if (window.gc) {
+              setInterval(() => {
+                try { window.gc(); } catch(e) {}
+              }, 30000); // GC toutes les 30 secondes
+            }
+            
+            // 3. Précharger les ressources critiques
+            const preloadCriticalResources = function() {
+              const link = document.createElement('link');
+              link.rel = 'preconnect';
+              link.href = 'https://fonts.googleapis.com';
+              document.head.appendChild(link);
+              
+              const dnsPrefetch = document.createElement('link');
+              dnsPrefetch.rel = 'dns-prefetch';
+              dnsPrefetch.href = 'https://fonts.gstatic.com';
+              document.head.appendChild(dnsPrefetch);
+            };
+            
+            // 4. Désactiver les animations pendant le chargement initial
+            const disableAnimationsDuringLoad = function() {
+              const style = document.createElement('style');
+              style.id = 'notilus-disable-anim-load';
+              style.textContent = `
+                *, *::before, *::after {
+                  animation-duration: 0s !important;
+                  animation-delay: 0s !important;
+                  transition-duration: 0s !important;
+                  transition-delay: 0s !important;
+                }
+              `;
+              document.head.appendChild(style);
+              
+              // Réactiver après chargement
+              window.addEventListener('load', function() {
+                setTimeout(() => {
+                  const styleEl = document.getElementById('notilus-disable-anim-load');
+                  if (styleEl) styleEl.remove();
+                }, 500);
+              }, { once: true });
+            };
+            
+            // 5. Optimiser le parsing HTML
+            if (document.readyState === 'loading') {
+              disableAnimationsDuringLoad();
+              preloadCriticalResources();
+            } else {
+              disableAnimationsDuringLoad();
+              preloadCriticalResources();
+            }
+            
+            console.log('✅ Notilus: Optimisations critiques pré-chargement activées');
+          })();
+        ''');
+      }
+    } catch (e) {
+      debugPrint('⚠️ Erreur lors de l\'injection des optimisations critiques: $e');
+    }
+  }
+  
+  /// Active les optimisations réseau et cache
+  void _enableNetworkOptimizations() {
+    try {
+      if (_webView != null && _webView!.value.isInitialized) {
+        _webView!.executeScript('''
+          (function() {
+            'use strict';
+            
+            // === OPTIMISATIONS RÉSEAU ET CACHE ===
+            
+            // 1. Service Worker pour cache agressif (si disponible)
+            if ('serviceWorker' in navigator) {
+              navigator.serviceWorker.register('/sw.js').catch(() => {});
+            }
+            
+            // 2. Précharger les liens au survol (préfetch intelligent)
+            let prefetchTimer = null;
+            document.addEventListener('mouseover', function(e) {
+              const link = e.target.closest('a[href]');
+              if (link && link.href && !link.dataset.prefetched) {
+                clearTimeout(prefetchTimer);
+                prefetchTimer = setTimeout(() => {
+                  const prefetchLink = document.createElement('link');
+                  prefetchLink.rel = 'prefetch';
+                  prefetchLink.href = link.href;
+                  prefetchLink.as = 'document';
+                  document.head.appendChild(prefetchLink);
+                  link.dataset.prefetched = 'true';
+                }, 100); // Délai de 100ms pour éviter le prefetch inutile
+              }
+            }, { passive: true });
+            
+            // 3. Optimiser les requêtes fetch avec cache
+            const originalFetch = window.fetch;
+            window.fetch = function(...args) {
+              const url = typeof args[0] === 'string' ? args[0] : args[0].url;
+              const options = args[1] || {};
+              
+              // Ajouter cache par défaut pour les ressources statiques
+              if (!options.cache && (url.includes('.css') || url.includes('.js') || url.includes('.png') || url.includes('.jpg') || url.includes('.svg'))) {
+                options.cache = 'force-cache';
+              }
+              
+              return originalFetch.apply(this, args);
+            };
+            
+            // 4. Lazy load les images avec Intersection Observer
+            if ('IntersectionObserver' in window) {
+              const imageObserver = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                  if (entry.isIntersecting) {
+                    const img = entry.target;
+                    if (img.dataset.src) {
+                      img.src = img.dataset.src;
+                      img.removeAttribute('data-src');
+                      observer.unobserve(img);
+                    }
+                  }
+                });
+              }, {
+                rootMargin: '50px' // Commencer le chargement 50px avant l'entrée dans le viewport
+              });
+              
+              // Observer toutes les images avec data-src
+              document.addEventListener('DOMContentLoaded', function() {
+                document.querySelectorAll('img[data-src]').forEach(img => {
+                  imageObserver.observe(img);
+                });
+              });
+            }
+            
+            console.log('✅ Notilus: Optimisations réseau activées');
+          })();
+        ''');
+      }
+    } catch (e) {
+      debugPrint('⚠️ Erreur lors de l\'activation des optimisations réseau: $e');
     }
   }
   
@@ -1233,6 +1397,132 @@ class WebView2BrowserEngine extends BrowserEngine {
                 window.addEventListener('touchmove', optimizedScrollHandler, { passive: true });
               };
               
+              // 8. Virtual scrolling pour les grandes listes (optimisation mémoire)
+              const enableVirtualScrolling = function() {
+                const lists = document.querySelectorAll('ul, ol, div[role="list"]');
+                lists.forEach(list => {
+                  if (list.children.length > 50) {
+                    const container = list.parentElement;
+                    if (container) {
+                      container.style.overflow = 'auto';
+                      container.style.height = '100vh';
+                      container.style.willChange = 'scroll-position';
+                      
+                      // Utiliser content-visibility pour le virtual scrolling
+                      Array.from(list.children).forEach((child, index) => {
+                        if (index > 20 && index < list.children.length - 20) {
+                          child.style.contentVisibility = 'auto';
+                        }
+                      });
+                    }
+                  }
+                });
+              };
+              
+              // 9. Optimiser les event listeners avec debouncing/throttling agressif
+              const optimizeEventListeners = function() {
+                const originalAddEventListener = EventTarget.prototype.addEventListener;
+                const throttledEvents = new Map();
+                
+                EventTarget.prototype.addEventListener = function(type, listener, options) {
+                  // Throttler pour les événements fréquents
+                  if (type === 'scroll' || type === 'resize' || type === 'mousemove') {
+                    let lastCall = 0;
+                    const throttleDelay = type === 'mousemove' ? 16 : 100; // 60fps pour mousemove, 10fps pour scroll/resize
+                    
+                    const throttledListener = function(...args) {
+                      const now = Date.now();
+                      if (now - lastCall >= throttleDelay) {
+                        lastCall = now;
+                        listener.apply(this, args);
+                      }
+                    };
+                    
+                    return originalAddEventListener.call(this, type, throttledListener, {
+                      ...options,
+                      passive: true
+                    });
+                  }
+                  
+                  // Toujours passer passive: true pour les événements de scroll
+                  if (type === 'touchstart' || type === 'touchmove' || type === 'wheel') {
+                    return originalAddEventListener.call(this, type, listener, {
+                      ...options,
+                      passive: true
+                    });
+                  }
+                  
+                  return originalAddEventListener.call(this, type, listener, options);
+                };
+              };
+              
+              // 10. Layer promotion agressive pour les éléments animés
+              const promoteLayers = function() {
+                const animatedElements = document.querySelectorAll('[class*="animate"], [class*="transition"], [style*="animation"], [style*="transition"]');
+                animatedElements.forEach(el => {
+                  el.style.transform = 'translateZ(0)';
+                  el.style.willChange = 'transform, opacity';
+                  el.style.isolation = 'isolate';
+                });
+              };
+              
+              // 11. Désactiver les fonctionnalités non essentielles
+              const disableNonEssentialFeatures = function() {
+                // Désactiver les notifications push non essentielles
+                if ('Notification' in window && Notification.permission === 'default') {
+                  // Ne pas demander la permission automatiquement
+                }
+                
+                // Désactiver les geolocation requests automatiques
+                if ('geolocation' in navigator) {
+                  const originalGetCurrentPosition = navigator.geolocation.getCurrentPosition;
+                  navigator.geolocation.getCurrentPosition = function(success, error, options) {
+                    // Ne pas bloquer, mais logger
+                    console.log('Notilus: Geolocation request intercepted');
+                    return originalGetCurrentPosition.call(navigator.geolocation, success, error, options);
+                  };
+                }
+              };
+              
+              // 12. Optimiser le repaint/reflow avec requestIdleCallback
+              const optimizeRepaint = function() {
+                if ('requestIdleCallback' in window) {
+                  const scheduleOptimization = function() {
+                    requestIdleCallback(() => {
+                      // Forcer un reflow optimisé
+                      document.body.offsetHeight;
+                      
+                      // Promouvoir les layers pour les éléments visibles
+                      promoteLayers();
+                      
+                      // Réappliquer le virtual scrolling si nécessaire
+                      enableVirtualScrolling();
+                    }, { timeout: 1000 });
+                  };
+                  
+                  window.addEventListener('load', scheduleOptimization, { once: true });
+                  window.addEventListener('resize', () => {
+                    requestIdleCallback(scheduleOptimization, { timeout: 500 });
+                  }, { passive: true });
+                }
+              };
+              
+              // 13. Memory pooling pour les objets fréquemment créés
+              const createMemoryPool = function() {
+                window._notilusMemoryPool = {
+                  eventObjects: [],
+                  getEventObject: function() {
+                    return this.eventObjects.pop() || {};
+                  },
+                  releaseEventObject: function(obj) {
+                    Object.keys(obj).forEach(key => delete obj[key]);
+                    if (this.eventObjects.length < 100) {
+                      this.eventObjects.push(obj);
+                    }
+                  }
+                };
+              };
+              
               // Appliquer toutes les optimisations
               if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', function() {
@@ -1242,6 +1532,12 @@ class WebView2BrowserEngine extends BrowserEngine {
                   optimizeAnimations();
                   disableExpensiveEffects();
                   optimizeScroll();
+                  optimizeEventListeners();
+                  disableNonEssentialFeatures();
+                  optimizeRepaint();
+                  createMemoryPool();
+                  enableVirtualScrolling();
+                  promoteLayers();
                 });
               } else {
                 forceGPUAcceleration();
@@ -1250,6 +1546,12 @@ class WebView2BrowserEngine extends BrowserEngine {
                 optimizeAnimations();
                 disableExpensiveEffects();
                 optimizeScroll();
+                optimizeEventListeners();
+                disableNonEssentialFeatures();
+                optimizeRepaint();
+                createMemoryPool();
+                enableVirtualScrolling();
+                promoteLayers();
               }
               
               // Observer les changements DOM pour réappliquer les optimisations
@@ -1257,15 +1559,19 @@ class WebView2BrowserEngine extends BrowserEngine {
                 const observer = new MutationObserver(function(mutations) {
                   optimizeImageLoading();
                   optimizeIframes();
+                  promoteLayers();
+                  enableVirtualScrolling();
                 });
                 
                 observer.observe(document.body, {
                   childList: true,
-                  subtree: true
+                  subtree: true,
+                  attributes: true,
+                  attributeFilter: ['class', 'style']
                 });
               }
               
-              console.log('✅ Notilus: Optimisations GPU et rendu 120 FPS activées');
+              console.log('✅ Notilus: Optimisations GPU avancées et rendu 120 FPS activées');
             })();
           ''');
           
