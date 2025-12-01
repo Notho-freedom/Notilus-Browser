@@ -53,7 +53,7 @@ class SettingsService extends ChangeNotifier {
   static const String _keyHomePageBlur = 'notilus_home_page_blur';
   static const String _keyHomePageOverlayOpacity = 'notilus_home_page_overlay_opacity';
   static const String _keyShowRecentHistory = 'notilus_show_recent_history';
-  static const String _keyHomePageStyle = 'notilus_home_page_style'; // 'modern', 'notilus_dev', 'frontend', 'backend', 'devops', 'data_science', 'minimal'
+  static const String _keyHomePageStyle = 'notilus_home_page_style'; // 'modern', 'notilus_dev', 'frontend', 'backend', 'devops', 'data_science', 'minimal', 'customizable'
   static const String _keyDevProfile = 'notilus_dev_profile'; // 'frontend', 'backend', 'fullstack', 'devops', 'data_science', 'mobile', 'gamedev', 'security'
   
   // Transparence des widgets

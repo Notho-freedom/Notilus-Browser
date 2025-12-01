@@ -23,6 +23,7 @@ import 'services/download_service.dart';
 import 'services/devtools_service.dart';
 import 'services/settings_service.dart';
 import 'services/mosaic_service.dart';
+import 'services/home_widget_service.dart';
 import 'services/studio/studio_service.dart';
 import 'services/lighthouse/lighthouse_service.dart';
 import 'services/documentation_service.dart';
@@ -228,6 +229,7 @@ class NotilusApp extends StatelessWidget {
         ChangeNotifierProvider.value(value: CloudinaryService()),
         ChangeNotifierProvider.value(value: TabsPreviewService()),
         ChangeNotifierProvider.value(value: mosaicService),
+        ChangeNotifierProvider(create: (_) => HomeWidgetService()..initialize()),
             ChangeNotifierProvider(
               create: (context) {
                 final tabWebViewManager = TabWebViewManager();
