@@ -1051,6 +1051,9 @@ class WebView2BrowserEngine extends BrowserEngine {
       // Injecter les optimisations critiques IMMÉDIATEMENT (avant chargement de page)
       _injectCriticalOptimizations();
       
+      // Forcer le rendu HD et la netteté maximale
+      _forceHDRendering();
+      
       // Optimisations supplémentaires via JavaScript (après chargement)
       _enableAdditionalOptimizations();
       
@@ -1058,6 +1061,276 @@ class WebView2BrowserEngine extends BrowserEngine {
       _enableNetworkOptimizations();
     } catch (e) {
       debugPrint('⚠️ Erreur lors de l\'activation des optimisations: $e');
+    }
+  }
+  
+  /// Force le rendu HD et la netteté maximale
+  void _forceHDRendering() {
+    try {
+      if (_webView != null && _webView!.value.isInitialized) {
+        // Injecter immédiatement les optimisations HD
+        _webView!.executeScript('''
+          (function() {
+            'use strict';
+            
+            // === FORCER LE RENDU HD ET NETTETÉ MAXIMALE ===
+            
+            // 1. Forcer le devicePixelRatio élevé et désactiver le downscaling
+            const forceHighDPI = function() {
+              // Surcharger devicePixelRatio pour forcer le rendu haute résolution
+              const originalDPR = window.devicePixelRatio || 1;
+              const targetDPR = Math.max(originalDPR, 2); // Minimum 2x pour HD
+              
+              Object.defineProperty(window, 'devicePixelRatio', {
+                get: () => targetDPR,
+                configurable: true
+              });
+              
+              // Forcer le viewport à utiliser la résolution native
+              const metaViewport = document.querySelector('meta[name="viewport"]');
+              if (metaViewport) {
+                metaViewport.setAttribute('content', 
+                  'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');
+              } else {
+                const meta = document.createElement('meta');
+                meta.name = 'viewport';
+                meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
+                document.head.insertBefore(meta, document.head.firstChild);
+              }
+            };
+            
+            // 2. Améliorer la netteté du texte avec font-smoothing optimal
+            const optimizeTextRendering = function() {
+              const style = document.createElement('style');
+              style.id = 'notilus-hd-text';
+              style.textContent = `
+                * {
+                  -webkit-font-smoothing: antialiased !important;
+                  -moz-osx-font-smoothing: grayscale !important;
+                  font-smoothing: antialiased !important;
+                  text-rendering: optimizeLegibility !important;
+                  -webkit-text-stroke: 0.01px transparent !important;
+                  text-shadow: 0 0 0.01px rgba(0,0,0,0.01) !important;
+                }
+                
+                /* Forcer la netteté sur les textes */
+                body, p, span, div, a, h1, h2, h3, h4, h5, h6, li, td, th, label, input, textarea, select, button {
+                  -webkit-font-smoothing: antialiased !important;
+                  -moz-osx-font-smoothing: grayscale !important;
+                  text-rendering: optimizeLegibility !important;
+                }
+                
+                /* Améliorer la netteté des bordures */
+                * {
+                  image-rendering: -webkit-optimize-contrast !important;
+                  image-rendering: crisp-edges !important;
+                  image-rendering: pixelated !important;
+                }
+                
+                /* Forcer la netteté des images */
+                img, svg, canvas, video {
+                  image-rendering: -webkit-optimize-contrast !important;
+                  image-rendering: crisp-edges !important;
+                  image-rendering: high-quality !important;
+                  -ms-interpolation-mode: nearest-neighbor !important;
+                }
+                
+                /* Désactiver le blur sur les transformations */
+                * {
+                  -webkit-filter: none !important;
+                  filter: none !important;
+                }
+                
+                /* Forcer le subpixel rendering */
+                body {
+                  -webkit-font-feature-settings: "liga" on, "calt" on !important;
+                  font-feature-settings: "liga" on, "calt" on !important;
+                  font-variant-ligatures: common-ligatures !important;
+                }
+              `;
+              
+              if (!document.getElementById('notilus-hd-text')) {
+                document.head.appendChild(style);
+              }
+            };
+            
+            // 3. Forcer la haute résolution pour les canvas
+            const optimizeCanvasRendering = function() {
+              const originalGetContext = HTMLCanvasElement.prototype.getContext;
+              HTMLCanvasElement.prototype.getContext = function(type, attributes) {
+                if (type === '2d') {
+                  const ctx = originalGetContext.call(this, type, attributes);
+                  if (ctx) {
+                    // Forcer le DPI élevé
+                    const dpr = Math.max(window.devicePixelRatio || 1, 2);
+                    const rect = this.getBoundingClientRect();
+                    
+                    // Ajuster la taille physique du canvas
+                    this.width = rect.width * dpr;
+                    this.height = rect.height * dpr;
+                    
+                    // Ajuster le scale du contexte
+                    ctx.scale(dpr, dpr);
+                    
+                    // Améliorer la qualité du rendu
+                    ctx.imageSmoothingEnabled = true;
+                    ctx.imageSmoothingQuality = 'high';
+                    ctx.textBaseline = 'top';
+                  }
+                  return ctx;
+                }
+                return originalGetContext.call(this, type, attributes);
+              };
+            };
+            
+            // 4. Optimiser les images pour qu'elles soient nettes (charger en haute résolution)
+            const optimizeImageSharpness = function() {
+              const images = document.getElementsByTagName('img');
+              const dpr = Math.max(window.devicePixelRatio || 1, 2);
+              
+              for (let img of images) {
+                // Si l'image a un srcset, forcer la version haute résolution
+                if (img.srcset) {
+                  const srcset = img.srcset.split(',');
+                  const highResSrc = srcset.find(s => s.includes('2x') || s.includes('3x')) || srcset[srcset.length - 1];
+                  if (highResSrc) {
+                    const url = highResSrc.trim().split(' ')[0];
+                    if (url) img.src = url;
+                  }
+                }
+                
+                // Forcer le chargement en haute résolution si possible
+                if (img.src && !img.src.includes('@2x') && !img.src.includes('@3x')) {
+                  // Essayer de charger une version @2x si disponible
+                  const baseUrl = img.src.split('?')[0];
+                  const extension = baseUrl.substring(baseUrl.lastIndexOf('.'));
+                  const baseWithoutExt = baseUrl.substring(0, baseUrl.lastIndexOf('.'));
+                  
+                  // Tester si une version @2x existe
+                  const testImg = new Image();
+                  testImg.onload = function() {
+                    img.src = baseWithoutExt + '@2x' + extension;
+                  };
+                  testImg.src = baseWithoutExt + '@2x' + extension;
+                }
+                
+                // Forcer la netteté du rendu
+                img.style.imageRendering = 'crisp-edges';
+                img.style.imageRendering = '-webkit-optimize-contrast';
+              }
+            };
+            
+            // 5. Forcer le pixel-perfect rendering
+            const forcePixelPerfect = function() {
+              const style = document.createElement('style');
+              style.id = 'notilus-pixel-perfect';
+              style.textContent = `
+                /* Désactiver tous les effets de flou */
+                * {
+                  filter: none !important;
+                  -webkit-filter: none !important;
+                  backdrop-filter: none !important;
+                  -webkit-backdrop-filter: none !important;
+                }
+                
+                /* Forcer le rendu net sur les bordures */
+                * {
+                  border-image: none !important;
+                  outline: none !important;
+                }
+                
+                /* Améliorer la netteté des ombres (les rendre plus nettes) */
+                * {
+                  box-shadow: none !important;
+                  text-shadow: none !important;
+                }
+                
+                /* Forcer l'anti-aliasing optimal */
+                * {
+                  -webkit-transform: translateZ(0) !important;
+                  transform: translateZ(0) !important;
+                }
+              `;
+              
+              if (!document.getElementById('notilus-pixel-perfect')) {
+                document.head.appendChild(style);
+              }
+            };
+            
+            // 6. Améliorer la qualité du rendu SVG
+            const optimizeSVGRendering = function() {
+              const svgs = document.getElementsByTagName('svg');
+              for (let svg of svgs) {
+                svg.setAttribute('shape-rendering', 'geometricPrecision');
+                svg.setAttribute('text-rendering', 'optimizeLegibility');
+                svg.setAttribute('image-rendering', 'optimizeQuality');
+              }
+            };
+            
+            // 7. Forcer le DPI scaling élevé via CSS
+            const forceHighDPICSS = function() {
+              const style = document.createElement('style');
+              style.id = 'notilus-hd-dpi';
+              style.textContent = `
+                @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+                  * {
+                    -webkit-transform: scale(1) !important;
+                    transform: scale(1) !important;
+                  }
+                }
+                
+                /* Forcer le rendu à la résolution native */
+                html {
+                  zoom: 1 !important;
+                  -webkit-text-size-adjust: 100% !important;
+                  text-size-adjust: 100% !important;
+                }
+              `;
+              
+              if (!document.getElementById('notilus-hd-dpi')) {
+                document.head.appendChild(style);
+              }
+            };
+            
+            // Appliquer toutes les optimisations HD immédiatement
+            forceHighDPI();
+            optimizeTextRendering();
+            optimizeCanvasRendering();
+            forcePixelPerfect();
+            forceHighDPICSS();
+            
+            // Appliquer après chargement
+            if (document.readyState === 'loading') {
+              document.addEventListener('DOMContentLoaded', function() {
+                optimizeImageSharpness();
+                optimizeSVGRendering();
+              });
+            } else {
+              optimizeImageSharpness();
+              optimizeSVGRendering();
+            }
+            
+            // Observer les changements pour réappliquer
+            if (window.MutationObserver) {
+              const observer = new MutationObserver(function() {
+                optimizeImageSharpness();
+                optimizeSVGRendering();
+              });
+              
+              observer.observe(document.body, {
+                childList: true,
+                subtree: true
+              });
+            }
+            
+            console.log('✅ Notilus: Rendu HD et netteté maximale forcés');
+          })();
+        ''');
+        
+        debugPrint('✅ Optimisations HD et netteté maximale activées');
+      }
+    } catch (e) {
+      debugPrint('⚠️ Erreur lors de l\'activation du rendu HD: $e');
     }
   }
   
@@ -1268,10 +1541,11 @@ class WebView2BrowserEngine extends BrowserEngine {
                 }
               };
               
-              // 2. Optimiser le chargement des images (lazy loading intelligent)
+              // 2. Optimiser le chargement des images (lazy loading intelligent) avec HD
               const optimizeImageLoading = function() {
                 const images = document.getElementsByTagName('img');
                 const viewportHeight = window.innerHeight;
+                const dpr = Math.max(window.devicePixelRatio || 1, 2);
                 
                 for (let img of images) {
                   const rect = img.getBoundingClientRect();
@@ -1283,13 +1557,34 @@ class WebView2BrowserEngine extends BrowserEngine {
                     if (img.decode) {
                       img.decode().catch(() => {});
                     }
+                    
+                    // Forcer le chargement en haute résolution
+                    if (img.src && !img.src.includes('@2x') && !img.src.includes('@3x')) {
+                      const baseUrl = img.src.split('?')[0];
+                      const extension = baseUrl.substring(baseUrl.lastIndexOf('.'));
+                      const baseWithoutExt = baseUrl.substring(0, baseUrl.lastIndexOf('.'));
+                      
+                      // Essayer de charger @2x ou @3x
+                      const highResUrl = baseWithoutExt + (dpr >= 3 ? '@3x' : '@2x') + extension;
+                      const testImg = new Image();
+                      testImg.onload = function() {
+                        img.src = highResUrl;
+                      };
+                      testImg.onerror = function() {
+                        // Si @2x/@3x n'existe pas, garder l'original mais forcer la netteté
+                        img.style.imageRendering = 'crisp-edges';
+                      };
+                      testImg.src = highResUrl;
+                    }
                   } else {
                     img.loading = 'lazy';
                   }
                   
-                  // Ajouter l'accélération GPU aux images
+                  // Ajouter l'accélération GPU aux images avec netteté
                   img.style.transform = 'translateZ(0)';
                   img.style.willChange = 'transform';
+                  img.style.imageRendering = 'crisp-edges';
+                  img.style.imageRendering = '-webkit-optimize-contrast';
                 }
               };
               

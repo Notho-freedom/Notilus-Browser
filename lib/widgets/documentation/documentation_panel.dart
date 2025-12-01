@@ -197,6 +197,8 @@ class _DocumentationPanelState extends State<DocumentationPanel> {
                   color: Colors.white.withOpacity(0.5),
                   size: 18,
                 ),
+                fillColor: Colors.transparent,
+                filled: true,
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
                         icon: Icon(

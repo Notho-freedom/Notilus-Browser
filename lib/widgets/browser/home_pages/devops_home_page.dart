@@ -625,6 +625,8 @@ class _DevOpsHomePageState extends State<DevOpsHomePage>
                       color: Colors.white.withOpacity(0.3),
                     ),
                     border: InputBorder.none,
+                    fillColor: Colors.transparent,
+                    filled: true,
                   ),
                   cursorColor: const Color(0xFF00FF88),
                   onSubmitted: _handleSearch,

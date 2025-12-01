@@ -179,7 +179,7 @@ class AuthDialog extends StatelessWidget {
                     labelText: 'Email',
                     labelStyle: TextStyle(color: Colors.white60),
                     filled: true,
-                    fillColor: Colors.white.withOpacity(0.05),
+                    fillColor: Colors.transparent,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide(color: Colors.white24),
@@ -212,7 +212,7 @@ class AuthDialog extends StatelessWidget {
                     labelText: 'Mot de passe',
                     labelStyle: TextStyle(color: Colors.white60),
                     filled: true,
-                    fillColor: Colors.white.withOpacity(0.05),
+                    fillColor: Colors.transparent,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide(color: Colors.white24),

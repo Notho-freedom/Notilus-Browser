@@ -151,6 +151,8 @@ class _GitHubReposPanelState extends State<GitHubReposPanel> {
                   prefixIcon: Icon(CupertinoIcons.search, color: accentColor.withOpacity(0.7)),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  fillColor: Colors.transparent,
+                  filled: true,
                 ),
               ),
             ),

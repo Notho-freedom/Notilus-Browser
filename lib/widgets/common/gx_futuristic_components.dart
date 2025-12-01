@@ -213,7 +213,7 @@ class _GxFuturisticInputState extends State<GxFuturisticInput> {
               color: Colors.white.withOpacity(0.4),
             ),
             filled: true,
-            fillColor: Colors.white.withOpacity(0.05),
+            fillColor: Colors.transparent,
             prefixIcon: widget.prefixIcon != null
                 ? Icon(
                     widget.prefixIcon,
@@ -2456,7 +2456,7 @@ class GxFuturisticTextArea extends StatelessWidget {
           color: Colors.white.withOpacity(0.4),
         ),
         filled: true,
-        fillColor: Colors.white.withOpacity(0.05),
+        fillColor: Colors.transparent,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide(color: Colors.white.withOpacity(0.24)),

@@ -410,6 +410,8 @@ class _DevToolsResourcesPanelState extends State<DevToolsResourcesPanel> {
                 isDense: true,
                 prefixIcon: Icon(Icons.search, size: 14, color: Colors.white.withOpacity(0.3)),
                 prefixIconConstraints: const BoxConstraints(minWidth: 28, minHeight: 24),
+                fillColor: Colors.transparent,
+                filled: true,
               ),
               onChanged: (v) => setState(() => _searchQuery = v),
             ),

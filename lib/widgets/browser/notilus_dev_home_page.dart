@@ -512,6 +512,8 @@ class _NotilusDevHomePageState extends State<NotilusDevHomePage>
                         color: Colors.white.withValues(alpha: 0.25),
                       ),
                       border: InputBorder.none,
+                      fillColor: Colors.transparent,
+                      filled: true,
                     ),
                     onSubmitted: _handleCommand,
                     cursorColor: gxRed,

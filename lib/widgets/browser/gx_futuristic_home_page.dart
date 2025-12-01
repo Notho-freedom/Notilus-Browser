@@ -891,6 +891,8 @@ class _FuturisticSearchBarState extends State<_FuturisticSearchBar> {
                     focusedBorder: InputBorder.none,
                     isDense: true,
                     contentPadding: EdgeInsets.zero,
+                    fillColor: Colors.transparent,
+                    filled: true,
                   ),
                   onSubmitted: widget.onSubmitted,
                 ),

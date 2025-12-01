@@ -522,7 +522,7 @@ class _NativeTerminalPanelState extends State<NativeTerminalPanel> {
               child: TextField(
                 controller: _inputController,
                 focusNode: _inputFocusNode,
-                autofocus: true,
+                autofocus: false,
                 style: NotilusFonts.code(
                   fontSize: 13,
                   fontWeight: FontWeight.w400,

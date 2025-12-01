@@ -268,6 +268,8 @@ class _DevToolsConsolePanelState extends State<DevToolsConsolePanel> {
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.zero,
                   isDense: true,
+                  fillColor: Colors.transparent,
+                  filled: true,
                 ),
                 onSubmitted: (_) => _executeCommand(),
               ),

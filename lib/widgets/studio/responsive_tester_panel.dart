@@ -940,7 +940,7 @@ class _DeviceSelectorSheetState extends State<_DeviceSelectorSheet> {
                 borderSide: BorderSide.none,
               ),
               filled: true,
-              fillColor: Colors.white.withOpacity(0.05),
+              fillColor: Colors.transparent,
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
             style: const TextStyle(fontSize: 13),

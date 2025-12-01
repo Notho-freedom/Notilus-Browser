@@ -1326,7 +1326,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
               hintText: 'https://example.com',
               hintStyle: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12),
               filled: true,
-              fillColor: Colors.white.withOpacity(0.05),
+              fillColor: Colors.transparent,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(color: Colors.white24),
@@ -1871,7 +1871,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                 hintText: 'Ex: Bonjour, [Votre nom]!',
                 hintStyle: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 12),
                 filled: true,
-                fillColor: Colors.white.withOpacity(0.05),
+                fillColor: Colors.transparent,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(color: Colors.white24),

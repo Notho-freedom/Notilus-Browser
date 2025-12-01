@@ -154,7 +154,7 @@ class _GXTerminalViewState extends State<GXTerminalView> {
         color: Colors.black.withOpacity(0.5),
         padding: const EdgeInsets.all(16),
         child: Focus(
-          autofocus: true,
+          autofocus: false,
           child: TerminalView(_terminal),
         ),
       ),

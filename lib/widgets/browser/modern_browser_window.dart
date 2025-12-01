@@ -1258,7 +1258,7 @@ class _NotilusAiPanelState extends State<_NotilusAiPanel> {
                                   fontSize: 12,
                                 ),
                                 filled: true,
-                                fillColor: Colors.black.withValues(alpha: 0.3),
+                                fillColor: Colors.transparent,
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(8),
                                   borderSide: BorderSide.none,

@@ -656,6 +656,8 @@ class _ChatTab extends StatelessWidget {
                       horizontal: 16,
                       vertical: 12,
                     ),
+                    fillColor: Colors.transparent,
+                    filled: true,
                   ),
                   onSubmitted: (_) => _sendMessage(context),
                 ),

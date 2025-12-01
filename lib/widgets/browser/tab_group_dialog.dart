@@ -128,7 +128,7 @@ class _TabGroupDialogState extends State<TabGroupDialog> {
                 color: Colors.white.withOpacity(0.6),
               ),
               filled: true,
-              fillColor: Colors.white.withOpacity(0.05),
+              fillColor: Colors.transparent,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),

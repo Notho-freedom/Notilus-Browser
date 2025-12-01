@@ -626,6 +626,8 @@ class _BackendHomePageState extends State<BackendHomePage>
                     ),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    fillColor: Colors.transparent,
+                    filled: true,
                   ),
                   cursorColor: const Color(0xFF339933),
                   onSubmitted: _handleCommand,

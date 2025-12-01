@@ -347,7 +347,7 @@ class _GXTabBarState extends State<GXTabBar> {
                     borderRadius: BorderRadius.circular(8),
                     borderSide: BorderSide(color: gxRed.withOpacity(0.3)),
                   ),
-                  fillColor: Colors.white.withOpacity(0.05),
+                  fillColor: Colors.transparent,
                   filled: true,
                 ),
                 onChanged: (value) => setState(() => query = value.trim()),

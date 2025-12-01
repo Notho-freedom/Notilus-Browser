@@ -417,7 +417,7 @@ class _LiveEditorPanelState extends State<LiveEditorPanel>
                   borderSide: BorderSide(color: accentColor),
                 ),
                 filled: true,
-                fillColor: const Color(0xFF0D0D12),
+                fillColor: Colors.transparent,
                 contentPadding: const EdgeInsets.all(12),
               ),
               style: const TextStyle(
@@ -515,7 +515,7 @@ class _LiveEditorPanelState extends State<LiveEditorPanel>
                     borderSide: BorderSide(color: accentColor),
                   ),
                   filled: true,
-                  fillColor: const Color(0xFF0D0D12),
+                  fillColor: Colors.transparent,
                   contentPadding: const EdgeInsets.all(12),
                 ),
                 style: const TextStyle(

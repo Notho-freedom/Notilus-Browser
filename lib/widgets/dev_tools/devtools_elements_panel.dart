@@ -626,6 +626,8 @@ class _DevToolsElementsPanelState extends State<DevToolsElementsPanel>
                 labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
                 enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: accentColor.withOpacity(0.3))),
                 focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: accentColor)),
+                fillColor: Colors.transparent,
+                filled: true,
               ),
             ),
             const SizedBox(height: 12),
@@ -635,6 +637,8 @@ class _DevToolsElementsPanelState extends State<DevToolsElementsPanel>
               decoration: InputDecoration(
                 labelText: 'Valeur',
                 labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                fillColor: Colors.transparent,
+                filled: true,
                 enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: accentColor.withOpacity(0.3))),
                 focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: accentColor)),
               ),
@@ -706,6 +710,8 @@ class _DevToolsElementsPanelState extends State<DevToolsElementsPanel>
                   hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.zero,
+                  fillColor: Colors.transparent,
+                  filled: true,
                 ),
               ),
             ),
@@ -949,7 +955,7 @@ class _EditableDOMNodeState extends State<_EditableDOMNode> {
             style: const TextStyle(fontFamily: 'Consolas', fontSize: 11, color: Colors.white),
             decoration: InputDecoration(
               filled: true,
-              fillColor: const Color(0xFF1E1E1E),
+              fillColor: Colors.transparent,
               border: OutlineInputBorder(borderSide: BorderSide(color: widget.accentColor.withOpacity(0.3))),
               focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: widget.accentColor)),
               contentPadding: const EdgeInsets.all(8),
@@ -1108,6 +1114,8 @@ class _EditableAttributeRowState extends State<_EditableAttributeRow> {
                       contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
                       border: OutlineInputBorder(borderSide: BorderSide(color: widget.accentColor)),
                       focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: widget.accentColor)),
+                      fillColor: Colors.transparent,
+                      filled: true,
                     ),
                     onSubmitted: (val) {
                       widget.onEdit(val);

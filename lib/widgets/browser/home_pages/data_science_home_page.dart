@@ -413,6 +413,8 @@ class _DataScienceHomePageState extends State<DataScienceHomePage>
                     fontSize: 14,
                   ),
                   border: InputBorder.none,
+                  fillColor: Colors.transparent,
+                  filled: true,
                 ),
                 cursorColor: const Color(0xFF8B5CF6),
                 onSubmitted: _handleSearch,

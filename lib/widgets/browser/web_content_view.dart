@@ -590,12 +590,21 @@ class _WebContentViewState extends State<WebContentView>
 
     return Stack(
       children: [
-        // WebView principal - toujours visible
+        // WebView principal - toujours visible avec rendu HD forcé
         if (_webView != null && isWebViewReady)
           AbsorbPointer(
             // Permet aux interactions de passer à travers si le tab n'est pas actif
             absorbing: !_isTabActive,
-            child: Webview(_webView!),
+            child: MediaQuery(
+              // Forcer le devicePixelRatio élevé pour le rendu HD
+              data: MediaQuery.of(context).copyWith(
+                devicePixelRatio: MediaQuery.of(context).devicePixelRatio.clamp(1.0, 4.0),
+              ),
+              child: RepaintBoundary(
+                // Isoler le repaint pour améliorer les performances
+                child: Webview(_webView!),
+              ),
+            ),
           ),
         
         // Overlay de chargement conditionnel

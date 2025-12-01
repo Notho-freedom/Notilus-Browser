@@ -451,6 +451,8 @@ class _FrontendHomePageState extends State<FrontendHomePage>
                     fontSize: 14,
                   ),
                   border: InputBorder.none,
+                  fillColor: Colors.transparent,
+                  filled: true,
                 ),
                 onSubmitted: _handleSearch,
                 cursorColor: const Color(0xFF61DAFB),
