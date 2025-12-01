@@ -4,6 +4,9 @@ import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:math' as math;
+import 'dart:async';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../../../services/tab_manager.dart';
 import '../../../core/services/wallpaper_manager.dart';
 import '../../../services/settings_service.dart';
@@ -11,7 +14,12 @@ import '../../../services/system_metrics_service.dart';
 import '../../../core/services/color_theme_manager.dart';
 import '../../../services/backend_lab/backend_lab_service.dart';
 import '../../../models/backend_lab/backend_lab_models.dart';
+import '../../../services/history_service.dart';
+import '../../../models/history_item.dart';
 import '../../common/notilus_logo_image.dart';
+import '../../common/gx_futuristic_dialog.dart';
+import '../../common/gx_futuristic_components.dart';
+import '../../../core/constants/notilus_fonts.dart';
 
 /// Page d'accueil DevOps - Style monitoring/infrastructure
 class DevOpsHomePage extends StatefulWidget {
@@ -41,6 +49,11 @@ class _DevOpsHomePageState extends State<DevOpsHomePage>
   String? _selectedServerId;
   bool _isLoadingRoutes = false;
   String? _routesError;
+  late TabController _tabController;
+  
+  // History servers
+  List<DiscoveredServer> _historyServers = [];
+  bool _isLoadingHistory = false;
 
   // Services status simulés
   final List<_ServiceStatus> _services = [
@@ -99,6 +112,9 @@ class _DevOpsHomePageState extends State<DevOpsHomePage>
       duration: const Duration(seconds: 2),
     )..repeat();
     
+    // TabController pour 4 onglets: SERVERS, ROUTES, CONSOLE, HISTORY
+    _tabController = TabController(length: 4, vsync: this);
+    
     _updateTime();
     _startClock();
     _metricsService.addListener(_onMetricsUpdate);
@@ -119,7 +135,63 @@ class _DevOpsHomePageState extends State<DevOpsHomePage>
         labService.getServers();
         labService.connectConsole(); // connectConsole vérifie déjà si déjà connecté
       }
+      
+      // Charger les serveurs de l'historique
+      _loadHistoryServers();
     });
+  }
+  
+  Future<void> _loadHistoryServers() async {
+    setState(() => _isLoadingHistory = true);
+    try {
+      final historyService = HistoryService();
+      final history = await historyService.getHistory();
+      
+      // Extraire les serveurs uniques de l'historique
+      final serverMap = <String, DiscoveredServer>{};
+      
+      for (final item in history) {
+        try {
+          final uri = Uri.parse(item.url);
+          final host = uri.host;
+          final port = uri.hasPort ? uri.port : (uri.scheme == 'https' ? 443 : 80);
+          
+          // Exclure les serveurs locaux (localhost et IPs locales)
+          final isLocal = host == 'localhost' || 
+                         host == '127.0.0.1' || 
+                         host.startsWith('192.168.') || 
+                         host.startsWith('10.') || 
+                         host.startsWith('172.');
+          
+          if (!isLocal) {
+            final serverId = '$host:$port';
+            if (!serverMap.containsKey(serverId)) {
+              serverMap[serverId] = DiscoveredServer(
+                id: serverId,
+                host: host,
+                port: port,
+                protocol: uri.scheme,
+                name: item.title,
+                status: ServerStatus.unknown,
+              );
+            }
+          }
+        } catch (e) {
+          // Ignorer les URLs invalides
+        }
+      }
+      
+      if (mounted) {
+        setState(() {
+          _historyServers = serverMap.values.toList();
+          _isLoadingHistory = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingHistory = false);
+      }
+    }
   }
 
   void _startClock() async {
@@ -148,6 +220,7 @@ class _DevOpsHomePageState extends State<DevOpsHomePage>
   void dispose() {
     _radarController.dispose();
     _dataFlowController.dispose();
+    _tabController.dispose();
     _searchController.dispose();
     _metricsService.removeListener(_onMetricsUpdate);
     _settings.removeListener(_onSettingsChanged);
@@ -831,30 +904,31 @@ class _DevOpsHomePageState extends State<DevOpsHomePage>
             ),
           ),
           
-          // Tabs: Servers / Console
+          // Tabs: Servers / Routes / Console / History
           Expanded(
-            child: DefaultTabController(
-              length: 3,
-              child: Column(
-                children: [
-                  TabBar(
-                    labelColor: const Color(0xFF00FF88),
-                    unselectedLabelColor: Colors.white.withOpacity(0.5),
-                    indicatorColor: const Color(0xFF00FF88),
-                    labelStyle: const TextStyle(
-                      fontFamily: 'JetBrains Mono',
-                      fontSize: 9,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    tabs: const [
-                      Tab(text: 'SERVERS'),
-                      Tab(text: 'ROUTES'),
-                      Tab(text: 'CONSOLE'),
-                    ],
+            child: Column(
+              children: [
+                TabBar(
+                  controller: _tabController,
+                  labelColor: const Color(0xFF00FF88),
+                  unselectedLabelColor: Colors.white.withOpacity(0.5),
+                  indicatorColor: const Color(0xFF00FF88),
+                  labelStyle: const TextStyle(
+                    fontFamily: 'JetBrains Mono',
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
                   ),
-                  Expanded(
-                    child: TabBarView(
-                      children: [
+                  tabs: const [
+                    Tab(text: 'SERVERS'),
+                    Tab(text: 'ROUTES'),
+                    Tab(text: 'CONSOLE'),
+                    Tab(text: 'HISTORY'),
+                  ],
+                ),
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
                         // Server list
                         ListenableBuilder(
                           listenable: labService,
@@ -1042,11 +1116,62 @@ class _DevOpsHomePageState extends State<DevOpsHomePage>
                             );
                           },
                         ),
-                      ],
-                    ),
+                        // History Servers
+                        _isLoadingHistory
+                            ? Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    CircularProgressIndicator(
+                                      valueColor: AlwaysStoppedAnimation<Color>(const Color(0xFF00FF88)),
+                                      strokeWidth: 2,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      'Loading history servers...',
+                                      style: TextStyle(
+                                        fontFamily: 'JetBrains Mono',
+                                        fontSize: 10,
+                                        color: Colors.white.withOpacity(0.5),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : _historyServers.isEmpty
+                                ? Center(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          CupertinoIcons.clock,
+                                          size: 32,
+                                          color: Colors.white.withOpacity(0.3),
+                                        ),
+                                        const SizedBox(height: 12),
+                                        Text(
+                                          'No servers in history',
+                                          style: TextStyle(
+                                            fontFamily: 'JetBrains Mono',
+                                            fontSize: 10,
+                                            color: Colors.white.withOpacity(0.5),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                : ListView.builder(
+                                    padding: const EdgeInsets.all(8),
+                                    itemCount: _historyServers.length,
+                                    itemBuilder: (context, index) {
+                                      final server = _historyServers[index];
+                                      return _buildServerItem(server, gxRed);
+                                    },
+                                  ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],
@@ -1147,6 +1272,8 @@ class _DevOpsHomePageState extends State<DevOpsHomePage>
         setState(() {
           _isLoadingRoutes = false;
         });
+        // Redirection automatique vers l'onglet ROUTES
+        _tabController.animateTo(1);
       }
     } catch (e) {
       if (mounted) {
@@ -1281,9 +1408,379 @@ class _DevOpsHomePageState extends State<DevOpsHomePage>
   }
   
   void _showRouteDetails(DiscoveredRoute route) {
-    showDialog(
+    final colorTheme = Provider.of<ColorThemeManager>(context, listen: false);
+    final accentColor = colorTheme.nativeSecondaryColor;
+    final labService = Provider.of<BackendLabService>(context, listen: false);
+    final server = labService.servers.firstWhere(
+      (s) => s.id == route.serverId,
+      orElse: () => DiscoveredServer(id: route.serverId, port: 0),
+    );
+    
+    // Contrôleurs pour les paramètres
+    final pathParamControllers = <String, TextEditingController>{};
+    final queryParamControllers = <String, TextEditingController>{};
+    
+    // Initialiser les contrôleurs avec les valeurs par défaut
+    for (final param in route.pathParams) {
+      pathParamControllers[param.name] = TextEditingController(
+        text: param.defaultValue?.toString() ?? '',
+      );
+    }
+    for (final param in route.queryParams) {
+      queryParamControllers[param.name] = TextEditingController(
+        text: param.defaultValue?.toString() ?? '',
+      );
+    }
+    
+    GxFuturisticDialog.show(
       context: context,
-      builder: (context) => _RouteDetailsDialog(route: route),
+      title: '${route.method.name} ${route.path}',
+      titleIcon: CupertinoIcons.arrow_right_circle,
+      accentColor: route.methodColor,
+      width: 600,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Description
+          if (route.summary != null || route.description != null) ...[
+            if (route.summary != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  route.summary!,
+                  style: NotilusFonts.rajdhani(
+                    fontSize: 13,
+                    color: Colors.white.withOpacity(0.9),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            if (route.description != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Text(
+                  route.description!,
+                  style: NotilusFonts.rajdhani(
+                    fontSize: 12,
+                    color: Colors.white.withOpacity(0.7),
+                  ),
+                ),
+              ),
+          ],
+          
+          // Path Parameters
+          if (route.pathParams.isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                'Path Parameters',
+                style: NotilusFonts.rajdhani(
+                  fontSize: 11,
+                  color: accentColor,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            ...route.pathParams.map((param) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          param.name,
+                          style: NotilusFonts.rajdhani(
+                            fontSize: 11,
+                            color: Colors.white.withOpacity(0.9),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (param.required)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 8),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                              child: Text(
+                                'REQUIRED',
+                                style: NotilusFonts.rajdhani(
+                                  fontSize: 8,
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    if (param.description != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4, top: 2),
+                        child: Text(
+                          param.description!,
+                          style: NotilusFonts.rajdhani(
+                            fontSize: 10,
+                            color: Colors.white.withOpacity(0.5),
+                          ),
+                        ),
+                      ),
+                    GxFuturisticInput(
+                      controller: pathParamControllers[param.name]!,
+                      hint: 'Enter ${param.name} (${param.type})',
+                      accentColor: accentColor,
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+          
+          // Query Parameters
+          if (route.queryParams.isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.only(top: 8, bottom: 8),
+              child: Text(
+                'Query Parameters',
+                style: NotilusFonts.rajdhani(
+                  fontSize: 11,
+                  color: accentColor,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            ...route.queryParams.map((param) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          param.name,
+                          style: NotilusFonts.rajdhani(
+                            fontSize: 11,
+                            color: Colors.white.withOpacity(0.9),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (param.required)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 8),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                              child: Text(
+                                'REQUIRED',
+                                style: NotilusFonts.rajdhani(
+                                  fontSize: 8,
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    if (param.description != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4, top: 2),
+                        child: Text(
+                          param.description!,
+                          style: NotilusFonts.rajdhani(
+                            fontSize: 10,
+                            color: Colors.white.withOpacity(0.5),
+                          ),
+                        ),
+                      ),
+                    GxFuturisticInput(
+                      controller: queryParamControllers[param.name]!,
+                      hint: 'Enter ${param.name} (${param.type})',
+                      accentColor: accentColor,
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ],
+      ),
+      actions: [
+        GxFuturisticButton(
+          label: 'OK',
+          variant: GxFuturisticButtonVariant.secondary,
+          accentColor: accentColor,
+          onPressed: () {
+            Navigator.of(context).pop();
+            // Nettoyer les contrôleurs
+            for (final controller in pathParamControllers.values) {
+              controller.dispose();
+            }
+            for (final controller in queryParamControllers.values) {
+              controller.dispose();
+            }
+          },
+        ),
+        GxFuturisticButton(
+          label: 'EXECUTER',
+          icon: CupertinoIcons.play_fill,
+          variant: GxFuturisticButtonVariant.primary,
+          accentColor: route.methodColor,
+          onPressed: () async {
+            // Construire l'URL avec les paramètres
+            String finalPath = route.path;
+            for (final param in route.pathParams) {
+              final value = pathParamControllers[param.name]?.text ?? '';
+              finalPath = finalPath.replaceAll('{${param.name}}', value);
+            }
+            
+            final uri = Uri.parse('${server.baseUrl}$finalPath');
+            final finalUri = uri.replace(
+              queryParameters: {
+                for (final param in route.queryParams)
+                  if (queryParamControllers[param.name]?.text?.isNotEmpty ?? false)
+                    param.name: queryParamControllers[param.name]!.text,
+              },
+            );
+            
+            // Exécuter la requête HTTP
+            try {
+              http.Response response;
+              switch (route.method) {
+                case HttpMethod.GET:
+                  response = await http.get(finalUri);
+                  break;
+                case HttpMethod.POST:
+                  response = await http.post(finalUri);
+                  break;
+                case HttpMethod.PUT:
+                  response = await http.put(finalUri);
+                  break;
+                case HttpMethod.DELETE:
+                  response = await http.delete(finalUri);
+                  break;
+                case HttpMethod.PATCH:
+                  response = await http.patch(finalUri);
+                  break;
+                default:
+                  response = await http.get(finalUri);
+              }
+              
+              // Afficher le résultat
+              if (mounted) {
+                Navigator.of(context).pop();
+                // Nettoyer les contrôleurs
+                for (final controller in pathParamControllers.values) {
+                  controller.dispose();
+                }
+                for (final controller in queryParamControllers.values) {
+                  controller.dispose();
+                }
+                
+                // Afficher le résultat dans un nouveau dialog
+                GxFuturisticDialog.show(
+                  context: context,
+                  title: 'Response',
+                  titleIcon: CupertinoIcons.check_mark_circled,
+                  accentColor: response.statusCode >= 200 && response.statusCode < 300
+                      ? const Color(0xFF4CAF50)
+                      : Colors.red,
+                  width: 700,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Status: ${response.statusCode}',
+                          style: NotilusFonts.rajdhani(
+                            fontSize: 12,
+                            color: response.statusCode >= 200 && response.statusCode < 300
+                                ? const Color(0xFF4CAF50)
+                                : Colors.red,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Response Body:',
+                          style: NotilusFonts.rajdhani(
+                            fontSize: 11,
+                            color: accentColor,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        SelectableText(
+                          response.body.length > 1000
+                              ? '${response.body.substring(0, 1000)}...'
+                              : response.body,
+                          style: TextStyle(
+                            fontFamily: 'JetBrains Mono',
+                            fontSize: 10,
+                            color: Colors.white.withOpacity(0.7),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  actions: [
+                    GxFuturisticButton(
+                      label: 'Fermer',
+                      variant: GxFuturisticButtonVariant.secondary,
+                      accentColor: accentColor,
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
+                );
+              }
+            } catch (e) {
+              if (mounted) {
+                Navigator.of(context).pop();
+                // Nettoyer les contrôleurs
+                for (final controller in pathParamControllers.values) {
+                  controller.dispose();
+                }
+                for (final controller in queryParamControllers.values) {
+                  controller.dispose();
+                }
+                
+                // Afficher l'erreur
+                GxFuturisticDialog.show(
+                  context: context,
+                  title: 'Erreur',
+                  titleIcon: CupertinoIcons.exclamationmark_triangle,
+                  accentColor: Colors.red,
+                  width: 500,
+                  child: Text(
+                    'Erreur lors de l\'exécution: $e',
+                    style: NotilusFonts.rajdhani(
+                      fontSize: 12,
+                      color: Colors.white.withOpacity(0.7),
+                    ),
+                  ),
+                  actions: [
+                    GxFuturisticButton(
+                      label: 'Fermer',
+                      variant: GxFuturisticButtonVariant.secondary,
+                      accentColor: Colors.red,
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
+                );
+              }
+            }
+          },
+        ),
+      ],
     );
   }
 
@@ -1388,306 +1885,6 @@ class _DevOpsHomePageState extends State<DevOpsHomePage>
 
 // === DATA CLASSES ===
 
-/// Dialog pour afficher les détails d'une route
-class _RouteDetailsDialog extends StatelessWidget {
-  final DiscoveredRoute route;
-  
-  const _RouteDetailsDialog({required this.route});
-  
-  @override
-  Widget build(BuildContext context) {
-    final colorTheme = Provider.of<ColorThemeManager>(context);
-    final accentColor = colorTheme.nativeSecondaryColor;
-    
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      child: Container(
-        width: 600,
-        constraints: const BoxConstraints(maxHeight: 700),
-        decoration: BoxDecoration(
-          color: const Color(0xFF0D0D12),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: accentColor.withOpacity(0.3),
-            width: 1,
-          ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Header
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(
-                    color: accentColor.withOpacity(0.2),
-                  ),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: _getMethodColor(route.method).withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      route.method.name,
-                      style: TextStyle(
-                        fontFamily: 'JetBrains Mono',
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: _getMethodColor(route.method),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      route.path,
-                      style: const TextStyle(
-                        fontFamily: 'JetBrains Mono',
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(CupertinoIcons.xmark, color: Colors.white.withOpacity(0.7)),
-                    onPressed: () => Navigator.of(context).pop(),
-                    iconSize: 18,
-                  ),
-                ],
-              ),
-            ),
-            // Content
-            Flexible(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Summary
-                    if (route.summary != null) ...[
-                      Text(
-                        'Summary',
-                        style: TextStyle(
-                          fontFamily: 'JetBrains Mono',
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: accentColor,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        route.summary!,
-                        style: TextStyle(
-                          fontFamily: 'JetBrains Mono',
-                          fontSize: 10,
-                          color: Colors.white.withOpacity(0.8),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-                    // Description
-                    if (route.description != null) ...[
-                      Text(
-                        'Description',
-                        style: TextStyle(
-                          fontFamily: 'JetBrains Mono',
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: accentColor,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        route.description!,
-                        style: TextStyle(
-                          fontFamily: 'JetBrains Mono',
-                          fontSize: 10,
-                          color: Colors.white.withOpacity(0.7),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-                    // Path Parameters
-                    if (route.pathParams.isNotEmpty) ...[
-                      Text(
-                        'Path Parameters',
-                        style: TextStyle(
-                          fontFamily: 'JetBrains Mono',
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: accentColor,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      ...route.pathParams.map((param) => _buildParameterItem(param, accentColor)),
-                      const SizedBox(height: 16),
-                    ],
-                    // Query Parameters
-                    if (route.queryParams.isNotEmpty) ...[
-                      Text(
-                        'Query Parameters',
-                        style: TextStyle(
-                          fontFamily: 'JetBrains Mono',
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: accentColor,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      ...route.queryParams.map((param) => _buildParameterItem(param, accentColor)),
-                      const SizedBox(height: 16),
-                    ],
-                    // Auth
-                    if (route.authRequired) ...[
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(
-                            color: Colors.orange.withOpacity(0.3),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(CupertinoIcons.lock, size: 14, color: Colors.orange),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Authentication required${route.authType != null ? ' (${route.authType})' : ''}',
-                              style: TextStyle(
-                                fontFamily: 'JetBrains Mono',
-                                fontSize: 10,
-                                color: Colors.orange,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-  
-  Widget _buildParameterItem(RouteParameter param, Color accentColor) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.02),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-          color: accentColor.withOpacity(0.1),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(
-                param.name,
-                style: TextStyle(
-                  fontFamily: 'JetBrains Mono',
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                decoration: BoxDecoration(
-                  color: accentColor.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(3),
-                ),
-                child: Text(
-                  param.type,
-                  style: TextStyle(
-                    fontFamily: 'JetBrains Mono',
-                    fontSize: 8,
-                    color: accentColor,
-                  ),
-                ),
-              ),
-              if (param.required) ...[
-                const SizedBox(width: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                  child: const Text(
-                    'REQUIRED',
-                    style: TextStyle(
-                      fontFamily: 'JetBrains Mono',
-                      fontSize: 7,
-                      color: Colors.red,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-          if (param.description != null) ...[
-            const SizedBox(height: 4),
-            Text(
-              param.description!,
-              style: TextStyle(
-                fontFamily: 'JetBrains Mono',
-                fontSize: 9,
-                color: Colors.white.withOpacity(0.6),
-              ),
-            ),
-          ],
-          if (param.defaultValue != null) ...[
-            const SizedBox(height: 4),
-            Text(
-              'Default: ${param.defaultValue}',
-              style: TextStyle(
-                fontFamily: 'JetBrains Mono',
-                fontSize: 8,
-                color: Colors.white.withOpacity(0.5),
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-  
-  Color _getMethodColor(HttpMethod method) {
-    switch (method) {
-      case HttpMethod.GET:
-        return const Color(0xFF4CAF50);
-      case HttpMethod.POST:
-        return const Color(0xFF2196F3);
-      case HttpMethod.PUT:
-        return const Color(0xFFFF9800);
-      case HttpMethod.DELETE:
-        return const Color(0xFFF44336);
-      case HttpMethod.PATCH:
-        return const Color(0xFF9C27B0);
-      default:
-        return Colors.grey;
-    }
-  }
-}
 
 class _ServiceStatus {
   final String name;
