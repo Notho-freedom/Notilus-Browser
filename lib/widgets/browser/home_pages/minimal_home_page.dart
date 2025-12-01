@@ -203,7 +203,7 @@ class _MinimalHomePageState extends State<MinimalHomePage>
                   height: 56,
                   margin: const EdgeInsets.symmetric(horizontal: 40),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.08 * (1 - transparency)),
+                    color: Colors.white.withOpacity((0.08 * (1 - transparency)).clamp(0.0, 1.0)),
                     borderRadius: BorderRadius.circular(28),
                     border: Border.all(
                       color: Colors.white.withOpacity(0.15),
@@ -319,7 +319,7 @@ class _MinimalHomePageState extends State<MinimalHomePage>
                 width: 52,
                 height: 52,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.06 * (1 - transparency)),
+                  color: Colors.white.withOpacity((0.06 * (1 - transparency)).clamp(0.0, 1.0)),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
                     color: Colors.white.withOpacity(0.1),

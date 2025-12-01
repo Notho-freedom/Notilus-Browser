@@ -669,7 +669,7 @@ class _UpdateListItemState extends State<_UpdateListItem> {
         margin: EdgeInsets.only(bottom: itemSpacing),
         padding: EdgeInsets.all(itemPadding),
         decoration: BoxDecoration(
-          color: widget.bgColor.withOpacity(widget.panelOpacity * 0.3),
+          color: widget.bgColor.withOpacity((widget.panelOpacity * 0.3).clamp(0.0, 1.0)),
           borderRadius: BorderRadius.circular(8),
           border: Border(
             left: BorderSide(

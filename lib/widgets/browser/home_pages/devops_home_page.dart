@@ -373,7 +373,7 @@ class _DevOpsHomePageState extends State<DevOpsHomePage>
     return Container(
       width: 260,
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(1 - transparency * 0.5),
+        color: Colors.black.withOpacity((1 - transparency * 0.5).clamp(0.0, 1.0)),
         border: Border(
           right: BorderSide(color: const Color(0xFF00FF88).withOpacity(0.15)),
         ),

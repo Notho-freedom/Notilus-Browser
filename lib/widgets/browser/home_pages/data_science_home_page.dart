@@ -734,7 +734,7 @@ class _NeuralNetworkPainter extends CustomPainter {
     
     for (int i = 0; i < nodes.length; i++) {
       final pulse = math.sin(progress * 2 * math.pi + i) * 0.5 + 0.5;
-      nodePaint.color = primaryColor.withOpacity(0.1 + pulse * 0.1);
+      nodePaint.color = primaryColor.withOpacity((0.1 + pulse * 0.1).clamp(0.0, 1.0));
       canvas.drawCircle(nodes[i], 3 + pulse * 2, nodePaint);
     }
   }
