@@ -818,7 +818,7 @@ class _GXAddressBarState extends State<GXAddressBar> {
                             builder: (context, adBlocker, _) {
                               return NotilusTooltip(
                                 message: adBlocker.isEnabled 
-                                    ? 'Bloqueur de pubs activé (${adBlocker.blockedCount} bloquées)\nCliquer pour désactiver'
+                                    ? 'Bloqueur de pubs activé\nCliquer pour désactiver'
                                     : 'Bloqueur de pubs désactivé\nCliquer pour activer',
                                 child: GestureDetector(
                                   onTap: () => adBlocker.setEnabled(!adBlocker.isEnabled),

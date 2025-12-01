@@ -17,6 +17,7 @@ import '../../widgets/common/gx_context_menu.dart';
 import '../../services/download_service.dart';
 import '../../services/cloudinary_service.dart';
 import '../../services/gx_notification_service.dart';
+import '../../core/services/color_theme_manager.dart';
 import 'package:flutter/services.dart';
 import 'home_pages/home_page_factory.dart';
 
@@ -619,6 +620,9 @@ class _WebContentViewState extends State<WebContentView>
   }
   
   Widget _buildLoadingIndicator(AppTheme theme) {
+    final colorTheme = Provider.of<ColorThemeManager>(context, listen: false);
+    final secondaryColor = colorTheme.nativeSecondaryColor;
+    
     return Container(
       color: theme.background,
       child: Center(
@@ -626,7 +630,7 @@ class _WebContentViewState extends State<WebContentView>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(theme.primary),
+              valueColor: AlwaysStoppedAnimation<Color>(secondaryColor),
             ),
             const SizedBox(height: 16),
             Text(
@@ -644,6 +648,9 @@ class _WebContentViewState extends State<WebContentView>
   }
   
   Widget _buildInitializingOverlay(AppTheme theme) {
+    final colorTheme = Provider.of<ColorThemeManager>(context, listen: false);
+    final secondaryColor = colorTheme.nativeSecondaryColor;
+    
     return Positioned.fill(
       child: Container(
         color: theme.background,
@@ -652,7 +659,7 @@ class _WebContentViewState extends State<WebContentView>
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(theme.primary),
+                valueColor: AlwaysStoppedAnimation<Color>(secondaryColor),
               ),
               const SizedBox(height: 16),
               Text(
@@ -671,6 +678,9 @@ class _WebContentViewState extends State<WebContentView>
   }
   
   Widget _buildLoadingOverlay(AppTheme theme) {
+    final colorTheme = Provider.of<ColorThemeManager>(context, listen: false);
+    final secondaryColor = colorTheme.nativeSecondaryColor;
+    
     return Positioned.fill(
       child: Container(
         color: theme.background.withOpacity(0.7),
@@ -679,7 +689,7 @@ class _WebContentViewState extends State<WebContentView>
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(theme.primary),
+                valueColor: AlwaysStoppedAnimation<Color>(secondaryColor),
               ),
               const SizedBox(height: 16),
               Text(

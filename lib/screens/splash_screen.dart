@@ -182,9 +182,6 @@ class _NotilusSplashScreenState extends State<NotilusSplashScreen>
             ),
           ),
 
-          // Coins décoratifs
-          _CornerDecorations(size: size),
-
           // Signature en bas
           Positioned(
             bottom: 20,

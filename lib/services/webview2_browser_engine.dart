@@ -1220,7 +1220,42 @@ class WebView2BrowserEngine extends BrowserEngine {
               }
             };
             
-            // 5. Forcer le pixel-perfect rendering
+            // 5. Masquer toutes les barres de défilement
+            const hideScrollbars = function() {
+              const style = document.createElement('style');
+              style.id = 'notilus-hide-scrollbars';
+              style.textContent = `
+                /* Masquer toutes les scrollbars */
+                * {
+                  scrollbar-width: none !important; /* Firefox */
+                  -ms-overflow-style: none !important; /* IE et Edge */
+                }
+                
+                *::-webkit-scrollbar {
+                  display: none !important; /* Chrome, Safari, Opera */
+                  width: 0 !important;
+                  height: 0 !important;
+                }
+                
+                html, body {
+                  scrollbar-width: none !important;
+                  -ms-overflow-style: none !important;
+                }
+                
+                html::-webkit-scrollbar,
+                body::-webkit-scrollbar {
+                  display: none !important;
+                  width: 0 !important;
+                  height: 0 !important;
+                }
+              `;
+              
+              if (!document.getElementById('notilus-hide-scrollbars')) {
+                document.head.appendChild(style);
+              }
+            };
+            
+            // 6. Forcer le pixel-perfect rendering
             const forcePixelPerfect = function() {
               const style = document.createElement('style');
               style.id = 'notilus-pixel-perfect';
@@ -1257,7 +1292,7 @@ class WebView2BrowserEngine extends BrowserEngine {
               }
             };
             
-            // 6. Améliorer la qualité du rendu SVG
+            // 7. Améliorer la qualité du rendu SVG
             const optimizeSVGRendering = function() {
               const svgs = document.getElementsByTagName('svg');
               for (let svg of svgs) {
@@ -1267,7 +1302,7 @@ class WebView2BrowserEngine extends BrowserEngine {
               }
             };
             
-            // 7. Forcer le DPI scaling élevé via CSS
+            // 8. Forcer le DPI scaling élevé via CSS
             const forceHighDPICSS = function() {
               const style = document.createElement('style');
               style.id = 'notilus-hd-dpi';
@@ -1296,7 +1331,9 @@ class WebView2BrowserEngine extends BrowserEngine {
             forceHighDPI();
             optimizeTextRendering();
             optimizeCanvasRendering();
+            hideScrollbars();
             forcePixelPerfect();
+            optimizeSVGRendering();
             forceHighDPICSS();
             
             // Appliquer après chargement
