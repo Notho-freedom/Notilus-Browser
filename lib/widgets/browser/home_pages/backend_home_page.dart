@@ -16,6 +16,7 @@ import '../../../services/backend_lab/backend_lab_service.dart';
 import '../../../models/backend_lab/backend_lab_models.dart';
 import '../../../services/history_service.dart';
 import '../../../models/history_item.dart';
+import '../../../services/ai_service.dart';
 import '../../common/notilus_logo_image.dart';
 import '../../common/gx_futuristic_dialog.dart';
 import '../../common/gx_futuristic_components.dart';
@@ -1892,7 +1893,7 @@ class _BackendHomePageState extends State<BackendHomePage>
               }
             } catch (e) {
               if (mounted) {
-                Navigator.of(context).pop();
+                Navigator.of(context).pop(); // Fermer la popup de chargement
                 // Nettoyer les contrôleurs
                 for (final controller in pathParamControllers.values) {
                   controller.dispose();
@@ -1901,34 +1902,422 @@ class _BackendHomePageState extends State<BackendHomePage>
                   controller.dispose();
                 }
                 
-                // Afficher l'erreur
-                GxFuturisticDialog.show(
-                  context: context,
-                  title: 'Erreur',
-                  titleIcon: CupertinoIcons.exclamationmark_triangle,
-                  accentColor: Colors.red,
-                  width: 500,
-                  child: Text(
-                    'Erreur lors de l\'exécution: $e',
-                    style: NotilusFonts.rajdhani(
-                      fontSize: 12,
-                      color: Colors.white.withOpacity(0.7),
-                    ),
-                  ),
-                  actions: [
-                    GxFuturisticButton(
-                      label: 'Fermer',
-                      variant: GxFuturisticButtonVariant.secondary,
-                      accentColor: Colors.red,
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                  ],
-                );
+                // Analyser l'erreur avec l'IA
+                await _analyzeErrorWithAI(context, e, route, finalUri, accentColor);
               }
             }
           },
         ),
       ],
+    );
+  }
+
+  /// Analyse une erreur avec l'IA et affiche le résultat
+  Future<void> _analyzeErrorWithAI(
+    BuildContext context,
+    dynamic error,
+    DiscoveredRoute route,
+    Uri requestUri,
+    Color accentColor,
+  ) async {
+    // Afficher la popup de transition auto-fermante
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => GxFuturisticDialog(
+        title: 'Analyse de l\'erreur',
+        titleIcon: CupertinoIcons.sparkles,
+        accentColor: accentColor,
+        width: 400,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            HackLoadingIndicator(
+              accentColor: accentColor,
+              message: 'Analyse de l\'erreur avec l\'IA...',
+              messages: [
+                '> Analyse de l\'erreur HTTP...',
+                '> Identification du problème...',
+                '> Recherche de solutions...',
+                '> Génération de recommandations...',
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+
+    // Attendre un peu pour que la popup s'affiche
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    try {
+      final aiService = AiService();
+      final settings = SettingsService();
+      
+      // Construire le prompt pour l'IA
+      final errorMessage = error.toString();
+      final prompt = '''Analyse cette erreur d'exécution de route API et fournis une explication structurée.
+
+Contexte:
+- Route: ${route.method.name} ${route.path}
+- URL complète: $requestUri
+- Erreur: $errorMessage
+
+Fournis une réponse au format JSON avec les clés suivantes:
+- "summary": Un résumé court de l'erreur (1-2 phrases)
+- "cause": La cause probable de l'erreur
+- "solutions": Une liste de solutions possibles (tableau de strings)
+- "prevention": Comment éviter cette erreur à l'avenir
+
+Réponds UNIQUEMENT en JSON valide, sans texte avant ou après.''';
+
+      final response = await aiService.chat(
+        prompt: prompt,
+        type: 'error_analysis',
+        model: settings.aiPreferredModel.isNotEmpty ? settings.aiPreferredModel : null,
+      );
+
+      // Fermer la popup de transition
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      // Afficher le résultat de l'IA
+      if (mounted && response != null) {
+        String? analysisText = response['content'] as String?;
+        analysisText ??= response['response'] as String?;
+        analysisText ??= response['message'] as String?;
+        analysisText ??= response['text'] as String?;
+
+        // Essayer de parser le JSON si présent
+        Map<String, dynamic>? parsedAnalysis;
+        if (analysisText != null) {
+          try {
+            // Extraire le JSON si présent dans le texte
+            final jsonMatch = RegExp(r'\{[\s\S]*\}').firstMatch(analysisText);
+            if (jsonMatch != null) {
+              parsedAnalysis = jsonDecode(jsonMatch.group(0)!) as Map<String, dynamic>;
+            }
+          } catch (e) {
+            // Si le parsing échoue, utiliser le texte brut
+          }
+        }
+
+        // Afficher le résultat structuré
+        GxFuturisticDialog.show(
+          context: context,
+          title: 'Analyse IA de l\'erreur',
+          titleIcon: CupertinoIcons.sparkles,
+          accentColor: accentColor,
+          width: 700,
+          child: SingleChildScrollView(
+            child: parsedAnalysis != null
+                ? _buildStructuredAnalysis(parsedAnalysis, accentColor)
+                : _buildTextAnalysis(analysisText ?? 'Analyse non disponible', accentColor),
+          ),
+          actions: [
+            GxFuturisticButton(
+              label: 'Fermer',
+              variant: GxFuturisticButtonVariant.secondary,
+              accentColor: accentColor,
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
+        );
+      } else {
+        // Si l'IA n'a pas répondu, afficher l'erreur brute
+        if (mounted) {
+          GxFuturisticDialog.show(
+            context: context,
+            title: 'Erreur',
+            titleIcon: CupertinoIcons.exclamationmark_triangle,
+            accentColor: Colors.red,
+            width: 500,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Erreur lors de l\'exécution:',
+                  style: NotilusFonts.rajdhani(
+                    fontSize: 12,
+                    color: Colors.white.withOpacity(0.7),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SelectableText(
+                  error.toString(),
+                  style: TextStyle(
+                    fontFamily: 'JetBrains Mono',
+                    fontSize: 10,
+                    color: Colors.white.withOpacity(0.7),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'L\'analyse IA n\'a pas pu être effectuée.',
+                  style: NotilusFonts.rajdhani(
+                    fontSize: 11,
+                    color: Colors.white.withOpacity(0.5),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              GxFuturisticButton(
+                label: 'Fermer',
+                variant: GxFuturisticButtonVariant.secondary,
+                accentColor: Colors.red,
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
+          );
+        }
+      }
+    } catch (aiError) {
+      // Si l'analyse IA échoue, fermer la popup et afficher l'erreur brute
+      if (mounted) {
+        Navigator.of(context).pop(); // Fermer la popup de transition
+        
+        GxFuturisticDialog.show(
+          context: context,
+          title: 'Erreur',
+          titleIcon: CupertinoIcons.exclamationmark_triangle,
+          accentColor: Colors.red,
+          width: 500,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Erreur lors de l\'exécution:',
+                style: NotilusFonts.rajdhani(
+                  fontSize: 12,
+                  color: Colors.white.withOpacity(0.7),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              SelectableText(
+                error.toString(),
+                style: TextStyle(
+                  fontFamily: 'JetBrains Mono',
+                  fontSize: 10,
+                  color: Colors.white.withOpacity(0.7),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'L\'analyse IA a échoué: $aiError',
+                style: NotilusFonts.rajdhani(
+                  fontSize: 11,
+                  color: Colors.white.withOpacity(0.5),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            GxFuturisticButton(
+              label: 'Fermer',
+              variant: GxFuturisticButtonVariant.secondary,
+              accentColor: Colors.red,
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
+        );
+      }
+    }
+  }
+
+  /// Construit l'affichage structuré de l'analyse IA
+  Widget _buildStructuredAnalysis(Map<String, dynamic> analysis, Color accentColor) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Résumé
+        if (analysis['summary'] != null) ...[
+          _buildAnalysisSection(
+            'Résumé',
+            analysis['summary'].toString(),
+            accentColor,
+            CupertinoIcons.info_circle,
+          ),
+          const SizedBox(height: 16),
+        ],
+        
+        // Cause
+        if (analysis['cause'] != null) ...[
+          _buildAnalysisSection(
+            'Cause probable',
+            analysis['cause'].toString(),
+            accentColor,
+            CupertinoIcons.exclamationmark_circle,
+          ),
+          const SizedBox(height: 16),
+        ],
+        
+        // Solutions
+        if (analysis['solutions'] != null) ...[
+          _buildSolutionsSection(
+            'Solutions possibles',
+            analysis['solutions'],
+            accentColor,
+          ),
+          const SizedBox(height: 16),
+        ],
+        
+        // Prévention
+        if (analysis['prevention'] != null) ...[
+          _buildAnalysisSection(
+            'Prévention',
+            analysis['prevention'].toString(),
+            accentColor,
+            CupertinoIcons.lock_shield,
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// Construit une section d'analyse
+  Widget _buildAnalysisSection(String title, String content, Color accentColor, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: accentColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: accentColor.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: accentColor),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: NotilusFonts.rajdhani(
+                  fontSize: 12,
+                  color: accentColor,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SelectableText(
+            content,
+            style: TextStyle(
+              fontFamily: 'JetBrains Mono',
+              fontSize: 10,
+              color: Colors.white.withOpacity(0.8),
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Construit la section des solutions
+  Widget _buildSolutionsSection(String title, dynamic solutions, Color accentColor) {
+    List<String> solutionsList = [];
+    if (solutions is List) {
+      solutionsList = solutions.map((s) => s.toString()).toList();
+    } else if (solutions is String) {
+      solutionsList = [solutions];
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: accentColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: accentColor.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(CupertinoIcons.lightbulb, size: 16, color: accentColor),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: NotilusFonts.rajdhani(
+                  fontSize: 12,
+                  color: accentColor,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...solutionsList.asMap().entries.map((entry) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    margin: const EdgeInsets.only(top: 4, right: 8),
+                    width: 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: accentColor,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  Expanded(
+                    child: SelectableText(
+                      entry.value,
+                      style: TextStyle(
+                        fontFamily: 'JetBrains Mono',
+                        fontSize: 10,
+                        color: Colors.white.withOpacity(0.8),
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  /// Construit l'affichage texte simple de l'analyse
+  Widget _buildTextAnalysis(String text, Color accentColor) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: accentColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: accentColor.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: SelectableText(
+        text,
+        style: TextStyle(
+          fontFamily: 'JetBrains Mono',
+          fontSize: 10,
+          color: Colors.white.withOpacity(0.8),
+          height: 1.5,
+        ),
+      ),
     );
   }
 
