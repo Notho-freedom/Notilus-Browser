@@ -7,9 +7,11 @@ class SoundEffectsService {
   factory SoundEffectsService() => _instance;
   SoundEffectsService._internal();
 
-  final AudioPlayer _player = AudioPlayer();
+  final Map<String, List<AudioPlayer>> _playerPools = {};
+  final Map<String, int> _playerIndex = {};
   bool _isEnabled = true;
   double _volume = 0.5;
+  final int _poolSize = 3; // Nombre de players par fichier
 
   bool get isEnabled => _isEnabled;
   double get volume => _volume;
@@ -22,45 +24,109 @@ class SoundEffectsService {
     _volume = volume.clamp(0.0, 1.0);
   }
 
+  /// Initialise une pool de players pour un fichier audio
+  Future<void> _initializePool(String assetPath) async {
+    if (_playerPools.containsKey(assetPath)) {
+      return;
+    }
+
+    final players = <AudioPlayer>[];
+    
+    for (int i = 0; i < _poolSize; i++) {
+      final player = AudioPlayer();
+      try {
+        await player.setReleaseMode(ReleaseMode.stop);
+        await player.setVolume(_volume);
+        players.add(player);
+      } catch (e) {
+        debugPrint('Erreur d\'initialisation du player $i pour $assetPath: $e');
+        await player.dispose();
+      }
+    }
+    
+    if (players.isNotEmpty) {
+      _playerPools[assetPath] = players;
+      _playerIndex[assetPath] = 0;
+    }
+  }
+
+  /// Nettoie une pool de players
+  Future<void> _cleanupPool(String assetPath) async {
+    final players = _playerPools[assetPath];
+    if (players != null) {
+      for (final player in players) {
+        try {
+          await player.stop();
+          await player.dispose();
+        } catch (_) {
+          // Ignorer les erreurs
+        }
+      }
+      _playerPools.remove(assetPath);
+      _playerIndex.remove(assetPath);
+    }
+  }
+
+  /// Obtient le prochain player disponible dans la pool (round-robin)
+  AudioPlayer? _getNextPlayer(String assetPath) {
+    final players = _playerPools[assetPath];
+    if (players == null || players.isEmpty) return null;
+    
+    final currentIndex = _playerIndex[assetPath] ?? 0;
+    final player = players[currentIndex];
+    
+    // Mettre à jour l'index pour la prochaine fois
+    final nextIndex = (currentIndex + 1) % players.length;
+    _playerIndex[assetPath] = nextIndex;
+    
+    return player;
+  }
+
   /// Joue un effet sonore
   Future<void> play(String assetPath, {double? volume}) async {
     if (!_isEnabled) return;
 
     try {
-      // Arrêter et libérer le player avant de jouer un nouveau son
-      try {
-        await _player.stop();
-      } catch (_) {
-        // Ignorer les erreurs d'arrêt
+      // Initialiser la pool si nécessaire
+      await _initializePool(assetPath);
+      
+      final player = _getNextPlayer(assetPath);
+      if (player == null) {
+        debugPrint('Aucun player disponible pour $assetPath');
+        return;
       }
-      
-      // Attendre un peu pour que le fichier soit libéré
-      await Future.delayed(const Duration(milliseconds: 50));
-      
-      // Réinitialiser le player pour éviter les verrous de fichier
-      await _player.setReleaseMode(ReleaseMode.release);
-      await _player.setVolume(volume ?? _volume);
-      
-      // Jouer le nouveau son
-      await _player.play(AssetSource(assetPath));
-    } catch (e) {
-      // Si l'erreur est liée à un fichier verrouillé, réessayer après un court délai
-      if (e.toString().contains('PathAccessException') || 
-          e.toString().contains('Cannot open file') ||
-          e.toString().contains('utilisé par un autre processus')) {
+
+      // Vérifier l'état du player
+      final state = player.state;
+      if (state == PlayerState.playing) {
+        // Si le player est en cours, on arrête et on attend un peu
         try {
-          await Future.delayed(const Duration(milliseconds: 100));
-          await _player.stop();
+          await player.stop();
           await Future.delayed(const Duration(milliseconds: 50));
-          await _player.setReleaseMode(ReleaseMode.release);
-          await _player.setVolume(volume ?? _volume);
-          await _player.play(AssetSource(assetPath));
-        } catch (retryError) {
-          debugPrint('Erreur lors de la lecture de l\'effet sonore $assetPath (après réessai): $retryError');
+        } catch (_) {
+          // Ignorer
         }
-      } else {
-        debugPrint('Erreur lors de la lecture de l\'effet sonore $assetPath: $e');
       }
+
+      // Configurer le volume
+      if (volume != null) {
+        await player.setVolume(volume);
+      }
+
+      // Jouer le son
+      await player.play(AssetSource(assetPath));
+
+      // Réinitialiser le volume après la lecture
+      if (volume != null) {
+        await Future.delayed(const Duration(milliseconds: 10));
+        await player.setVolume(_volume);
+      }
+
+    } catch (e) {
+      debugPrint('Erreur lors de la lecture de $assetPath: $e');
+      
+      // En cas d'erreur, nettoyer la pool et réessayer plus tard
+      await _cleanupPool(assetPath);
     }
   }
 
@@ -89,8 +155,25 @@ class SoundEffectsService {
     await play('soundeffects/general notify.wav');
   }
 
-  void dispose() {
-    _player.dispose();
+  /// Arrête tous les sons
+  Future<void> stopAll() async {
+    for (final players in _playerPools.values) {
+      for (final player in players) {
+        try {
+          await player.stop();
+        } catch (_) {
+          // Ignorer
+        }
+      }
+    }
+  }
+
+  Future<void> dispose() async {
+    // Nettoyer toutes les pools
+    for (final assetPath in _playerPools.keys.toList()) {
+      await _cleanupPool(assetPath);
+    }
+    _playerPools.clear();
+    _playerIndex.clear();
   }
 }
-

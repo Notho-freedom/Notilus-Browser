@@ -6,6 +6,7 @@ import 'tab_performance_manager.dart';
 import 'tab_grouping_service.dart';
 import 'tab_webview_manager.dart';
 import 'webview2_browser_engine.dart';
+import 'sound_effects_service.dart';
 
 class TabManager extends ChangeNotifier {
   final List<TabModel> _tabs = [];
@@ -112,6 +113,10 @@ class TabManager extends ChangeNotifier {
     _activeTabId = tab.id;
     final index = _tabs.length - 1;
     _tabs[index] = _tabs[index].copyWith(isSelected: true);
+    
+    // Jouer l'effet sonore d'ouverture d'onglet
+    SoundEffectsService().playPopOpen();
+    
     notifyListeners();
     // Ne pas sauvegarder les onglets privés
     if (!isPrivate) {
@@ -187,6 +192,9 @@ class TabManager extends ChangeNotifier {
       _performanceManager.removeTabFromCache(tabId);
       
       _tabs.removeAt(index);
+      
+      // Jouer l'effet sonore de fermeture d'onglet
+      SoundEffectsService().playPopClose();
       
       // If we closed the active tab, select another one
       if (wasActive && _tabs.isNotEmpty) {

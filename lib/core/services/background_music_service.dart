@@ -17,9 +17,11 @@ class BackgroundMusicService extends ChangeNotifier with WidgetsBindingObserver 
   String? _currentMusicUrl;
   bool _isPlaying = false;
   bool _isEnabled = true;
-  double _volume = 1.0;
+  double _volume = 0.4; // Volume par défaut à 40% (0.4)
   bool _isAppInForeground = true;
   Timer? _fadeTimer;
+  static const double _foregroundVolume = 0.4; // 40% en premier plan
+  static const double _backgroundVolume = 0.1; // 10% en arrière-plan
 
   bool get isPlaying => _isPlaying;
   bool get isEnabled => _isEnabled;
@@ -34,13 +36,41 @@ class BackgroundMusicService extends ChangeNotifier with WidgetsBindingObserver 
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    final wasInForeground = _isAppInForeground;
     _isAppInForeground = state == AppLifecycleState.resumed;
     
-    if (_isAppInForeground) {
-      _fadeIn();
-    } else {
-      _fadeOut();
+    if (_audioPlayer == null || _currentMusicUrl == null || !_isEnabled) return;
+    
+    if (_isAppInForeground && !wasInForeground) {
+      // Transition de l'arrière-plan vers le premier plan : fondu vers 40%
+      _fadeToVolume(_foregroundVolume);
+    } else if (!_isAppInForeground && wasInForeground) {
+      // Transition du premier plan vers l'arrière-plan : fondu vers 10%
+      _fadeToVolume(_backgroundVolume);
     }
+  }
+  
+  /// Fait un fondu vers un volume spécifique
+  Future<void> _fadeToVolume(double targetVolume) async {
+    if (_audioPlayer == null || _currentMusicUrl == null || !_isEnabled) return;
+    
+    _fadeTimer?.cancel();
+    final currentVol = _audioPlayer!.volume;
+    const steps = 30;
+    const duration = Duration(milliseconds: 1000);
+    final stepDuration = Duration(milliseconds: duration.inMilliseconds ~/ steps);
+    final volumeStep = (targetVolume - currentVol) / steps;
+    
+    for (int i = 0; i <= steps; i++) {
+      await Future.delayed(stepDuration);
+      if (_audioPlayer != null) {
+        final newVolume = (currentVol + (volumeStep * i)).clamp(0.0, 1.0);
+        await _audioPlayer!.setVolume(newVolume);
+      }
+    }
+    
+    _volume = targetVolume;
+    notifyListeners();
   }
 
   void _onSettingsChanged() {
@@ -82,21 +112,23 @@ class BackgroundMusicService extends ChangeNotifier with WidgetsBindingObserver 
   Future<void> _fadeIn() async {
     if (_audioPlayer != null && _currentMusicUrl != null && _isEnabled) {
       _fadeTimer?.cancel();
-      const steps = 20;
-      const duration = Duration(milliseconds: 500);
+      const steps = 100; // Augmenté pour un fondu très fluide
+      const duration = Duration(milliseconds: 30000); // 30 secondes
       final stepDuration = Duration(milliseconds: duration.inMilliseconds ~/ steps);
+      final targetVolume = _isAppInForeground ? _foregroundVolume : _backgroundVolume;
       
       for (int i = 0; i <= steps; i++) {
         await Future.delayed(stepDuration);
         if (_audioPlayer != null) {
-          final targetVolume = (_volume * (i / steps)).clamp(0.0, _volume);
-          await _audioPlayer!.setVolume(targetVolume);
+          final currentVolume = (targetVolume * (i / steps)).clamp(0.0, targetVolume);
+          await _audioPlayer!.setVolume(currentVolume);
         }
       }
       
       if (_audioPlayer != null && !_isPlaying) {
         await _audioPlayer!.resume();
         _isPlaying = true;
+        _volume = targetVolume;
         notifyListeners();
       }
     }
@@ -139,7 +171,10 @@ class BackgroundMusicService extends ChangeNotifier with WidgetsBindingObserver 
       
       _audioPlayer = AudioPlayer();
       _audioPlayer!.setReleaseMode(ReleaseMode.loop); // Boucle infinie
-      _audioPlayer!.setVolume(_isAppInForeground ? _volume : 0.0);
+      // Utiliser le volume approprié selon l'état de l'app
+      final targetVolume = _isAppInForeground ? _foregroundVolume : _backgroundVolume;
+      await _audioPlayer!.setVolume(targetVolume);
+      _volume = targetVolume;
       
       try {
         await _audioPlayer!.setSource(UrlSource(url));
@@ -175,9 +210,12 @@ class BackgroundMusicService extends ChangeNotifier with WidgetsBindingObserver 
   }
   
   Future<void> setVolume(double volume) async {
+    // Note: Le volume est géré automatiquement selon l'état de l'app (10% arrière-plan, 40% premier plan)
+    // Cette méthode est conservée pour compatibilité mais n'est plus utilisée pour la musique de fond
     _volume = volume.clamp(0.0, 1.0);
     if (_audioPlayer != null) {
-      await _audioPlayer!.setVolume(_isAppInForeground ? _volume : 0.0);
+      final targetVolume = _isAppInForeground ? _foregroundVolume : _backgroundVolume;
+      await _audioPlayer!.setVolume(targetVolume);
       notifyListeners();
     }
   }

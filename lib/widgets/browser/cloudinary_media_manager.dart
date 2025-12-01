@@ -908,33 +908,65 @@ class _MediaPreviewState extends State<_MediaPreview> {
           
           const SizedBox(height: 24),
           
-          // Contrôle de volume (audio)
-          Row(
-            children: [
-              Icon(
-                CupertinoIcons.speaker_2,
-                size: 20,
-                color: widget.gxRed,
+          // Contrôle de volume (audio) - Amélioré
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: widget.gxRed.withOpacity(0.3),
+                width: 1,
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: SliderTheme(
-                  data: SliderTheme.of(context).copyWith(
-                    trackHeight: 1.5,
-                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 4),
-                    overlayShape: const RoundSliderOverlayShape(overlayRadius: 8),
-                  ),
-                  child: Slider(
-                    value: _audioVolume,
-                    min: 0.0,
-                    max: 1.0,
-                    activeColor: widget.gxRed,
-                    inactiveColor: widget.gxRed.withOpacity(0.3),
-                    onChanged: (value) => _setAudioVolume(value),
-                  ),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      _audioVolume > 0.5
+                          ? CupertinoIcons.speaker_3_fill
+                          : (_audioVolume > 0
+                              ? CupertinoIcons.speaker_2_fill
+                              : CupertinoIcons.speaker_slash_fill),
+                      size: 20,
+                      color: widget.gxRed,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: SliderTheme(
+                        data: SliderTheme.of(context).copyWith(
+                          trackHeight: 2.5,
+                          thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                          overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+                        ),
+                        child: Slider(
+                          value: _audioVolume,
+                          min: 0.0,
+                          max: 1.0,
+                          activeColor: widget.gxRed,
+                          inactiveColor: widget.gxRed.withOpacity(0.3),
+                          onChanged: (value) => _setAudioVolume(value),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    SizedBox(
+                      width: 45,
+                      child: Text(
+                        '${(_audioVolume * 100).toInt()}%',
+                        style: TextStyle(
+                          color: widget.gxRed,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           
           const SizedBox(height: 16),

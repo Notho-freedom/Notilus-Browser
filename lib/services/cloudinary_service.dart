@@ -46,8 +46,40 @@ class CloudinaryService extends ChangeNotifier {
   /// Initialise le service et charge les médias existants
   Future<void> initialize() async {
     await _loadMediaFromStorage();
+    // Ajouter la musique par défaut si elle n'existe pas déjà
+    _addDefaultMusicIfNeeded();
     // Initialiser le service de cache
     await CloudinaryCacheService().initialize();
+  }
+  
+  /// Ajoute la musique par défaut de Notilus si elle n'existe pas déjà
+  void _addDefaultMusicIfNeeded() {
+    const defaultMusicUrl = 'https://res.cloudinary.com/dsslbg3v3/raw/upload/v1764459325/music/wozpjrnbmf7bnqceg9yw.mp3';
+    const defaultMusicId = 'notilus_default_music';
+    
+    // Vérifier si la musique par défaut existe déjà
+    final exists = _uploadedMusic.any((m) => m.publicId == defaultMusicId || m.secureUrl == defaultMusicUrl);
+    
+    if (!exists) {
+      // Créer un objet CloudinaryMedia pour la musique par défaut
+      final defaultMusic = CloudinaryMedia(
+        publicId: defaultMusicId,
+        secureUrl: defaultMusicUrl,
+        resourceType: CloudinaryResourceType.raw,
+        format: 'mp3',
+        bytes: 0, // Taille inconnue
+        createdAt: DateTime.now(),
+        folder: 'music',
+        width: 0,
+        height: 0,
+        url: defaultMusicUrl,
+      );
+      
+      // Ajouter en première position
+      _uploadedMusic.insert(0, defaultMusic);
+      _saveMediaToStorage();
+      notifyListeners();
+    }
   }
 
   /// Vérifie si Cloudinary est configuré

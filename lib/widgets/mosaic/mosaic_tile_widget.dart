@@ -460,92 +460,155 @@ class _ContentMenuButton extends StatefulWidget {
 class _ContentMenuButtonState extends State<_ContentMenuButton> {
   bool _isHovered = false;
   OverlayEntry? _overlayEntry;
-  final LayerLink _layerLink = LayerLink();
+  final GlobalKey _buttonKey = GlobalKey();
+  DateTime? _menuOpenedAt;
 
   void _showMenu() {
+    if (_overlayEntry != null) {
+      // Si le menu est déjà ouvert, le fermer d'abord
+      _hideMenu();
+      return;
+    }
+    
+    if (!context.mounted) return;
+    
+    _menuOpenedAt = DateTime.now();
+    
+    // Calculer la position du bouton
+    final RenderBox? renderBox = _buttonKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox == null) return;
+    
+    final offset = renderBox.localToGlobal(Offset.zero);
+    final size = renderBox.size;
+    
     _overlayEntry = OverlayEntry(
       builder: (context) => Stack(
         children: [
-          // Fond transparent pour fermer
+          // Fond transparent pour fermer (seulement en dehors du menu)
           Positioned.fill(
             child: GestureDetector(
-              onTap: _hideMenu,
+              onTap: () => _hideMenu(force: true),
               behavior: HitTestBehavior.opaque,
               child: Container(color: Colors.transparent),
             ),
           ),
-          // Menu positionné
-          CompositedTransformFollower(
-            link: _layerLink,
-            offset: const Offset(-150, 30),
+          // Menu positionné sous le bouton
+          Positioned(
+            left: offset.dx - 150, // Ajuster pour que le menu soit aligné à droite du bouton
+            top: offset.dy + size.height + 4, // Juste en dessous du bouton
             child: Material(
               color: Colors.transparent,
+              elevation: 8,
               child: _ContentMenu(
                 tile: widget.tile,
                 accentColor: widget.accentColor,
-                onClose: _hideMenu,
+                onClose: () => _hideMenu(force: true),
               ),
             ),
           ),
         ],
       ),
     );
-    Overlay.of(context).insert(_overlayEntry!);
+    
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_overlayEntry != null && context.mounted) {
+        try {
+          Overlay.of(context).insert(_overlayEntry!);
+        } catch (e) {
+          // Si l'insertion échoue, nettoyer
+          _overlayEntry = null;
+        }
+      }
+    });
   }
 
-  void _hideMenu() {
-    _overlayEntry?.remove();
-    _overlayEntry = null;
+  void _hideMenu({bool force = false}) {
+    if (_overlayEntry != null) {
+      // Empêcher la fermeture trop rapide (sauf si forcée)
+      if (!force && _menuOpenedAt != null) {
+        final elapsed = DateTime.now().difference(_menuOpenedAt!);
+        if (elapsed.inMilliseconds < 200) {
+          // Attendre un peu avant de permettre la fermeture
+          final remainingMs = 200 - elapsed.inMilliseconds;
+          Future.delayed(Duration(milliseconds: remainingMs > 0 ? remainingMs : 0), () {
+            if (_overlayEntry != null && mounted) {
+              _hideMenu(force: true);
+            }
+          });
+          return;
+        }
+      }
+      
+      final entry = _overlayEntry;
+      _overlayEntry = null;
+      _menuOpenedAt = null;
+      try {
+        entry!.remove();
+      } catch (e) {
+        // L'overlay a déjà été retiré ou n'est plus valide
+        // Ignorer l'erreur
+      }
+      if (mounted) {
+        setState(() {});
+      }
+    }
   }
 
   @override
   void dispose() {
-    _hideMenu();
+    _hideMenu(force: true);
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return CompositedTransformTarget(
-      link: _layerLink,
-      child: Tooltip(
-        message: 'Changer le contenu',
-        child: MouseRegion(
-          cursor: SystemMouseCursors.click,
-          onEnter: (_) => setState(() => _isHovered = true),
-          onExit: (_) => setState(() => _isHovered = false),
+    return Tooltip(
+      message: 'Changer le contenu',
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _isHovered = true),
+        onExit: (_) => setState(() => _isHovered = false),
           child: GestureDetector(
-            onTap: () {
-              if (_overlayEntry != null) {
-                _hideMenu();
-              } else {
-                _showMenu();
-              }
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              width: 26,
-              height: 26,
-              decoration: BoxDecoration(
+          key: _buttonKey,
+          onTap: () {
+            if (_overlayEntry != null) {
+              _hideMenu(force: true);
+            } else {
+              _showMenu();
+            }
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            width: 26,
+            height: 26,
+            decoration: BoxDecoration(
+              color: _isHovered || _overlayEntry != null
+                  ? widget.accentColor.withOpacity(0.2)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Center(
+              child: Icon(
+                CupertinoIcons.ellipsis,
+                size: 14,
                 color: _isHovered || _overlayEntry != null
-                    ? widget.accentColor.withOpacity(0.2)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Center(
-                child: Icon(
-                  CupertinoIcons.ellipsis,
-                  size: 14,
-                  color: _isHovered || _overlayEntry != null
-                      ? widget.accentColor
-                      : Colors.white.withOpacity(0.7),
-                ),
+                    ? widget.accentColor
+                    : Colors.white.withOpacity(0.7),
               ),
             ),
           ),
         ),
       ),
     );
+  }
+  
+  @override
+  void didUpdateWidget(_ContentMenuButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Si le widget change, mettre à jour l'overlay si nécessaire
+    if (_overlayEntry != null && !context.mounted) {
+      _hideMenu(force: true);
+    }
   }
 }
 
@@ -587,16 +650,37 @@ class _ContentMenu extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
+              // Header avec bouton de fermeture
               Padding(
-                padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-                child: Text(
-                  'Changer le contenu',
-                  style: TextStyle(
-                    color: accentColor,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
+                padding: const EdgeInsets.fromLTRB(12, 4, 8, 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Changer le contenu',
+                        style: TextStyle(
+                          color: accentColor,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: onClose,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.transparent,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Icon(
+                          CupertinoIcons.xmark,
+                          size: 14,
+                          color: Colors.white.withOpacity(0.6),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               Container(height: 1, color: Colors.white.withOpacity(0.1)),
