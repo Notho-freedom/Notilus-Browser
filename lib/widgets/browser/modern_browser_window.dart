@@ -634,8 +634,8 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                Colors.black.withOpacity(brightness * (1.0 - settings.widgetTransparency)),
-                Colors.black.withOpacity((brightness + 0.06) * (1.0 - settings.widgetTransparency)),
+                Colors.black.withOpacity((brightness * (1.0 - settings.widgetTransparency)).clamp(0.0, 1.0)),
+                Colors.black.withOpacity(((brightness + 0.06) * (1.0 - settings.widgetTransparency)).clamp(0.0, 1.0)),
               ],
             ),
             border: Border(
@@ -911,7 +911,7 @@ class _NotilusWidgetsPanel extends StatelessWidget {
                 : null,
           ),
           child: Container(
-            color: Colors.black.withValues(alpha: 1.0 - panelTransparency),
+            color: Colors.black.withValues(alpha: (1.0 - panelTransparency).clamp(0.0, 1.0)),
             child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

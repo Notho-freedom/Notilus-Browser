@@ -280,8 +280,8 @@ class _ModernHomePageState extends State<ModernHomePage> {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                Colors.black.withOpacity(_settings.homePageBlur * (1.0 - _settings.widgetTransparency)),
-                Colors.black.withOpacity((_settings.homePageBlur + 0.06) * (1.0 - _settings.widgetTransparency)),
+                Colors.black.withOpacity((_settings.homePageBlur * (1.0 - _settings.widgetTransparency)).clamp(0.0, 1.0)),
+                Colors.black.withOpacity(((_settings.homePageBlur + 0.06) * (1.0 - _settings.widgetTransparency)).clamp(0.0, 1.0)),
               ],
             ),
           ),

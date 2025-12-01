@@ -363,7 +363,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
       child: ListenableBuilder(
         listenable: _settings,
         builder: (context, _) => Container(
-          color: Colors.black.withOpacity(panelOpacity),
+          color: Colors.black.withOpacity(panelOpacity.clamp(0.0, 1.0)),
           child: LayoutBuilder(
             builder: (context, constraints) {
               final isCompact = constraints.maxWidth < 600;

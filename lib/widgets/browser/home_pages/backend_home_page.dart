@@ -359,7 +359,7 @@ class _BackendHomePageState extends State<BackendHomePage>
     return Container(
       width: 200,
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(1 - transparency * 0.5),
+        color: Colors.black.withOpacity((1 - transparency * 0.5).clamp(0.0, 1.0)),
         border: Border(
           right: BorderSide(color: const Color(0xFF339933).withOpacity(0.2)),
         ),
@@ -383,7 +383,7 @@ class _BackendHomePageState extends State<BackendHomePage>
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF27C93F).withOpacity(_pulseController.value * 0.5),
+                            color: const Color(0xFF27C93F).withOpacity((_pulseController.value * 0.5).clamp(0.0, 1.0)),
                             blurRadius: 6,
                             spreadRadius: 2,
                           ),

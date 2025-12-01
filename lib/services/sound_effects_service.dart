@@ -86,47 +86,62 @@ class SoundEffectsService {
   Future<void> play(String assetPath, {double? volume}) async {
     if (!_isEnabled) return;
 
-    try {
-      // Initialiser la pool si nécessaire
-      await _initializePool(assetPath);
-      
-      final player = _getNextPlayer(assetPath);
-      if (player == null) {
-        debugPrint('Aucun player disponible pour $assetPath');
-        return;
-      }
+    // Retry logic avec délai progressif
+    for (int attempt = 0; attempt < 3; attempt++) {
+      try {
+        // Initialiser la pool si nécessaire
+        await _initializePool(assetPath);
+        
+        final player = _getNextPlayer(assetPath);
+        if (player == null) {
+          debugPrint('Aucun player disponible pour $assetPath');
+          return;
+        }
 
-      // Vérifier l'état du player
-      final state = player.state;
-      if (state == PlayerState.playing) {
-        // Si le player est en cours, on arrête et on attend un peu
-        try {
-          await player.stop();
-          await Future.delayed(const Duration(milliseconds: 50));
-        } catch (_) {
-          // Ignorer
+        // Vérifier l'état du player
+        final state = player.state;
+        if (state == PlayerState.playing) {
+          // Si le player est en cours, on arrête et on attend un peu
+          try {
+            await player.stop();
+            await Future.delayed(Duration(milliseconds: 100 + (attempt * 50)));
+          } catch (_) {
+            // Ignorer
+          }
+        }
+
+        // Attendre un peu avant de jouer pour éviter les conflits
+        if (attempt > 0) {
+          await Future.delayed(Duration(milliseconds: 100 * attempt));
+        }
+
+        // Configurer le volume
+        if (volume != null) {
+          await player.setVolume(volume);
+        }
+
+        // Jouer le son
+        await player.play(AssetSource(assetPath));
+
+        // Réinitialiser le volume après la lecture
+        if (volume != null) {
+          await Future.delayed(const Duration(milliseconds: 10));
+          await player.setVolume(_volume);
+        }
+
+        // Succès, sortir de la boucle
+        return;
+
+      } catch (e) {
+        if (attempt == 2) {
+          // Dernière tentative échouée, nettoyer la pool
+          debugPrint('Erreur lors de la lecture de $assetPath après 3 tentatives: $e');
+          await _cleanupPool(assetPath);
+        } else {
+          // Attendre avant de réessayer
+          await Future.delayed(Duration(milliseconds: 150 * (attempt + 1)));
         }
       }
-
-      // Configurer le volume
-      if (volume != null) {
-        await player.setVolume(volume);
-      }
-
-      // Jouer le son
-      await player.play(AssetSource(assetPath));
-
-      // Réinitialiser le volume après la lecture
-      if (volume != null) {
-        await Future.delayed(const Duration(milliseconds: 10));
-        await player.setVolume(_volume);
-      }
-
-    } catch (e) {
-      debugPrint('Erreur lors de la lecture de $assetPath: $e');
-      
-      // En cas d'erreur, nettoyer la pool et réessayer plus tard
-      await _cleanupPool(assetPath);
     }
   }
 

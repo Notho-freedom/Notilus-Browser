@@ -1020,7 +1020,7 @@ class _TechGridPainter extends CustomPainter {
 
     // Points aux intersections
     final pointPaint = Paint()
-      ..color = color.withValues(alpha: opacity * 2)
+      ..color = color.withValues(alpha: (opacity * 2).clamp(0.0, 1.0))
       ..style = PaintingStyle.fill;
 
     for (double x = 0; x < size.width; x += spacing) {
