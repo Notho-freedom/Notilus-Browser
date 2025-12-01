@@ -6,16 +6,25 @@ import 'dart:ui' show Offset;
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/home_widget_models.dart';
+import '../models/mosaic_models.dart'; // Pour DropZone
 
 class HomeWidgetService extends ChangeNotifier {
   static const String _prefsKey = 'notilus_home_widgets_config';
   
   HomePageConfig _config = HomePageConfig();
   bool _isInitialized = false;
+  
+  // État du drag & drop (comme Mosaic)
+  String? _focusedWidgetId;
+  String? _dragOverWidgetId;
+  DropZone? _dragOverZone;
 
   HomePageConfig get config => _config;
   bool get isInitialized => _isInitialized;
   List<HomeWidget> get widgets => _config.widgets;
+  String? get focusedWidgetId => _focusedWidgetId;
+  String? get dragOverWidgetId => _dragOverWidgetId;
+  DropZone? get dragOverZone => _dragOverZone;
 
   /// Initialiser le service
   Future<void> initialize() async {
@@ -153,6 +162,94 @@ class HomeWidgetService extends ChangeNotifier {
     );
     await _saveConfig();
     notifyListeners();
+  }
+
+  /// Définir le widget focalisé
+  void setFocusedWidget(String? widgetId) {
+    if (_focusedWidgetId != widgetId) {
+      _focusedWidgetId = widgetId;
+      notifyListeners();
+    }
+  }
+
+  /// Définir l'état de drag over
+  void setDragOver(String? widgetId, DropZone? zone) {
+    if (_dragOverWidgetId != widgetId || _dragOverZone != zone) {
+      _dragOverWidgetId = widgetId;
+      _dragOverZone = zone;
+      notifyListeners();
+    }
+  }
+
+  /// Échanger deux widgets
+  Future<void> swapWidgets(String widgetId1, String widgetId2) async {
+    final widget1 = _config.widgets.firstWhere(
+      (w) => w.id == widgetId1,
+      orElse: () => throw Exception('Widget $widgetId1 not found'),
+    );
+    final widget2 = _config.widgets.firstWhere(
+      (w) => w.id == widgetId2,
+      orElse: () => throw Exception('Widget $widgetId2 not found'),
+    );
+    
+    await updateWidget(widget1.copyWith(position: widget2.position));
+    await updateWidget(widget2.copyWith(position: widget1.position));
+  }
+
+  /// Déplacer un widget vers une zone
+  Future<void> moveWidgetToZone(String widgetId, String targetWidgetId, DropZone zone) async {
+    final widget = _config.widgets.firstWhere(
+      (w) => w.id == widgetId,
+      orElse: () => throw Exception('Widget $widgetId not found'),
+    );
+    final targetWidget = _config.widgets.firstWhere(
+      (w) => w.id == targetWidgetId,
+      orElse: () => throw Exception('Widget $targetWidgetId not found'),
+    );
+    
+    final cellSize = 120.0;
+    final spacing = _config.widgetSpacing;
+    final cellWidth = cellSize + spacing;
+    final cellHeight = cellSize + spacing;
+    
+    Offset newPosition;
+    switch (zone) {
+      case DropZone.left:
+        newPosition = Offset(
+          targetWidget.position.dx - widget.size.width - 1,
+          targetWidget.position.dy,
+        );
+        break;
+      case DropZone.right:
+        newPosition = Offset(
+          targetWidget.position.dx + targetWidget.size.width + 1,
+          targetWidget.position.dy,
+        );
+        break;
+      case DropZone.top:
+        newPosition = Offset(
+          targetWidget.position.dx,
+          targetWidget.position.dy - widget.size.height - 1,
+        );
+        break;
+      case DropZone.bottom:
+        newPosition = Offset(
+          targetWidget.position.dx,
+          targetWidget.position.dy + targetWidget.size.height + 1,
+        );
+        break;
+      case DropZone.center:
+        newPosition = targetWidget.position;
+        break;
+    }
+    
+    // Clamper la position
+    newPosition = Offset(
+      newPosition.dx.clamp(0.0, _config.gridColumns.toDouble() - widget.size.width),
+      newPosition.dy.clamp(0.0, _config.gridRows.toDouble() - widget.size.height),
+    );
+    
+    await moveWidget(widgetId, newPosition);
   }
 }
 

@@ -451,6 +451,8 @@ class _FrontendHomePageState extends State<FrontendHomePage>
                     fontSize: 14,
                   ),
                   border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
                   fillColor: Colors.transparent,
                   filled: true,
                 ),

@@ -64,7 +64,7 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
   SidebarSection _currentSection = SidebarSection.home;
   late AnimationController _sidebarAnimationController;
   late Animation<double> _sidebarAnimation;
-  double _sideMenuWidth = 380.0;
+  double _sideMenuWidth = 800.0; // Taille maximale par défaut
   bool _isResizing = false;
   bool _isDevToolsOpen = false; // État du panneau DevTools en bas
   bool _isMiniDevToolsVisible = false; // État du mini DevTools flottant
@@ -292,6 +292,9 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                             }
                             setState(() {
                               _currentSection = section;
+                              // Ouvrir le panel en taille maximale
+                              final screenWidth = MediaQuery.of(context).size.width;
+                              _sideMenuWidth = (screenWidth * 0.6).clamp(400.0, 1000.0);
                             });
                           },
                         )
@@ -375,12 +378,18 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                         setState(() {
                           _currentSection = SidebarSection.widgets;
                           _isSidebarVisible = true;
+                          // Ouvrir le panel en taille maximale
+                          final screenWidth = MediaQuery.of(context).size.width;
+                          _sideMenuWidth = (screenWidth * 0.6).clamp(400.0, 1000.0);
                         });
                       },
                       onDownloadsPressed: () {
                         setState(() {
                           _currentSection = SidebarSection.downloads;
                           _isSidebarVisible = true;
+                          // Ouvrir le panel en taille maximale
+                          final screenWidth = MediaQuery.of(context).size.width;
+                          _sideMenuWidth = (screenWidth * 0.6).clamp(400.0, 1000.0);
                         });
                       },
                       onMiniDevToolsToggle: () {
@@ -572,7 +581,9 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                                 },
                                 onPanUpdate: (details) {
                                   setState(() {
-                                    _sideMenuWidth = (_sideMenuWidth + details.delta.dx).clamp(200.0, 800.0);
+                                    final screenWidth = MediaQuery.of(context).size.width;
+                                    final maxWidth = (screenWidth * 0.7).clamp(400.0, 1200.0);
+                                    _sideMenuWidth = (_sideMenuWidth + details.delta.dx).clamp(200.0, maxWidth);
                                   });
                                 },
                                 onPanEnd: (_) {

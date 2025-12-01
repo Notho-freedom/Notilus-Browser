@@ -9,6 +9,8 @@ import '../../../core/services/wallpaper_manager.dart';
 import '../../../services/settings_service.dart';
 import '../../../services/system_metrics_service.dart';
 import '../../../core/services/color_theme_manager.dart';
+import '../../../services/backend_lab/backend_lab_service.dart';
+import '../../../models/backend_lab/backend_lab_models.dart';
 import '../../common/notilus_logo_image.dart';
 
 /// Page d'accueil Backend Developer - Style terminal/serveur
@@ -94,6 +96,17 @@ class _BackendHomePageState extends State<BackendHomePage>
     _startClock();
     _metricsService.addListener(_onMetricsUpdate);
     _settings.addListener(_onSettingsChanged);
+    
+    // Initialiser Backend Lab
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final labService = BackendLabService();
+      labService.checkConnection().then((_) {
+        if (labService.isConnected) {
+          labService.getServers();
+          labService.connectConsole();
+        }
+      });
+    });
   }
 
   void _startClock() async {
@@ -210,31 +223,42 @@ class _BackendHomePageState extends State<BackendHomePage>
                       
                       // Main content
                       Expanded(
-                        child: SingleChildScrollView(
-                          padding: const EdgeInsets.all(24),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Command prompt section
-                              _buildCommandSection(gxRed, transparency),
-                              
-                              const SizedBox(height: 40),
-                              
-                              // Languages grid
-                              _buildLanguagesSection(gxRed, transparency),
-                              
-                              const SizedBox(height: 40),
-                              
-                              // Tools sections
-                              _buildToolsSections(gxRed, transparency),
-                              
-                              const SizedBox(height: 32),
-                              
-                              // Quote
-                              if (_settings.showQuotes)
-                                _buildQuoteSection(gxRed, transparency),
-                            ],
-                          ),
+                        child: Row(
+                          children: [
+                            // Main content area
+                            Expanded(
+                              flex: 2,
+                              child: SingleChildScrollView(
+                                padding: const EdgeInsets.all(24),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // Command prompt section
+                                    _buildCommandSection(gxRed, transparency),
+                                    
+                                    const SizedBox(height: 40),
+                                    
+                                    // Languages grid
+                                    _buildLanguagesSection(gxRed, transparency),
+                                    
+                                    const SizedBox(height: 40),
+                                    
+                                    // Tools sections
+                                    _buildToolsSections(gxRed, transparency),
+                                    
+                                    const SizedBox(height: 32),
+                                    
+                                    // Quote
+                                    if (_settings.showQuotes)
+                                      _buildQuoteSection(gxRed, transparency),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            
+                            // Right panel - Server list + FastAPI Console
+                            _buildBackendLabPanel(gxRed, transparency),
+                          ],
                         ),
                       ),
                     ],
@@ -256,6 +280,7 @@ class _BackendHomePageState extends State<BackendHomePage>
           painter: _MatrixRainPainter(
             progress: _matrixController.value,
             color: const Color(0xFF339933),
+            isSecondary: true, // Mode secondary matrix activé
           ),
           size: Size.infinite,
         );
@@ -625,6 +650,8 @@ class _BackendHomePageState extends State<BackendHomePage>
                       color: Colors.white.withOpacity(0.3),
                     ),
                     border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     fillColor: Colors.transparent,
                     filled: true,
@@ -786,6 +813,269 @@ class _BackendHomePageState extends State<BackendHomePage>
     );
   }
 
+  Widget _buildBackendLabPanel(Color gxRed, double transparency) {
+    final labService = BackendLabService();
+    
+    return Container(
+      width: 320,
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity((1 - transparency * 0.5).clamp(0.0, 1.0)),
+        border: Border(
+          left: BorderSide(color: const Color(0xFF339933).withOpacity(0.2)),
+        ),
+      ),
+      child: Column(
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: const Color(0xFF339933).withOpacity(0.2)),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(CupertinoIcons.square_stack_3d_up, size: 14, color: const Color(0xFF339933)),
+                const SizedBox(width: 8),
+                Text(
+                  'BACKEND LAB',
+                  style: TextStyle(
+                    fontFamily: 'JetBrains Mono',
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF339933),
+                    letterSpacing: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Tabs: Servers / Console
+          Expanded(
+            child: DefaultTabController(
+              length: 2,
+              child: Column(
+                children: [
+                  TabBar(
+                    labelColor: const Color(0xFF339933),
+                    unselectedLabelColor: Colors.white.withOpacity(0.5),
+                    indicatorColor: const Color(0xFF339933),
+                    labelStyle: const TextStyle(
+                      fontFamily: 'JetBrains Mono',
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    tabs: const [
+                      Tab(text: 'SERVERS'),
+                      Tab(text: 'CONSOLE'),
+                    ],
+                  ),
+                  Expanded(
+                    child: TabBarView(
+                      children: [
+                        // Server list
+                        ListenableBuilder(
+                          listenable: labService,
+                          builder: (context, _) {
+                            final servers = labService.servers;
+                            if (servers.isEmpty) {
+                              return Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      CupertinoIcons.square_stack_3d_up,
+                                      size: 32,
+                                      color: Colors.white.withOpacity(0.3),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      'No servers',
+                                      style: TextStyle(
+                                        fontFamily: 'JetBrains Mono',
+                                        fontSize: 10,
+                                        color: Colors.white.withOpacity(0.5),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+                            return ListView.builder(
+                              padding: const EdgeInsets.all(8),
+                              itemCount: servers.length,
+                              itemBuilder: (context, index) {
+                                final server = servers[index];
+                                return _buildServerItem(server, gxRed);
+                              },
+                            );
+                          },
+                        ),
+                        // FastAPI Console
+                        ListenableBuilder(
+                          listenable: labService,
+                          builder: (context, _) {
+                            final logs = labService.consoleLogs;
+                            if (logs.isEmpty) {
+                              return Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      CupertinoIcons.text_alignleft,
+                                      size: 32,
+                                      color: Colors.white.withOpacity(0.3),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      'No logs',
+                                      style: TextStyle(
+                                        fontFamily: 'JetBrains Mono',
+                                        fontSize: 10,
+                                        color: Colors.white.withOpacity(0.5),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+                            return ListView.builder(
+                              padding: const EdgeInsets.all(8),
+                              itemCount: logs.length,
+                              itemBuilder: (context, index) {
+                                final log = logs[logs.length - 1 - index]; // Reverse order
+                                return _buildConsoleLogItem(log, gxRed);
+                              },
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildServerItem(DiscoveredServer server, Color gxRed) {
+    final statusColor = server.status == ServerStatus.running
+        ? const Color(0xFF22C55E)
+        : Colors.grey;
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.02),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: const Color(0xFF339933).withOpacity(0.2),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              color: statusColor,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  server.name ?? 'Unknown',
+                  style: TextStyle(
+                    fontFamily: 'JetBrains Mono',
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white.withOpacity(0.9),
+                  ),
+                ),
+                Text(
+                  '${server.host}:${server.port}',
+                  style: TextStyle(
+                    fontFamily: 'JetBrains Mono',
+                    fontSize: 8,
+                    color: Colors.white.withOpacity(0.5),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildConsoleLogItem(ConsoleLogEntry log, Color gxRed) {
+    final levelColor = log.level == 'ERROR'
+        ? const Color(0xFFFF5F56)
+        : log.level == 'WARNING'
+            ? const Color(0xFFFFBD2E)
+            : const Color(0xFF339933);
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.01),
+        borderRadius: BorderRadius.circular(3),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 4,
+            height: 4,
+            margin: const EdgeInsets.only(top: 4),
+            decoration: BoxDecoration(
+              color: levelColor,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  log.message,
+                  style: TextStyle(
+                    fontFamily: 'JetBrains Mono',
+                    fontSize: 8,
+                    color: Colors.white.withOpacity(0.7),
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (log.timestamp != null)
+                  Text(
+                    log.timestamp.toString().substring(11, 19),
+                    style: TextStyle(
+                      fontFamily: 'JetBrains Mono',
+                      fontSize: 7,
+                      color: Colors.white.withOpacity(0.3),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildQuoteSection(Color gxRed, double transparency) {
     final quote = _devQuotes[DateTime.now().day % _devQuotes.length];
     return Container(
@@ -866,34 +1156,41 @@ class _BackendTool {
 class _MatrixRainPainter extends CustomPainter {
   final double progress;
   final Color color;
+  final bool isSecondary;
 
-  _MatrixRainPainter({required this.progress, required this.color});
+  _MatrixRainPainter({
+    required this.progress,
+    required this.color,
+    this.isSecondary = false,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = color.withOpacity(0.03);
-    
+    // Mode secondary matrix : plus dense et visible
+    final baseOpacity = isSecondary ? 0.08 : 0.03;
+    final columns = isSecondary ? size.width ~/ 15 : size.width ~/ 20;
     final chars = '01アイウエオカキクケコ{}[]<>/\\';
     final random = math.Random(42);
-    final columns = size.width ~/ 20;
     
     for (int i = 0; i < columns; i++) {
-      final x = i * 20.0;
+      final x = i * (isSecondary ? 15.0 : 20.0);
       final speed = 0.5 + random.nextDouble() * 0.5;
       final offset = random.nextDouble();
+      final charCount = isSecondary ? 15 : 10;
       
-      for (int j = 0; j < 10; j++) {
+      for (int j = 0; j < charCount; j++) {
         final y = ((progress * speed + offset + j * 0.1) % 1.2) * size.height - size.height * 0.1;
-        final opacity = (1 - (j / 10)) * 0.03;
-        paint.color = color.withOpacity(opacity);
+        final opacity = (1 - (j / charCount)) * baseOpacity;
+        final paint = Paint()..color = color.withOpacity(opacity);
         
         final char = chars[random.nextInt(chars.length)];
+        final fontSize = isSecondary ? 14.0 : 12.0;
         final textPainter = TextPainter(
           text: TextSpan(
             text: char,
             style: TextStyle(
               fontFamily: 'JetBrains Mono',
-              fontSize: 12,
+              fontSize: fontSize,
               color: paint.color,
             ),
           ),
@@ -906,5 +1203,6 @@ class _MatrixRainPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_MatrixRainPainter oldDelegate) => true;
+  bool shouldRepaint(_MatrixRainPainter oldDelegate) => 
+      oldDelegate.progress != progress || oldDelegate.isSecondary != isSecondary;
 }

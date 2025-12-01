@@ -236,6 +236,8 @@ class _MinimalHomePageState extends State<MinimalHomePage>
                               color: Colors.white.withOpacity(0.35),
                             ),
                             border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
                             fillColor: Colors.transparent,
                             filled: true,
                           ),

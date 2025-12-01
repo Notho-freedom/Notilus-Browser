@@ -14,6 +14,7 @@ import '../../core/services/wallpaper_manager.dart';
 import '../common/wallpaper_background.dart';
 import '../home_widgets/home_widget_base.dart';
 import '../home_widgets/server_list_widget.dart';
+import '../home_widgets/home_widget_draggable.dart';
 import 'home_pages/widget_factory.dart';
 
 class CustomizableHomePage extends StatefulWidget {
@@ -30,8 +31,6 @@ class CustomizableHomePage extends StatefulWidget {
 
 class _CustomizableHomePageState extends State<CustomizableHomePage> {
   bool _isEditMode = false;
-  HomeWidget? _draggedWidget;
-  Offset? _dragOffset;
 
   @override
   Widget build(BuildContext context) {
@@ -126,51 +125,12 @@ class _CustomizableHomePageState extends State<CustomizableHomePage> {
       top: top,
       width: width,
       height: height,
-      child: _isEditMode
-          ? _buildEditableWidget(context, widget, accentColor, widgetService)
-          : _buildWidgetContent(context, widget, widgetService),
-    );
-  }
-
-  Widget _buildEditableWidget(BuildContext context, HomeWidget widget, Color accentColor, HomeWidgetService widgetService) {
-    return GestureDetector(
-      onPanStart: (details) {
-        setState(() {
-          _draggedWidget = widget;
-          _dragOffset = details.localPosition;
-        });
-      },
-      onPanUpdate: (details) {
-        if (_draggedWidget?.id == widget.id) {
-          final cellSize = 120.0;
-          final spacing = widgetService.config.widgetSpacing;
-          final newX = (details.globalPosition.dx - (_dragOffset?.dx ?? 0)) / (cellSize + spacing);
-          final newY = (details.globalPosition.dy - (_dragOffset?.dy ?? 0)) / (cellSize + spacing);
-          
-          widgetService.moveWidget(
-            widget.id,
-            Offset(
-              newX.clamp(0.0, widgetService.config.gridColumns.toDouble()),
-              newY.clamp(0.0, widgetService.config.gridRows.toDouble()),
-            ),
-          );
-        }
-      },
-      onPanEnd: (_) {
-        setState(() {
-          _draggedWidget = null;
-          _dragOffset = null;
-        });
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          border: Border.all(
-            color: accentColor.withOpacity(0.5),
-            width: 2,
-          ),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: _buildWidgetContent(context, widget, widgetService),
+      child: HomeWidgetDraggable(
+        widget: widget,
+        isEditMode: _isEditMode,
+        onMinimize: () => widgetService.toggleMinimize(widget.id),
+        onRemove: () => widgetService.removeWidget(widget.id),
+        onSettings: () => _showWidgetSettings(context, widget),
       ),
     );
   }

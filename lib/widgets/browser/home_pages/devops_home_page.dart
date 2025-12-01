@@ -9,6 +9,8 @@ import '../../../core/services/wallpaper_manager.dart';
 import '../../../services/settings_service.dart';
 import '../../../services/system_metrics_service.dart';
 import '../../../core/services/color_theme_manager.dart';
+import '../../../services/backend_lab/backend_lab_service.dart';
+import '../../../models/backend_lab/backend_lab_models.dart';
 import '../../common/notilus_logo_image.dart';
 
 /// Page d'accueil DevOps - Style monitoring/infrastructure
@@ -96,6 +98,17 @@ class _DevOpsHomePageState extends State<DevOpsHomePage>
     _startClock();
     _metricsService.addListener(_onMetricsUpdate);
     _settings.addListener(_onSettingsChanged);
+    
+    // Initialiser Backend Lab
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final labService = BackendLabService();
+      labService.checkConnection().then((_) {
+        if (labService.isConnected) {
+          labService.getServers();
+          labService.connectConsole();
+        }
+      });
+    });
   }
 
   void _startClock() async {
@@ -192,18 +205,29 @@ class _DevOpsHomePageState extends State<DevOpsHomePage>
                       
                       // Main content
                       Expanded(
-                        child: SingleChildScrollView(
-                          padding: const EdgeInsets.all(24),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildCommandCenter(gxRed, transparency),
-                              const SizedBox(height: 32),
-                              _buildMetricsDashboard(gxRed, transparency),
-                              const SizedBox(height: 32),
-                              _buildToolsSection(gxRed, transparency),
-                            ],
-                          ),
+                        child: Row(
+                          children: [
+                            // Main content area
+                            Expanded(
+                              flex: 2,
+                              child: SingleChildScrollView(
+                                padding: const EdgeInsets.all(24),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildCommandCenter(gxRed, transparency),
+                                    const SizedBox(height: 32),
+                                    _buildMetricsDashboard(gxRed, transparency),
+                                    const SizedBox(height: 32),
+                                    _buildToolsSection(gxRed, transparency),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            
+                            // Right panel - Server list + FastAPI Console
+                            _buildBackendLabPanel(gxRed, transparency),
+                          ],
                         ),
                       ),
                     ],
@@ -625,6 +649,8 @@ class _DevOpsHomePageState extends State<DevOpsHomePage>
                       color: Colors.white.withOpacity(0.3),
                     ),
                     border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
                     fillColor: Colors.transparent,
                     filled: true,
                   ),
@@ -755,6 +781,269 @@ class _DevOpsHomePageState extends State<DevOpsHomePage>
     ).animate().fadeIn(duration: 400.ms, delay: (600 + index * 80).ms);
   }
 
+  Widget _buildBackendLabPanel(Color gxRed, double transparency) {
+    final labService = BackendLabService();
+    
+    return Container(
+      width: 320,
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity((1 - transparency * 0.5).clamp(0.0, 1.0)),
+        border: Border(
+          left: BorderSide(color: const Color(0xFF00FF88).withOpacity(0.2)),
+        ),
+      ),
+      child: Column(
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: const Color(0xFF00FF88).withOpacity(0.2)),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(CupertinoIcons.square_stack_3d_up, size: 14, color: const Color(0xFF00FF88)),
+                const SizedBox(width: 8),
+                Text(
+                  'BACKEND LAB',
+                  style: TextStyle(
+                    fontFamily: 'JetBrains Mono',
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF00FF88),
+                    letterSpacing: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Tabs: Servers / Console
+          Expanded(
+            child: DefaultTabController(
+              length: 2,
+              child: Column(
+                children: [
+                  TabBar(
+                    labelColor: const Color(0xFF00FF88),
+                    unselectedLabelColor: Colors.white.withOpacity(0.5),
+                    indicatorColor: const Color(0xFF00FF88),
+                    labelStyle: const TextStyle(
+                      fontFamily: 'JetBrains Mono',
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    tabs: const [
+                      Tab(text: 'SERVERS'),
+                      Tab(text: 'CONSOLE'),
+                    ],
+                  ),
+                  Expanded(
+                    child: TabBarView(
+                      children: [
+                        // Server list
+                        ListenableBuilder(
+                          listenable: labService,
+                          builder: (context, _) {
+                            final servers = labService.servers;
+                            if (servers.isEmpty) {
+                              return Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      CupertinoIcons.square_stack_3d_up,
+                                      size: 32,
+                                      color: Colors.white.withOpacity(0.3),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      'No servers',
+                                      style: TextStyle(
+                                        fontFamily: 'JetBrains Mono',
+                                        fontSize: 10,
+                                        color: Colors.white.withOpacity(0.5),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+                            return ListView.builder(
+                              padding: const EdgeInsets.all(8),
+                              itemCount: servers.length,
+                              itemBuilder: (context, index) {
+                                final server = servers[index];
+                                return _buildServerItem(server, gxRed);
+                              },
+                            );
+                          },
+                        ),
+                        // FastAPI Console
+                        ListenableBuilder(
+                          listenable: labService,
+                          builder: (context, _) {
+                            final logs = labService.consoleLogs;
+                            if (logs.isEmpty) {
+                              return Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      CupertinoIcons.text_alignleft,
+                                      size: 32,
+                                      color: Colors.white.withOpacity(0.3),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      'No logs',
+                                      style: TextStyle(
+                                        fontFamily: 'JetBrains Mono',
+                                        fontSize: 10,
+                                        color: Colors.white.withOpacity(0.5),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+                            return ListView.builder(
+                              padding: const EdgeInsets.all(8),
+                              itemCount: logs.length,
+                              itemBuilder: (context, index) {
+                                final log = logs[logs.length - 1 - index]; // Reverse order
+                                return _buildConsoleLogItem(log, gxRed);
+                              },
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildServerItem(DiscoveredServer server, Color gxRed) {
+    final statusColor = server.status == ServerStatus.running
+        ? const Color(0xFF22C55E)
+        : Colors.grey;
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.02),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: const Color(0xFF00FF88).withOpacity(0.2),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              color: statusColor,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  server.name ?? 'Unknown',
+                  style: TextStyle(
+                    fontFamily: 'JetBrains Mono',
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white.withOpacity(0.9),
+                  ),
+                ),
+                Text(
+                  '${server.host}:${server.port}',
+                  style: TextStyle(
+                    fontFamily: 'JetBrains Mono',
+                    fontSize: 8,
+                    color: Colors.white.withOpacity(0.5),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildConsoleLogItem(ConsoleLogEntry log, Color gxRed) {
+    final levelColor = log.level == 'ERROR'
+        ? const Color(0xFFFF5F56)
+        : log.level == 'WARNING'
+            ? const Color(0xFFFFBD2E)
+            : const Color(0xFF00FF88);
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.01),
+        borderRadius: BorderRadius.circular(3),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 4,
+            height: 4,
+            margin: const EdgeInsets.only(top: 4),
+            decoration: BoxDecoration(
+              color: levelColor,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  log.message,
+                  style: TextStyle(
+                    fontFamily: 'JetBrains Mono',
+                    fontSize: 8,
+                    color: Colors.white.withOpacity(0.7),
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (log.timestamp != null)
+                  Text(
+                    log.timestamp.toString().substring(11, 19),
+                    style: TextStyle(
+                      fontFamily: 'JetBrains Mono',
+                      fontSize: 7,
+                      color: Colors.white.withOpacity(0.3),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildToolButton(_DevOpsTool tool, double transparency) {
     return GestureDetector(
       onTap: () => _openUrl(tool.url),
@@ -828,16 +1117,18 @@ class _DevOpsTool {
 
 class _GridPatternPainter extends CustomPainter {
   final Color color;
+  final bool isSecondary;
 
-  _GridPatternPainter({required this.color});
+  _GridPatternPainter({required this.color, this.isSecondary = false});
 
   @override
   void paint(Canvas canvas, Size size) {
+    // Mode secondary : grille plus dense et visible
+    final opacity = isSecondary ? 0.08 : 0.03;
+    final spacing = isSecondary ? 30.0 : 40.0;
     final paint = Paint()
-      ..color = const Color(0xFF00FF88).withOpacity(0.03)
-      ..strokeWidth = 0.5;
-
-    const spacing = 40.0;
+      ..color = const Color(0xFF00FF88).withOpacity(opacity)
+      ..strokeWidth = isSecondary ? 0.8 : 0.5;
 
     for (double x = 0; x < size.width; x += spacing) {
       canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
@@ -849,7 +1140,8 @@ class _GridPatternPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => 
+      (oldDelegate as _GridPatternPainter).isSecondary != isSecondary;
 }
 
 class _RadarSweepPainter extends CustomPainter {
