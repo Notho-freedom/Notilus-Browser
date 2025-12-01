@@ -213,11 +213,20 @@ class BackendLabService extends ChangeNotifier {
       
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as List;
-        return data.map((r) => DiscoveredRoute.fromJson(r)).toList();
+        final routes = data.map((r) => DiscoveredRoute.fromJson(r)).toList();
+        
+        // Mettre à jour le cache (remplacer les routes de ce serveur)
+        _routes.removeWhere((r) => r.serverId == serverId);
+        _routes.addAll(routes);
+        
+        _lastError = null;
+        notifyListeners();
+        return routes;
       }
     } catch (e) {
       _lastError = e.toString();
     }
+    notifyListeners();
     return [];
   }
   
