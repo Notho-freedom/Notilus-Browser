@@ -19,6 +19,7 @@ import '../../../models/history_item.dart';
 import '../../common/notilus_logo_image.dart';
 import '../../common/gx_futuristic_dialog.dart';
 import '../../common/gx_futuristic_components.dart';
+import '../../common/hack_loading_indicator.dart';
 import '../../../core/constants/notilus_fonts.dart';
 
 /// Page d'accueil Backend Developer - Style terminal/serveur
@@ -1029,23 +1030,8 @@ class _BackendHomePageState extends State<BackendHomePage>
                             
                             if (_isLoadingRoutes) {
                               return Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    CircularProgressIndicator(
-                                      valueColor: AlwaysStoppedAnimation<Color>(const Color(0xFF339933)),
-                                      strokeWidth: 2,
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      'Loading routes...',
-                                      style: TextStyle(
-                                        fontFamily: 'JetBrains Mono',
-                                        fontSize: 10,
-                                        color: Colors.white.withOpacity(0.5),
-                                      ),
-                                    ),
-                                  ],
+                                child: HackLoadingIndicator(
+                                  accentColor: const Color(0xFF339933),
                                 ),
                               );
                             }
@@ -1075,7 +1061,33 @@ class _BackendHomePageState extends State<BackendHomePage>
                               );
                             }
                             
-                            final routes = labService.routes.where((r) => r.serverId == _selectedServerId).toList();
+                            // Filtrer les routes par serverId, en vérifiant aussi les variantes possibles
+                            final routes = labService.routes.where((r) {
+                              // Vérifier l'ID exact
+                              if (r.serverId == _selectedServerId) return true;
+                              
+                              // Vérifier aussi si le serveur a été découvert avec un ID différent
+                              // (par exemple, si le serveur de l'historique a été ajouté)
+                              final selectedServer = labService.servers.firstWhere(
+                                (s) => s.id == _selectedServerId,
+                                orElse: () => DiscoveredServer(id: '', port: 0),
+                              );
+                              
+                              if (selectedServer.id.isNotEmpty) {
+                                // Vérifier si la route correspond au host:port du serveur sélectionné
+                                final routeServer = labService.servers.firstWhere(
+                                  (s) => s.id == r.serverId,
+                                  orElse: () => DiscoveredServer(id: '', port: 0),
+                                );
+                                
+                                if (routeServer.id.isNotEmpty) {
+                                  return routeServer.host == selectedServer.host && 
+                                         routeServer.port == selectedServer.port;
+                                }
+                              }
+                              
+                              return false;
+                            }).toList();
                             if (routes.isEmpty) {
                               return Center(
                                 child: Column(
@@ -1355,15 +1367,61 @@ class _BackendHomePageState extends State<BackendHomePage>
     final labService = Provider.of<BackendLabService>(context, listen: false);
     
     try {
-      // Charger les routes du serveur
-      await labService.discoverRoutes(serverId);
+      // Vérifier si le serveur existe dans BackendLab
+      DiscoveredServer? server = labService.servers.firstWhere(
+        (s) => s.id == serverId,
+        orElse: () => DiscoveredServer(id: '', port: 0),
+      );
       
-      if (mounted) {
-        setState(() {
-          _isLoadingRoutes = false;
-        });
-        // Redirection automatique vers l'onglet ROUTES
-        _tabController.animateTo(1);
+      // Si le serveur n'existe pas, vérifier s'il vient de l'historique
+      if (server.id.isEmpty) {
+        final historyServer = _historyServers.firstWhere(
+          (s) => s.id == serverId,
+          orElse: () => DiscoveredServer(id: '', port: 0),
+        );
+        
+        if (historyServer.id.isNotEmpty) {
+          // Découvrir/ajouter le serveur de l'historique à BackendLab
+          server = await labService.discoverOrAddServer(
+            host: historyServer.host,
+            port: historyServer.port,
+            protocol: historyServer.protocol,
+            name: historyServer.name,
+          );
+          
+          if (server != null && server.id.isNotEmpty) {
+            // Mettre à jour l'ID sélectionné avec celui du serveur découvert
+            setState(() {
+              _selectedServerId = server!.id;
+            });
+          } else {
+            // Si la découverte échoue, utiliser quand même le serveur de l'historique
+            server = historyServer;
+          }
+        }
+      }
+      
+      if (server != null && server.id.isNotEmpty) {
+        // Redirection automatique vers l'onglet ROUTES avant le scan
+        if (mounted) {
+          _tabController.animateTo(1);
+        }
+        
+        // Charger les routes du serveur
+        await labService.discoverRoutes(server.id);
+        
+        if (mounted) {
+          setState(() {
+            _isLoadingRoutes = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _isLoadingRoutes = false;
+            _routesError = 'Server not found or unavailable';
+          });
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -1921,6 +1979,10 @@ class _BackendHomePageState extends State<BackendHomePage>
     ).animate().fadeIn(duration: 500.ms, delay: 900.ms);
   }
 }
+
+// === HACK LOADING INDICATOR ===
+
+// _HackLoadingIndicator remplacé par le composant réutilisable HackLoadingIndicator
 
 // === DATA CLASSES ===
 

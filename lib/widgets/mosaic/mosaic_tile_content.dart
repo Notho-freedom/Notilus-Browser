@@ -21,6 +21,13 @@ import '../browser/webview_service_panel.dart';
 import '../terminal/native_terminal_panel.dart';
 import '../dev_tools/notilus_devtools.dart';
 import '../documentation/documentation_panel.dart';
+import '../dev_tools/backend_lab_panel.dart';
+import '../studio/studio_panel.dart';
+import '../lighthouse/lighthouse_panel.dart';
+import '../github/github_repos_panel.dart';
+import '../browser/extensions_panel.dart';
+import '../browser/cloudinary_media_manager.dart';
+import '../../services/cloudinary_service.dart';
 
 /// Widget qui rend le contenu approprié selon le type de tile
 class MosaicTileContent extends StatelessWidget {
@@ -53,6 +60,22 @@ class MosaicTileContent extends StatelessWidget {
         return _WebServiceTileContent(tile: tile);
       case MosaicTileType.documentation:
         return const DocumentationPanel();
+      case MosaicTileType.backendLab:
+        return const BackendLabPanel();
+      case MosaicTileType.studio:
+        return const StudioPanel();
+      case MosaicTileType.lighthouse:
+        return const LighthousePanel();
+      case MosaicTileType.github:
+        return const GitHubReposPanel();
+      case MosaicTileType.extensions:
+        return const ExtensionsPanel();
+      case MosaicTileType.cloudinary:
+        return CloudinaryMediaManager(
+          resourceType: CloudinaryResourceType.auto,
+          title: 'Cloudinary Media',
+          allowMultiple: true,
+        );
       case MosaicTileType.empty:
         return _EmptyTileContent(tile: tile);
       case MosaicTileType.custom:

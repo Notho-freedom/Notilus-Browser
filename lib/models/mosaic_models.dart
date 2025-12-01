@@ -18,6 +18,12 @@ enum MosaicTileType {
   settings,      // Paramètres
   webService,    // Service web (YouTube, WhatsApp, etc.)
   documentation, // Documentation
+  backendLab,    // Backend Lab - Découverte et test de serveurs
+  studio,        // Studio - Outils de test front-end
+  lighthouse,    // Lighthouse - Analyse de performance
+  github,        // GitHub - Gestion des dépôts
+  extensions,    // Extensions - Gestion des extensions
+  cloudinary,    // Cloudinary - Gestion des médias
   empty,         // Tile vide (placeholder)
   custom,        // Widget personnalisé
 }
@@ -36,6 +42,12 @@ extension MosaicTileTypeExtension on MosaicTileType {
       case MosaicTileType.settings: return 'Paramètres';
       case MosaicTileType.webService: return 'Service Web';
       case MosaicTileType.documentation: return 'Documentation';
+      case MosaicTileType.backendLab: return 'Backend Lab';
+      case MosaicTileType.studio: return 'Studio';
+      case MosaicTileType.lighthouse: return 'Lighthouse';
+      case MosaicTileType.github: return 'GitHub';
+      case MosaicTileType.extensions: return 'Extensions';
+      case MosaicTileType.cloudinary: return 'Cloudinary';
       case MosaicTileType.empty: return 'Vide';
       case MosaicTileType.custom: return 'Personnalisé';
     }
@@ -54,6 +66,12 @@ extension MosaicTileTypeExtension on MosaicTileType {
       case MosaicTileType.settings: return Icons.settings_rounded;
       case MosaicTileType.webService: return Icons.public_rounded;
       case MosaicTileType.documentation: return Icons.menu_book_rounded;
+      case MosaicTileType.backendLab: return Icons.dns_rounded;
+      case MosaicTileType.studio: return Icons.palette_rounded;
+      case MosaicTileType.lighthouse: return Icons.light_mode_rounded;
+      case MosaicTileType.github: return Icons.code_rounded;
+      case MosaicTileType.extensions: return Icons.extension_rounded;
+      case MosaicTileType.cloudinary: return Icons.cloud_upload_rounded;
       case MosaicTileType.empty: return Icons.add_rounded;
       case MosaicTileType.custom: return Icons.extension_rounded;
     }

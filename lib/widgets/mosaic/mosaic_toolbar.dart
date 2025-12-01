@@ -263,6 +263,14 @@ class _MosaicToolbarState extends State<MosaicToolbar> {
       MosaicTileType.downloads,
       MosaicTileType.ai,
       MosaicTileType.documentation,
+      MosaicTileType.backendLab,
+      MosaicTileType.studio,
+      MosaicTileType.lighthouse,
+      MosaicTileType.github,
+      MosaicTileType.extensions,
+      MosaicTileType.cloudinary,
+      MosaicTileType.settings,
+      MosaicTileType.webService,
     ];
 
     return _DropdownMenu(
