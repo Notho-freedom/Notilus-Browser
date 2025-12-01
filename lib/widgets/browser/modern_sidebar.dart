@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import '../../services/tab_manager.dart';
+import '../../core/constants/notilus_colors.dart';
 
 /// Sections disponibles dans la barre latérale
 enum SidebarSection {
@@ -68,7 +69,7 @@ class _ModernSidebarState extends State<ModernSidebar> {
         color: const Color(0xFF0B0B0E),
         border: Border(
           right: BorderSide(
-            color: const NotilusColors.neonRed.withOpacity(0.3),
+            color: NotilusColors.neonRed.withValues(alpha: 0.3),
             width: 1,
           ),
         ),
@@ -81,10 +82,10 @@ class _ModernSidebarState extends State<ModernSidebar> {
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
+              gradient: LinearGradient(
                 colors: [
                   NotilusColors.neonRed,
-                  Color(0xFF5856D6),
+                  const Color(0xFF5856D6),
                 ],
               ),
               borderRadius: BorderRadius.circular(8),

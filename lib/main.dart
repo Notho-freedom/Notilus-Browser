@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
@@ -34,12 +35,16 @@ import 'services/auth/firebase_auth_service.dart';
 import 'services/auth/config_sync_service.dart';
 import 'services/github/github_repos_service.dart';
 import 'services/text_selection_service.dart';
+import 'services/cookie_manager_service.dart';
 import 'widgets/common/text_selection_wrapper.dart';
-import 'widgets/common/text_selection_wrapper.dart' show CustomTextSelectionControls;
+import 'core/services/logger_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
+  // Initialiser le service de logging
+  await LoggerService().initialize(enableFileLogging: kDebugMode);
+  LoggerService().info('Notilus Browser - Démarrage');
 
   // Initialiser Firebase (si configuré)
   try {
@@ -48,7 +53,7 @@ void main() async {
     );
   } catch (e) {
     // Firebase non configuré, continuer sans
-    debugPrint('Firebase non initialisé: $e');
+    LoggerService().error('Firebase non initialisé', context: 'main', error: e);
   }
 
   // Supprime le halo bleu Windows autour des champs focus
@@ -73,11 +78,11 @@ void main() async {
         try {
           // Le pré-chauffage sera géré par TabWebViewManager lors de sa création
         } catch (e) {
-          debugPrint('⚠️ Erreur lors du pré-chauffage du WebView: $e');
+          LoggerService().error('Erreur lors du pré-chauffage du WebView', context: 'main', error: e);
         }
       });
     } catch (e) {
-      debugPrint('⚠️ Impossible de pré-chauffer le WebView: $e');
+      LoggerService().error('Impossible de pré-chauffer le WebView', context: 'main', error: e);
     }
   }
 
@@ -90,7 +95,7 @@ void main() async {
     syncService = ConfigSyncService(authService, settingsService);
     githubReposService = GitHubReposService(authService);
   } catch (e) {
-    debugPrint('Services Firebase non initialisés: $e');
+    LoggerService().error('Services Firebase non initialisés', context: 'main', error: e);
   }
   
   // Initialisation de window_manager AVANT runApp
@@ -180,15 +185,6 @@ class _InvisibleScrollBehavior extends ScrollBehavior {
     // Ne pas afficher de scrollbar
     return child;
   }
-  
-  @override
-  ScrollbarThemeData? getScrollbarTheme(BuildContext context) {
-    return const ScrollbarThemeData(
-      thumbVisibility: WidgetStatePropertyAll<bool>(false),
-      trackVisibility: WidgetStatePropertyAll<bool>(false),
-      thickness: WidgetStatePropertyAll<double>(0),
-    );
-  }
 }
 
 class NotilusApp extends StatelessWidget {
@@ -252,7 +248,7 @@ class NotilusApp extends StatelessWidget {
                 // Pré-chauffer un engine en arrière-plan
                 if (Platform.isWindows) {
                   tabWebViewManager.preWarmEngine().catchError((e) {
-                    debugPrint('⚠️ Erreur lors du pré-chauffage: $e');
+                    LoggerService().error('Erreur lors du pré-chauffage', context: 'main', error: e);
                   });
                 }
                 
@@ -274,6 +270,16 @@ class NotilusApp extends StatelessWidget {
         if (githubReposService != null)
           ChangeNotifierProvider<GitHubReposService>.value(value: githubReposService!),
         ChangeNotifierProvider.value(value: TextSelectionService()),
+        ChangeNotifierProvider(
+          create: (context) {
+            final tabWebViewManager = context.read<TabWebViewManager>();
+            final tabManager = context.read<TabManager>();
+            return CookieManagerService(
+              webViewManager: tabWebViewManager,
+              tabManager: tabManager,
+            );
+          },
+        ),
       ],
       child: Consumer<ThemeModeNotifier>(
         builder: (context, themeModeNotifier, _) {

@@ -114,7 +114,7 @@ class ColorThemeManager extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_prefsKey, themeId);
       // Sauvegarder aussi la couleur secondaire pour persistance
-      await prefs.setInt(_prefsKeyNativeSecondary, theme.primary.value);
+      await prefs.setInt(_prefsKeyNativeSecondary, theme.primary.toARGB32());
     } catch (_) {
       // Ignorer les erreurs d'écriture
     }
@@ -130,7 +130,7 @@ class ColorThemeManager extends ChangeNotifier {
     
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt(_prefsKeyNativeBg, color.value);
+      await prefs.setInt(_prefsKeyNativeBg, color.toARGB32());
     } catch (_) {
       // Ignorer les erreurs d'écriture
     }
@@ -143,7 +143,7 @@ class ColorThemeManager extends ChangeNotifier {
     
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt(_prefsKeyNativeSecondary, color.value);
+      await prefs.setInt(_prefsKeyNativeSecondary, color.toARGB32());
     } catch (_) {
       // Ignorer les erreurs d'écriture
     }

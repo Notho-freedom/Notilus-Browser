@@ -25,6 +25,8 @@ import '../../services/gx_notification_service.dart';
 import '../../services/tts_service.dart';
 import '../../services/ai_service.dart';
 import '../../services/cloudinary_service.dart';
+import '../../services/adblocker_service.dart';
+import '../../services/cookie_manager_service.dart';
 import 'cloudinary_media_manager.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'dart:io';
@@ -2175,6 +2177,18 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
               onChanged: (v) => _settings.setBlockTrackers(v),
               gxRed: gxRed,
             ),
+            const SizedBox(height: 12),
+            Consumer<AdBlockerService>(
+              builder: (context, adBlocker, _) {
+                return _buildSettingSwitch(
+                  title: 'Bloqueur de publicités',
+                  subtitle: 'Bloque les publicités et les trackers (${adBlocker.blockedCount} bloquées)',
+                  value: adBlocker.isEnabled,
+                  onChanged: (v) => adBlocker.setEnabled(v),
+                  gxRed: gxRed,
+                );
+              },
+            ),
             const SizedBox(height: 24),
             _buildSubsectionTitle('Effacer les données', gxRed),
             const SizedBox(height: 12),
@@ -2209,10 +2223,9 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                     gxRed,
                   );
                   if (confirm == true) {
-                    // Appeler clearCookies sur tous les engines actifs
                     try {
-                      final webViewManager = Provider.of<TabWebViewManager>(context, listen: false);
-                      await webViewManager.clearAllCookies();
+                      final cookieManager = Provider.of<CookieManagerService>(context, listen: false);
+                      await cookieManager.clearAllCookies();
                     } catch (e) {
                       debugPrint('Erreur clear cookies: $e');
                     }

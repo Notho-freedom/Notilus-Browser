@@ -5,6 +5,7 @@ import 'storage_service.dart';
 import 'tab_performance_manager.dart';
 import 'tab_grouping_service.dart';
 import 'tab_webview_manager.dart';
+import 'webview2_browser_engine.dart';
 
 class TabManager extends ChangeNotifier {
   final List<TabModel> _tabs = [];
@@ -67,21 +68,29 @@ class TabManager extends ChangeNotifier {
   }
 
   Future<void> _save() async {
+    // Exclure les onglets privés de la sauvegarde
+    final tabsToSave = _tabs.where((tab) => !tab.isPrivate).toList();
+    // Ne pas sauvegarder l'onglet actif s'il est privé
+    final activeTabToSave = (_activeTabId != null && _tabs.any((t) => t.id == _activeTabId && !t.isPrivate)) 
+        ? _activeTabId 
+        : (tabsToSave.isNotEmpty ? tabsToSave.first.id : null);
+    
     await Future.wait([
-      _storage.saveTabs(_tabs),
+      _storage.saveTabs(tabsToSave),
       _storage.saveGroups(_groups),
-      _storage.saveActiveTab(_activeTabId),
+      _storage.saveActiveTab(activeTabToSave),
     ]);
   }
 
-  TabModel _createNewTab({String? url, String? groupId, TabType? type}) {
+  TabModel _createNewTab({String? url, String? groupId, TabType? type, bool isPrivate = false}) {
     // Si pas d'URL, utiliser la page d'accueil
     final tabUrl = url ?? 'about:newtab';
     final tabType = type ?? TabType.web;
     final tab = TabModel(
       url: tabUrl,
-      groupId: groupId,
+      groupId: isPrivate ? null : groupId, // Les onglets privés ne peuvent pas être dans un groupe
       type: tabType,
+      isPrivate: isPrivate,
       state: (tabType == TabType.terminal)
           ? TabState.loaded
           : (url != null && url != 'about:newtab' && url != 'about:blank') 
@@ -93,24 +102,32 @@ class TabManager extends ChangeNotifier {
     return tab;
   }
 
-  TabModel createNewTab({String? url, String? groupId, TabType? type}) {
+  TabModel createNewTab({String? url, String? groupId, TabType? type, bool isPrivate = false}) {
     // Deselect all tabs
     for (int i = 0; i < _tabs.length; i++) {
       _tabs[i] = _tabs[i].copyWith(isSelected: false);
     }
     
-    final tab = _createNewTab(url: url, groupId: groupId, type: type);
+    final tab = _createNewTab(url: url, groupId: groupId, type: type, isPrivate: isPrivate);
     _activeTabId = tab.id;
     final index = _tabs.length - 1;
     _tabs[index] = _tabs[index].copyWith(isSelected: true);
     notifyListeners();
-    _save();
+    // Ne pas sauvegarder les onglets privés
+    if (!isPrivate) {
+      _save();
+    }
     return _tabs[index];
   }
 
   /// Ajoute un nouvel onglet avec une URL (alias pour createNewTab)
-  TabModel addTab({String? url, String? groupId}) {
-    return createNewTab(url: url, groupId: groupId);
+  TabModel addTab({String? url, String? groupId, bool isPrivate = false}) {
+    return createNewTab(url: url, groupId: groupId, isPrivate: isPrivate);
+  }
+  
+  /// Crée un nouvel onglet privé (mode incognito)
+  TabModel addPrivateTab({String? url}) {
+    return createNewTab(url: url, isPrivate: true);
   }
 
   TabWebViewManager? _webViewManager;
@@ -146,10 +163,25 @@ class TabManager extends ChangeNotifier {
     }
   }
 
-  void closeTab(String tabId) {
+  void closeTab(String tabId) async {
     final index = _tabs.indexWhere((tab) => tab.id == tabId);
     if (index != -1) {
-      final wasActive = _tabs[index].isSelected;
+      final tab = _tabs[index];
+      final wasActive = tab.isSelected;
+      final isPrivate = tab.isPrivate;
+      
+      // Pour les onglets privés, effacer les cookies et le cache avant fermeture
+      if (isPrivate && _webViewManager != null) {
+        try {
+          final engine = _webViewManager!.getEngineForTab(tabId);
+          if (engine != null && engine is WebView2BrowserEngine) {
+            await engine.clearCookies();
+            await engine.clearCache();
+          }
+        } catch (e) {
+          // Ignorer les erreurs lors du nettoyage
+        }
+      }
       
       // Retirer du cache de performance
       _performanceManager.removeTabFromCache(tabId);

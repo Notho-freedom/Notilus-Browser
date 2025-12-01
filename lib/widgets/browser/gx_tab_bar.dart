@@ -815,14 +815,20 @@ class _GXExpandedTabItemState extends State<_GXExpandedTabItem>
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Favicon dynamique
+                    // Indicateur privé ou favicon dynamique
                     SizedBox(
                       width: 24,
                       child: Center(
-                        child: widget.tab.favicon != null && 
+                        child: widget.tab.isPrivate
+                            ? Icon(
+                                CupertinoIcons.lock_fill,
+                                size: 14,
+                                color: widget.isActive ? domainColor : gxRed,
+                              )
+                            : (widget.tab.favicon != null && 
                                widget.tab.favicon!.isNotEmpty &&
                                widget.tab.url != null &&
-                               !widget.tab.url!.startsWith('about:')
+                               !widget.tab.url!.startsWith('about:'))
                             ? Image.network(
                                 widget.tab.favicon!,
                                 width: 16,
@@ -840,7 +846,7 @@ class _GXExpandedTabItemState extends State<_GXExpandedTabItem>
                                         child: CircularProgressIndicator(
                                           strokeWidth: 1.5,
                                           valueColor: AlwaysStoppedAnimation<Color>(
-                                            domainColor.withValues(alpha: 0.6),
+                                            domainColor.withOpacity(0.6),
                                           ),
                                         ),
                                       ),

@@ -2,7 +2,6 @@
 library lighthouse_animations;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
 
 /// Animation de fade-in avec délai
 class LighthouseFadeIn extends StatefulWidget {
@@ -381,7 +380,7 @@ class _LighthouseGlowState extends State<LighthouseGlow>
           decoration: BoxDecoration(
             boxShadow: [
               BoxShadow(
-                color: widget.glowColor.withOpacity(_animation.value),
+                color: widget.glowColor.withValues(alpha: _animation.value),
                 blurRadius: widget.blurRadius,
                 spreadRadius: 2.0,
               ),

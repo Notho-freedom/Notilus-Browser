@@ -1,3 +1,8 @@
+// Ce fichier est désactivé car le package webview_cef n'est pas encore disponible
+// Il sera réactivé lors de l'intégration future de CEF (Chromium Embedded Framework)
+// Pour l'instant, l'application utilise WebView2 sur Windows
+
+/*
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:webview_cef/webview_cef.dart';
@@ -206,4 +211,4 @@ class CEFBrowserEngine extends BrowserEngine {
     _controller = null;
   }
 }
-
+*/

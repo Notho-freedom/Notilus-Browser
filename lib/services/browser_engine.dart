@@ -59,7 +59,11 @@ abstract class BrowserEngine {
 }
 
 /// Implémentation placeholder
-/// TODO: Remplacer par l'implémentation CEF réelle
+/// 
+/// NOTE: Cette classe est un placeholder pour une future intégration CEF (Chromium Embedded Framework).
+/// Actuellement, Notilus utilise WebView2 sur Windows via webview_windows.
+/// Les méthodes marquées "TODO: Implémenter avec CEF" seront implémentées lors de l'intégration CEF
+/// pour supporter macOS et Linux avec le même moteur de rendu.
 class PlaceholderBrowserEngine extends BrowserEngine {
   String? _currentUrl;
   String? _currentTitle;
@@ -81,12 +85,12 @@ class PlaceholderBrowserEngine extends BrowserEngine {
 
   @override
   Future<void> goBack() async {
-    // TODO: Implémenter
+    // NOTE: À implémenter avec CEF (voir note de classe)
   }
 
   @override
   Future<void> goForward() async {
-    // TODO: Implémenter
+    // NOTE: À implémenter avec CEF (voir note de classe)
   }
 
   @override
@@ -98,7 +102,7 @@ class PlaceholderBrowserEngine extends BrowserEngine {
 
   @override
   Future<void> stop() async {
-    // TODO: Implémenter
+    // NOTE: À implémenter avec CEF (voir note de classe)
   }
 
   @override
@@ -115,13 +119,13 @@ class PlaceholderBrowserEngine extends BrowserEngine {
 
   @override
   Future<String?> executeJavaScript(String script) async {
-    // TODO: Implémenter avec CEF
+    // NOTE: À implémenter avec CEF (voir note de classe)
     return null;
   }
 
   @override
   Future<dynamic> evaluateJavaScript(String script) async {
-    // TODO: Implémenter avec CEF
+    // NOTE: À implémenter avec CEF (voir note de classe)
     return null;
   }
 
@@ -139,7 +143,7 @@ class BrowserEngineFactory {
       return PlaceholderBrowserEngine(); // Sera remplacé par TabWebViewManager
     } else if (Platform.isMacOS || Platform.isLinux) {
       // Pour macOS/Linux: utiliser WebView si disponible
-      // TODO: Intégrer CEF ou WebView natif
+      // NOTE: À intégrer CEF ou WebView natif lors de l'implémentation multi-plateforme
       return PlaceholderBrowserEngine();
     } else {
       // Android/iOS: utiliser WebView

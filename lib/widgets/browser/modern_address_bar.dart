@@ -62,8 +62,10 @@ class _ModernAddressBarState extends State<ModernAddressBar> {
         state: TabState.loading,
       );
 
-      // Historique
-      await _historyService.addHistoryItem(formattedUrl, domain);
+      // Historique (ne pas sauvegarder pour les onglets privés)
+      if (!activeTab.isPrivate) {
+        await _historyService.addHistoryItem(formattedUrl, domain);
+      }
 
       // Favicon
       _loadFavicon(formattedUrl, activeTab.id, tabManager);

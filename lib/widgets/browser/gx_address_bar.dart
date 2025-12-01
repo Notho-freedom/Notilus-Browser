@@ -362,7 +362,10 @@ class _GXAddressBarState extends State<GXAddressBar> {
         state: TabState.loading,
       );
 
-      await _historyService.addHistoryItem(formattedUrl, domain);
+      // Ne pas sauvegarder l'historique pour les onglets privés
+      if (!activeTab.isPrivate) {
+        await _historyService.addHistoryItem(formattedUrl, domain);
+      }
       _loadFavicon(formattedUrl, activeTab.id, tabManager);
 
       final webViewManager = Provider.of<TabWebViewManager>(context, listen: false);

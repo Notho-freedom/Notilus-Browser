@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:provider/provider.dart';
 import 'ai_service.dart';
 import 'settings_service.dart';
+import 'tab_manager.dart';
 import '../widgets/common/gx_futuristic_dialog.dart';
 import '../main.dart' as app;
 
@@ -66,9 +68,36 @@ class TextSelectionService extends ChangeNotifier {
     }
   }
 
-  /// Recherche le texte sélectionné (à implémenter selon les besoins)
+  /// Recherche le texte sélectionné dans un nouvel onglet
   void searchText() {
-    // TODO: Implémenter la recherche
+    final textToSearch = _selectedText;
+    if (textToSearch == null || textToSearch.isEmpty) {
+      hideMenu();
+      return;
+    }
+    
+    // Encoder le texte pour l'URL
+    final encodedText = Uri.encodeComponent(textToSearch);
+    // Utiliser Google comme moteur de recherche par défaut
+    final searchUrl = 'https://www.google.com/search?q=$encodedText';
+    
+    // Utiliser le GlobalKey du Navigator pour obtenir un contexte valide
+    try {
+      final navigator = app.NotilusApp.navigatorKey.currentState;
+      if (navigator != null) {
+        final context = navigator.overlay?.context;
+        if (context != null && context.mounted) {
+          // Accéder au TabManager via Provider
+          final tabManager = Provider.of<TabManager>(context, listen: false);
+          tabManager.addTab(url: searchUrl);
+          hideMenu();
+          return;
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Erreur lors de la recherche: $e');
+    }
+    
     hideMenu();
   }
 

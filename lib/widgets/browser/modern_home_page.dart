@@ -22,6 +22,7 @@ import '../common/context_menu.dart';
 import '../common/gx_futuristic_dialog.dart';
 import '../common/gx_futuristic_components.dart';
 import '../common/wallpaper_background.dart';
+import 'gx_futuristic_history_panel.dart';
 
 class ModernHomePage extends StatefulWidget {
   final VoidCallback? onTerminalSelected;
@@ -602,7 +603,17 @@ class _ModernHomePageState extends State<ModernHomePage> {
                                     TextButton(
                                       onPressed: () {
                                         // Ouvrir le panel historique
-                                        // TODO: Implémenter l'ouverture du panel
+                                        final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: false);
+                                        final gxRed = colorThemeManager.nativeSecondaryColor;
+                                        GxFuturisticDialog.show(
+                                          context: context,
+                                          title: 'Historique',
+                                          titleIcon: CupertinoIcons.time,
+                                          accentColor: gxRed,
+                                          width: 900,
+                                          height: 700,
+                                          child: const GxFuturisticHistoryPanel(),
+                                        );
                                       },
                                       child: Builder(
                                         builder: (context) {

@@ -49,6 +49,7 @@ class _OpenDevToolsIntent extends Intent {}
 class _OpenLighthouseIntent extends Intent {}
 class _OpenStudioIntent extends Intent {}
 class _RunLighthouseAuditIntent extends Intent {}
+class _NewPrivateTabIntent extends Intent {}
 
 class ModernBrowserWindow extends StatefulWidget {
   const ModernBrowserWindow({super.key});
@@ -189,6 +190,7 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
         LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.shift, LogicalKeyboardKey.keyL): _OpenLighthouseIntent(),
         LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.shift, LogicalKeyboardKey.keyS): _OpenStudioIntent(),
         LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.shift, LogicalKeyboardKey.keyR): _RunLighthouseAuditIntent(),
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.shift, LogicalKeyboardKey.keyN): _NewPrivateTabIntent(),
       },
       child: Actions(
         actions: {
@@ -232,6 +234,13 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                   lighthouseService.runFullAudit();
                 }
               }
+              return null;
+            },
+          ),
+          _NewPrivateTabIntent: CallbackAction<_NewPrivateTabIntent>(
+            onInvoke: (_) {
+              final tabManager = Provider.of<TabManager>(context, listen: false);
+              tabManager.addPrivateTab();
               return null;
             },
           ),
