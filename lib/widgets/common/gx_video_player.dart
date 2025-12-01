@@ -86,12 +86,8 @@ class _GXVideoPlayerState extends State<GXVideoPlayer> {
       await _player.open(Media(widget.url), play: widget.autoplay);
       
       // Configurer le volume et le mute
-      if (widget.volume != null) {
-        await _player.setVolume(widget.volume!);
-      }
-      if (widget.muted) {
-        await _player.setMuted(true);
-      }
+      final effectiveVolume = widget.muted ? 0.0 : (widget.volume ?? 1.0);
+      await _player.setVolume(effectiveVolume);
       
       // Configurer la boucle
       await _player.setPlaylistMode(widget.loop ? PlaylistMode.loop : PlaylistMode.none);
@@ -138,8 +134,10 @@ class _GXVideoPlayerState extends State<GXVideoPlayer> {
 
   Future<void> setMuted(bool muted) async {
     if (!_isInitialized) return;
-    await _player.setMuted(muted);
-    _hasAudio = !muted && (widget.volume ?? 1.0) > 0;
+    // Utiliser setVolume(0) pour mute car setMuted n'existe pas dans media_kit
+    final currentVolume = widget.volume ?? 1.0;
+    await _player.setVolume(muted ? 0.0 : currentVolume);
+    _hasAudio = !muted && currentVolume > 0;
     widget.onAudioStateChanged?.call(_hasAudio);
   }
 
@@ -164,7 +162,6 @@ class _GXVideoPlayerState extends State<GXVideoPlayer> {
       controller: _controller,
       controls: null, // Contrôles custom
       fill: Colors.black,
-      scale: 1.0,
       alignment: Alignment.center,
     );
   }

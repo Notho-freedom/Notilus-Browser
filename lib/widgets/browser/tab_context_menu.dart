@@ -70,9 +70,9 @@ class TabContextMenu extends StatelessWidget {
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
             child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
             if (onReload != null)
               _buildMenuItem(
                 context,
@@ -152,7 +152,9 @@ class TabContextMenu extends StatelessWidget {
               },
               isDanger: true,
             ),
-          ],
+              ],
+            ),
+          ),
         ),
       ),
     );

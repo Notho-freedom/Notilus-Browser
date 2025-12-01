@@ -4,6 +4,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/constants/notilus_colors.dart';
 import '../../core/constants/notilus_fonts.dart';
 import '../../widgets/common/gx_futuristic_dialog.dart';
+import '../../widgets/common/gx_futuristic_components.dart';
 
 class TabGroupDialog extends StatefulWidget {
   final TabGroupModel? existingGroup;

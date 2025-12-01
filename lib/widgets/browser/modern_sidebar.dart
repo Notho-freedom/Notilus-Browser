@@ -91,7 +91,7 @@ class _ModernSidebarState extends State<ModernSidebar> {
               borderRadius: BorderRadius.circular(8),
               boxShadow: [
                 BoxShadow(
-                  color: const NotilusColors.neonRed.withOpacity(0.6),
+                  color: NotilusColors.neonRed.withValues(alpha: 0.6),
                   blurRadius: 10,
                   offset: const Offset(0, 2),
                 ),
@@ -206,14 +206,14 @@ class _SidebarIconButtonState extends State<_SidebarIconButton> {
                   child: Container(
                     width: 3,
                     decoration: BoxDecoration(
-                      color: const NotilusColors.neonRed,
+                      color: NotilusColors.neonRed,
                       borderRadius: const BorderRadius.only(
                         topRight: Radius.circular(2),
                         bottomRight: Radius.circular(2),
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: const NotilusColors.neonRed.withOpacity(0.6),
+                          color: NotilusColors.neonRed.withValues(alpha: 0.6),
                           blurRadius: 6,
                           spreadRadius: 1,
                         ),
@@ -234,7 +234,7 @@ class _SidebarIconButtonState extends State<_SidebarIconButton> {
                     widget.icon,
                     size: 18,
                     color: widget.selected
-                        ? const NotilusColors.neonRed
+                        ? NotilusColors.neonRed
                         : (_hovered
                             ? Colors.white.withOpacity(0.9)
                             : Colors.white.withOpacity(0.5)),

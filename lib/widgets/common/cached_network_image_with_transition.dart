@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../core/constants/notilus_colors.dart';
 
 class CachedNetworkImageWithTransition extends StatelessWidget {
   final String imageUrl;
@@ -19,24 +20,26 @@ class CachedNetworkImageWithTransition extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CachedNetworkImage(
-      imageUrl: imageUrl,
-      fit: fit,
-      colorFilter: colorFilter,
-      placeholder: (context, url) => placeholder ?? Container(
-        color: Colors.black.withOpacity(0.3),
-        child: const Center(
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            valueColor: AlwaysStoppedAnimation<Color>(NotilusColors.neonRed),
+    return ColorFiltered(
+      colorFilter: colorFilter ?? const ColorFilter.mode(Colors.transparent, BlendMode.dst),
+      child: CachedNetworkImage(
+        imageUrl: imageUrl,
+        fit: fit,
+        placeholder: (context, url) => placeholder ?? Container(
+          color: Colors.black.withOpacity(0.3),
+          child: const Center(
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: const AlwaysStoppedAnimation<Color>(NotilusColors.neonRed),
+            ),
           ),
         ),
+        errorWidget: (context, url, error) => errorWidget ?? Container(
+          color: Colors.black.withOpacity(0.3),
+        ),
+        fadeInDuration: const Duration(milliseconds: 600),
+        fadeOutDuration: const Duration(milliseconds: 200),
       ),
-      errorWidget: (context, url, error) => errorWidget ?? Container(
-        color: Colors.black.withOpacity(0.3),
-      ),
-      fadeInDuration: const Duration(milliseconds: 600),
-      fadeOutDuration: const Duration(milliseconds: 200),
     );
   }
 }

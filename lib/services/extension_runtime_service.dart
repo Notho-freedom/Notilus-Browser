@@ -52,22 +52,52 @@ class ExtensionRuntimeService {
   /// Injecte un script de contenu dans une page
   Future<void> _injectContentScript(String tabId, Extension extension) async {
     final engine = _engineMap[tabId];
-    if (engine == null || extension.code == null || extension.code!.isEmpty) return;
+    if (engine == null) return;
 
-    try {
-      // Créer un contexte isolé pour l'extension avec API minimale
-      final wrappedScript = _wrapContentScript(extension.code!, extension.id);
-      await engine.executeJavaScript(wrappedScript);
-      LoggerService().info('✅ Extension ${extension.name} injectée dans l\'onglet $tabId');
-    } catch (e) {
-      LoggerService().error('Error injecting content script', error: e);
+    // Récupérer le code depuis le manifest
+    final contentScripts = extension.manifest['content_scripts'] as List<dynamic>?;
+    if (contentScripts == null || contentScripts.isEmpty) {
+      // Pour la bêta, si pas de content_scripts, on utilise un script par défaut du manifest
+      final js = extension.manifest['js'] as String?;
+      if (js == null || js.isEmpty) return;
+      
+      try {
+        final wrappedScript = _wrapContentScript(js, extension.id);
+        await engine.executeJavaScript(wrappedScript);
+        LoggerService().info('✅ Extension ${extension.name} injectée dans l\'onglet $tabId');
+      } catch (e) {
+        LoggerService().error('Error injecting content script', error: e);
+      }
+      return;
     }
+
+    // Injecter chaque script de contenu
+    for (final scriptEntry in contentScripts) {
+      final scripts = (scriptEntry as Map<String, dynamic>)['js'] as List<dynamic>?;
+      if (scripts != null) {
+        for (final script in scripts) {
+          try {
+            final scriptCode = script as String;
+            final wrappedScript = _wrapContentScript(scriptCode, extension.id);
+            await engine.executeJavaScript(wrappedScript);
+          } catch (e) {
+            LoggerService().error('Error injecting content script', error: e);
+          }
+        }
+      }
+    }
+    
+    LoggerService().info('✅ Extension ${extension.name} injectée dans l\'onglet $tabId');
   }
 
   /// Démarre un script en arrière-plan
   Future<void> _startBackgroundScript(Extension extension) async {
     if (_runningExtensions[extension.id] == true) return;
-    if (extension.code == null || extension.code!.isEmpty) return;
+    
+    // Récupérer le script background depuis le manifest
+    final background = extension.manifest['background'] as Map<String, dynamic>?;
+    final backgroundScript = background?['scripts'] as List<dynamic>?;
+    if (backgroundScript == null || backgroundScript.isEmpty) return;
 
     try {
       // Pour la bêta, on exécute simplement le script dans un isolate Dart
