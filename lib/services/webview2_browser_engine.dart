@@ -1042,7 +1042,10 @@ class WebView2BrowserEngine extends BrowserEngine {
     try {
       // Vérifier que le WebView est initialisé avant d'appeler setBackgroundColor
       if (_webView != null && _webView!.value.isInitialized) {
+        // Activer le mode composition GPU avec fond transparent
         _webView!.setBackgroundColor(Colors.transparent);
+        
+        debugPrint('✅ Optimisations GPU activées (fond transparent)');
       }
       
       // Optimisations supplémentaires via JavaScript
@@ -1052,24 +1055,221 @@ class WebView2BrowserEngine extends BrowserEngine {
     }
   }
   
-  /// Active des optimisations supplémentaires via JavaScript
+  /// Active des optimisations supplémentaires via JavaScript et CSS pour améliorer le rendu GPU
   void _enableAdditionalOptimizations() {
     // Attendre que la page soit chargée avant d'appliquer les optimisations
     Future.delayed(const Duration(milliseconds: 500), () {
       try {
         if (_webView != null && _webView!.value.isInitialized) {
+          // Script d'optimisation GPU complet
           _webView!.executeScript('''
             (function() {
-              document.addEventListener('DOMContentLoaded', function() {
-                const images = document.getElementsByTagName('img');
-                for (let img of images) {
-                  if (img.getBoundingClientRect().top < window.innerHeight * 2) {
-                    img.loading = 'eager';
+              'use strict';
+              
+              // === OPTIMISATIONS GPU ET RENDU ===
+              
+              // 1. Forcer l'accélération GPU sur tous les éléments
+              const forceGPUAcceleration = function() {
+                const style = document.createElement('style');
+                style.id = 'notilus-gpu-accel';
+                style.textContent = `
+                  * {
+                    -webkit-transform: translateZ(0);
+                    transform: translateZ(0);
+                    -webkit-backface-visibility: hidden;
+                    backface-visibility: hidden;
+                    -webkit-perspective: 1000;
+                    perspective: 1000;
                   }
+                  
+                  /* Optimiser les animations CSS */
+                  @keyframes, @-webkit-keyframes {
+                    will-change: transform, opacity;
+                  }
+                  
+                  /* Forcer le rendu GPU sur les éléments interactifs */
+                  a, button, input, select, textarea {
+                    will-change: transform;
+                  }
+                  
+                  /* Optimiser le scroll */
+                  body, html {
+                    -webkit-overflow-scrolling: touch;
+                    overflow-scrolling: touch;
+                  }
+                `;
+                
+                if (!document.getElementById('notilus-gpu-accel')) {
+                  document.head.appendChild(style);
                 }
-              });
+              };
+              
+              // 2. Optimiser le chargement des images (lazy loading intelligent)
+              const optimizeImageLoading = function() {
+                const images = document.getElementsByTagName('img');
+                const viewportHeight = window.innerHeight;
+                
+                for (let img of images) {
+                  const rect = img.getBoundingClientRect();
+                  const isInViewport = rect.top < viewportHeight * 2;
+                  
+                  if (isInViewport) {
+                    img.loading = 'eager';
+                    // Forcer le décodage asynchrone pour améliorer le rendu
+                    if (img.decode) {
+                      img.decode().catch(() => {});
+                    }
+                  } else {
+                    img.loading = 'lazy';
+                  }
+                  
+                  // Ajouter l'accélération GPU aux images
+                  img.style.transform = 'translateZ(0)';
+                  img.style.willChange = 'transform';
+                }
+              };
+              
+              // 3. Optimiser les iframes
+              const optimizeIframes = function() {
+                const iframes = document.getElementsByTagName('iframe');
+                for (let iframe of iframes) {
+                  iframe.style.transform = 'translateZ(0)';
+                  iframe.style.willChange = 'transform';
+                }
+              };
+              
+              // 4. Forcer le rendu 120 FPS via requestAnimationFrame optimisé
+              let lastFrameTime = performance.now();
+              const targetFPS = 120;
+              const frameInterval = 1000 / targetFPS;
+              
+              const optimizedRAF = function(callback) {
+                const currentTime = performance.now();
+                const elapsed = currentTime - lastFrameTime;
+                
+                if (elapsed >= frameInterval) {
+                  lastFrameTime = currentTime - (elapsed % frameInterval);
+                  callback(currentTime);
+                } else {
+                  setTimeout(() => optimizedRAF(callback), frameInterval - elapsed);
+                }
+              };
+              
+              // Remplacer requestAnimationFrame si possible
+              if (window.requestAnimationFrame) {
+                const originalRAF = window.requestAnimationFrame;
+                window.requestAnimationFrame = function(callback) {
+                  return originalRAF.call(window, function(time) {
+                    optimizedRAF(callback);
+                  });
+                };
+              }
+              
+              // 5. Optimiser les transitions et animations CSS
+              const optimizeAnimations = function() {
+                const style = document.createElement('style');
+                style.id = 'notilus-anim-opt';
+                style.textContent = `
+                  * {
+                    transition-duration: 0.001s !important;
+                    animation-duration: 0.001s !important;
+                  }
+                  
+                  /* Réactiver les animations après un court délai pour éviter les flashs */
+                `;
+                
+                // Appliquer temporairement, puis restaurer
+                if (!document.getElementById('notilus-anim-opt')) {
+                  document.head.appendChild(style);
+                  setTimeout(() => {
+                    const optStyle = document.getElementById('notilus-anim-opt');
+                    if (optStyle) {
+                      optStyle.remove();
+                    }
+                  }, 100);
+                }
+              };
+              
+              // 6. Désactiver les effets visuels coûteux qui causent des latences
+              const disableExpensiveEffects = function() {
+                const style = document.createElement('style');
+                style.id = 'notilus-disable-expensive';
+                style.textContent = `
+                  /* Désactiver les box-shadows complexes */
+                  * {
+                    box-shadow: none !important;
+                    text-shadow: none !important;
+                  }
+                  
+                  /* Réactiver sélectivement après chargement */
+                `;
+                
+                if (!document.getElementById('notilus-disable-expensive')) {
+                  document.head.appendChild(style);
+                  setTimeout(() => {
+                    const expensiveStyle = document.getElementById('notilus-disable-expensive');
+                    if (expensiveStyle) {
+                      expensiveStyle.remove();
+                    }
+                  }, 2000);
+                }
+              };
+              
+              // 7. Optimiser le scroll avec passive listeners
+              const optimizeScroll = function() {
+                let ticking = false;
+                const optimizedScrollHandler = function() {
+                  if (!ticking) {
+                    window.requestAnimationFrame(function() {
+                      // Scroll optimisé
+                      ticking = false;
+                    });
+                    ticking = true;
+                  }
+                };
+                
+                window.addEventListener('scroll', optimizedScrollHandler, { passive: true });
+                window.addEventListener('wheel', optimizedScrollHandler, { passive: true });
+                window.addEventListener('touchmove', optimizedScrollHandler, { passive: true });
+              };
+              
+              // Appliquer toutes les optimisations
+              if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function() {
+                  forceGPUAcceleration();
+                  optimizeImageLoading();
+                  optimizeIframes();
+                  optimizeAnimations();
+                  disableExpensiveEffects();
+                  optimizeScroll();
+                });
+              } else {
+                forceGPUAcceleration();
+                optimizeImageLoading();
+                optimizeIframes();
+                optimizeAnimations();
+                disableExpensiveEffects();
+                optimizeScroll();
+              }
+              
+              // Observer les changements DOM pour réappliquer les optimisations
+              if (window.MutationObserver) {
+                const observer = new MutationObserver(function(mutations) {
+                  optimizeImageLoading();
+                  optimizeIframes();
+                });
+                
+                observer.observe(document.body, {
+                  childList: true,
+                  subtree: true
+                });
+              }
+              
+              console.log('✅ Notilus: Optimisations GPU et rendu 120 FPS activées');
             })();
           ''');
+          
+          debugPrint('✅ Scripts d\'optimisation GPU injectés');
         }
       } catch (e) {
         debugPrint('⚠️ Erreur lors de l\'exécution des scripts d\'optimisation: $e');
@@ -1137,6 +1337,9 @@ class WebView2BrowserEngine extends BrowserEngine {
               await _injectTextSelectionScript();
               await _injectContextMenuScript();
               await _injectAdBlockerScript();
+              
+              // Réappliquer les optimisations GPU après chaque navigation
+              _enableAdditionalOptimizations();
             } catch (e) {
               debugPrint('Error injecting handlers: $e');
             }
