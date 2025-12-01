@@ -10,9 +10,6 @@ import 'adblocker_service.dart';
 import 'text_selection_service.dart';
 
 /// Implémentation réelle du moteur de rendu avec WebView2 (Option #1 - Production-ready)
-/// WebView2 est le moteur moderne de Microsoft basé sur Chromium
-/// 
-/// API mise à jour pour webview_windows 0.2.2+
 class WebView2BrowserEngine extends BrowserEngine {
   WebviewController? _webView;
   String? _currentUrl;
@@ -48,16 +45,18 @@ class WebView2BrowserEngine extends BrowserEngine {
   String? tabId;
 
   bool _isInitialized = false;
+  bool _isInitializing = false; // Pour éviter les initialisations multiples
+  Completer<void>? _initializationCompleter;
   Timer? _newWindowPollingTimer;
   Timer? _downloadPollingTimer;
-  Timer? _loadingTimeoutTimer; // Timeout pour forcer l'arrêt du loader
+  Timer? _loadingTimeoutTimer;
   
   // État de visibilité pour adapter la fréquence du polling
   bool _isTabActive = true;
   bool _isPageLoaded = false;
-  bool _isLoading = false; // État de chargement réel
+  bool _isLoading = false;
   
-  // StreamController pour rebroadcast loadingState (permet plusieurs listeners)
+  // StreamController pour rebroadcast loadingState
   StreamController<LoadingState>? _loadingStateController;
   StreamSubscription<LoadingState>? _loadingStateSubscription;
   
@@ -85,13 +84,11 @@ class WebView2BrowserEngine extends BrowserEngine {
           
           // Stocker les informations de sélection (coordonnées viewport, pas absolues)
           if (document.body) {
-            // Utiliser getBoundingClientRect qui donne les coordonnées relatives à la viewport
             var x = Math.round(rect.left + rect.width / 2);
             var y = Math.round(rect.top);
             document.body.setAttribute('data-selected-text', encodeURIComponent(text));
             document.body.setAttribute('data-selection-x', x.toString());
             document.body.setAttribute('data-selection-y', y.toString());
-            console.log('Notilus: Sélection détectée:', text.substring(0, 50), 'à', x, y);
           }
         } else {
           // Effacer la sélection si vide
@@ -212,8 +209,6 @@ class WebView2BrowserEngine extends BrowserEngine {
         if (text) {
           document.body.setAttribute('data-context-text', encodeURIComponent(text));
         }
-        
-        console.log('Notilus: Menu contextuel détecté:', elementType, 'à', x, y);
       }
     } catch (err) {
       console.error('Notilus: Erreur dans le handler de menu contextuel:', err);
@@ -234,16 +229,14 @@ class WebView2BrowserEngine extends BrowserEngine {
   AdBlockerService? _adBlockerService;
   bool _adBlockerScriptInjected = false;
   Timer? _adBlockerPollingTimer;
-  
+
   /// Définit le service de blocage de publicités
   void setAdBlockerService(AdBlockerService? service) {
     _adBlockerService = service;
-    // Si le service est activé et la page est déjà chargée, injecter le script
     if (service != null && service.isEnabled && _isPageLoaded && _webView != null && _isInitialized) {
-      _adBlockerScriptInjected = false; // Réinitialiser pour permettre la réinjection
+      _adBlockerScriptInjected = false;
       _injectAdBlockerScript();
     } else if (service == null || !service.isEnabled) {
-      // Arrêter le polling si le service est désactivé
       _stopAdBlockerPolling();
       _adBlockerScriptInjected = false;
     }
@@ -251,114 +244,133 @@ class WebView2BrowserEngine extends BrowserEngine {
 
   @override
   Future<void> initialize() async {
-    if (_isInitialized) return;
-    
-    // S'assurer qu'on ferme complètement l'ancien WebView s'il existe
-    if (_webView != null) {
-      await _cleanupWebView();
+    if (_isInitialized || _isInitializing) {
+      return await _initializationCompleter?.future;
     }
     
+    _isInitializing = true;
+    _initializationCompleter = Completer<void>();
+    
     try {
+      // S'assurer qu'on ferme complètement l'ancien WebView s'il existe
+      await _cleanupWebView();
+      
       _webView = WebviewController();
       await _webView!.initialize();
       
-      // Si l'initialisation réussit sans exception, on considère que c'est initialisé
-      _isInitialized = true;
-      
-      // Activer les optimisations de performance
-      _enablePerformanceOptimizations(_webView!);
-      
-      // Configurer les listeners du WebView
-      await _setupWebViewListeners();
-      
+      // Vérifier que le WebView est vraiment initialisé
+      if (_webView!.value.isInitialized) {
+        _isInitialized = true;
+        _isInitializing = false;
+        
+        // Activer les optimisations de performance
+        _enablePerformanceOptimizations();
+        
+        // Configurer les listeners du WebView
+        await _setupWebViewListeners();
+        
+        debugPrint('✅ WebView2 initialisé avec succès');
+        _initializationCompleter?.complete();
+      } else {
+        throw Exception('WebView2 n\'est pas initialisé correctement');
+      }
     } catch (e) {
-      debugPrint('WebView2 initialization error: $e');
+      debugPrint('❌ WebView2 initialization error: $e');
       _isInitialized = false;
+      _isInitializing = false;
+      await _cleanupWebView();
+      _initializationCompleter?.completeError(e);
       rethrow;
     }
   }
 
+  /// Attendre que l'initialisation soit complète
+  Future<void> waitForInitialization() async {
+    if (_isInitialized) return;
+    await _initializationCompleter?.future;
+  }
+
   @override
   Future<void> navigate(String url) async {
-    if (!_isInitialized) {
-      await initialize();
-    }
-    
-    // Forcer l'état de chargement immédiatement
-    _isLoading = true;
-    onStateChanged?.call(TabState.loading);
-    
-    // Optimisation : ne pas recharger si l'URL est déjà chargée
-    if (_currentUrl == url && _webView != null && _isPageLoaded) {
-      debugPrint('✅ URL déjà chargée, pas de rechargement: $url');
-      // S'assurer que l'état est bien "loaded"
-      _isLoading = false;
-      onStateChanged?.call(TabState.loaded);
-      return;
-    }
-    
-    if (_webView != null) {
-      // Réinitialiser le flag d'injection pour la nouvelle page
-      _scriptInjected = false;
-      _textSelectionScriptInjected = false;
-      _adBlockerScriptInjected = false;
-      _isPageLoaded = false;
+    try {
+      if (!_isInitialized) {
+        await initialize();
+      }
       
       // Forcer l'état de chargement immédiatement
       _isLoading = true;
       onStateChanged?.call(TabState.loading);
-      onUrlChanged?.call(url);
       
-      // Utiliser retry avec fallback gracieux
-      try {
-        await ErrorHandler.withRetry(
-          fn: () => _webView!.loadUrl(url),
-          maxRetries: 2,
-          initialDelay: const Duration(milliseconds: 500),
-          shouldRetry: (error) {
-            // Réessayer seulement pour les erreurs réseau
-            return error.toString().contains('network') || 
-                   error.toString().contains('timeout');
-          },
-        );
-      } catch (e) {
-        ErrorHandler.logError(
-          context: 'WebView2BrowserEngine.navigate',
-          error: e,
-          additionalData: {'url': url},
-        );
-        
-        // Tentative de récupération : fermer complètement avant de recréer
-        final recovered = await WebViewRecovery.recoverWebView(
-          recreateWebView: () async {
-            // Fermer complètement l'ancien WebView
-            await _cleanupWebView();
-            
-            // Attendre un peu pour que les ressources soient libérées
-            await Future.delayed(const Duration(milliseconds: 100));
-            
-            // Recréer le WebView
-            _webView = WebviewController();
-            await _webView!.initialize();
-            
-            // Réinitialiser les listeners
-            await _setupWebViewListeners();
-            
-            // Naviguer vers l'URL
-            await _webView!.loadUrl(url);
-          },
-        );
-        
-        if (!recovered) {
-          onStateChanged?.call(TabState.error);
-        }
+      // Optimisation : ne pas recharger si l'URL est déjà chargée
+      if (_currentUrl == url && _webView != null && _isPageLoaded) {
+        debugPrint('✅ URL déjà chargée, pas de rechargement: $url');
+        // S'assurer que l'état est bien "loaded"
+        _isLoading = false;
+        onStateChanged?.call(TabState.loaded);
+        return;
       }
+      
+      if (_webView != null && _webView!.value.isInitialized) {
+        // Réinitialiser le flag d'injection pour la nouvelle page
+        _scriptInjected = false;
+        _textSelectionScriptInjected = false;
+        _adBlockerScriptInjected = false;
+        _isPageLoaded = false;
+        
+        // Forcer l'état de chargement
+        _isLoading = true;
+        onStateChanged?.call(TabState.loading);
+        onUrlChanged?.call(url);
+        
+        try {
+          await ErrorHandler.withRetry(
+            fn: () => _webView!.loadUrl(url),
+            maxRetries: 2,
+            initialDelay: const Duration(milliseconds: 500),
+            shouldRetry: (error) {
+              return error.toString().contains('network') || 
+                     error.toString().contains('timeout');
+            },
+          );
+        } catch (e) {
+          ErrorHandler.logError(
+            context: 'WebView2BrowserEngine.navigate',
+            error: e,
+            additionalData: {'url': url},
+          );
+          
+          // Tentative de récupération
+          final recovered = await WebViewRecovery.recoverWebView(
+            recreateWebView: () async {
+              await _cleanupWebView();
+              await Future.delayed(const Duration(milliseconds: 100));
+              
+              _webView = WebviewController();
+              await _webView!.initialize();
+              
+              await _setupWebViewListeners();
+              
+              await _webView!.loadUrl(url);
+            },
+          );
+          
+          if (!recovered) {
+            onStateChanged?.call(TabState.error);
+          }
+        }
+      } else {
+        throw Exception('WebView2 non initialisé');
+      }
+    } catch (e) {
+      debugPrint('❌ Erreur dans WebView2BrowserEngine.navigate: $e');
+      _isLoading = false;
+      onStateChanged?.call(TabState.error);
     }
   }
   
   /// Injecte le script une seule fois (évite la réinjection)
   Future<void> _injectScriptOnce() async {
-    if (_scriptInjected || _webView == null || onNewWindowRequest == null) return;
+    if (_scriptInjected || _webView == null || onNewWindowRequest == null || !_webView!.value.isInitialized) return;
     
     try {
       await _webView!.executeScript(_minifiedNewWindowScript);
@@ -371,9 +383,8 @@ class WebView2BrowserEngine extends BrowserEngine {
 
   @override
   Future<void> goBack() async {
-    if (_webView != null) {
+    if (_webView != null && _webView!.value.isInitialized) {
       try {
-        // Vérifier si on peut revenir en arrière
         final canBack = await _getCanGoBack();
         if (canBack) {
           await _webView!.goBack();
@@ -386,9 +397,8 @@ class WebView2BrowserEngine extends BrowserEngine {
 
   @override
   Future<void> goForward() async {
-    if (_webView != null) {
+    if (_webView != null && _webView!.value.isInitialized) {
       try {
-        // Vérifier si on peut avancer
         final canForward = await _getCanGoForward();
         if (canForward) {
           await _webView!.goForward();
@@ -401,7 +411,7 @@ class WebView2BrowserEngine extends BrowserEngine {
 
   @override
   Future<void> reload() async {
-    if (_webView != null) {
+    if (_webView != null && _webView!.value.isInitialized) {
       try {
         await _webView!.reload();
       } catch (e) {
@@ -412,7 +422,7 @@ class WebView2BrowserEngine extends BrowserEngine {
 
   @override
   Future<void> stop() async {
-    if (_webView != null) {
+    if (_webView != null && _webView!.value.isInitialized) {
       try {
         await _webView!.stop();
       } catch (e) {
@@ -431,39 +441,32 @@ class WebView2BrowserEngine extends BrowserEngine {
     return await _getCanGoForward();
   }
 
-  /// Méthode helper pour récupérer canGoBack (API moderne)
+  /// Méthode helper pour récupérer canGoBack
   Future<bool> _getCanGoBack() async {
-    if (_webView == null) return _canGoBack;
-    // L'état est mis à jour via le stream historyChanged
-    // On retourne la valeur courante
+    if (_webView == null || !_webView!.value.isInitialized) return _canGoBack;
     return _canGoBack;
   }
 
-  /// Méthode helper pour récupérer canGoForward (API moderne)
+  /// Méthode helper pour récupérer canGoForward
   Future<bool> _getCanGoForward() async {
-    if (_webView == null) return _canGoForward;
-    // L'état est mis à jour via le stream historyChanged
-    // On retourne la valeur courante
+    if (_webView == null || !_webView!.value.isInitialized) return _canGoForward;
     return _canGoForward;
   }
 
   @override
   Future<String?> getCurrentUrl() async {
-    // L'URL est mise à jour via le stream url
     return _currentUrl;
   }
 
   @override
   Future<String?> getTitle() async {
-    // Le titre est mis à jour via le stream title
     return _currentTitle;
   }
 
   @override
   Future<String?> executeJavaScript(String script) async {
-    if (_webView == null) return null;
+    if (_webView == null || !_webView!.value.isInitialized) return null;
     try {
-      // API webview_windows 0.2.2 : executeScript
       await _webView!.executeScript(script);
       return 'executed';
     } catch (e) {
@@ -474,9 +477,8 @@ class WebView2BrowserEngine extends BrowserEngine {
 
   @override
   Future<dynamic> evaluateJavaScript(String script) async {
-    if (_webView == null) return null;
+    if (_webView == null || !_webView!.value.isInitialized) return null;
     try {
-      // API webview_windows 0.2.2 : executeScript retourne le résultat
       final result = await _webView!.executeScript(script);
       return result;
     } catch (e) {
@@ -493,10 +495,10 @@ class WebView2BrowserEngine extends BrowserEngine {
     return _webView;
   }
   
-  /// Obtient l'état de chargement réel du WebView (plus précis que TabState)
+  /// Obtient l'état de chargement réel du WebView
   bool get isLoading => _isLoading;
   
-  /// Stream broadcast pour loadingState (permet plusieurs listeners)
+  /// Stream broadcast pour loadingState
   Stream<LoadingState> get loadingStateStream => 
       _loadingStateController?.stream ?? const Stream<LoadingState>.empty();
 
@@ -504,7 +506,6 @@ class WebView2BrowserEngine extends BrowserEngine {
   void _startNewWindowPolling() {
     _newWindowPollingTimer?.cancel();
     
-    // Fréquence adaptative : plus lent si l'onglet est inactif
     final interval = _isTabActive && _isPageLoaded
         ? const Duration(milliseconds: 500)
         : const Duration(seconds: 2);
@@ -517,21 +518,13 @@ class WebView2BrowserEngine extends BrowserEngine {
   }
   
   /// Définit l'état actif/inactif de l'onglet
-  /// Priorité absolue pour l'onglet actif
   void setTabActive(bool isActive) {
     if (_isTabActive != isActive) {
       _isTabActive = isActive;
       
       if (isActive) {
-        // Onglet actif : priorité absolue
-        // Réduire le polling des autres onglets (fait automatiquement)
         _startNewWindowPolling();
-        
-        // Le WebView2 gère automatiquement la priorité pour l'onglet actif
-        // Pas besoin de forcer le focus, le navigate() le fait déjà
       } else {
-        // Onglet inactif : réduire les ressources
-        // Augmenter l'intervalle de polling
         _stopNewWindowPolling();
         _newWindowPollingTimer = Timer.periodic(const Duration(seconds: 5), (_) {
           _checkForNewWindowRequests();
@@ -547,12 +540,10 @@ class WebView2BrowserEngine extends BrowserEngine {
   }
   
   /// Vérifie périodiquement si une nouvelle fenêtre a été demandée
-  /// (utilisé comme fallback si onNewWindowRequest n'est pas disponible)
   Future<void> _checkForNewWindowRequests() async {
-    if (_webView == null || onNewWindowRequest == null || !_isTabActive) return;
+    if (_webView == null || onNewWindowRequest == null || !_isTabActive || !_webView!.value.isInitialized) return;
     
     try {
-      // Vérifier si une URL a été stockée dans l'attribut data
       final result = await _webView!.executeScript('''
         (function() {
           if (!document.body) return null;
@@ -566,40 +557,30 @@ class WebView2BrowserEngine extends BrowserEngine {
       ''');
       
       if (result != null && result is String && result.isNotEmpty) {
-        // Éviter les appels répétés pour la même URL
         if (result != _lastNewWindowUrl) {
           _lastNewWindowUrl = result;
           debugPrint('Nouvelle fenêtre détectée via JavaScript: $result');
           onNewWindowRequest?.call(result);
-          // Réinitialiser le cache après un délai
           Future.delayed(const Duration(seconds: 1), () {
             _lastNewWindowUrl = null;
           });
         }
       }
     } catch (e) {
-      // Ignorer les erreurs silencieusement
+      // Ignorer les erreurs
     }
   }
 
   @override
   Future<void> openDevTools() async {
-    // webview_windows 0.2.0 ne supporte pas les DevTools nativement
-    // On essaie d'utiliser les APIs WebView2 natives via une approche alternative
-    if (_webView == null) return;
+    if (_webView == null || !_webView!.value.isInitialized) return;
     
     try {
-      // Méthode 1: Essayer d'ouvrir via JavaScript (ne fonctionne pas vraiment)
-      // Méthode 2: Utiliser les APIs natives de WebView2 via FFI (nécessite un plugin custom)
-      // Pour l'instant, on affiche un message informatif
       debugPrint('⚠️ DevTools non disponibles avec webview_windows 0.2.0');
-      debugPrint('💡 Pour activer les DevTools, passez à webview2_wrapper ou créez un plugin custom');
       
-      // Tentative d'ouverture via injection JavaScript (limité)
       await _webView!.executeScript('''
         (function() {
           console.warn('DevTools non disponibles avec webview_windows 0.2.0');
-          console.warn('Pour activer les DevTools, utilisez un package qui supporte WebView2 DevTools');
         })();
       ''');
     } catch (e) {
@@ -609,13 +590,11 @@ class WebView2BrowserEngine extends BrowserEngine {
   
   /// Configure le listener pour les messages WebView (DevTools)
   void setupWebMessageListener() {
-    if (_webView == null) return;
+    if (_webView == null || !_webView!.value.isInitialized) return;
     
-    // Note: webview_windows utilise webMessage stream pour les messages postMessage
     try {
       _webView!.webMessage.listen((message) {
         if (message != null && message.isNotEmpty) {
-          // Transmettre au callback
           onWebMessage?.call(message);
         }
       });
@@ -626,7 +605,7 @@ class WebView2BrowserEngine extends BrowserEngine {
   
   /// Injecte le script de détection de sélection de texte
   Future<void> _injectTextSelectionScript() async {
-    if (_textSelectionScriptInjected || _webView == null) return;
+    if (_textSelectionScriptInjected || _webView == null || !_webView!.value.isInitialized) return;
     
     try {
       await _webView!.executeScript(_textSelectionScript);
@@ -642,7 +621,7 @@ class WebView2BrowserEngine extends BrowserEngine {
   void _startTextSelectionPolling() {
     _textSelectionPollingTimer?.cancel();
     _textSelectionPollingTimer = Timer.periodic(const Duration(milliseconds: 200), (timer) async {
-      if (_webView == null || !_isInitialized) {
+      if (_webView == null || !_isInitialized || !_webView!.value.isInitialized) {
         timer.cancel();
         return;
       }
@@ -655,7 +634,6 @@ class WebView2BrowserEngine extends BrowserEngine {
             var x = document.body.getAttribute('data-selection-x');
             var y = document.body.getAttribute('data-selection-y');
             if (text && x && y) {
-              // Effacer les attributs après lecture
               document.body.removeAttribute('data-selected-text');
               document.body.removeAttribute('data-selection-x');
               document.body.removeAttribute('data-selection-y');
@@ -673,19 +651,15 @@ class WebView2BrowserEngine extends BrowserEngine {
             final y = data['y'] as int?;
             
             if (selectedText != null && selectedText.isNotEmpty && x != null && y != null) {
-              debugPrint('📝 Sélection détectée: "$selectedText" à ($x, $y)');
               final selectionService = TextSelectionService();
-              // Les coordonnées sont relatives à la page web avec scroll
-              // On les utilise telles quelles, le widget TextSelectionMenu ajustera pour l'écran visible
               selectionService.showMenu(selectedText, Offset(x.toDouble(), y.toDouble()));
-              debugPrint('✅ Menu affiché pour: "$selectedText"');
             }
           } catch (e) {
             debugPrint('Erreur parsing sélection texte: $e');
           }
         }
       } catch (e) {
-        // Ignorer les erreurs silencieusement
+        // Ignorer les erreurs
       }
     });
   }
@@ -698,7 +672,7 @@ class WebView2BrowserEngine extends BrowserEngine {
   
   /// Injecte le script de menu contextuel
   Future<void> _injectContextMenuScript() async {
-    if (_webView == null || !_isInitialized) return;
+    if (_webView == null || !_isInitialized || !_webView!.value.isInitialized) return;
     
     try {
       await _webView!.executeScript(_contextMenuScript);
@@ -712,7 +686,7 @@ class WebView2BrowserEngine extends BrowserEngine {
   void _startContextMenuPolling() {
     _contextMenuPollingTimer?.cancel();
     _contextMenuPollingTimer = Timer.periodic(const Duration(milliseconds: 200), (timer) async {
-      if (_webView == null || !_isInitialized || onContextMenuRequest == null) {
+      if (_webView == null || !_isInitialized || onContextMenuRequest == null || !_webView!.value.isInitialized) {
         timer.cancel();
         return;
       }
@@ -729,7 +703,6 @@ class WebView2BrowserEngine extends BrowserEngine {
               var linkUrl = document.body.getAttribute('data-context-link-url');
               var text = document.body.getAttribute('data-context-text');
               
-              // Effacer les attributs après lecture
               document.body.removeAttribute('data-context-type');
               document.body.removeAttribute('data-context-x');
               document.body.removeAttribute('data-context-y');
@@ -761,7 +734,6 @@ class WebView2BrowserEngine extends BrowserEngine {
             final text = data['text'] as String?;
             
             if (type != null && x != null && y != null) {
-              debugPrint('🖱️ Menu contextuel détecté: $type à ($x, $y)');
               onContextMenuRequest?.call(
                 type,
                 imageUrl,
@@ -775,7 +747,7 @@ class WebView2BrowserEngine extends BrowserEngine {
           }
         }
       } catch (e) {
-        // Ignorer les erreurs silencieusement
+        // Ignorer les erreurs
       }
     });
   }
@@ -788,7 +760,7 @@ class WebView2BrowserEngine extends BrowserEngine {
 
   /// Injecte le script de blocage de publicités
   Future<void> _injectAdBlockerScript() async {
-    if (_adBlockerScriptInjected || _webView == null || !_isInitialized || _adBlockerService == null) return;
+    if (_adBlockerScriptInjected || _webView == null || !_isInitialized || _adBlockerService == null || !_webView!.value.isInitialized) return;
     
     if (!_adBlockerService!.isEnabled) return;
     
@@ -811,7 +783,7 @@ class WebView2BrowserEngine extends BrowserEngine {
     
     _adBlockerPollingTimer?.cancel();
     _adBlockerPollingTimer = Timer.periodic(const Duration(seconds: 2), (timer) async {
-      if (_webView == null || !_isInitialized || _adBlockerService == null || !_adBlockerService!.isEnabled) {
+      if (_webView == null || !_isInitialized || _adBlockerService == null || !_adBlockerService!.isEnabled || !_webView!.value.isInitialized) {
         timer.cancel();
         return;
       }
@@ -832,18 +804,17 @@ class WebView2BrowserEngine extends BrowserEngine {
           try {
             final count = int.tryParse(result.toString()) ?? 0;
             if (count > 0) {
-              // Mettre à jour le compteur global avec la différence
               final currentGlobalCount = _adBlockerService!.blockedCount;
               if (count > currentGlobalCount) {
                 _adBlockerService!.addBlockedCount(count - currentGlobalCount);
               }
             }
           } catch (e) {
-            // Ignorer les erreurs de parsing
+            // Ignorer
           }
         }
       } catch (e) {
-        // Ignorer les erreurs silencieusement
+        // Ignorer
       }
     });
   }
@@ -856,25 +827,20 @@ class WebView2BrowserEngine extends BrowserEngine {
 
   /// Configure l'interception des téléchargements
   void _setupDownloadInterceptor() {
-    // Annuler le timer précédent s'il existe
     _downloadPollingTimer?.cancel();
     
-    // Démarrer le polling pour les téléchargements
     _downloadPollingTimer = Timer.periodic(const Duration(milliseconds: 500), (timer) async {
-      if (_webView == null || !_isInitialized) {
-        return; // Ne pas annuler, juste attendre
+      if (_webView == null || !_isInitialized || !_webView!.value.isInitialized) {
+        return;
       }
       
       try {
-        // Injecter le handler une seule fois et vérifier les téléchargements
         final result = await _webView!.executeScript('''
           (function() {
-            // Installer le handler s'il n'est pas déjà installé
             if (!window._flutterDownloadHandlerInstalled) {
               window._flutterDownloadHandlerInstalled = true;
               window._pendingDownloads = [];
               
-              // Extensions de fichiers téléchargeables
               var downloadExtensions = [
                 '.zip', '.rar', '.7z', '.tar', '.gz', '.bz2', '.xz',
                 '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.odt', '.ods', '.odp',
@@ -887,14 +853,11 @@ class WebView2BrowserEngine extends BrowserEngine {
                 '.ttf', '.otf', '.woff', '.woff2'
               ];
               
-              // Fonction pour vérifier si c'est un téléchargement
               function isDownloadUrl(href) {
                 if (!href) return false;
                 var lowerHref = href.toLowerCase();
                 
-                // Vérifier les extensions
                 for (var i = 0; i < downloadExtensions.length; i++) {
-                  // Vérifier si l'extension est à la fin ou suivie de paramètres
                   var ext = downloadExtensions[i];
                   var idx = lowerHref.lastIndexOf(ext);
                   if (idx !== -1) {
@@ -905,7 +868,6 @@ class WebView2BrowserEngine extends BrowserEngine {
                   }
                 }
                 
-                // Vérifier les patterns de téléchargement
                 if (lowerHref.indexOf('/download/') !== -1 || 
                     lowerHref.indexOf('/downloads/') !== -1 ||
                     lowerHref.indexOf('action=download') !== -1 ||
@@ -919,7 +881,6 @@ class WebView2BrowserEngine extends BrowserEngine {
                 return false;
               }
               
-              // Extraire le nom de fichier depuis l'URL
               function extractFileName(href, downloadAttr) {
                 if (downloadAttr) return downloadAttr;
                 try {
@@ -933,7 +894,6 @@ class WebView2BrowserEngine extends BrowserEngine {
                 return null;
               }
               
-              // Intercepter les clics
               document.addEventListener('click', function(e) {
                 var target = e.target;
                 while (target && target.tagName !== 'A') {
@@ -944,7 +904,6 @@ class WebView2BrowserEngine extends BrowserEngine {
                   var href = target.getAttribute('href');
                   var download = target.getAttribute('download');
                   
-                  // Forcer le téléchargement si attribut download présent ou URL de téléchargement détectée
                   if (download !== null || isDownloadUrl(href)) {
                     e.preventDefault();
                     e.stopPropagation();
@@ -958,7 +917,6 @@ class WebView2BrowserEngine extends BrowserEngine {
                         fileName: fileName
                       });
                     } catch(err) {
-                      // URL invalide, utiliser tel quel
                       window._pendingDownloads.push({
                         url: href,
                         fileName: download || null
@@ -970,13 +928,11 @@ class WebView2BrowserEngine extends BrowserEngine {
                 }
               }, true);
               
-              // Intercepter aussi les formulaires de téléchargement
               document.addEventListener('submit', function(e) {
                 var form = e.target;
                 if (form && form.tagName === 'FORM') {
                   var action = form.getAttribute('action') || '';
                   if (isDownloadUrl(action)) {
-                    // Ne pas empêcher le submit mais marquer comme téléchargement
                     try {
                       var fullUrl = new URL(action, window.location.href).href;
                       window._pendingDownloads.push({
@@ -989,7 +945,6 @@ class WebView2BrowserEngine extends BrowserEngine {
               }, true);
             }
             
-            // Récupérer et vider les téléchargements en attente
             if (window._pendingDownloads && window._pendingDownloads.length > 0) {
               var downloads = JSON.stringify(window._pendingDownloads);
               window._pendingDownloads = [];
@@ -1000,12 +955,11 @@ class WebView2BrowserEngine extends BrowserEngine {
           })();
         ''');
         
-        // Traiter les téléchargements détectés
         if (result != null && result != 'null' && result.toString().isNotEmpty && result.toString() != 'undefined') {
           await _processDownloadResult(result.toString());
         }
       } catch (e) {
-        // Ignorer les erreurs silencieusement (page en cours de chargement, etc.)
+        // Ignorer
       }
     });
   }
@@ -1013,10 +967,8 @@ class WebView2BrowserEngine extends BrowserEngine {
   /// Traite le résultat du script de détection des téléchargements
   Future<void> _processDownloadResult(String jsonStr) async {
     try {
-      // Le résultat est un tableau JSON de téléchargements
       if (!jsonStr.startsWith('[')) return;
       
-      // Parser le JSON avec dart:convert
       final List<dynamic> downloads = jsonDecode(jsonStr);
       
       for (final download in downloads) {
@@ -1025,7 +977,6 @@ class WebView2BrowserEngine extends BrowserEngine {
           final fileName = download['fileName'] as String?;
           
           if (url != null && url.isNotEmpty && onDownloadRequested != null) {
-            debugPrint('📥 Téléchargement intercepté: $url');
             onDownloadRequested?.call(url, fileName);
           }
         }
@@ -1033,7 +984,6 @@ class WebView2BrowserEngine extends BrowserEngine {
     } catch (e) {
       debugPrint('Erreur lors du parsing des téléchargements: $e');
       
-      // Fallback: essayer de parser comme un objet unique
       try {
         if (jsonStr.startsWith('{')) {
           final download = jsonDecode(jsonStr) as Map<String, dynamic>;
@@ -1052,7 +1002,7 @@ class WebView2BrowserEngine extends BrowserEngine {
 
   /// Efface tous les cookies
   Future<void> clearCookies() async {
-    if (_webView == null) return;
+    if (_webView == null || !_webView!.value.isInitialized) return;
     
     try {
       await executeJavaScript('''
@@ -1068,7 +1018,7 @@ class WebView2BrowserEngine extends BrowserEngine {
 
   /// Efface le cache
   Future<void> clearCache() async {
-    if (_webView == null) return;
+    if (_webView == null || !_webView!.value.isInitialized) return;
     
     try {
       await executeJavaScript('''
@@ -1078,7 +1028,6 @@ class WebView2BrowserEngine extends BrowserEngine {
               caches.delete(name);
           });
         }
-        // Clear localStorage and sessionStorage
         localStorage.clear();
         sessionStorage.clear();
       ''');
@@ -1089,37 +1038,39 @@ class WebView2BrowserEngine extends BrowserEngine {
   }
 
   /// Active les optimisations de performance pour le WebView
-  void _enablePerformanceOptimizations(WebviewController controller) {
+  void _enablePerformanceOptimizations() {
     try {
-      // Activer le cache agressif et optimiser les paramètres
-      controller.setBackgroundColor(Colors.transparent);
+      // Vérifier que le WebView est initialisé avant d'appeler setBackgroundColor
+      if (_webView != null && _webView!.value.isInitialized) {
+        _webView!.setBackgroundColor(Colors.transparent);
+      }
       
       // Optimisations supplémentaires via JavaScript
-      _enableAdditionalOptimizations(controller);
+      _enableAdditionalOptimizations();
     } catch (e) {
       debugPrint('⚠️ Erreur lors de l\'activation des optimisations: $e');
     }
   }
   
   /// Active des optimisations supplémentaires via JavaScript
-  void _enableAdditionalOptimizations(WebviewController controller) {
-    // Exécuter les scripts d'optimisation après le chargement de la page
-    // Retirer les optimisations trop agressives qui causent des écrans noirs
+  void _enableAdditionalOptimizations() {
+    // Attendre que la page soit chargée avant d'appliquer les optimisations
     Future.delayed(const Duration(milliseconds: 500), () {
       try {
-        controller.executeScript('''
-          // Chargement prioritaire des images visibles (optimisation légère)
-          (function() {
-            document.addEventListener('DOMContentLoaded', function() {
-              const images = document.getElementsByTagName('img');
-              for (let img of images) {
-                if (img.getBoundingClientRect().top < window.innerHeight * 2) {
-                  img.loading = 'eager';
+        if (_webView != null && _webView!.value.isInitialized) {
+          _webView!.executeScript('''
+            (function() {
+              document.addEventListener('DOMContentLoaded', function() {
+                const images = document.getElementsByTagName('img');
+                for (let img of images) {
+                  if (img.getBoundingClientRect().top < window.innerHeight * 2) {
+                    img.loading = 'eager';
+                  }
                 }
-              }
-            });
-          })();
-        ''');
+              });
+            })();
+          ''');
+        }
       } catch (e) {
         debugPrint('⚠️ Erreur lors de l\'exécution des scripts d\'optimisation: $e');
       }
@@ -1144,6 +1095,7 @@ class WebView2BrowserEngine extends BrowserEngine {
     _downloadPollingTimer = null;
     _loadingTimeoutTimer?.cancel();
     _loadingTimeoutTimer = null;
+    _stopAdBlockerPolling();
     
     // Disposer le WebView
     try {
@@ -1155,8 +1107,10 @@ class WebView2BrowserEngine extends BrowserEngine {
     
     // Réinitialiser les flags
     _isInitialized = false;
+    _isInitializing = false;
     _scriptInjected = false;
     _textSelectionScriptInjected = false;
+    _adBlockerScriptInjected = false;
     _isPageLoaded = false;
     _isLoading = false;
   }
@@ -1176,17 +1130,12 @@ class WebView2BrowserEngine extends BrowserEngine {
         if (url.isNotEmpty && url != 'about:blank' && !_scriptInjected) {
           Future.delayed(const Duration(milliseconds: 1500), () async {
             try {
-              // Injecter le handler pour les nouvelles fenêtres (script minifié)
               if (onNewWindowRequest != null) {
                 await _injectScriptOnce();
-                // Démarrer le polling pour détecter les nouvelles fenêtres
                 _startNewWindowPolling();
               }
-              // Injecter le script de détection de sélection de texte
               await _injectTextSelectionScript();
-              // Injecter le script de menu contextuel
               await _injectContextMenuScript();
-              // Injecter le script de blocage de publicités
               await _injectAdBlockerScript();
             } catch (e) {
               debugPrint('Error injecting handlers: $e');
@@ -1208,12 +1157,11 @@ class WebView2BrowserEngine extends BrowserEngine {
       // Configurer l'interception des téléchargements
       _setupDownloadInterceptor();
       
-      // Créer un StreamController pour rebroadcast loadingState (permet plusieurs listeners)
+      // Créer un StreamController pour rebroadcast loadingState
       _loadingStateController = StreamController<LoadingState>.broadcast();
       
       // Écouter le stream original et rebroadcast vers le controller
       _loadingStateSubscription = _webView!.loadingState.listen((state) {
-        // Rebroadcast vers le controller (permet plusieurs listeners)
         _loadingStateController?.add(state);
         
         final wasLoading = _isLoading;
@@ -1239,26 +1187,22 @@ class WebView2BrowserEngine extends BrowserEngine {
             }
           });
         } else if (state == LoadingState.navigationCompleted) {
-          // Forcer la mise à jour immédiate de l'état
           _isLoading = false;
           _isPageLoaded = true;
           onStateChanged?.call(TabState.loaded);
-          // Ajuster la fréquence du polling après chargement
           _startNewWindowPolling();
-          // Réinjecter le script de blocage de publicités si nécessaire
           if (_adBlockerService != null && _adBlockerService!.isEnabled && !_adBlockerScriptInjected) {
             _injectAdBlockerScript();
           }
           debugPrint('✅ Page chargée: $_currentUrl');
         }
         
-        // Debug pour vérifier la synchronisation
         if (wasLoading != _isLoading) {
           debugPrint('🔄 Loading state changed: $_isLoading (${state.toString()})');
         }
       });
       
-      // Gérer l'historique (API moderne)
+      // Gérer l'historique
       _webView!.historyChanged.listen((history) {
         _canGoBack = history.canGoBack;
         _canGoForward = history.canGoForward;
@@ -1271,10 +1215,6 @@ class WebView2BrowserEngine extends BrowserEngine {
         onStateChanged?.call(TabState.error);
       });
       
-      // Gérer les nouvelles fenêtres (liens target="_blank")
-      // webview_windows n'a pas onNewWindowRequest, on utilise une injection JavaScript
-      // L'injection sera faite après chaque navigation dans la méthode navigate()
-      
     } catch (e) {
       debugPrint('Erreur lors de la configuration des listeners WebView: $e');
       rethrow;
@@ -1283,7 +1223,7 @@ class WebView2BrowserEngine extends BrowserEngine {
 
   @override
   void dispose() {
-    // Nettoyer de manière synchrone (les opérations async seront gérées en arrière-plan)
+    // Nettoyer de manière synchrone
     _loadingStateSubscription?.cancel();
     _loadingStateSubscription = null;
     _loadingStateController?.close();
@@ -1295,7 +1235,7 @@ class WebView2BrowserEngine extends BrowserEngine {
     _loadingTimeoutTimer = null;
     _stopAdBlockerPolling();
     
-    // Disposer le WebView (peut être async mais on ne peut pas attendre dans dispose)
+    // Disposer le WebView
     _webView?.dispose().catchError((e) {
       debugPrint('Erreur lors de la fermeture du WebView dans dispose: $e');
     });
@@ -1303,10 +1243,32 @@ class WebView2BrowserEngine extends BrowserEngine {
     
     // Réinitialiser les flags
     _isInitialized = false;
+    _isInitializing = false;
     _scriptInjected = false;
     _textSelectionScriptInjected = false;
     _adBlockerScriptInjected = false;
     _isPageLoaded = false;
     _isLoading = false;
+  }
+}
+
+/// Helper pour récupérer le WebView en cas d'erreur
+class WebViewRecovery {
+  static Future<bool> recoverWebView({
+    required Future<void> Function() recreateWebView,
+    int maxAttempts = 3,
+    Duration initialDelay = const Duration(milliseconds: 500),
+  }) async {
+    for (int attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        await Future.delayed(initialDelay * (attempt + 1));
+        await recreateWebView();
+        debugPrint('✅ WebView récupéré avec succès');
+        return true;
+      } catch (e) {
+        debugPrint('! Tentative de récupération ${attempt + 1}/$maxAttempts échouée: $e');
+      }
+    }
+    return false;
   }
 }

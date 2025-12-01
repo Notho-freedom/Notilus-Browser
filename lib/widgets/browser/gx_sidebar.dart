@@ -42,11 +42,13 @@ enum SidebarSection {
 class GXSidebar extends StatefulWidget {
   final VoidCallback? onClose;
   final ValueChanged<SidebarSection>? onSectionSelected;
+  final SidebarSection? currentSection;
   
   const GXSidebar({
     super.key,
     this.onClose,
     this.onSectionSelected,
+    this.currentSection,
   });
 
   @override
@@ -240,9 +242,15 @@ class _GXSidebarState extends State<GXSidebar> {
                             message: _destinations[i].label,
                             child: _GXSidebarIcon(
                               icon: _destinations[i].icon,
-                              isSelected: _selectedIndex == i,
+                              isSelected: widget.currentSection == _destinations[i].section,
                               isHovered: _hoveredIndex == i,
                               onTap: () {
+                                // Si la section est déjà sélectionnée, fermer le panel
+                                if (widget.currentSection == _destinations[i].section && _destinations[i].section != SidebarSection.home) {
+                                  widget.onSectionSelected?.call(SidebarSection.home);
+                                  return;
+                                }
+                                
                                 setState(() {
                                   _selectedIndex = i;
                                 });
@@ -280,6 +288,12 @@ class _GXSidebarState extends State<GXSidebar> {
                               color: webServices[i].color,
                               isHovered: _hoveredIndex == _destinations.length + i,
                               onTap: () {
+                                // Si la section web service est déjà sélectionnée, fermer le panel
+                                if (widget.currentSection == webServices[i].section) {
+                                  widget.onSectionSelected?.call(SidebarSection.home);
+                                  return;
+                                }
+                                
                                 setState(() {
                                   _selectedIndex = -1;
                                 });
@@ -468,10 +482,12 @@ class _GXSidebarIconState extends State<_GXSidebarIcon>
                       ),
                       duration: const Duration(milliseconds: 200),
                       builder: (context, opacity, _) {
+                        final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: true);
+                        final iconColor = colorThemeManager.getIconColor();
                         return Icon(
                           widget.icon,
                           size: 20,
-                          color: gxRed.withValues(alpha: opacity),
+                          color: iconColor.withValues(alpha: opacity),
                         );
                       },
                     ),

@@ -843,6 +843,35 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                         }
                       },
                     ),
+                    const SizedBox(height: 12),
+                    _buildColorPickerTile(
+                      context,
+                      title: 'Couleur des icônes',
+                      subtitle: 'Personnalisez la couleur des icônes (sidebar, topbars)',
+                      color: _settings.iconColorCustomEnabled 
+                          ? Color(_settings.iconColorCustom)
+                          : colorThemeManager.nativeSecondaryColor,
+                      onTap: () async {
+                        final color = await ColorPickerDialog.show(
+                          context,
+                          initialColor: _settings.iconColorCustomEnabled 
+                              ? Color(_settings.iconColorCustom)
+                              : colorThemeManager.nativeSecondaryColor,
+                          title: 'Couleur des icônes',
+                        );
+                        if (color != null) {
+                          await _settings.setIconColorCustom(color.value);
+                          if (!_settings.iconColorCustomEnabled) {
+                            await _settings.setIconColorCustomEnabled(true);
+                          }
+                        }
+                      },
+                      trailing: Switch(
+                        value: _settings.iconColorCustomEnabled,
+                        onChanged: (v) => _settings.setIconColorCustomEnabled(v),
+                        activeColor: gxRed,
+                      ),
+                    ),
                     const SizedBox(height: 16),
                     Align(
                       alignment: Alignment.centerLeft,
@@ -924,6 +953,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
   }
 
   Widget _buildColorPickerTile(BuildContext context, {
+    Widget? trailing,
     required String title,
     required String subtitle,
     required Color color,
@@ -960,7 +990,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                 ],
               ),
             ),
-            Icon(Icons.chevron_right, color: Colors.white.withOpacity(0.5), size: 20),
+            if (trailing != null) trailing else Icon(Icons.chevron_right, color: Colors.white.withOpacity(0.5), size: 20),
           ],
         ),
       ),
@@ -1684,6 +1714,14 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
               onChanged: (v) => _settings.setPanelTransparency(v),
               gxRed: gxRed,
               tooltip: 'Transparence des panneaux latéraux (sidebar, paramètres, documentation, etc.)',
+            ),
+            const SizedBox(height: 12),
+            _buildTransparencySlider(
+              label: 'Éclairage des sidemenus',
+              value: _settings.sideMenuBrightness,
+              onChanged: (v) => _settings.setSideMenuBrightness(v),
+              gxRed: gxRed,
+              tooltip: 'Contrôle l\'éclairage des menus latéraux (comme pour les pages d\'accueil)',
             ),
             const SizedBox(height: 12),
             _buildTransparencySlider(

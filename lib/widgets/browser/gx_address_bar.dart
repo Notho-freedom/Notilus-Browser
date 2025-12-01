@@ -1076,12 +1076,18 @@ class _GXActionButtonState extends State<_GXActionButton> {
               ? Border.all(color: gxRed.withValues(alpha: 0.5), width: 1)
               : null,
         ),
-        child: Icon(
-          widget.icon,
-          size: 18,
-          color: isEnabled
-              ? (widget.isActive || _isHovered ? gxRed : gxRed.withValues(alpha: 0.8))
-              : gxRed.withValues(alpha: 0.3),
+        child: Builder(
+          builder: (context) {
+            final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: true);
+            final iconColor = colorThemeManager.getIconColor();
+            return Icon(
+              widget.icon,
+              size: 18,
+              color: isEnabled
+                  ? (widget.isActive || _isHovered ? iconColor : iconColor.withValues(alpha: 0.8))
+                  : iconColor.withValues(alpha: 0.3),
+            );
+          },
         ),
       ),
     );

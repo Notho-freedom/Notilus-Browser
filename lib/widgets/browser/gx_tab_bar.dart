@@ -1218,33 +1218,43 @@ class _GXWindowControlsState extends State<GXWindowControls>
     final gxRed = colorThemeManager.nativeSecondaryColor;
     return Row(
       children: [
-        _WindowButton(
-          icon: CupertinoIcons.minus,
-          iconSize: 13,
-          tooltip: 'Minimiser',
-          iconColor: gxRed,
-          onTap: () => windowManager.minimize(),
-        ),
-        _WindowButton(
-          icon: _isMaximized ? CupertinoIcons.rectangle : CupertinoIcons.square,
-          iconSize: 13,
-          tooltip: _isMaximized ? 'Restaurer' : 'Agrandir',
-          iconColor: gxRed,
-          onTap: () async {
-            if (_isMaximized) {
-              await windowManager.restore();
-            } else {
-              await windowManager.maximize();
-            }
+        Builder(
+          builder: (context) {
+            final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: true);
+            final iconColor = colorThemeManager.getIconColor();
+            return Row(
+              children: [
+                _WindowButton(
+                  icon: CupertinoIcons.minus,
+                  iconSize: 13,
+                  tooltip: 'Minimiser',
+                  iconColor: iconColor,
+                  onTap: () => windowManager.minimize(),
+                ),
+                _WindowButton(
+                  icon: _isMaximized ? CupertinoIcons.rectangle : CupertinoIcons.square,
+                  iconSize: 13,
+                  tooltip: _isMaximized ? 'Restaurer' : 'Agrandir',
+                  iconColor: iconColor,
+                  onTap: () async {
+                    if (_isMaximized) {
+                      await windowManager.restore();
+                    } else {
+                      await windowManager.maximize();
+                    }
+                  },
+                ),
+                _WindowButton(
+                  icon: CupertinoIcons.xmark,
+                  iconSize: 13,
+                  tooltip: 'Fermer',
+                  hoverColor: iconColor.withValues(alpha:0.2),
+                  iconColor: iconColor,
+                  onTap: () => windowManager.close(),
+                ),
+              ],
+            );
           },
-        ),
-        _WindowButton(
-          icon: CupertinoIcons.xmark,
-          iconSize: 13,
-          tooltip: 'Fermer',
-          hoverColor: gxRed.withValues(alpha:0.2),
-          iconColor: gxRed,
-          onTap: () => windowManager.close(),
         ),
       ],
     );

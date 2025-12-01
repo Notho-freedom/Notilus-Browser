@@ -3,6 +3,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import '../../services/tab_manager.dart';
 import '../../core/constants/notilus_colors.dart';
+import '../../core/services/color_theme_manager.dart';
+import '../../services/settings_service.dart';
 
 /// Sections disponibles dans la barre latérale
 enum SidebarSection {
@@ -230,14 +232,20 @@ class _SidebarIconButtonState extends State<_SidebarIconButton> {
                       : (_hovered ? Colors.white.withOpacity(0.03) : Colors.transparent),
                 ),
                 child: Center(
-                  child: Icon(
-                    widget.icon,
-                    size: 18,
-                    color: widget.selected
-                        ? NotilusColors.neonRed
-                        : (_hovered
-                            ? Colors.white.withOpacity(0.9)
-                            : Colors.white.withOpacity(0.5)),
+                  child: Builder(
+                    builder: (context) {
+                      final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: true);
+                      final iconColor = colorThemeManager.getIconColor();
+                      return Icon(
+                        widget.icon,
+                        size: 18,
+                        color: widget.selected
+                            ? iconColor
+                            : (_hovered
+                                ? Colors.white.withOpacity(0.9)
+                                : Colors.white.withOpacity(0.5)),
+                      );
+                    },
                   ),
                 ),
               ),

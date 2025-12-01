@@ -249,7 +249,6 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
           autofocus: true,
           child: Container(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -262,7 +261,6 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
             child: Container(
         margin: const EdgeInsets.all(1.8),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
           color: const Color(0xFF0B0B0E),
           border: Border.all(
             color: Colors.white.withValues(alpha: 0.02),
@@ -280,10 +278,16 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                   child: _sidebarAnimation.value > 0
                       ? GXSidebar(
                           onClose: _toggleSidebar,
+                          currentSection: _currentSection,
                           onSectionSelected: (section) {
                             // DevTools natif - ouvre les DevTools du WebView
                             if (section == SidebarSection.nativeDevtools) {
                               _openNativeDevTools();
+                              return;
+                            }
+                            // Si on clique sur la section déjà active, fermer le panel
+                            if (section == _currentSection && section != SidebarSection.home) {
+                              _closePanel();
                               return;
                             }
                             setState(() {
@@ -617,69 +621,87 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
     if (config == null) return const SizedBox.shrink();
     final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: true);
     final gxRed = colorThemeManager.nativeSecondaryColor;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: colorThemeManager.nativeBackgroundColor,
-        border: Border(
-          right: BorderSide(
-            color: gxRed.withValues(alpha: 0.3),
-            width: 1,
-          ),
-        ),
-      ),
-      child: Column(
-        children: [
-          // Header du menu
-          Container(
-            height: 36,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: colorThemeManager.nativeBackgroundColor,
-              border: Border(
-                bottom: BorderSide(
-                  color: gxRed.withValues(alpha: 0.2),
-                  width: 1,
-                ),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(config.icon, color: gxRed, size: 18),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    config.title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                GestureDetector(
-                  onTap: _closePanel,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    child: Icon(
-                      CupertinoIcons.xmark,
-                      color: Colors.white.withValues(alpha: 0.7),
-                      size: 16,
-                    ),
-                  ),
-                ),
+    final settings = SettingsService();
+    
+    return ListenableBuilder(
+      listenable: settings,
+      builder: (context, _) {
+        final brightness = settings.sideMenuBrightness;
+        
+        return Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.black.withOpacity(brightness * (1.0 - settings.widgetTransparency)),
+                Colors.black.withOpacity((brightness + 0.06) * (1.0 - settings.widgetTransparency)),
               ],
             ),
-          ),
-          // Contenu du menu
-          Expanded(
-            child: Container(
-              color: Colors.black.withValues(alpha: 0.05),
-              child: config.child,
+            border: Border(
+              right: BorderSide(
+                color: gxRed.withValues(alpha: 0.3),
+                width: 1,
+              ),
             ),
           ),
-        ],
-      ),
+          child: Column(
+            children: [
+              // Header du menu
+              Container(
+                height: 36,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      color: gxRed.withValues(alpha: 0.2),
+                      width: 1,
+                    ),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Builder(
+                      builder: (context) {
+                        final iconColor = colorThemeManager.getIconColor();
+                        return Icon(config.icon, color: iconColor, size: 18);
+                      },
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        config.title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: _closePanel,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        child: Icon(
+                          CupertinoIcons.xmark,
+                          color: Colors.white.withValues(alpha: 0.7),
+                          size: 16,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Contenu du menu
+              Expanded(
+                child: Container(
+                  child: config.child,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

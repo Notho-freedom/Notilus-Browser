@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/notilus_colors.dart';
+import '../../services/settings_service.dart';
 
 /// Gestionnaire de thèmes de couleur pour Notilus
 /// Permet de changer la couleur principale (rouge, bleu, vert, etc.)
@@ -164,6 +165,15 @@ class ColorThemeManager extends ChangeNotifier {
     } catch (_) {
       // Ignorer les erreurs
     }
+  }
+  
+  /// Obtient la couleur des icônes (personnalisée si activée, sinon secondary)
+  Color getIconColor() {
+    final settings = SettingsService();
+    if (settings.iconColorCustomEnabled) {
+      return Color(settings.iconColorCustom);
+    }
+    return nativeSecondaryColor;
   }
 }
 
