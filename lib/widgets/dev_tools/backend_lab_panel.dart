@@ -117,7 +117,8 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
     super.initState();
     _tabController = TabController(length: BackendLabTab.values.length, vsync: this);
     _tabController.addListener(_onTabChanged);
-    _labService = BackendLabService();
+    // Utiliser l'instance partagée du Provider
+    _labService = Provider.of<BackendLabService>(context, listen: false);
     _initializeService();
   }
 

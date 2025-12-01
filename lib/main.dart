@@ -38,6 +38,7 @@ import 'services/github/github_repos_service.dart';
 import 'services/text_selection_service.dart';
 import 'services/cookie_manager_service.dart';
 import 'services/backend_process_service.dart';
+import 'services/backend_lab/backend_lab_service.dart';
 import 'widgets/common/text_selection_wrapper.dart';
 import 'core/services/logger_service.dart';
 
@@ -307,6 +308,7 @@ class NotilusApp extends StatelessWidget {
         ),
         // Backend Process Service
         ChangeNotifierProvider.value(value: BackendProcessService()),
+        ChangeNotifierProvider(create: (_) => BackendLabService()..checkConnection()),
       ],
       child: Consumer<ThemeModeNotifier>(
         builder: (context, themeModeNotifier, _) {

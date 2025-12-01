@@ -609,6 +609,11 @@ class BackendLabService extends ChangeNotifier {
   
   /// Connecte au WebSocket de la console
   Future<void> connectConsole() async {
+    // Si déjà connecté, ne pas reconnecter
+    if (_consoleWebSocket != null) {
+      return;
+    }
+    
     try {
       // Nettoyer l'URL pour éviter les caractères indésirables
       String cleanBaseUrl = _baseUrl.trim();

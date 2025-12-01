@@ -97,15 +97,21 @@ class _BackendHomePageState extends State<BackendHomePage>
     _metricsService.addListener(_onMetricsUpdate);
     _settings.addListener(_onSettingsChanged);
     
-    // Initialiser Backend Lab
+    // Initialiser Backend Lab (utilise l'instance partagée du Provider)
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final labService = BackendLabService();
-      labService.checkConnection().then((_) {
-        if (labService.isConnected) {
-          labService.getServers();
-          labService.connectConsole();
-        }
-      });
+      final labService = Provider.of<BackendLabService>(context, listen: false);
+      if (!labService.isConnected) {
+        labService.checkConnection().then((_) {
+          if (labService.isConnected && mounted) {
+            labService.getServers();
+            labService.connectConsole();
+          }
+        });
+      } else {
+        // Déjà connecté, juste rafraîchir les données
+        labService.getServers();
+        labService.connectConsole(); // connectConsole vérifie déjà si déjà connecté
+      }
     });
   }
 
@@ -814,7 +820,7 @@ class _BackendHomePageState extends State<BackendHomePage>
   }
 
   Widget _buildBackendLabPanel(Color gxRed, double transparency) {
-    final labService = BackendLabService();
+    final labService = Provider.of<BackendLabService>(context, listen: true);
     
     return Container(
       width: 320,
