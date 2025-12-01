@@ -412,6 +412,7 @@ class _ToolbarDropdown extends StatefulWidget {
   final Color accentColor;
   final VoidCallback onTap;
   final Widget Function(BuildContext, Color) menuBuilder;
+  final double? menuWidth;
 
   const _ToolbarDropdown({
     required this.icon,
@@ -420,6 +421,7 @@ class _ToolbarDropdown extends StatefulWidget {
     required this.accentColor,
     required this.onTap,
     required this.menuBuilder,
+    this.menuWidth,
   });
 
   @override
@@ -428,81 +430,149 @@ class _ToolbarDropdown extends StatefulWidget {
 
 class _ToolbarDropdownState extends State<_ToolbarDropdown> {
   bool _isHovered = false;
+  OverlayEntry? _overlayEntry;
+  final GlobalKey _buttonKey = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.isOpen) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _showMenu());
+    }
+  }
+
+  @override
+  void didUpdateWidget(_ToolbarDropdown oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isOpen != oldWidget.isOpen) {
+      if (widget.isOpen) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _showMenu());
+      } else {
+        _hideMenu();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _hideMenu();
+    super.dispose();
+  }
+
+  void _showMenu() {
+    if (_overlayEntry != null) return;
+
+    final RenderBox? renderBox = _buttonKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox == null) return;
+
+    final offset = renderBox.localToGlobal(Offset.zero);
+    final size = renderBox.size;
+
+    _overlayEntry = OverlayEntry(
+      builder: (context) {
+        final menuWidget = widget.menuBuilder(context, widget.accentColor);
+        
+        return Stack(
+          children: [
+            // Zone invisible pour capturer les clics en dehors
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: () => widget.onTap(),
+                child: Container(color: Colors.transparent),
+              ),
+            ),
+            // Menu positionné
+            Positioned(
+              left: offset.dx,
+              top: offset.dy + size.height + 4,
+              child: Material(
+                color: Colors.transparent,
+                elevation: 8,
+                child: GestureDetector(
+                  onTap: () {
+                    // Empêcher la propagation du clic au GestureDetector parent
+                  },
+                  child: menuWidget
+                      .animate()
+                      .fadeIn(duration: 150.ms)
+                      .slideY(begin: -0.1, end: 0, duration: 150.ms, curve: Curves.easeOutCubic),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    Overlay.of(context).insert(_overlayEntry!);
+  }
+
+  void _hideMenu() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+  }
 
   @override
   Widget build(BuildContext context) {
     final isActive = widget.isOpen || _isHovered;
 
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        MouseRegion(
-          cursor: SystemMouseCursors.click,
-          onEnter: (_) => setState(() => _isHovered = true),
-          onExit: (_) => setState(() => _isHovered = false),
-          child: GestureDetector(
-            onTap: widget.onTap,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: isActive
-                    ? widget.accentColor.withOpacity(0.15)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: isActive
-                      ? widget.accentColor.withOpacity(0.5)
-                      : Colors.transparent,
-                  width: 1,
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    widget.icon,
-                    size: 16,
-                    color: isActive
-                        ? widget.accentColor
-                        : Colors.white.withOpacity(0.7),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    widget.label,
-                    style: TextStyle(
-                      color: isActive
-                          ? widget.accentColor
-                          : Colors.white.withOpacity(0.7),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Icon(
-                    widget.isOpen
-                        ? CupertinoIcons.chevron_up
-                        : CupertinoIcons.chevron_down,
-                    size: 12,
-                    color: isActive
-                        ? widget.accentColor
-                        : Colors.white.withOpacity(0.5),
-                  ),
-                ],
-              ),
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        key: _buttonKey,
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: isActive
+                ? widget.accentColor.withOpacity(0.15)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isActive
+                  ? widget.accentColor.withOpacity(0.5)
+                  : Colors.transparent,
+              width: 1,
             ),
           ),
-        ),
-        if (widget.isOpen)
-          Positioned(
-            top: 40,
-            left: 0,
-            child: widget.menuBuilder(context, widget.accentColor)
-                .animate()
-                .fadeIn(duration: 150.ms)
-                .slideY(begin: -0.1, end: 0, duration: 150.ms, curve: Curves.easeOutCubic),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                widget.icon,
+                size: 16,
+                color: isActive
+                    ? widget.accentColor
+                    : Colors.white.withOpacity(0.7),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                widget.label,
+                style: TextStyle(
+                  color: isActive
+                      ? widget.accentColor
+                      : Colors.white.withOpacity(0.7),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Icon(
+                widget.isOpen
+                    ? CupertinoIcons.chevron_up
+                    : CupertinoIcons.chevron_down,
+                size: 12,
+                color: isActive
+                    ? widget.accentColor
+                    : Colors.white.withOpacity(0.5),
+              ),
+            ],
           ),
-      ],
+        ),
+      ),
     );
   }
 }
