@@ -1,9 +1,12 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:provider/provider.dart';
 import '../core/constants/notilus_colors.dart';
 import '../core/constants/notilus_fonts.dart';
 import '../widgets/common/notilus_logo_image.dart';
+import '../services/backend_process_service.dart';
 
 /// Splash Screen Notilus - Page de lancement immersive
 /// Design inspiré de l'univers sous-marin/nautilus avec effets néon
@@ -30,6 +33,7 @@ class _NotilusSplashScreenState extends State<NotilusSplashScreen>
   
   bool _showVersion = false;
   bool _showLoadingText = false;
+  String _currentLoadingMessage = 'Initializing Nautilus Core...';
 
   @override
   void initState() {
@@ -69,14 +73,80 @@ class _NotilusSplashScreenState extends State<NotilusSplashScreen>
     await Future.delayed(const Duration(milliseconds: 300));
     if (mounted) setState(() => _showLoadingText = true);
 
+    // Démarrer le backend
+    final backendService = Provider.of<BackendProcessService>(context, listen: false);
+    
+    // Écouter les changements d'état du backend pour mettre à jour les messages
+    void updateBackendMessage() {
+      if (!mounted) return;
+      if (backendService.isStarting) {
+        setState(() => _currentLoadingMessage = 'Démarrage du serveur backend...');
+      } else if (backendService.isRunning) {
+        setState(() => _currentLoadingMessage = 'Serveur backend prêt');
+      } else if (backendService.error != null) {
+        setState(() => _currentLoadingMessage = 'Backend indisponible, continuation...');
+      }
+    }
+    
+    // Ajouter un listener temporaire
+    backendService.addListener(updateBackendMessage);
+    
+    if (mounted) {
+      setState(() => _currentLoadingMessage = 'Initialisation du serveur backend...');
+    }
+    
+    // Démarrer le backend de manière asynchrone pour permettre les mises à jour
+    final backendStarted = await backendService.start();
+    
+    // Retirer le listener
+    backendService.removeListener(updateBackendMessage);
+    
+    if (!backendStarted && mounted) {
+      // Si le backend ne peut pas démarrer, continuer quand même
+      setState(() => _currentLoadingMessage = 'Backend indisponible, continuation...');
+      await Future.delayed(const Duration(milliseconds: 500));
+    } else if (mounted) {
+      setState(() => _currentLoadingMessage = '✅ Serveur backend prêt');
+      await Future.delayed(const Duration(milliseconds: 500));
+    }
+
     // Démarrer la progression
     _progressController.forward();
+
+    // Mettre à jour les messages de chargement
+    if (mounted) {
+      _updateLoadingMessages();
+    }
 
     // Attendre la fin et appeler onComplete
     await Future.delayed(widget.duration);
     if (mounted) {
       widget.onComplete();
     }
+  }
+
+  void _updateLoadingMessages() {
+    final messages = [
+      'Initializing Nautilus Core...',
+      'Loading browser engine...',
+      'Configuring developer tools...',
+      'Preparing workspace...',
+      'Almost ready...',
+    ];
+    
+    int messageIndex = 0;
+    Timer.periodic(const Duration(milliseconds: 800), (timer) {
+      if (!mounted || messageIndex >= messages.length) {
+        timer.cancel();
+        return;
+      }
+      
+      setState(() {
+        _currentLoadingMessage = messages[messageIndex];
+      });
+      
+      messageIndex++;
+    });
   }
 
   @override
@@ -174,7 +244,14 @@ class _NotilusSplashScreenState extends State<NotilusSplashScreen>
                 AnimatedOpacity(
                   duration: const Duration(milliseconds: 500),
                   opacity: _showLoadingText ? 1.0 : 0.0,
-                  child: _LoadingMessages(),
+                  child: Text(
+                    _currentLoadingMessage,
+                    style: NotilusFonts.rajdhani(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white.withOpacity(0.5),
+                    ),
+                  ),
                 ),
 
                 const Spacer(),

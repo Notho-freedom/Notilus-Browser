@@ -37,6 +37,7 @@ import 'services/auth/config_sync_service.dart';
 import 'services/github/github_repos_service.dart';
 import 'services/text_selection_service.dart';
 import 'services/cookie_manager_service.dart';
+import 'services/backend_process_service.dart';
 import 'widgets/common/text_selection_wrapper.dart';
 import 'core/services/logger_service.dart';
 
@@ -146,8 +147,30 @@ class _SplashWrapper extends StatefulWidget {
   State<_SplashWrapper> createState() => _SplashWrapperState();
 }
 
-class _SplashWrapperState extends State<_SplashWrapper> {
+class _SplashWrapperState extends State<_SplashWrapper> with WidgetsBindingObserver {
   bool _showSplash = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    // Arrêter le backend quand l'app se ferme
+    BackendProcessService().stop();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.detached || state == AppLifecycleState.paused) {
+      // Arrêter le backend si l'app se ferme ou passe en arrière-plan
+      BackendProcessService().stop();
+    }
+  }
 
   void _onSplashComplete() {
     setState(() {
@@ -282,6 +305,8 @@ class NotilusApp extends StatelessWidget {
             );
           },
         ),
+        // Backend Process Service
+        ChangeNotifierProvider.value(value: BackendProcessService()),
       ],
       child: Consumer<ThemeModeNotifier>(
         builder: (context, themeModeNotifier, _) {
