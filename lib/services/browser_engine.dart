@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io' show Platform;
 // Service wrapper pour CEF (Chromium Embedded Framework)
 // Note: L'intégration CEF complète nécessitera une configuration spécifique par plateforme
@@ -52,6 +53,38 @@ abstract class BrowserEngine {
   /// Nettoie et libère les ressources du moteur
   void dispose() {
     // Par défaut, rien à nettoyer - à implémenter dans les sous-classes
+  }
+  
+  // ============================================================================
+  // NOUVEAUX: Méthodes essentielles pour Studio
+  // ============================================================================
+  
+  /// Injecte du JavaScript dans la page (sans retour)
+  Future<void> injectJavaScript(String script) async {
+    await evaluateJavaScript(script);
+  }
+  
+  /// Stream des messages depuis le WebView (pour Studio, Recorder, etc.)
+  Stream<String> get messageStream {
+    // Par défaut, stream vide - à implémenter dans les sous-classes
+    return const Stream<String>.empty();
+  }
+  
+  /// Capture un screenshot de la page
+  /// 
+  /// - [fullPage]: Si true, capture toute la page avec scroll
+  /// - [selector]: Sélecteur CSS pour capturer un élément spécifique
+  /// 
+  /// Retourne un Map avec:
+  /// - `width`: Largeur de l'image
+  /// - `height`: Hauteur de l'image
+  /// - `dataUrl`: Data URL de l'image (base64)
+  Future<Map<String, dynamic>?> captureScreenshot({
+    bool fullPage = false,
+    String? selector,
+  }) async {
+    // Par défaut, non supporté - à implémenter dans les sous-classes
+    return null;
   }
   
   // Callbacks pour les événements

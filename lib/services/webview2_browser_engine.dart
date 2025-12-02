@@ -61,6 +61,9 @@ class WebView2BrowserEngine extends BrowserEngine {
   StreamController<LoadingState>? _loadingStateController;
   StreamSubscription<LoadingState>? _loadingStateSubscription;
   
+  // StreamController pour les messages WebView (Studio, Recorder, etc.)
+  StreamController<String>? _messageController;
+  
   // Cache des résultats de polling pour éviter les appels répétés
   String? _lastNewWindowUrl;
   
@@ -620,13 +623,105 @@ class WebView2BrowserEngine extends BrowserEngine {
     if (_webView == null || !_webView!.value.isInitialized) return;
     
     try {
+      // Créer le StreamController si nécessaire
+      _messageController ??= StreamController<String>.broadcast();
+      
       _webView!.webMessage.listen((message) {
         if (message != null && message.isNotEmpty) {
+          // Notifier le callback legacy
           onWebMessage?.call(message);
+          // Ajouter au stream pour Studio
+          _messageController?.add(message);
         }
       });
     } catch (e) {
       debugPrint('Erreur setup webMessage listener: $e');
+    }
+  }
+  
+  // ============================================================================
+  // Implémentation des méthodes Studio
+  // ============================================================================
+  
+  @override
+  Stream<String> get messageStream {
+    _messageController ??= StreamController<String>.broadcast();
+    return _messageController!.stream;
+  }
+  
+  @override
+  Future<void> injectJavaScript(String script) async {
+    await evaluateJavaScript(script);
+  }
+  
+  @override
+  Future<Map<String, dynamic>?> captureScreenshot({
+    bool fullPage = false,
+    String? selector,
+  }) async {
+    if (_webView == null || !_webView!.value.isInitialized) {
+      return null;
+    }
+    
+    try {
+      // Script pour charger html2canvas et capturer
+      final script = '''
+        (async function() {
+          try {
+            // Charger html2canvas si nécessaire
+            if (!window.html2canvas) {
+              const script = document.createElement('script');
+              script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+              document.head.appendChild(script);
+              await new Promise((resolve, reject) => {
+                script.onload = resolve;
+                script.onerror = reject;
+                setTimeout(reject, 10000); // Timeout 10s
+              });
+            }
+            
+            const element = ${selector != null ? "document.querySelector('$selector')" : 'document.body'};
+            if (!element) return null;
+            
+            const canvas = await html2canvas(element, {
+              scrollY: ${fullPage ? '-window.scrollY' : '0'},
+              scrollX: ${fullPage ? '-window.scrollX' : '0'},
+              windowWidth: ${fullPage ? 'document.documentElement.scrollWidth' : 'window.innerWidth'},
+              windowHeight: ${fullPage ? 'document.documentElement.scrollHeight' : 'window.innerHeight'},
+              useCORS: true,
+              allowTaint: false,
+            });
+            
+            return JSON.stringify({
+              width: canvas.width,
+              height: canvas.height,
+              dataUrl: canvas.toDataURL('image/png')
+            });
+          } catch (e) {
+            return JSON.stringify({ error: e.toString() });
+          }
+        })();
+      ''';
+      
+      final result = await evaluateJavaScript(script);
+      if (result == null || result == 'null' || result.isEmpty) {
+        return null;
+      }
+      
+      try {
+        final data = jsonDecode(result) as Map<String, dynamic>;
+        if (data.containsKey('error')) {
+          debugPrint('❌ Screenshot error: ${data['error']}');
+          return null;
+        }
+        return data;
+      } catch (e) {
+        debugPrint('❌ Screenshot parse error: $e');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('❌ Screenshot capture error: $e');
+      return null;
     }
   }
   
@@ -1948,6 +2043,10 @@ class WebView2BrowserEngine extends BrowserEngine {
     _loadingStateSubscription?.cancel();
     _loadingStateSubscription = null;
     
+    // Fermer le StreamController des messages
+    await _messageController?.close();
+    _messageController = null;
+    
     // Fermer le StreamController
     await _loadingStateController?.close();
     _loadingStateController = null;
@@ -2096,6 +2195,8 @@ class WebView2BrowserEngine extends BrowserEngine {
     _loadingStateSubscription = null;
     _loadingStateController?.close();
     _loadingStateController = null;
+    _messageController?.close();
+    _messageController = null;
     _stopNewWindowPolling();
     _downloadPollingTimer?.cancel();
     _downloadPollingTimer = null;

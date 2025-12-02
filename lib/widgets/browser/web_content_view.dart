@@ -18,6 +18,7 @@ import '../../services/download_service.dart';
 import '../../services/cloudinary_service.dart';
 import '../../services/gx_notification_service.dart';
 import '../../core/services/color_theme_manager.dart';
+import '../../services/studio/studio_service.dart';
 import 'package:flutter/services.dart';
 import 'home_pages/home_page_factory.dart';
 
@@ -322,6 +323,17 @@ class _WebContentViewState extends State<WebContentView>
   }
   
   void _setupWebView(WebviewController controller, WebView2BrowserEngine engine, TabManager tabManager) {
+    // IMPORTANT: Attacher l'engine à Studio si le tab est actif
+    try {
+      final studioService = Provider.of<StudioService>(context, listen: false);
+      if (widget.tab?.id == tabManager.activeTab?.id) {
+        studioService.attachEngine(engine);
+        studioService.updateUrl(widget.tab?.url ?? '');
+        debugPrint('✅ StudioService attaché au tab actif: ${widget.tab?.id}');
+      }
+    } catch (e) {
+      debugPrint('⚠️ Erreur attachement Studio: $e');
+    }
     if (_isDisposed) return;
     
     _loadingStateSubscription?.cancel();
