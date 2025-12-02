@@ -74,26 +74,36 @@ class _NativeTerminalPanelState extends State<NativeTerminalPanel> {
     // Écouter la sortie
     _session!.output.listen(
       (data) {
-        if (mounted) {
-          setState(() {
-            // Parser la sortie avec coloration
-            final parsedLines = _parseOutput(data);
-            _outputLines.addAll(parsedLines);
-            // Limiter à 10000 lignes pour la performance
-            if (_outputLines.length > 10000) {
-              _outputLines.removeRange(0, _outputLines.length - 10000);
+        if (mounted && data.isNotEmpty) {
+          // Utiliser Future.microtask pour éviter setState pendant build
+          Future.microtask(() {
+            if (mounted) {
+              setState(() {
+                // Parser la sortie avec coloration
+                final parsedLines = _parseOutput(data);
+                _outputLines.addAll(parsedLines);
+                // Limiter à 10000 lignes pour la performance
+                if (_outputLines.length > 10000) {
+                  _outputLines.removeRange(0, _outputLines.length - 10000);
+                }
+              });
+              _scrollToBottom();
             }
           });
-          _scrollToBottom();
         }
       },
       onError: (error) {
         if (mounted) {
-          setState(() {
-            _outputLines.add(_TerminalLine(
-              text: '❌ Erreur: $error',
-              type: _LineType.error,
-            ));
+          Future.microtask(() {
+            if (mounted) {
+              setState(() {
+                _outputLines.add(_TerminalLine(
+                  text: '❌ Erreur: $error',
+                  type: _LineType.error,
+                ));
+              });
+              _scrollToBottom();
+            }
           });
         }
       },
@@ -358,51 +368,63 @@ class _NativeTerminalPanelState extends State<NativeTerminalPanel> {
   void _sendCommand(String command) {
     if (command.trim().isEmpty) return;
 
-    // Afficher la commande dans l'output
-    setState(() {
-      _outputLines.add(_TerminalLine(
-        text: '$_currentPrompt$command',
-        type: _LineType.command,
-        segments: [
-          _ColoredSegment(
-            text: _currentPrompt,
-            color: NotilusColors.neonRed,
-            fontWeight: FontWeight.bold,
-          ),
-          _ColoredSegment(
-            text: command,
-            color: Colors.white,
-            fontWeight: FontWeight.w500,
-          ),
-        ],
-      ));
-    });
+    // Afficher la commande dans l'output immédiatement
+    if (mounted) {
+      setState(() {
+        _outputLines.add(_TerminalLine(
+          text: '$_currentPrompt$command',
+          type: _LineType.command,
+          segments: [
+            _ColoredSegment(
+              text: _currentPrompt,
+              color: NotilusColors.neonRed,
+              fontWeight: FontWeight.bold,
+            ),
+            _ColoredSegment(
+              text: command,
+              color: Colors.white,
+              fontWeight: FontWeight.w500,
+            ),
+          ],
+        ));
+      });
+    }
 
     // Envoyer au terminal
     _session?.writeLine(command);
 
     // Effacer l'input
     _inputController.clear();
-    _scrollToBottom();
+    
+    // Scroll après un court délai pour laisser le temps à la sortie d'arriver
+    Future.delayed(const Duration(milliseconds: 50), () {
+      if (mounted) {
+        _scrollToBottom();
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final wallpaperManager = context.watch<WallpaperManager>();
 
+    final wallpaperUrl = wallpaperManager.currentImageUrl;
+    
     return Container(
       decoration: BoxDecoration(
-        image: DecorationImage(
-          image: NetworkImage(wallpaperManager.current),
-          fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(
-            Colors.black.withValues(alpha: 0.85),
-            BlendMode.srcOver,
-          ),
-        ),
+        image: wallpaperUrl.isNotEmpty
+            ? DecorationImage(
+                image: NetworkImage(wallpaperUrl),
+                fit: BoxFit.cover,
+                colorFilter: ColorFilter.mode(
+                  Colors.black.withOpacity(0.85),
+                  BlendMode.srcOver,
+                ),
+              )
+            : null,
       ),
       child: Container(
-        color: Colors.black.withValues(alpha: 0.3),
+        color: Colors.black.withOpacity(0.3),
         child: Column(
           children: [
             // Zone de sortie - totalement intégrée, pas de conteneur visible
@@ -518,7 +540,7 @@ class _NativeTerminalPanelState extends State<NativeTerminalPanel> {
               child: TextField(
                 controller: _inputController,
                 focusNode: _inputFocusNode,
-                autofocus: true,
+                autofocus: false,
                 style: NotilusFonts.code(
                   fontSize: 13,
                   fontWeight: FontWeight.w400,

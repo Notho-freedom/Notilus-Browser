@@ -85,13 +85,8 @@ class ModernTheme extends AppTheme {
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
           ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(
-              color: Color(0xFF5856D6),
-              width: 2,
-            ),
-          ),
+          focusedBorder: InputBorder.none,
+          focusedErrorBorder: InputBorder.none,
         ),
       );
 }
@@ -179,13 +174,8 @@ class ModernDarkTheme extends AppTheme {
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
           ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(
-              color: Color(0xFF5E5CE6),
-              width: 2,
-            ),
-          ),
+          focusedBorder: InputBorder.none,
+          focusedErrorBorder: InputBorder.none,
         ),
       );
 }

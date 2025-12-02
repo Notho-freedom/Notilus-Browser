@@ -31,7 +31,11 @@ class _MockupComparatorPanelState extends State<MockupComparatorPanel> {
       builder: (context, studioService, _) {
         final comparator = studioService.mockupComparator;
 
-        return LayoutBuilder(
+        // Écouter les changements du service mockupComparator en temps réel
+        return ListenableBuilder(
+          listenable: comparator,
+          builder: (context, _) {
+            return LayoutBuilder(
           builder: (context, constraints) {
             final isCompact = constraints.maxWidth < 1000;
             final isVeryCompact = constraints.maxWidth < 600;
@@ -133,6 +137,8 @@ class _MockupComparatorPanelState extends State<MockupComparatorPanel> {
             );
           },
         );
+            },
+          );
       },
     );
   }

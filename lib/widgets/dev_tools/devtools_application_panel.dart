@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../../models/devtools_models.dart';
 import '../../services/devtools_service.dart';
 import '../../core/services/color_theme_manager.dart';
+import '../../services/gx_notification_service.dart';
 
 class DevToolsApplicationPanel extends StatefulWidget {
   const DevToolsApplicationPanel({super.key});
@@ -282,8 +283,11 @@ class _DevToolsApplicationPanelState extends State<DevToolsApplicationPanel> {
                   color: Colors.white.withOpacity(0.5),
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: '${item.key}: ${item.value}'));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: const Text('Copié dans le presse-papiers'), backgroundColor: accentColor.withOpacity(0.9), duration: const Duration(seconds: 1)),
+                    GxNotificationService().showSuccess(
+                      title: 'Copié',
+                      message: 'Copié dans le presse-papiers',
+                      context: context,
+                      duration: const Duration(seconds: 1),
                     );
                   },
                   padding: EdgeInsets.zero,

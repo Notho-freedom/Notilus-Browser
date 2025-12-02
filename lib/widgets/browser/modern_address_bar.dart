@@ -10,6 +10,7 @@ import '../../services/favicon_service.dart';
 import '../../services/adblocker_service.dart';
 import '../../models/bookmark.dart';
 import '../../models/tab_model.dart';
+import '../../services/gx_notification_service.dart';
 
 class ModernAddressBar extends StatefulWidget {
   const ModernAddressBar({super.key});
@@ -62,8 +63,10 @@ class _ModernAddressBarState extends State<ModernAddressBar> {
         state: TabState.loading,
       );
 
-      // Historique
-      await _historyService.addHistoryItem(formattedUrl, domain);
+      // Historique (ne pas sauvegarder pour les onglets privés)
+      if (!activeTab.isPrivate) {
+        await _historyService.addHistoryItem(formattedUrl, domain);
+      }
 
       // Favicon
       _loadFavicon(formattedUrl, activeTab.id, tabManager);
@@ -275,11 +278,11 @@ class _ModernAddressBarState extends State<ModernAddressBar> {
                                       );
                                       await _bookmarkService.addBookmark(bookmark);
                                       if (!mounted) return;
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text('Ajouté aux favoris'),
-                                          duration: Duration(seconds: 2),
-                                        ),
+                                      GxNotificationService().showSuccess(
+                                        title: 'Favoris',
+                                        message: 'Ajouté aux favoris',
+                                        context: context,
+                                        duration: const Duration(seconds: 2),
                                       );
                                     }
                                   : null,

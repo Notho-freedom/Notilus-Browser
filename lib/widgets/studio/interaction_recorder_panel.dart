@@ -13,6 +13,7 @@ import '../../core/services/color_theme_manager.dart';
 import '../common/gx_futuristic_dialog.dart';
 import '../common/gx_futuristic_components.dart';
 import '../../core/constants/notilus_fonts.dart';
+import '../../services/gx_notification_service.dart';
 
 /// Panneau Interaction Recorder
 class InteractionRecorderPanel extends StatefulWidget {
@@ -34,7 +35,11 @@ class _InteractionRecorderPanelState extends State<InteractionRecorderPanel> {
       builder: (context, studioService, _) {
         final recorder = studioService.interactionRecorder;
 
-        return LayoutBuilder(
+        // Écouter les changements du service interactionRecorder en temps réel
+        return ListenableBuilder(
+          listenable: recorder,
+          builder: (context, _) {
+            return LayoutBuilder(
           builder: (context, constraints) {
             final isCompact = constraints.maxWidth < 1000;
             final isVeryCompact = constraints.maxWidth < 600;
@@ -135,54 +140,70 @@ class _InteractionRecorderPanelState extends State<InteractionRecorderPanel> {
             );
           },
         );
+            },
+          );
       },
     );
   }
 
   Widget _buildControlsPanel(InteractionRecorderService recorder, Color accentColor) {
-    return Column(
-      children: [
-        // Recording status
-        _buildRecordingStatus(recorder, accentColor),
-        const SizedBox(height: 16),
-        // Controls
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Column(
-            children: [
-              _buildMainButton(recorder, accentColor),
-              const SizedBox(height: 12),
-              Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final hasBoundedHeight = constraints.maxHeight != double.infinity;
+        
+        return Column(
+          mainAxisSize: hasBoundedHeight ? MainAxisSize.max : MainAxisSize.min,
+          children: [
+            // Recording status
+            _buildRecordingStatus(recorder, accentColor),
+            const SizedBox(height: 16),
+            // Controls
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Expanded(
-                    child: _SecondaryButton(
-                      icon: CupertinoIcons.pause,
-                      label: 'Pause',
-                      onPressed: recorder.isRecording ? recorder.pauseRecording : null,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _SecondaryButton(
-                      icon: CupertinoIcons.trash,
-                      label: 'Effacer',
-                      onPressed: recorder.currentSession != null ? recorder.clearRecording : null,
-                    ),
+                  _buildMainButton(recorder, accentColor),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _SecondaryButton(
+                          icon: CupertinoIcons.pause,
+                          label: 'Pause',
+                          onPressed: recorder.isRecording ? recorder.pauseRecording : null,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _SecondaryButton(
+                          icon: CupertinoIcons.trash,
+                          label: 'Effacer',
+                          onPressed: recorder.currentSession != null ? recorder.clearRecording : null,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 24),
-        // Options
-        Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: _buildOptions(recorder, accentColor),
-          ),
-        ),
-      ],
+            ),
+            const SizedBox(height: 24),
+            // Options
+            if (hasBoundedHeight)
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: _buildOptions(recorder, accentColor),
+                ),
+              )
+            else
+              SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: _buildOptions(recorder, accentColor),
+              ),
+          ],
+        );
+      },
     );
   }
 
@@ -647,11 +668,10 @@ class _InteractionRecorderPanelState extends State<InteractionRecorderPanel> {
     }
 
     Clipboard.setData(ClipboardData(text: code));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Code ${_selectedExport.toUpperCase()} copié'),
-        backgroundColor: accentColor,
-      ),
+    GxNotificationService().showSuccess(
+      title: 'Copié',
+      message: 'Code ${_selectedExport.toUpperCase()} copié',
+      context: context,
     );
   }
 

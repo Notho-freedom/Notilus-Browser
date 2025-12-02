@@ -12,6 +12,7 @@ import '../../models/studio/studio_models.dart';
 import '../../core/services/color_theme_manager.dart';
 import '../common/gx_futuristic_dialog.dart';
 import '../common/gx_futuristic_components.dart';
+import '../../services/gx_notification_service.dart';
 
 /// Panneau Live Editor
 class LiveEditorPanel extends StatefulWidget {
@@ -50,8 +51,12 @@ class _LiveEditorPanelState extends State<LiveEditorPanel>
       builder: (context, studioService, _) {
         final editor = studioService.liveEditor;
         
-        // Vérifier que le moteur est attaché
-        if (studioService.engine == null) {
+        // Écouter les changements du service liveEditor en temps réel
+        return ListenableBuilder(
+          listenable: editor,
+          builder: (context, _) {
+            // Vérifier que le moteur est attaché
+            if (studioService.engine == null) {
           return Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -153,6 +158,8 @@ class _LiveEditorPanelState extends State<LiveEditorPanel>
             }
           },
         );
+            },
+          );
       },
     );
   }
@@ -267,8 +274,10 @@ class _LiveEditorPanelState extends State<LiveEditorPanel>
                   icon: Icon(CupertinoIcons.doc_on_doc, size: 14, color: accentColor),
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: editor.selectedSelector ?? ''));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: const Text('Sélecteur copié'), backgroundColor: accentColor),
+                    GxNotificationService().showSuccess(
+                      title: 'Copié',
+                      message: 'Sélecteur copié',
+                      context: context,
                     );
                   },
                   padding: EdgeInsets.zero,
@@ -412,12 +421,10 @@ class _LiveEditorPanelState extends State<LiveEditorPanel>
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
                 ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: accentColor),
-                ),
+                focusedBorder: InputBorder.none,
+                focusedErrorBorder: InputBorder.none,
                 filled: true,
-                fillColor: const Color(0xFF0D0D12),
+                fillColor: Colors.transparent,
                 contentPadding: const EdgeInsets.all(12),
               ),
               style: const TextStyle(
@@ -440,18 +447,19 @@ class _LiveEditorPanelState extends State<LiveEditorPanel>
                 onPressed: () async {
                   final studioService = Provider.of<StudioService>(context, listen: false);
                   if (studioService.engine == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: const Text('Aucune page chargée. Ouvrez une page web d\'abord.'),
-                        backgroundColor: Colors.red,
-                      ),
+                    GxNotificationService().showError(
+                      title: 'Erreur',
+                      message: 'Aucune page chargée. Ouvrez une page web d\'abord.',
+                      context: context,
                     );
                     return;
                   }
                   await editor.injectCSS(_cssController.text);
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: const Text('CSS injecté'), backgroundColor: accentColor),
+                    GxNotificationService().showSuccess(
+                      title: 'Injecté',
+                      message: 'CSS injecté',
+                      context: context,
                     );
                   }
                 },
@@ -510,12 +518,10 @@ class _LiveEditorPanelState extends State<LiveEditorPanel>
                     borderRadius: BorderRadius.circular(8),
                     borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
                   ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: accentColor),
-                  ),
+                  focusedBorder: InputBorder.none,
+                  focusedErrorBorder: InputBorder.none,
                   filled: true,
-                  fillColor: const Color(0xFF0D0D12),
+                  fillColor: Colors.transparent,
                   contentPadding: const EdgeInsets.all(12),
                 ),
                 style: const TextStyle(
@@ -532,8 +538,10 @@ class _LiveEditorPanelState extends State<LiveEditorPanel>
                 ElevatedButton.icon(
                   onPressed: () {
                     editor.editHTML(_htmlController.text);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: const Text('HTML mis à jour'), backgroundColor: accentColor),
+                    GxNotificationService().showSuccess(
+                      title: 'Mis à jour',
+                      message: 'HTML mis à jour',
+                      context: context,
                     );
                   },
                   icon: const Icon(CupertinoIcons.checkmark, size: 14),
@@ -604,8 +612,10 @@ class _LiveEditorPanelState extends State<LiveEditorPanel>
                 onPressed: () {
                   final css = editor.exportCSS();
                   Clipboard.setData(ClipboardData(text: css));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: const Text('CSS exporté'), backgroundColor: accentColor),
+                  GxNotificationService().showSuccess(
+                    title: 'Exporté',
+                    message: 'CSS exporté',
+                    context: context,
                   );
                 },
                 icon: Icon(CupertinoIcons.arrow_up_doc, size: 12, color: accentColor),

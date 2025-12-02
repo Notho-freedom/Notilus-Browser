@@ -160,6 +160,121 @@ class BackendLabService extends ChangeNotifier {
     return null;
   }
   
+  /// Découvre ou ajoute un serveur manuellement (pour les serveurs de l'historique)
+  /// Retourne le serveur découvert ou null si échec
+  Future<DiscoveredServer?> discoverOrAddServer({
+    required String host,
+    required int port,
+    String protocol = 'http',
+    String? name,
+  }) async {
+    final serverId = '$host:$port';
+    
+    // Vérifier si le serveur existe déjà
+    final existingServer = _servers.firstWhere(
+      (s) => s.host == host && s.port == port,
+      orElse: () => DiscoveredServer(id: '', port: 0),
+    );
+    
+    if (existingServer.id.isNotEmpty) {
+      return existingServer;
+    }
+    
+    // Détecter si c'est un serveur local ou distant
+    final isLocal = host == 'localhost' || 
+                   host == '127.0.0.1' || 
+                   host.startsWith('192.168.') || 
+                   host.startsWith('10.') || 
+                   host.startsWith('172.');
+    
+    try {
+      if (isLocal) {
+        // Pour les serveurs locaux, essayer un scan ciblé
+        try {
+          final scanResult = await scanServers(
+            specificPorts: [port],
+            enableFingerprinting: true,
+          ).timeout(const Duration(seconds: 10));
+          
+          // Vérifier si le serveur a été découvert
+          final discovered = scanResult.firstWhere(
+            (s) => s.host == host && s.port == port,
+            orElse: () => DiscoveredServer(id: '', port: 0),
+          );
+          
+          if (discovered.id.isNotEmpty) {
+            return discovered;
+          }
+        } catch (e) {
+          // Si le scan échoue, continuer avec la création manuelle
+          debugPrint('Scan failed for $host:$port: $e');
+        }
+      }
+      
+      // Créer un serveur manuellement (pour serveurs distants ou si scan échoue)
+      final manualServer = DiscoveredServer(
+        id: serverId,
+        host: host,
+        port: port,
+        protocol: protocol,
+        name: name ?? '$host:$port',
+        status: ServerStatus.unknown,
+      );
+      
+      // Ajouter le serveur à la liste
+      _servers.add(manualServer);
+      notifyListeners();
+      
+      // Pour les serveurs locaux, essayer un health check
+      if (isLocal) {
+        try {
+          final health = await healthCheck(serverId).timeout(const Duration(seconds: 5));
+          if (health != null) {
+            final updatedServer = DiscoveredServer(
+              id: serverId,
+              host: host,
+              port: port,
+              protocol: protocol,
+              name: name ?? '$host:$port',
+              status: health.status == HealthStatus.healthy 
+                  ? ServerStatus.running 
+                  : ServerStatus.unknown,
+              health: health,
+            );
+            
+            _servers.removeWhere((s) => s.id == serverId);
+            _servers.add(updatedServer);
+            notifyListeners();
+            return updatedServer;
+          }
+        } catch (e) {
+          // Si le health check échoue, garder le serveur manuel
+          debugPrint('Health check failed for $host:$port: $e');
+        }
+      }
+      
+      return manualServer;
+    } catch (e) {
+      _lastError = e.toString();
+      // Créer quand même un serveur basique pour permettre la découverte de routes
+      final manualServer = DiscoveredServer(
+        id: serverId,
+        host: host,
+        port: port,
+        protocol: protocol,
+        name: name ?? '$host:$port',
+        status: ServerStatus.unknown,
+      );
+      
+      // Vérifier qu'il n'existe pas déjà avant d'ajouter
+      if (!_servers.any((s) => s.id == serverId)) {
+        _servers.add(manualServer);
+        notifyListeners();
+      }
+      return manualServer;
+    }
+  }
+  
   // ============================================================================
   // Route Discovery
   // ============================================================================
@@ -213,11 +328,20 @@ class BackendLabService extends ChangeNotifier {
       
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as List;
-        return data.map((r) => DiscoveredRoute.fromJson(r)).toList();
+        final routes = data.map((r) => DiscoveredRoute.fromJson(r)).toList();
+        
+        // Mettre à jour le cache (remplacer les routes de ce serveur)
+        _routes.removeWhere((r) => r.serverId == serverId);
+        _routes.addAll(routes);
+        
+        _lastError = null;
+        notifyListeners();
+        return routes;
       }
     } catch (e) {
       _lastError = e.toString();
     }
+    notifyListeners();
     return [];
   }
   
@@ -609,6 +733,11 @@ class BackendLabService extends ChangeNotifier {
   
   /// Connecte au WebSocket de la console
   Future<void> connectConsole() async {
+    // Si déjà connecté, ne pas reconnecter
+    if (_consoleWebSocket != null) {
+      return;
+    }
+    
     try {
       // Nettoyer l'URL pour éviter les caractères indésirables
       String cleanBaseUrl = _baseUrl.trim();

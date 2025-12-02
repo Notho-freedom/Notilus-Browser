@@ -8,7 +8,7 @@ import '../../../services/tab_manager.dart';
 import '../../../core/services/wallpaper_manager.dart';
 import '../../../services/settings_service.dart';
 import '../../../core/services/color_theme_manager.dart';
-import '../../common/notilus_monogram.dart';
+import '../../common/notilus_logo_image.dart';
 
 /// Page d'accueil Data Science - Style analytique avec visualisations
 class DataScienceHomePage extends StatefulWidget {
@@ -152,17 +152,20 @@ class _DataScienceHomePageState extends State<DataScienceHomePage>
     final gxRed = Provider.of<ColorThemeManager>(context, listen: true).nativeSecondaryColor;
     final wallpaperManager = context.watch<WallpaperManager>();
     final transparency = _settings.widgetTransparency;
+    final currentUrl = wallpaperManager.current;
 
     return Container(
       decoration: BoxDecoration(
-        image: DecorationImage(
-          image: CachedNetworkImageProvider(wallpaperManager.current),
-          fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(
-            Colors.black.withOpacity(0.9),
-            BlendMode.srcOver,
-          ),
-        ),
+        image: currentUrl.isNotEmpty && !wallpaperManager.isVideo
+            ? DecorationImage(
+                image: CachedNetworkImageProvider(currentUrl),
+                fit: BoxFit.cover,
+                colorFilter: ColorFilter.mode(
+                  Colors.black.withOpacity(0.9),
+                  BlendMode.srcOver,
+                ),
+              )
+            : null,
       ),
       child: Stack(
         children: [
@@ -279,7 +282,7 @@ class _DataScienceHomePageState extends State<DataScienceHomePage>
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Row(
         children: [
-          const NotilusMonogram(size: 24),
+          const NotilusMonogramImage(size: 24),
           const SizedBox(width: 16),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
@@ -410,6 +413,10 @@ class _DataScienceHomePageState extends State<DataScienceHomePage>
                     fontSize: 14,
                   ),
                   border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  fillColor: Colors.transparent,
+                  filled: true,
                 ),
                 cursorColor: const Color(0xFF8B5CF6),
                 onSubmitted: _handleSearch,
@@ -731,7 +738,7 @@ class _NeuralNetworkPainter extends CustomPainter {
     
     for (int i = 0; i < nodes.length; i++) {
       final pulse = math.sin(progress * 2 * math.pi + i) * 0.5 + 0.5;
-      nodePaint.color = primaryColor.withOpacity(0.1 + pulse * 0.1);
+      nodePaint.color = primaryColor.withOpacity((0.1 + pulse * 0.1).clamp(0.0, 1.0));
       canvas.drawCircle(nodes[i], 3 + pulse * 2, nodePaint);
     }
   }

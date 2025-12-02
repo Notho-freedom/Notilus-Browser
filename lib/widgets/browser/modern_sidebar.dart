@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import '../../services/tab_manager.dart';
+import '../../core/constants/notilus_colors.dart';
+import '../../core/services/color_theme_manager.dart';
+import '../../services/settings_service.dart';
 
 /// Sections disponibles dans la barre latérale
 enum SidebarSection {
@@ -68,7 +71,7 @@ class _ModernSidebarState extends State<ModernSidebar> {
         color: const Color(0xFF0B0B0E),
         border: Border(
           right: BorderSide(
-            color: const NotilusColors.neonRed.withOpacity(0.3),
+            color: NotilusColors.neonRed.withOpacity(0.3),
             width: 1,
           ),
         ),
@@ -81,16 +84,16 @@ class _ModernSidebarState extends State<ModernSidebar> {
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
+              gradient: LinearGradient(
                 colors: [
                   NotilusColors.neonRed,
-                  Color(0xFF5856D6),
+                  const Color(0xFF5856D6),
                 ],
               ),
               borderRadius: BorderRadius.circular(8),
               boxShadow: [
                 BoxShadow(
-                  color: const NotilusColors.neonRed.withOpacity(0.6),
+                  color: NotilusColors.neonRed.withOpacity(0.6),
                   blurRadius: 10,
                   offset: const Offset(0, 2),
                 ),
@@ -205,14 +208,14 @@ class _SidebarIconButtonState extends State<_SidebarIconButton> {
                   child: Container(
                     width: 3,
                     decoration: BoxDecoration(
-                      color: const NotilusColors.neonRed,
+                      color: NotilusColors.neonRed,
                       borderRadius: const BorderRadius.only(
                         topRight: Radius.circular(2),
                         bottomRight: Radius.circular(2),
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: const NotilusColors.neonRed.withOpacity(0.6),
+                          color: NotilusColors.neonRed.withOpacity(0.6),
                           blurRadius: 6,
                           spreadRadius: 1,
                         ),
@@ -229,14 +232,20 @@ class _SidebarIconButtonState extends State<_SidebarIconButton> {
                       : (_hovered ? Colors.white.withOpacity(0.03) : Colors.transparent),
                 ),
                 child: Center(
-                  child: Icon(
-                    widget.icon,
-                    size: 18,
-                    color: widget.selected
-                        ? const NotilusColors.neonRed
-                        : (_hovered
-                            ? Colors.white.withOpacity(0.9)
-                            : Colors.white.withOpacity(0.5)),
+                  child: Builder(
+                    builder: (context) {
+                      final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: true);
+                      final iconColor = colorThemeManager.getIconColor();
+                      return Icon(
+                        widget.icon,
+                        size: 18,
+                        color: widget.selected
+                            ? iconColor
+                            : (_hovered
+                                ? Colors.white.withOpacity(0.9)
+                                : Colors.white.withOpacity(0.5)),
+                      );
+                    },
                   ),
                 ),
               ),

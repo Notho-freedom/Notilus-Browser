@@ -27,6 +27,17 @@ class _AIAdvisorPanelState extends State<AIAdvisorPanel>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    
+    // Initialiser le chat avec le rapport lors de l'ouverture du tab Chat
+    _tabController.addListener(() {
+      if (_tabController.index == 2) {
+        // Tab Chat est ouvert
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final lighthouse = Provider.of<LighthouseService>(context, listen: false);
+          lighthouse.aiAdvisorService.initializeChat();
+        });
+      }
+    });
   }
 
   @override
@@ -648,14 +659,14 @@ class _ChatTab extends StatelessWidget {
                         color: Colors.white.withOpacity(0.1),
                       ),
                     ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(24),
-                      borderSide: BorderSide(color: accentColor),
-                    ),
+                    focusedBorder: InputBorder.none,
+                    focusedErrorBorder: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 12,
                     ),
+                    fillColor: Colors.transparent,
+                    filled: true,
                   ),
                   onSubmitted: (_) => _sendMessage(context),
                 ),

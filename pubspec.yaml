@@ -38,6 +38,7 @@ dependencies:
   path_provider: ^2.1.1
   path: ^1.9.0
   web_socket_channel: ^2.4.0
+  crypto: ^3.0.3
   
   # Window Management
   window_manager: ^0.3.7
@@ -59,6 +60,12 @@ dependencies:
   
   # Audio
   audioplayers: ^5.2.1
+  
+  # Video - media_kit (solution robuste cross-platform)
+  media_kit: ^1.1.11
+  media_kit_video: ^1.2.3
+  # Windows
+  media_kit_libs_windows_video: ^1.0.11
 
 dev_dependencies:
   flutter_test:
@@ -68,8 +75,8 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   
-  # Assets (to be added later)
-  # assets:
-  #   - assets/images/
-  #   - assets/icons/
+  assets:
+    - assets/soundeffects/
+    - assets/notilus-logo.png
+    - assets/notilus-logo.ico
 

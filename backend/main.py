@@ -4,12 +4,19 @@ API principale pour les services du navigateur Notilus
 Inclut le Backend Lab - Système de tests backend ultra-avancé
 """
 
+import sys
+import os
+
+# Ajouter le répertoire du script au PYTHONPATH pour que les imports locaux fonctionnent
+script_dir = os.path.dirname(os.path.abspath(__file__))
+if script_dir not in sys.path:
+    sys.path.insert(0, script_dir)
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import uvicorn
 from dotenv import load_dotenv
-import os
 
 # Services existants
 from services.monitoring import router as monitoring_router
@@ -165,8 +172,18 @@ async def health_check():
 
 if __name__ == "__main__":
     import logging.config
+    import sys
+    
+    # Créer le répertoire de logs s'il n'existe pas
+    log_dir = os.path.join(os.path.dirname(__file__), "logs")
+    os.makedirs(log_dir, exist_ok=True)
+    
+    # Chemin du fichier de log
+    log_file = os.path.join(log_dir, "backend.log")
     
     # Configuration de logging pour capturer tous les logs
+    # En mode furtif (pythonw.exe), stdout/stderr ne sont pas disponibles
+    # On écrit donc dans un fichier ET stdout si disponible
     log_config = {
         "version": 1,
         "disable_existing_loggers": False,
@@ -179,6 +196,13 @@ if __name__ == "__main__":
             },
         },
         "handlers": {
+            "file": {
+                "formatter": "default",
+                "class": "logging.FileHandler",
+                "filename": log_file,
+                "mode": "a",
+                "encoding": "utf-8",
+            },
             "default": {
                 "formatter": "default",
                 "class": "logging.StreamHandler",
@@ -191,22 +215,41 @@ if __name__ == "__main__":
             },
         },
         "loggers": {
-            "uvicorn": {"handlers": ["default"], "level": "INFO", "propagate": False},
-            "uvicorn.error": {"handlers": ["default"], "level": "INFO", "propagate": False},
-            "uvicorn.access": {"handlers": ["access"], "level": "INFO", "propagate": False},
-            "fastapi": {"handlers": ["default"], "level": "INFO", "propagate": False},
+            "uvicorn": {"handlers": ["file", "default"], "level": "INFO", "propagate": False},
+            "uvicorn.error": {"handlers": ["file", "default"], "level": "INFO", "propagate": False},
+            "uvicorn.access": {"handlers": ["file", "access"], "level": "INFO", "propagate": False},
+            "fastapi": {"handlers": ["file", "default"], "level": "INFO", "propagate": False},
+        },
+        "root": {
+            "handlers": ["file", "default"],
+            "level": "INFO",
         },
     }
     
     # Appliquer la configuration
     logging.config.dictConfig(log_config)
     
-    port = int(os.getenv("PORT", 8000))
-    uvicorn.run(
-        "main:app",
-        host="127.0.0.1",
-        port=port,
-        reload=True,
-        log_config=log_config
-    )
+    # Logger le démarrage
+    logger = logging.getLogger(__name__)
+    logger.info("=" * 60)
+    logger.info("Démarrage du backend Notilus")
+    logger.info(f"Python: {sys.executable}")
+    logger.info(f"Port: {os.getenv('PORT', '8000')}")
+    logger.info(f"Log file: {log_file}")
+    logger.info("=" * 60)
+    
+    try:
+        port = int(os.getenv("PORT", 8000))
+        # Désactiver reload en mode embarqué (pas de watchfiles)
+        logger.info(f"Démarrage d'uvicorn sur 127.0.0.1:{port}")
+        uvicorn.run(
+            "main:app",
+            host="127.0.0.1",
+            port=port,
+            reload=False,  # Désactivé pour Python embarqué
+            log_config=log_config
+        )
+    except Exception as e:
+        logger.error(f"Erreur fatale lors du démarrage: {e}", exc_info=True)
+        raise
 

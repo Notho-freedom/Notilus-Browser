@@ -27,6 +27,8 @@ class GxNotification {
   final Duration? duration;
   final VoidCallback? onTap;
   final VoidCallback? onDismiss;
+  final double? progress; // Progression (0.0 - 1.0)
+  final bool showProgress; // Afficher la barre de progression
 
   GxNotification({
     required this.id,
@@ -37,6 +39,8 @@ class GxNotification {
     this.duration,
     this.onTap,
     this.onDismiss,
+    this.progress,
+    this.showProgress = false,
   });
 }
 
@@ -60,6 +64,8 @@ class GxNotificationService extends ChangeNotifier {
     Duration? duration,
     VoidCallback? onTap,
     VoidCallback? onDismiss,
+    double? progress,
+    bool showProgress = false,
     required BuildContext context,
   }) {
     final id = DateTime.now().millisecondsSinceEpoch.toString();
@@ -72,19 +78,48 @@ class GxNotificationService extends ChangeNotifier {
       duration: duration ?? const Duration(seconds: 4),
       onTap: onTap,
       onDismiss: onDismiss,
+      progress: progress,
+      showProgress: showProgress,
     );
 
-    _notifications.insert(0, notification);
+    // Si la notification existe déjà, la mettre à jour
+    final existingIndex = _notifications.indexWhere((n) => n.id == id);
+    if (existingIndex != -1) {
+      _notifications[existingIndex] = notification;
+    } else {
+      _notifications.insert(0, notification);
+      // Afficher dans l'overlay seulement si c'est une nouvelle notification
+      _showInOverlay(context, notification);
+    }
+    
     notifyListeners();
 
-    // Afficher dans l'overlay
-    _showInOverlay(context, notification);
-
-    // Auto-dismiss
-    if (notification.duration != null) {
+    // Auto-dismiss seulement si pas de progression
+    if (notification.duration != null && !showProgress) {
       Future.delayed(notification.duration!, () {
         dismiss(id);
       });
+    }
+  }
+  
+  /// Met à jour la progression d'une notification existante
+  void updateProgress(String id, double progress) {
+    final index = _notifications.indexWhere((n) => n.id == id);
+    if (index != -1) {
+      final notification = _notifications[index];
+      _notifications[index] = GxNotification(
+        id: notification.id,
+        title: notification.title,
+        message: notification.message,
+        type: notification.type,
+        icon: notification.icon,
+        duration: notification.duration,
+        onTap: notification.onTap,
+        onDismiss: notification.onDismiss,
+        progress: progress,
+        showProgress: true,
+      );
+      notifyListeners();
     }
   }
 
@@ -411,6 +446,27 @@ class _GxNotificationWidgetState extends State<_GxNotificationWidget>
                                           style: NotilusFonts.rajdhani(
                                             fontSize: 12,
                                             color: Colors.white.withOpacity(0.7),
+                                          ),
+                                        ),
+                                      ],
+                                      // Barre de progression
+                                      if (widget.notification.showProgress && widget.notification.progress != null) ...[
+                                        const SizedBox(height: 12),
+                                        ClipRRect(
+                                          borderRadius: BorderRadius.circular(4),
+                                          child: LinearProgressIndicator(
+                                            value: widget.notification.progress,
+                                            backgroundColor: Colors.white.withOpacity(0.1),
+                                            valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+                                            minHeight: 4,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          '${(widget.notification.progress! * 100).toStringAsFixed(0)}%',
+                                          style: NotilusFonts.rajdhani(
+                                            fontSize: 10,
+                                            color: Colors.white.withOpacity(0.6),
                                           ),
                                         ),
                                       ],

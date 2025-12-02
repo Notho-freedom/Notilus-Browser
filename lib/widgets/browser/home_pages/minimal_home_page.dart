@@ -7,7 +7,7 @@ import '../../../services/tab_manager.dart';
 import '../../../core/services/wallpaper_manager.dart';
 import '../../../services/settings_service.dart';
 import '../../../core/services/color_theme_manager.dart';
-import '../../common/notilus_monogram.dart';
+import '../../common/notilus_logo_image.dart';
 
 /// Page d'accueil minimaliste - Focus sur l'essentiel, design épuré
 class MinimalHomePage extends StatefulWidget {
@@ -119,16 +119,20 @@ class _MinimalHomePageState extends State<MinimalHomePage>
     final transparency = _settings.widgetTransparency;
     final size = MediaQuery.of(context).size;
 
+    final currentUrl = wallpaperManager.current;
+    
     return Container(
       decoration: BoxDecoration(
-        image: DecorationImage(
-          image: CachedNetworkImageProvider(wallpaperManager.current),
-          fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(
-            Colors.black.withOpacity(0.75),
-            BlendMode.srcOver,
-          ),
-        ),
+        image: currentUrl.isNotEmpty && !wallpaperManager.isVideo
+            ? DecorationImage(
+                image: CachedNetworkImageProvider(currentUrl),
+                fit: BoxFit.cover,
+                colorFilter: ColorFilter.mode(
+                  Colors.black.withOpacity(0.75),
+                  BlendMode.srcOver,
+                ),
+              )
+            : null,
       ),
       child: Stack(
         children: [
@@ -199,7 +203,7 @@ class _MinimalHomePageState extends State<MinimalHomePage>
                   height: 56,
                   margin: const EdgeInsets.symmetric(horizontal: 40),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.08 * (1 - transparency)),
+                    color: Colors.white.withOpacity((0.08 * (1 - transparency)).clamp(0.0, 1.0)),
                     borderRadius: BorderRadius.circular(28),
                     border: Border.all(
                       color: Colors.white.withOpacity(0.15),
@@ -232,6 +236,10 @@ class _MinimalHomePageState extends State<MinimalHomePage>
                               color: Colors.white.withOpacity(0.35),
                             ),
                             border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            fillColor: Colors.transparent,
+                            filled: true,
                           ),
                           cursorColor: gxRed,
                           onSubmitted: _handleSearch,
@@ -267,7 +275,7 @@ class _MinimalHomePageState extends State<MinimalHomePage>
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  NotilusMonogram(
+                  const NotilusMonogramImage(
                     size: 16,
                   ),
                   const SizedBox(width: 8),
@@ -315,7 +323,7 @@ class _MinimalHomePageState extends State<MinimalHomePage>
                 width: 52,
                 height: 52,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.06 * (1 - transparency)),
+                  color: Colors.white.withOpacity((0.06 * (1 - transparency)).clamp(0.0, 1.0)),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
                     color: Colors.white.withOpacity(0.1),

@@ -12,7 +12,7 @@ export 'minimal_home_page.dart';
 import 'package:flutter/material.dart';
 import '../modern_home_page.dart';
 import '../notilus_dev_home_page.dart';
-import '../gx_futuristic_home_page.dart';
+import '../customizable_home_page.dart';
 import 'frontend_home_page.dart';
 import 'backend_home_page.dart';
 import 'devops_home_page.dart';
@@ -98,12 +98,12 @@ class HomePageProfiles {
       keywords: ['simple', 'clean', 'minimaliste', 'zen'],
     ),
     HomePageProfile(
-      id: 'gx_futuristic',
-      name: 'GX Futuristic',
-      description: 'Design ultra-futuriste avec contours géométriques façon OS Science-Fiction',
-      emoji: '🚀',
+      id: 'customizable',
+      name: 'Personnalisable',
+      description: 'Page d\'accueil entièrement personnalisable avec widgets dockables',
+      emoji: '🎨',
       accentColor: Color(0xFFFF2D55),
-      keywords: ['futuriste', 'sci-fi', 'gx', 'géométrique', 'os', 'science-fiction'],
+      keywords: ['personnalisable', 'dock', 'widgets', 'custom', 'modulaire'],
     ),
   ];
 
@@ -183,8 +183,8 @@ class HomePageFactory {
           onDevToolsSelected: onDevToolsSelected,
         );
       
-      case 'gx_futuristic':
-        return GxFuturisticHomePage(
+      case 'customizable':
+        return CustomizableHomePage(
           onTerminalSelected: onTerminalSelected,
         );
       

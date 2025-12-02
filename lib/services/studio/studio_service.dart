@@ -3,6 +3,7 @@
 library studio_service;
 
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import '../browser_engine.dart';
 import '../../models/studio/viewport_preset.dart';
@@ -18,6 +19,7 @@ class StudioService extends ChangeNotifier {
   BrowserEngine? _engine;
   String? _currentUrl;
   bool _isEnabled = false;
+  StreamSubscription<String>? _messageSubscription;
 
   // Services enfants
   late final ResponsiveTesterService responsiveTester;
@@ -36,6 +38,18 @@ class StudioService extends ChangeNotifier {
     liveEditor = LiveEditorService(this);
     interactionRecorder = InteractionRecorderService(this);
     mockupComparator = MockupComparatorService(this);
+    
+    // Écouter les changements de tous les services enfants pour propager les mises à jour
+    responsiveTester.addListener(_onServiceChanged);
+    screenshot.addListener(_onServiceChanged);
+    liveEditor.addListener(_onServiceChanged);
+    interactionRecorder.addListener(_onServiceChanged);
+    mockupComparator.addListener(_onServiceChanged);
+  }
+  
+  /// Callback appelé quand un service enfant change
+  void _onServiceChanged() {
+    notifyListeners();
   }
 
   // Getters
@@ -51,26 +65,56 @@ class StudioService extends ChangeNotifier {
       debugPrint('⚠️ StudioService: Engine already attached');
       return;
     }
+    
+    // Nettoyer l'ancien
+    _messageSubscription?.cancel();
+    
     _engine = engine;
+    
+    // Écouter les messages du WebView
+    _messageSubscription = engine.messageStream.listen((message) {
+      _handleWebViewMessage(message);
+    });
+    
+    // Attacher aux services
     responsiveTester.attachEngine(engine);
     screenshot.attachEngine(engine);
     liveEditor.attachEngine(engine);
     interactionRecorder.attachEngine(engine);
     mockupComparator.attachEngine(engine);
+    
     debugPrint('✅ StudioService: Engine attached successfully. URL: $_currentUrl');
     notifyListeners();
-    // Écouter les changements du ResponsiveTesterService pour propager les mises à jour
-    responsiveTester.addListener(_onResponsiveTesterChanged);
   }
-
-  void _onResponsiveTesterChanged() {
-    notifyListeners();
+  
+  /// Gère les messages provenant du WebView
+  void _handleWebViewMessage(String message) {
+    try {
+      final data = jsonDecode(message) as Map<String, dynamic>;
+      final type = data['type'] as String?;
+      
+      switch (type) {
+        case 'recorder_event':
+          interactionRecorder.handleWebViewMessage(data);
+          break;
+        case 'element_selected':
+          liveEditor.handleWebViewMessage(data);
+          break;
+        default:
+          debugPrint('Unknown message type: $type');
+      }
+    } catch (e) {
+      debugPrint('Message parse error: $e');
+    }
   }
 
   /// Détache le moteur
   void detachEngine() {
+    _messageSubscription?.cancel();
+    _messageSubscription = null;
     _engine = null;
-    responsiveTester.removeListener(_onResponsiveTesterChanged);
+    
+    // Détacher les moteurs des services enfants (ne pas retirer les listeners)
     responsiveTester.detachEngine();
     screenshot.detachEngine();
     liveEditor.detachEngine();
@@ -137,6 +181,16 @@ class StudioService extends ChangeNotifier {
       return null;
     }
   }
+  
+  /// Injecte un script dans la page (sans retour)
+  Future<void> injectScript(String script) async {
+    if (_engine == null) return;
+    try {
+      await _engine!.injectJavaScript(script);
+    } catch (e) {
+      debugPrint('❌ StudioService injectScript error: $e');
+    }
+  }
 
   /// Injecte un script et observe les résultats
   Stream<dynamic> injectAndWatch(String script, {Duration interval = const Duration(milliseconds: 500)}) {
@@ -161,6 +215,15 @@ class StudioService extends ChangeNotifier {
 
   @override
   void dispose() {
+    _messageSubscription?.cancel();
+    
+    // Retirer les listeners avant de disposer
+    responsiveTester.removeListener(_onServiceChanged);
+    screenshot.removeListener(_onServiceChanged);
+    liveEditor.removeListener(_onServiceChanged);
+    interactionRecorder.removeListener(_onServiceChanged);
+    mockupComparator.removeListener(_onServiceChanged);
+    
     responsiveTester.dispose();
     screenshot.dispose();
     liveEditor.dispose();

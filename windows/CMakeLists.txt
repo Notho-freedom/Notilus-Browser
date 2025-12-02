@@ -106,3 +106,54 @@ install(DIRECTORY "${PROJECT_BUILD_DIR}/${FLUTTER_ASSET_DIR_NAME}"
 install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
   CONFIGURATIONS Profile;Release
   COMPONENT Runtime)
+
+# === Backend Python Integration ===
+# Copy the Python backend (embedded Python + main.py + services) to the build directory
+# This allows the backend to be launched alongside the Flutter app
+set(BACKEND_SOURCE_DIR "${CMAKE_SOURCE_DIR}/../backend")
+set(BACKEND_INSTALL_DIR "${INSTALL_BUNDLE_LIB_DIR}")
+
+# Check if backend directory exists
+if(EXISTS "${BACKEND_SOURCE_DIR}")
+  # Copy main.py
+  install(FILES "${BACKEND_SOURCE_DIR}/main.py"
+    DESTINATION "${BACKEND_INSTALL_DIR}"
+    COMPONENT Runtime
+    OPTIONAL)
+  
+  # Copy python_embedded directory (the entire embedded Python distribution)
+  install(DIRECTORY "${BACKEND_SOURCE_DIR}/python_embedded"
+    DESTINATION "${BACKEND_INSTALL_DIR}"
+    COMPONENT Runtime
+    OPTIONAL
+    PATTERN "__pycache__" EXCLUDE
+    PATTERN "*.pyc" EXCLUDE
+    PATTERN "*.pyo" EXCLUDE)
+  
+  # Copy services directory (Python modules)
+  install(DIRECTORY "${BACKEND_SOURCE_DIR}/services"
+    DESTINATION "${BACKEND_INSTALL_DIR}"
+    COMPONENT Runtime
+    OPTIONAL
+    PATTERN "__pycache__" EXCLUDE
+    PATTERN "*.pyc" EXCLUDE
+    PATTERN "*.pyo" EXCLUDE)
+  
+  # Copy backend_lab directory (Python modules)
+  install(DIRECTORY "${BACKEND_SOURCE_DIR}/backend_lab"
+    DESTINATION "${BACKEND_INSTALL_DIR}"
+    COMPONENT Runtime
+    OPTIONAL
+    PATTERN "__pycache__" EXCLUDE
+    PATTERN "*.pyc" EXCLUDE
+    PATTERN "*.pyo" EXCLUDE)
+  
+  # Create logs directory for backend logs
+  install(CODE "
+    file(MAKE_DIRECTORY \"${BACKEND_INSTALL_DIR}/logs\")
+    " COMPONENT Runtime)
+  
+  message(STATUS "Backend Python files will be copied to: ${BACKEND_INSTALL_DIR}")
+else()
+  message(WARNING "Backend directory not found at ${BACKEND_SOURCE_DIR}. Backend will not be included in the build.")
+endif()

@@ -213,7 +213,7 @@ class _GxFuturisticInputState extends State<GxFuturisticInput> {
               color: Colors.white.withOpacity(0.4),
             ),
             filled: true,
-            fillColor: Colors.white.withOpacity(0.05),
+            fillColor: Colors.transparent,
             prefixIcon: widget.prefixIcon != null
                 ? Icon(
                     widget.prefixIcon,
@@ -239,10 +239,8 @@ class _GxFuturisticInputState extends State<GxFuturisticInput> {
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(color: Colors.white.withOpacity(0.24)),
             ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: accent, width: 1),
-            ),
+            focusedBorder: InputBorder.none,
+            focusedErrorBorder: InputBorder.none,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 14,
@@ -1658,10 +1656,12 @@ class GxFuturisticDropdown<T> extends StatelessWidget {
                     fontSize: 14,
                     color: Colors.white.withOpacity(0.4),
                   ),
+                  overflow: TextOverflow.ellipsis,
                 )
               : null,
-          isExpanded: isExpanded,
+          isExpanded: true, // Force l'expansion pour éviter le débordement
           icon: Icon(Icons.arrow_drop_down_rounded, color: accent),
+          iconSize: 24,
           dropdownColor: bgColor.withOpacity(panelOpacity.clamp(0.0, 1.0)),
           style: NotilusFonts.rajdhani(
             fontSize: 14,
@@ -1669,6 +1669,19 @@ class GxFuturisticDropdown<T> extends StatelessWidget {
           ),
           selectedItemBuilder: (context) {
             return items.map((item) {
+              Widget child = item.child;
+              // Si c'est un Text, ajouter overflow
+              if (child is Text) {
+                child = Text(
+                  child.data ?? '',
+                  style: child.style ?? NotilusFonts.rajdhani(
+                    fontSize: 14,
+                    color: Colors.white,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                );
+              }
               return Container(
                 alignment: Alignment.centerLeft,
                 child: DefaultTextStyle(
@@ -1676,7 +1689,8 @@ class GxFuturisticDropdown<T> extends StatelessWidget {
                     fontSize: 14,
                     color: Colors.white,
                   ),
-                  child: item.child,
+                  overflow: TextOverflow.ellipsis,
+                  child: child,
                 ),
               );
             }).toList();
@@ -2440,7 +2454,7 @@ class GxFuturisticTextArea extends StatelessWidget {
           color: Colors.white.withOpacity(0.4),
         ),
         filled: true,
-        fillColor: Colors.white.withOpacity(0.05),
+        fillColor: Colors.transparent,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide(color: Colors.white.withOpacity(0.24)),
@@ -2449,10 +2463,8 @@ class GxFuturisticTextArea extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide(color: Colors.white.withOpacity(0.24)),
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: accent, width: 1),
-        ),
+        focusedBorder: InputBorder.none,
+        focusedErrorBorder: InputBorder.none,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 14,

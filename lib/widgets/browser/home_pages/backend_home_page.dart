@@ -4,12 +4,25 @@ import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:math' as math;
+import 'dart:async';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../../../services/tab_manager.dart';
 import '../../../core/services/wallpaper_manager.dart';
 import '../../../services/settings_service.dart';
 import '../../../services/system_metrics_service.dart';
 import '../../../core/services/color_theme_manager.dart';
-import '../../common/notilus_monogram.dart';
+import '../../../services/backend_lab/backend_lab_service.dart';
+import '../../../models/backend_lab/backend_lab_models.dart';
+import '../../../services/history_service.dart';
+import '../../../models/history_item.dart';
+import '../../../services/ai_service.dart';
+import '../../common/notilus_logo_image.dart';
+import '../../common/gx_futuristic_dialog.dart';
+import '../../common/gx_futuristic_components.dart';
+import '../../common/hack_loading_indicator.dart';
+import '../../../core/constants/notilus_fonts.dart';
+import '../../dev_tools/backend_lab_mini_panel.dart';
 
 /// Page d'accueil Backend Developer - Style terminal/serveur
 class BackendHomePage extends StatefulWidget {
@@ -35,6 +48,7 @@ class _BackendHomePageState extends State<BackendHomePage>
   late AnimationController _matrixController;
   String _currentTime = '';
   String _uptime = '0d 0h 0m';
+  
   
   // Langages Backend
   final List<_BackendLang> _languages = [
@@ -95,6 +109,7 @@ class _BackendHomePageState extends State<BackendHomePage>
     _metricsService.addListener(_onMetricsUpdate);
     _settings.addListener(_onSettingsChanged);
   }
+  
 
   void _startClock() async {
     int uptimeMinutes = 0;
@@ -175,17 +190,20 @@ class _BackendHomePageState extends State<BackendHomePage>
     final gxRed = Provider.of<ColorThemeManager>(context, listen: true).nativeSecondaryColor;
     final wallpaperManager = context.watch<WallpaperManager>();
     final transparency = _settings.widgetTransparency;
+    final currentUrl = wallpaperManager.current;
 
     return Container(
       decoration: BoxDecoration(
-        image: DecorationImage(
-          image: CachedNetworkImageProvider(wallpaperManager.current),
-          fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(
-            Colors.black.withOpacity(0.92),
-            BlendMode.srcOver,
-          ),
-        ),
+        image: currentUrl.isNotEmpty && !wallpaperManager.isVideo
+            ? DecorationImage(
+                image: CachedNetworkImageProvider(currentUrl),
+                fit: BoxFit.cover,
+                colorFilter: ColorFilter.mode(
+                  Colors.black.withOpacity(0.92),
+                  BlendMode.srcOver,
+                ),
+              )
+            : null,
       ),
       child: Stack(
         children: [
@@ -207,31 +225,46 @@ class _BackendHomePageState extends State<BackendHomePage>
                       
                       // Main content
                       Expanded(
-                        child: SingleChildScrollView(
-                          padding: const EdgeInsets.all(24),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Command prompt section
-                              _buildCommandSection(gxRed, transparency),
-                              
-                              const SizedBox(height: 40),
-                              
-                              // Languages grid
-                              _buildLanguagesSection(gxRed, transparency),
-                              
-                              const SizedBox(height: 40),
-                              
-                              // Tools sections
-                              _buildToolsSections(gxRed, transparency),
-                              
-                              const SizedBox(height: 32),
-                              
-                              // Quote
-                              if (_settings.showQuotes)
-                                _buildQuoteSection(gxRed, transparency),
-                            ],
-                          ),
+                        child: Row(
+                          children: [
+                            // Main content area
+                            Expanded(
+                              flex: 2,
+                              child: SingleChildScrollView(
+                                padding: const EdgeInsets.all(24),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // Command prompt section
+                                    _buildCommandSection(gxRed, transparency),
+                                    
+                                    const SizedBox(height: 40),
+                                    
+                                    // Languages grid
+                                    _buildLanguagesSection(gxRed, transparency),
+                                    
+                                    const SizedBox(height: 40),
+                                    
+                                    // Tools sections
+                                    _buildToolsSections(gxRed, transparency),
+                                    
+                                    const SizedBox(height: 32),
+                                    
+                                    // Quote
+                                    if (_settings.showQuotes)
+                                      _buildQuoteSection(gxRed, transparency),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            
+                            // Right panel - Server list + FastAPI Console
+                            BackendLabMiniPanel(
+                              accentColor: gxRed,
+                              width: 320.0,
+                              transparency: transparency,
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -253,6 +286,7 @@ class _BackendHomePageState extends State<BackendHomePage>
           painter: _MatrixRainPainter(
             progress: _matrixController.value,
             color: const Color(0xFF339933),
+            isSecondary: true, // Mode secondary matrix activé
           ),
           size: Size.infinite,
         );
@@ -356,7 +390,7 @@ class _BackendHomePageState extends State<BackendHomePage>
     return Container(
       width: 200,
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(1 - transparency * 0.5),
+        color: Colors.black.withOpacity((1 - transparency * 0.5).clamp(0.0, 1.0)),
         border: Border(
           right: BorderSide(color: const Color(0xFF339933).withOpacity(0.2)),
         ),
@@ -380,7 +414,7 @@ class _BackendHomePageState extends State<BackendHomePage>
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF27C93F).withOpacity(_pulseController.value * 0.5),
+                            color: const Color(0xFF27C93F).withOpacity((_pulseController.value * 0.5).clamp(0.0, 1.0)),
                             blurRadius: 6,
                             spreadRadius: 2,
                           ),
@@ -622,7 +656,11 @@ class _BackendHomePageState extends State<BackendHomePage>
                       color: Colors.white.withOpacity(0.3),
                     ),
                     border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    fillColor: Colors.transparent,
+                    filled: true,
                   ),
                   cursorColor: const Color(0xFF339933),
                   onSubmitted: _handleCommand,
@@ -781,6 +819,9 @@ class _BackendHomePageState extends State<BackendHomePage>
     );
   }
 
+  // Backend Lab Panel - Now using BackendLabMiniPanel widget
+  // All methods have been moved to BackendLabMiniPanel
+  
   Widget _buildQuoteSection(Color gxRed, double transparency) {
     final quote = _devQuotes[DateTime.now().day % _devQuotes.length];
     return Container(
@@ -829,6 +870,10 @@ class _BackendHomePageState extends State<BackendHomePage>
   }
 }
 
+// === HACK LOADING INDICATOR ===
+
+// _HackLoadingIndicator remplacé par le composant réutilisable HackLoadingIndicator
+
 // === DATA CLASSES ===
 
 class _BackendLang {
@@ -848,6 +893,7 @@ class _ToolSection {
   const _ToolSection(this.name, this.icon, this.tools);
 }
 
+
 class _BackendTool {
   final String name;
   final String url;
@@ -861,34 +907,41 @@ class _BackendTool {
 class _MatrixRainPainter extends CustomPainter {
   final double progress;
   final Color color;
+  final bool isSecondary;
 
-  _MatrixRainPainter({required this.progress, required this.color});
+  _MatrixRainPainter({
+    required this.progress,
+    required this.color,
+    this.isSecondary = false,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = color.withOpacity(0.03);
-    
+    // Mode secondary matrix : plus dense et visible
+    final baseOpacity = isSecondary ? 0.08 : 0.03;
+    final columns = isSecondary ? size.width ~/ 15 : size.width ~/ 20;
     final chars = '01アイウエオカキクケコ{}[]<>/\\';
     final random = math.Random(42);
-    final columns = size.width ~/ 20;
     
     for (int i = 0; i < columns; i++) {
-      final x = i * 20.0;
+      final x = i * (isSecondary ? 15.0 : 20.0);
       final speed = 0.5 + random.nextDouble() * 0.5;
       final offset = random.nextDouble();
+      final charCount = isSecondary ? 15 : 10;
       
-      for (int j = 0; j < 10; j++) {
+      for (int j = 0; j < charCount; j++) {
         final y = ((progress * speed + offset + j * 0.1) % 1.2) * size.height - size.height * 0.1;
-        final opacity = (1 - (j / 10)) * 0.03;
-        paint.color = color.withOpacity(opacity);
+        final opacity = (1 - (j / charCount)) * baseOpacity;
+        final paint = Paint()..color = color.withOpacity(opacity);
         
         final char = chars[random.nextInt(chars.length)];
+        final fontSize = isSecondary ? 14.0 : 12.0;
         final textPainter = TextPainter(
           text: TextSpan(
             text: char,
             style: TextStyle(
               fontFamily: 'JetBrains Mono',
-              fontSize: 12,
+              fontSize: fontSize,
               color: paint.color,
             ),
           ),
@@ -901,5 +954,6 @@ class _MatrixRainPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_MatrixRainPainter oldDelegate) => true;
+  bool shouldRepaint(_MatrixRainPainter oldDelegate) => 
+      oldDelegate.progress != progress || oldDelegate.isSecondary != isSecondary;
 }

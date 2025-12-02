@@ -7,6 +7,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import '../models/devtools_models.dart';
 import 'browser_engine.dart';
+import '../core/services/logger_service.dart';
 
 /// Service DevTools qui s'interface avec le moteur de rendu web
 class DevToolsService extends ChangeNotifier {
@@ -245,11 +246,11 @@ class DevToolsService extends ChangeNotifier {
           _domTree = DOMNode.fromJson(parsed);
           notifyListeners();
         } catch (e) {
-          debugPrint('Error parsing DOM tree: $e');
+          LoggerService().error('Error parsing DOM tree', error: e);
         }
       }
     } catch (e) {
-      debugPrint('Error fetching DOM tree: $e');
+      LoggerService().error('Error fetching DOM tree', error: e);
     }
   }
 
@@ -265,11 +266,11 @@ class DevToolsService extends ChangeNotifier {
           _performanceMetrics = PerformanceMetrics.fromJson(parsed);
           notifyListeners();
         } catch (e) {
-          debugPrint('Error parsing performance metrics: $e');
+          LoggerService().error('Error parsing performance metrics', error: e);
         }
       }
     } catch (e) {
-      debugPrint('Error fetching performance metrics: $e');
+      LoggerService().error('Error fetching performance metrics', error: e);
     }
   }
 
@@ -311,11 +312,11 @@ class DevToolsService extends ChangeNotifier {
 
           notifyListeners();
         } catch (e) {
-          debugPrint('Error parsing storage: $e');
+          LoggerService().error('Error parsing storage', error: e);
         }
       }
     } catch (e) {
-      debugPrint('Error fetching storage: $e');
+      LoggerService().error('Error fetching storage', error: e);
     }
   }
 
@@ -333,11 +334,11 @@ class DevToolsService extends ChangeNotifier {
               parsed.map((e) => SourceFile.fromJson(e as Map<String, dynamic>)));
           notifyListeners();
         } catch (e) {
-          debugPrint('Error parsing sources: $e');
+          LoggerService().error('Error parsing sources', error: e);
         }
       }
     } catch (e) {
-      debugPrint('Error fetching sources: $e');
+      LoggerService().error('Error fetching sources', error: e);
     }
   }
 
@@ -389,7 +390,7 @@ class DevToolsService extends ChangeNotifier {
         return jsonDecode(result.toString()) as Map<String, dynamic>;
       }
     } catch (e) {
-      debugPrint('Error inspecting element: $e');
+      LoggerService().error('Error inspecting element', error: e);
     }
     return null;
   }
@@ -478,7 +479,7 @@ class DevToolsService extends ChangeNotifier {
             notifyListeners();
           }
         } catch (e) {
-          debugPrint('Error parsing polled data: $e');
+          LoggerService().error('Error parsing polled data', error: e);
         }
       }
     } catch (e) {
@@ -494,7 +495,7 @@ class DevToolsService extends ChangeNotifier {
       _isInjected = true;
       notifyListeners();
     } catch (e) {
-      debugPrint('Error injecting DevTools script: $e');
+      LoggerService().error('Error injecting DevTools script', error: e);
     }
   }
 

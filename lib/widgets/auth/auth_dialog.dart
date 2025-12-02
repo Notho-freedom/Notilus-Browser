@@ -13,6 +13,7 @@ import '../../services/tab_manager.dart';
 import '../../core/constants/notilus_fonts.dart';
 import '../common/gx_futuristic_dialog.dart';
 import '../common/gx_futuristic_components.dart';
+import '../../services/gx_notification_service.dart';
 
 /// Dialog d'authentification
 class AuthDialog extends StatelessWidget {
@@ -65,22 +66,20 @@ class AuthDialog extends StatelessWidget {
                   if (result != null && context.mounted) {
                     Navigator.of(context).pop(true);
                   } else if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Connexion annulée ou échouée'),
-                        backgroundColor: Colors.red,
-                      ),
+                    GxNotificationService().showError(
+                      title: 'Erreur',
+                      message: 'Connexion annulée ou échouée',
+                      context: context,
                     );
                   }
                 } catch (e) {
                   if (e is GoogleDeviceFlowException && context.mounted) {
                     _showGoogleDeviceFlowDialog(context, authService, e.deviceFlow);
                   } else if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Erreur: ${e.toString()}'),
-                        backgroundColor: Colors.red,
-                      ),
+                    GxNotificationService().showError(
+                      title: 'Erreur',
+                      message: 'Erreur: ${e.toString()}',
+                      context: context,
                     );
                   }
                 }
@@ -104,26 +103,22 @@ class AuthDialog extends StatelessWidget {
                 if (result != null && context.mounted) {
                   Navigator.of(context).pop(true);
                 } else if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Authentification GitHub en cours... Vérifiez votre navigateur'),
-                      backgroundColor: Colors.blue,
-                      duration: Duration(seconds: 3),
-                    ),
+                  GxNotificationService().showInfo(
+                    title: 'Authentification',
+                    message: 'Authentification GitHub en cours... Vérifiez votre navigateur',
+                    context: context,
+                    duration: const Duration(seconds: 3),
                   );
                 }
               } catch (e) {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        e.toString().contains('configuration')
-                            ? 'GitHub OAuth nécessite une configuration dans Firebase Console'
-                            : 'Erreur lors de la connexion GitHub: ${e.toString()}'
-                      ),
-                      backgroundColor: Colors.red,
-                      duration: const Duration(seconds: 5),
-                    ),
+                  GxNotificationService().showError(
+                    title: 'Erreur',
+                    message: e.toString().contains('configuration')
+                        ? 'GitHub OAuth nécessite une configuration dans Firebase Console'
+                        : 'Erreur lors de la connexion GitHub: ${e.toString()}',
+                    context: context,
+                    duration: const Duration(seconds: 5),
                   );
                 }
               }
@@ -179,7 +174,7 @@ class AuthDialog extends StatelessWidget {
                     labelText: 'Email',
                     labelStyle: TextStyle(color: Colors.white60),
                     filled: true,
-                    fillColor: Colors.white.withOpacity(0.05),
+                    fillColor: Colors.transparent,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide(color: Colors.white24),
@@ -188,10 +183,8 @@ class AuthDialog extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide(color: Colors.white24),
                     ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: accentColor),
-                    ),
+                    focusedBorder: InputBorder.none,
+                    focusedErrorBorder: InputBorder.none,
                   ),
                   style: const TextStyle(color: Colors.white),
                   validator: (value) {
@@ -212,7 +205,7 @@ class AuthDialog extends StatelessWidget {
                     labelText: 'Mot de passe',
                     labelStyle: TextStyle(color: Colors.white60),
                     filled: true,
-                    fillColor: Colors.white.withOpacity(0.05),
+                    fillColor: Colors.transparent,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide(color: Colors.white24),
@@ -221,10 +214,8 @@ class AuthDialog extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide(color: Colors.white24),
                     ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: accentColor),
-                    ),
+                    focusedBorder: InputBorder.none,
+                    focusedErrorBorder: InputBorder.none,
                   ),
                   style: const TextStyle(color: Colors.white),
                   validator: (value) {
@@ -263,13 +254,12 @@ class AuthDialog extends StatelessWidget {
                         Navigator.of(context).pop(); // Fermer le dialog email
                         Navigator.of(context).pop(true); // Fermer le dialog principal
                       } else if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(isSignUp
-                                ? 'Erreur lors de la création du compte'
-                                : 'Email ou mot de passe incorrect'),
-                            backgroundColor: Colors.red,
-                          ),
+                        GxNotificationService().showError(
+                          title: 'Erreur',
+                          message: isSignUp
+                              ? 'Erreur lors de la création du compte'
+                              : 'Email ou mot de passe incorrect',
+                          context: context,
                         );
                       }
                     }

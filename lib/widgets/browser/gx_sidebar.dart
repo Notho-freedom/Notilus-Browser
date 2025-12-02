@@ -8,7 +8,7 @@ import 'package:flutter/services.dart';
 import '../../services/tab_manager.dart';
 import '../../services/settings_service.dart';
 import '../../services/mosaic_service.dart';
-import '../common/notilus_monogram.dart';
+import '../common/notilus_logo_image.dart';
 import '../common/notilus_tooltip.dart';
 
 // La couleur rouge est maintenant gérée par ColorThemeManager
@@ -42,11 +42,13 @@ enum SidebarSection {
 class GXSidebar extends StatefulWidget {
   final VoidCallback? onClose;
   final ValueChanged<SidebarSection>? onSectionSelected;
+  final SidebarSection? currentSection;
   
   const GXSidebar({
     super.key,
     this.onClose,
     this.onSectionSelected,
+    this.currentSection,
   });
 
   @override
@@ -97,11 +99,6 @@ class _GXSidebarState extends State<GXSidebar> {
       section: SidebarSection.updates,
       icon: CupertinoIcons.arrow_up_circle,
       label: 'Mises à jour',
-    ),
-    _SidebarDestination(
-      section: SidebarSection.extensions,
-      icon: CupertinoIcons.square_grid_2x2,
-      label: 'Extensions',
     ),
     _SidebarDestination(
       section: SidebarSection.terminal,
@@ -212,17 +209,15 @@ class _GXSidebarState extends State<GXSidebar> {
     final webServices = _getWebServices(gxRed);
     
     return RepaintBoundary(
-      child: ListenableBuilder(
-        listenable: _settings,
-        builder: (context, _) => Container(
-          width: 50,
-          color: colorThemeManager.nativeBackgroundColor.withOpacity(1.0 - _settings.panelTransparency),
+      child: Container(
+        width: 50,
+        color: colorThemeManager.nativeBackgroundColor,
         child: LayoutBuilder(
           builder: (context, constraints) {
             return Column(
               children: [
                 const SizedBox(height: 10),
-                const NotilusMonogram(
+                const NotilusMonogramImage(
                   size: 24,
                   showGlow: false,
                   showFrame: true,
@@ -240,9 +235,15 @@ class _GXSidebarState extends State<GXSidebar> {
                             message: _destinations[i].label,
                             child: _GXSidebarIcon(
                               icon: _destinations[i].icon,
-                              isSelected: _selectedIndex == i,
+                              isSelected: widget.currentSection == _destinations[i].section,
                               isHovered: _hoveredIndex == i,
                               onTap: () {
+                                // Si la section est déjà sélectionnée, fermer le panel
+                                if (widget.currentSection == _destinations[i].section && _destinations[i].section != SidebarSection.home) {
+                                  widget.onSectionSelected?.call(SidebarSection.home);
+                                  return;
+                                }
+                                
                                 setState(() {
                                   _selectedIndex = i;
                                 });
@@ -253,6 +254,13 @@ class _GXSidebarState extends State<GXSidebar> {
                                   final mosaicService = Provider.of<NotilusMosaicService>(context, listen: false);
                                   final tabManager = Provider.of<TabManager>(context, listen: false);
                                   final activeTabId = tabManager.activeTab?.id;
+                                  
+                                  // Si la mosaic est cachée, la réafficher
+                                  if (!mosaicService.isVisible) {
+                                    mosaicService.setVisible(true);
+                                  }
+                                  
+                                  // Toggle l'état actif
                                   mosaicService.toggle(activeTabId: activeTabId);
                                   HapticFeedback.mediumImpact();
                                   return;
@@ -268,7 +276,7 @@ class _GXSidebarState extends State<GXSidebar> {
                         Container(
                           width: 40,
                           height: 1,
-                          color: gxRed.withValues(alpha: 0.3),
+                          color: gxRed.withOpacity(0.3),
                         ),
                         const SizedBox(height: 12),
                         // Services web
@@ -280,6 +288,12 @@ class _GXSidebarState extends State<GXSidebar> {
                               color: webServices[i].color,
                               isHovered: _hoveredIndex == _destinations.length + i,
                               onTap: () {
+                                // Si la section web service est déjà sélectionnée, fermer le panel
+                                if (widget.currentSection == webServices[i].section) {
+                                  widget.onSectionSelected?.call(SidebarSection.home);
+                                  return;
+                                }
+                                
                                 setState(() {
                                   _selectedIndex = -1;
                                 });
@@ -301,7 +315,6 @@ class _GXSidebarState extends State<GXSidebar> {
               ],
             );
           },
-        ),
         ),
       ),
     );
@@ -427,7 +440,7 @@ class _GXSidebarIconState extends State<_GXSidebarIcon>
                       boxShadow: widget.isSelected
                           ? [
                               BoxShadow(
-                                color: gxRed.withValues(alpha: 0.8),
+                                color: gxRed.withOpacity(0.8),
                                 blurRadius: 6,
                                 spreadRadius: 1,
                               ),
@@ -446,15 +459,15 @@ class _GXSidebarIconState extends State<_GXSidebarIcon>
                     height: 36,
                     decoration: BoxDecoration(
                       color: widget.isSelected
-                          ? gxRed.withValues(alpha: 0.18)
+                          ? gxRed.withOpacity(0.18)
                           : (widget.isHovered
-                              ? gxRed.withValues(alpha: 0.12)
+                              ? gxRed.withOpacity(0.12)
                               : Colors.transparent),
                       borderRadius: BorderRadius.circular(10),
                       boxShadow: widget.isHovered || widget.isSelected
                           ? [
                               BoxShadow(
-                                color: gxRed.withValues(alpha: widget.isSelected ? 0.3 : 0.15),
+                                color: gxRed.withOpacity(widget.isSelected ? 0.3 : 0.15),
                                 blurRadius: 8,
                                 spreadRadius: 0,
                               ),
@@ -468,10 +481,12 @@ class _GXSidebarIconState extends State<_GXSidebarIcon>
                       ),
                       duration: const Duration(milliseconds: 200),
                       builder: (context, opacity, _) {
+                        final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: true);
+                        final iconColor = colorThemeManager.getIconColor();
                         return Icon(
                           widget.icon,
                           size: 20,
-                          color: gxRed.withValues(alpha: opacity),
+                          color: iconColor.withOpacity(opacity),
                         );
                       },
                     ),
@@ -498,7 +513,7 @@ class _SidebarSignature extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 10),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: gxRed.withValues(alpha: 0.5), width: 1),
+        border: Border.all(color: gxRed.withOpacity(0.5), width: 1),
       ),
       child: Column(
         children: [
@@ -510,7 +525,7 @@ class _SidebarSignature extends StatelessWidget {
               borderRadius: BorderRadius.circular(3),
               boxShadow: [
                 BoxShadow(
-                  color: gxRed.withValues(alpha: 0.6),
+                  color: gxRed.withOpacity(0.6),
                   blurRadius: 8,
                 ),
               ],
@@ -520,7 +535,7 @@ class _SidebarSignature extends StatelessWidget {
           Text(
             'NX',
             style: TextStyle(
-              color: gxRed.withValues(alpha: 0.9),
+              color: gxRed.withOpacity(0.9),
               fontSize: 10,
               fontWeight: FontWeight.bold,
             ),
@@ -717,7 +732,7 @@ class _SidebarVerticalLabel extends StatelessWidget {
       child: Text(
         'NOTILUS BETA',
         style: TextStyle(
-          color: gxRed.withValues(alpha: 0.7),
+          color: gxRed.withOpacity(0.7),
           fontSize: 10,
           letterSpacing: 3,
           fontWeight: FontWeight.w600,

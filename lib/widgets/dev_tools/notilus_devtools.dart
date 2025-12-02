@@ -13,6 +13,7 @@ import '../../core/services/color_theme_manager.dart';
 import '../../core/constants/notilus_fonts.dart';
 import '../common/gx_futuristic_dialog.dart';
 import '../common/gx_futuristic_components.dart';
+import '../../services/gx_notification_service.dart';
 import 'devtools_console_panel.dart';
 import 'devtools_network_panel.dart';
 import 'devtools_elements_panel.dart';
@@ -397,19 +398,12 @@ class _NotilusDevToolsState extends State<NotilusDevTools>
         })();
       ''');
       
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.gps_fixed, size: 16, color: colorTheme.nativeSecondaryColor),
-              const SizedBox(width: 8),
-              const Expanded(child: Text('Mode inspection activé - Cliquez sur un élément')),
-            ],
-          ),
-          backgroundColor: const Color(0xFF1E1E24),
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 2),
-        ),
+      GxNotificationService().showInfo(
+        title: 'Mode inspection',
+        message: 'Mode inspection activé - Cliquez sur un élément',
+        context: context,
+        icon: Icons.gps_fixed,
+        duration: const Duration(seconds: 2),
       );
     } else {
       // Désactiver le mode inspection

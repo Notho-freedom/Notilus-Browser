@@ -4,6 +4,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/constants/notilus_colors.dart';
 import '../../core/constants/notilus_fonts.dart';
 import '../../widgets/common/gx_futuristic_dialog.dart';
+import '../../widgets/common/gx_futuristic_components.dart';
 
 class TabGroupDialog extends StatefulWidget {
   final TabGroupModel? existingGroup;
@@ -127,7 +128,7 @@ class _TabGroupDialogState extends State<TabGroupDialog> {
                 color: Colors.white.withOpacity(0.6),
               ),
               filled: true,
-              fillColor: Colors.white.withOpacity(0.05),
+              fillColor: Colors.transparent,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
@@ -136,7 +137,9 @@ class _TabGroupDialogState extends State<TabGroupDialog> {
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
               ),
-              focusedBorder: OutlineInputBorder(
+              focusedBorder: InputBorder.none,
+              focusedErrorBorder: InputBorder.none,
+              // focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(color: accentColor, width: 1.5),
               ),

@@ -32,6 +32,8 @@ class SettingsService extends ChangeNotifier {
   static const String _keyStartOnHome = 'notilus_start_on_home';
   static const String _keyNewTabBehavior = 'notilus_new_tab_behavior'; // 'home', 'blank', 'url'
   static const String _keyNewTabUrl = 'notilus_new_tab_url';
+  static const String _keyTabMode = 'notilus_tab_mode'; // 'classic' ou 'native'
+  static const String _keyTabGroupingEnabled = 'notilus_tab_grouping_enabled';
   
   // Téléchargements
   static const String _keyDownloadFolder = 'notilus_download_folder';
@@ -49,8 +51,9 @@ class SettingsService extends ChangeNotifier {
   static const String _keyShowSystemWidgets = 'notilus_show_system_widgets';
   static const String _keyShowQuickAccess = 'notilus_show_quick_access';
   static const String _keyHomePageBlur = 'notilus_home_page_blur';
+  static const String _keyHomePageOverlayOpacity = 'notilus_home_page_overlay_opacity';
   static const String _keyShowRecentHistory = 'notilus_show_recent_history';
-  static const String _keyHomePageStyle = 'notilus_home_page_style'; // 'modern', 'notilus_dev', 'frontend', 'backend', 'devops', 'data_science', 'minimal'
+  static const String _keyHomePageStyle = 'notilus_home_page_style'; // 'modern', 'notilus_dev', 'frontend', 'backend', 'devops', 'data_science', 'minimal', 'customizable'
   static const String _keyDevProfile = 'notilus_dev_profile'; // 'frontend', 'backend', 'fullstack', 'devops', 'data_science', 'mobile', 'gamedev', 'security'
   
   // Transparence des widgets
@@ -58,6 +61,16 @@ class SettingsService extends ChangeNotifier {
   static const String _keyPanelTransparency = 'notilus_panel_transparency'; // 0.0 - 1.0
   static const String _keyOverlayTransparency = 'notilus_overlay_transparency'; // 0.0 - 1.0
   static const String _keyGlassBlurIntensity = 'notilus_glass_blur_intensity'; // 0 - 30
+  static const String _keySideMenuBrightness = 'notilus_side_menu_brightness'; // 0.0 - 1.0 (éclairage des sidemenus)
+  
+  // Personnalisation des icônes
+  static const String _keyIconColorCustomEnabled = 'notilus_icon_color_custom_enabled'; // bool
+  static const String _keyIconColorCustom = 'notilus_icon_color_custom'; // int (Color value)
+  
+  // Dialogs
+  static const String _keyDialogBarrierOpacity = 'notilus_dialog_barrier_opacity'; // 0.0 - 1.0
+  static const String _keyDialogBlurIntensity = 'notilus_dialog_blur_intensity'; // 0.0 - 20.0
+  static const String _keyContextMenuOpacity = 'notilus_context_menu_opacity'; // 0.0 - 1.0
   
   // Personnalisation avancée
   static const String _keyShowClock = 'notilus_show_clock';
@@ -99,6 +112,13 @@ class SettingsService extends ChangeNotifier {
   static const String _keyGcpTtsProjectId = 'notilus_gcp_tts_project_id';
   static const String _keyGcpTtsLocation = 'notilus_gcp_tts_location'; // 'global', 'us-central1', etc.
   
+  // Cloudinary
+  static const String _keyCloudinaryCloudName = 'notilus_cloudinary_cloud_name';
+  static const String _keyCloudinaryUploadPreset = 'notilus_cloudinary_upload_preset';
+  static const String _keySelectedBackgrounds = 'notilus_selected_backgrounds'; // Liste des URLs sélectionnées
+  static const String _keySelectedVideos = 'notilus_selected_videos'; // Liste des URLs sélectionnées
+  static const String _keySelectedMusic = 'notilus_selected_music'; // URL de la musique sélectionnée
+  
   // DevTools
   static const String _keyDevToolsPosition = 'notilus_devtools_position'; // 'bottom', 'right', 'detached'
   static const String _keyDevToolsHeight = 'notilus_devtools_height';
@@ -121,6 +141,9 @@ class SettingsService extends ChangeNotifier {
   static const String _keyNotificationVolume = 'notilus_notification_volume'; // 0.0 - 1.0
   static const String _keyNotificationDuration = 'notilus_notification_duration'; // en secondes
   static const String _keyNotificationMaxVisible = 'notilus_notification_max_visible';
+  
+  // Panels latéraux
+  static const String _keyPanelDefaultWidth = 'notilus_panel_default_width'; // Taille par défaut des panels (sauf paramètres) en pixels
   
   // ============================================
   // INITIALISATION
@@ -247,6 +270,25 @@ class SettingsService extends ChangeNotifier {
     await _prefs?.setString(_keyNewTabUrl, url);
     notifyListeners();
   }
+  
+  /// Mode d'affichage des onglets : 'classic' ou 'native' (futuriste GX)
+  String get tabMode => _prefs?.getString(_keyTabMode) ?? 'classic';
+  
+  Future<void> setTabMode(String mode) async {
+    if (mode != 'classic' && mode != 'native') {
+      throw ArgumentError('tabMode must be "classic" or "native"');
+    }
+    await _prefs?.setString(_keyTabMode, mode);
+    notifyListeners();
+  }
+  
+  /// Active ou désactive le groupement automatique des onglets
+  bool get tabGroupingEnabled => _prefs?.getBool(_keyTabGroupingEnabled) ?? false;
+  
+  Future<void> setTabGroupingEnabled(bool enabled) async {
+    await _prefs?.setBool(_keyTabGroupingEnabled, enabled);
+    notifyListeners();
+  }
 
   // ============================================
   // TÉLÉCHARGEMENTS
@@ -342,6 +384,18 @@ class SettingsService extends ChangeNotifier {
     notifyListeners();
   }
   
+  /// Opacité de l'overlay noir sur l'image de fond (0.0 = transparent, 1.0 = opaque)
+  /// Plus la valeur est basse, plus l'image de fond est visible
+  double get homePageOverlayOpacity => _prefs?.getDouble(_keyHomePageOverlayOpacity) ?? 0.7;
+  
+  Future<void> setHomePageOverlayOpacity(double value) async {
+    if (value < 0.0 || value > 1.0) {
+      throw ArgumentError('Value must be between 0.0 and 1.0');
+    }
+    await _prefs?.setDouble(_keyHomePageOverlayOpacity, value);
+    notifyListeners();
+  }
+  
   bool get showQuickAccess => _prefs?.getBool(_keyShowQuickAccess) ?? true;
   
   Future<void> setShowQuickAccess(bool show) async {
@@ -405,6 +459,61 @@ class SettingsService extends ChangeNotifier {
   
   Future<void> setGlassBlurIntensity(double value) async {
     await _prefs?.setDouble(_keyGlassBlurIntensity, value.clamp(0.0, 30.0));
+    notifyListeners();
+  }
+  
+  /// Éclairage des sidemenus (0.0 = sombre, 1.0 = clair) - similaire à homePageBlur
+  double get sideMenuBrightness => _prefs?.getDouble(_keySideMenuBrightness) ?? 0.88;
+  
+  Future<void> setSideMenuBrightness(double value) async {
+    await _prefs?.setDouble(_keySideMenuBrightness, value.clamp(0.0, 1.0));
+    notifyListeners();
+  }
+  
+  /// Personnalisation de couleur des icônes activée
+  bool get iconColorCustomEnabled => _prefs?.getBool(_keyIconColorCustomEnabled) ?? false;
+  
+  Future<void> setIconColorCustomEnabled(bool enabled) async {
+    await _prefs?.setBool(_keyIconColorCustomEnabled, enabled);
+    notifyListeners();
+  }
+  
+  /// Couleur personnalisée des icônes (Color value as int)
+  int get iconColorCustom => _prefs?.getInt(_keyIconColorCustom) ?? 0xFFFF0040;
+  
+  Future<void> setIconColorCustom(int colorValue) async {
+    await _prefs?.setInt(_keyIconColorCustom, colorValue);
+    notifyListeners();
+  }
+
+  // ============================================
+  // DIALOGS
+  // ============================================
+  
+  /// Opacité du fond assombri des dialogs (0.0 = transparent, 1.0 = opaque)
+  double get dialogBarrierOpacity => _prefs?.getDouble(_keyDialogBarrierOpacity) ?? 0.4;
+  
+  Future<void> setDialogBarrierOpacity(double value) async {
+    await _prefs?.setDouble(_keyDialogBarrierOpacity, value.clamp(0.0, 1.0));
+    notifyListeners();
+  }
+  
+  /// Intensité du flou des dialogs (0.0 - 20.0)
+  double get dialogBlurIntensity => _prefs?.getDouble(_keyDialogBlurIntensity) ?? 2.0;
+  
+  Future<void> setDialogBlurIntensity(double value) async {
+    await _prefs?.setDouble(_keyDialogBlurIntensity, value.clamp(0.0, 20.0));
+    notifyListeners();
+  }
+  
+  /// Opacité des menus contextuels (0.0 - 1.0)
+  double get contextMenuOpacity => _prefs?.getDouble(_keyContextMenuOpacity) ?? 0.85;
+  
+  Future<void> setContextMenuOpacity(double value) async {
+    if (value < 0.0 || value > 1.0) {
+      throw ArgumentError('Value must be between 0.0 and 1.0');
+    }
+    await _prefs?.setDouble(_keyContextMenuOpacity, value.clamp(0.0, 1.0));
     notifyListeners();
   }
 
@@ -802,6 +911,85 @@ class SettingsService extends ChangeNotifier {
   int get notificationMaxVisible => _prefs?.getInt(_keyNotificationMaxVisible) ?? 5;
   Future<void> setNotificationMaxVisible(int count) async {
     await _prefs?.setInt(_keyNotificationMaxVisible, count);
+    notifyListeners();
+  }
+
+  // ============================================
+  // PANELS LATÉRAUX
+  // ============================================
+  
+  /// Taille par défaut des panels latéraux (sauf paramètres qui reste en MAX)
+  double get panelDefaultWidth => _prefs?.getDouble(_keyPanelDefaultWidth) ?? 600.0;
+  Future<void> setPanelDefaultWidth(double width) async {
+    await _prefs?.setDouble(_keyPanelDefaultWidth, width.clamp(400.0, 1000.0));
+    notifyListeners();
+  }
+
+  // ============================================
+  // CLOUDINARY
+  // ============================================
+  
+  String? get cloudinaryCloudName => _prefs?.getString(_keyCloudinaryCloudName);
+  Future<void> setCloudinaryCloudName(String? value) async {
+    if (value == null || value.isEmpty) {
+      await _prefs?.remove(_keyCloudinaryCloudName);
+    } else {
+      await _prefs?.setString(_keyCloudinaryCloudName, value);
+    }
+    notifyListeners();
+  }
+  
+  String? get cloudinaryUploadPreset => _prefs?.getString(_keyCloudinaryUploadPreset);
+  Future<void> setCloudinaryUploadPreset(String? value) async {
+    if (value == null || value.isEmpty) {
+      await _prefs?.remove(_keyCloudinaryUploadPreset);
+    } else {
+      await _prefs?.setString(_keyCloudinaryUploadPreset, value);
+    }
+    notifyListeners();
+  }
+  
+  List<String> get selectedBackgrounds {
+    final json = _prefs?.getString(_keySelectedBackgrounds);
+    if (json == null) return [];
+    try {
+      final List<dynamic> list = jsonDecode(json);
+      return list.cast<String>();
+    } catch (e) {
+      return [];
+    }
+  }
+  
+  Future<void> setSelectedBackgrounds(List<String> urls) async {
+    await _prefs?.setString(_keySelectedBackgrounds, jsonEncode(urls));
+    debugPrint('✅ setSelectedBackgrounds appelé avec ${urls.length} URLs');
+    notifyListeners();
+  }
+  
+  List<String> get selectedVideos {
+    final json = _prefs?.getString(_keySelectedVideos);
+    if (json == null) return [];
+    try {
+      final List<dynamic> list = jsonDecode(json);
+      return list.cast<String>();
+    } catch (e) {
+      return [];
+    }
+  }
+  
+  Future<void> setSelectedVideos(List<String> urls) async {
+    await _prefs?.setString(_keySelectedVideos, jsonEncode(urls));
+    debugPrint('✅ setSelectedVideos appelé avec ${urls.length} URLs');
+    notifyListeners();
+  }
+  
+  String? get selectedMusic => _prefs?.getString(_keySelectedMusic);
+  Future<void> setSelectedMusic(String? url) async {
+    if (url == null || url.isEmpty) {
+      await _prefs?.remove(_keySelectedMusic);
+    } else {
+      await _prefs?.setString(_keySelectedMusic, url);
+    }
     notifyListeners();
   }
 

@@ -318,7 +318,7 @@ class InteractionRecorderService extends ChangeNotifier {
 
   /// Injecte le script d'enregistrement
   Future<void> _injectRecorderScript() async {
-    await _studioService.executeScript('''
+    await _studioService.injectScript('''
       (function() {
         if (window.__notilusRecorder) return;
         
@@ -425,7 +425,7 @@ class InteractionRecorderService extends ChangeNotifier {
 
   /// Retire le script d'enregistrement
   Future<void> _removeRecorderScript() async {
-    await _studioService.executeScript('''
+    await _studioService.injectScript('''
       (function() {
         if (window.__notilusRecorder) {
           window.__notilusRecorder.destroy();

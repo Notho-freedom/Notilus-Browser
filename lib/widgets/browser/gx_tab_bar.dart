@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
@@ -13,9 +14,14 @@ import '../../models/tab_model.dart';
 import '../../services/terminal_manager.dart';
 import '../../models/bookmark.dart';
 import '../../core/services/color_theme_manager.dart';
-import '../common/notilus_monogram.dart';
+import '../../services/settings_service.dart';
+import '../../services/tab_group_service.dart';
+import '../common/notilus_logo_image.dart';
 import '../common/notilus_tooltip.dart';
 import '../common/context_menu.dart';
+import '../common/gx_futuristic_dialog.dart';
+import '../common/gx_futuristic_components.dart';
+import '../../core/constants/notilus_fonts.dart';
 
 // La couleur rouge est maintenant gérée par ColorThemeManager
 
@@ -54,7 +60,7 @@ class _GXTabBarState extends State<GXTabBar> {
         color: colorThemeManager.nativeBackgroundColor,
         border: Border(
           bottom: BorderSide(
-            color: gxRed.withValues(alpha: 0.2),
+            color: gxRed.withOpacity(0.2),
             width: 1,
           ),
         ),
@@ -65,7 +71,7 @@ class _GXTabBarState extends State<GXTabBar> {
           if (!widget.isSidebarVisible) ...[
             const NotilusTooltip(
               message: 'Identité Notilus',
-              child: NotilusMonogram(
+              child: const NotilusMonogramImage(
                 size: 22,
                 showGlow: false,
               ),
@@ -82,186 +88,25 @@ class _GXTabBarState extends State<GXTabBar> {
           const SizedBox(width: 10),
           // Tabs container
           Expanded(
-            child: Consumer<TabManager>(
-              builder: (context, tabManager, _) {
-                return LayoutBuilder(
-                  builder: (context, constraints) {
-                    final tabCount = tabManager.tabs.isEmpty ? 1 : tabManager.tabs.length;
-                    final double tabWidth = (constraints.maxWidth / (tabCount + 0.4))
-                        .clamp(110, 210)
-                        .toDouble();
-
-                    return Scrollbar(
-                      controller: _scrollController,
-                      thickness: 2,
-                      radius: const Radius.circular(1),
-                      thumbVisibility: false,
-                      child: ListView.builder(
-                        controller: _scrollController,
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        itemCount: tabManager.tabs.length + 1,
-                        itemBuilder: (context, index) {
-                          if (index == tabManager.tabs.length) {
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 4),
-                              child: _GXTabBarIconButton(
-                                icon: CupertinoIcons.add,
-                                tooltip: 'Nouvel onglet (maintenir pour menu)',
-                                compact: true,
-                                onPressed: () => tabManager.createNewTab(),
-                                onLongPress: () {
-                                  // Menu contextuel pour choisir le type d'onglet
-                                  final RenderBox renderBox = context.findRenderObject() as RenderBox;
-                                  final Offset offset = renderBox.localToGlobal(Offset.zero);
-                                  
-                                  showMenu(
-                                    context: context,
-                                    position: RelativeRect.fromLTRB(
-                                      offset.dx,
-                                      offset.dy + 30,
-                                      offset.dx + 100,
-                                      offset.dy + 100,
-                                    ),
-                                    items: [
-                                      PopupMenuItem(
-                                        child: const Row(
-                                          children: [
-                                            Icon(CupertinoIcons.globe, size: 16),
-                                            SizedBox(width: 8),
-                                            Text('Nouvel onglet web'),
-                                          ],
-                                        ),
-                                        onTap: () => tabManager.createNewTab(),
-                                      ),
-                                    ],
-                                  );
-                                },
-                              ),
-                            );
-                          }
-
-                          final tab = tabManager.tabs[index];
-                          final isActive = tab.isSelected;
-
-                          return DragTarget<TabModel>(
-                            onWillAccept: (data) => data != null && data.id != tab.id,
-                            onAccept: (draggedTab) {
-                              if (draggedTab.id != tab.id) {
-                                final oldIndex = tabManager.tabs.indexWhere((t) => t.id == draggedTab.id);
-                                final newIndex = index;
-                                if (oldIndex != -1) {
-                                  tabManager.reorderTab(oldIndex, newIndex);
-                                  HapticFeedback.mediumImpact();
-                                }
-                              }
-                            },
-                            onMove: (details) {
-                              // Feedback visuel pendant le drag
-                            },
-                            onLeave: (data) {
-                              // Feedback visuel quand on quitte la zone
-                            },
-                            builder: (context, candidateData, rejectedData) {
-                              return LongPressDraggable<TabModel>(
-                                key: ValueKey(tab.id),
-                                data: tab,
-                                dragAnchorStrategy: pointerDragAnchorStrategy,
-                                delay: const Duration(milliseconds: 300), // Délai raisonnable pour permettre les clics
-                                feedback: Material(
-                                  color: Colors.transparent,
-                                  child: Transform.scale(
-                                    scale: 1.05,
-                                    child: Container(
-                                      width: tabWidth,
-                                      height: 32,
-                                      decoration: BoxDecoration(
-                                        color: colorThemeManager.nativeBackgroundColor,
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(
-                                          color: gxRed,
-                                          width: 2.5,
-                                        ),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: gxRed.withValues(alpha:0.5),
-                                            blurRadius: 12,
-                                            spreadRadius: 2,
-                                          ),
-                                        ],
-                                      ),
-                                      child: _GXTabItem(
-                                        tab: tab,
-                                        width: tabWidth,
-                                        isActive: true,
-                                        onTap: () {},
-                                        onClose: () {},
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                childWhenDragging: AnimatedOpacity(
-                                  opacity: 0.2,
-                                  duration: const Duration(milliseconds: 200),
-                                  child: _GXTabItem(
-                                    tab: tab,
-                                    width: tabWidth,
-                                    isActive: isActive,
-                                    onTap: () => tabManager.selectTab(tab.id),
-                                    onClose: () {
-                                      final webViewManager = Provider.of<TabWebViewManager>(
-                                        context,
-                                        listen: false,
-                                      );
-                                      webViewManager.removeEngineForTab(tab.id);
-                                      tabManager.closeTab(tab.id);
-                                    },
-                                  ),
-                                ),
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  curve: Curves.easeOutCubic,
-                                  decoration: candidateData.isNotEmpty
-                                      ? BoxDecoration(
-                                          border: Border.all(
-                                            color: gxRed,
-                                            width: 2.5,
-                                          ),
-                                          borderRadius: BorderRadius.circular(6),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: gxRed.withValues(alpha:0.3),
-                                              blurRadius: 8,
-                                              spreadRadius: 1,
-                                            ),
-                                          ],
-                                        )
-                                      : null,
-                                  child: _GXTabItem(
-                                    tab: tab,
-                                    width: tabWidth,
-                                    isActive: isActive,
-                                    onTap: () => tabManager.selectTab(tab.id),
-                                    onClose: () {
-                                      final webViewManager = Provider.of<TabWebViewManager>(
-                                        context,
-                                        listen: false,
-                                      );
-                                      webViewManager.removeEngineForTab(tab.id);
-                                      tabManager.closeTab(tab.id);
-                                    },
-                                  ),
-                                ),
-                              );
-                            },
-                          );
-                        },
-                      ),
-                    );
-                  },
-                );
-              },
+            child: ClipRect(
+              child: Consumer4<TabManager, TabGroupService, SettingsService, ColorThemeManager>(
+                builder: (context, tabManager, groupService, settings, colorThemeManager, _) {
+                  final groupingEnabled = settings.tabGroupingEnabled;
+                  return _buildTabBar(context, tabManager, groupService, colorThemeManager, groupingEnabled);
+                },
+              ),
             ),
+          ),
+          const SizedBox(width: 4),
+          // Bouton nouveau onglet
+          _GXTabBarIconButton(
+            icon: CupertinoIcons.add,
+            tooltip: 'Nouvel onglet',
+            compact: true,
+            onPressed: () {
+              final tabManager = Provider.of<TabManager>(context, listen: false);
+              tabManager.createNewTab();
+            },
           ),
 
           const SizedBox(width: 4),
@@ -274,10 +119,16 @@ class _GXTabBarState extends State<GXTabBar> {
                 tooltip: 'Rechercher un onglet',
                 onPressed: () => _openTabSearch(context),
               ),
-              _GXTabBarIconButton(
-                icon: CupertinoIcons.rectangle_stack,
-                tooltip: 'Groupes d\'onglets',
-                onPressed: widget.onGroupsPressed,
+              // Bouton groupes (seulement si le groupement est activé)
+              Consumer<SettingsService>(
+                builder: (context, settings, _) {
+                  if (!settings.tabGroupingEnabled) return const SizedBox.shrink();
+                  return _GXTabBarIconButton(
+                    icon: CupertinoIcons.rectangle_stack,
+                    tooltip: 'Groupes d\'onglets',
+                    onPressed: widget.onGroupsPressed,
+                  );
+                },
               ),
             ],
           ),
@@ -289,71 +140,229 @@ class _GXTabBarState extends State<GXTabBar> {
     );
   }
 
+  Widget _buildTabBar(
+    BuildContext context,
+    TabManager tabManager,
+    TabGroupService groupService,
+    ColorThemeManager colorThemeManager,
+    bool groupingEnabled,
+  ) {
+    final groups = groupingEnabled ? groupService.orderedGroups : [];
+    final allTabs = tabManager.tabs;
+    final accentColor = colorThemeManager.nativeSecondaryColor;
+    
+    // Vérifier s'il y a des onglets (groupés ou non)
+    if (allTabs.isEmpty) {
+      return Center(
+        child: Text(
+          'Aucun onglet ouvert',
+          style: TextStyle(color: Colors.white60, fontSize: 12),
+        ),
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Construire la liste des widgets à afficher
+        final List<Widget> tabBarItems = [];
+        
+        // Identifier les onglets qui sont dans un groupe
+        final tabsInGroups = <String>{};
+        for (final group in groups) {
+          tabsInGroups.addAll(group.tabIds);
+        }
+        
+        // Afficher les onglets non groupés (domaines avec un seul onglet)
+        for (final tab in allTabs) {
+          if (!tabsInGroups.contains(tab.id)) {
+            final isActive = tab.id == tabManager.activeTab?.id;
+            // Obtenir la couleur du domaine même pour les onglets non groupés
+            // Extraire le domaine de l'URL
+            String domain = 'local';
+            if (tab.url != null && tab.url!.isNotEmpty) {
+              try {
+                final uri = Uri.parse(tab.url!);
+                if (uri.host.isNotEmpty) {
+                  domain = uri.host.replaceFirst(RegExp(r'^www\.'), '');
+                } else if (tab.url!.startsWith('about:')) {
+                  domain = 'about';
+                } else if (tab.url!.startsWith('file:')) {
+                  domain = 'local';
+                } else {
+                  domain = 'unknown';
+                }
+              } catch (e) {
+                domain = 'unknown';
+              }
+            }
+            final colorCode = groupService.getColorForDomain(domain);
+            
+            tabBarItems.add(
+              ConstrainedBox(
+                constraints: const BoxConstraints(
+                  minWidth: 100,
+                  maxWidth: 200,
+                ),
+                child: _GXExpandedTabItem(
+                  tab: tab,
+                  isActive: isActive,
+                  colorCode: colorCode,
+                  accentColor: accentColor,
+                  tabManager: tabManager,
+                ),
+              ),
+            );
+          }
+        }
+        
+        // Afficher les groupes (domaines avec plusieurs onglets)
+        for (final group in groups) {
+          // Si le groupe est expandé, insérer ses onglets avant le groupe
+          if (group.isExpanded) {
+            final selectedGroupId = groupService.selectedGroupId;
+            final isSelected = selectedGroupId == group.id;
+            
+            // Si un groupe est sélectionné et ce n'est pas celui-ci, ne pas afficher les onglets
+            if (selectedGroupId != null && !isSelected) {
+              // Ne rien ajouter, juste le groupe
+            } else {
+              // Ajouter les onglets du groupe
+              for (final tabId in group.tabIds) {
+                try {
+                  final tab = tabManager.tabs.firstWhere((t) => t.id == tabId);
+                  final isActive = tab.id == tabManager.activeTab?.id;
+                  
+                  // Si le groupe est sélectionné, n'afficher que l'onglet actif
+                  if (isSelected && !isActive) {
+                    continue;
+                  }
+                  
+                  tabBarItems.add(
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        minWidth: 100,
+                        maxWidth: 200,
+                      ),
+                      child: _GXExpandedTabItem(
+                        tab: tab,
+                        isActive: isActive,
+                        colorCode: group.colorCode,
+                        accentColor: accentColor,
+                        tabManager: tabManager,
+                        onSelect: () {
+                          tabManager.selectTab(tab.id);
+                          groupService.selectGroup(group.id);
+                          // Fermer le groupe après sélection pour économiser l'espace
+                          groupService.collapseGroup(group.id);
+                        },
+                      ),
+                    ),
+                  );
+                } catch (e) {
+                  // Onglet introuvable, ignorer
+                }
+              }
+            }
+          }
+          
+          // Ajouter le widget du groupe
+          tabBarItems.add(
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: constraints.maxWidth * 0.4,
+                minWidth: 150,
+              ),
+              child: _GXGroupWidget(
+                group: group,
+                tabManager: tabManager,
+                groupService: groupService,
+                accentColor: accentColor,
+              ),
+            ),
+          );
+        }
+        
+        return Scrollbar(
+          controller: _scrollController,
+          thickness: 2,
+          radius: const Radius.circular(1),
+          thumbVisibility: false,
+          child: SingleChildScrollView(
+            controller: _scrollController,
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: tabBarItems,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _openTabSearch(BuildContext context) async {
     final tabManager = context.read<TabManager>();
     final controller = TextEditingController();
     String query = '';
 
-    await showDialog(
+    final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: false);
+    final gxRed = colorThemeManager.nativeSecondaryColor;
+    
+    await GxFuturisticDialog.show(
       context: context,
-      builder: (dialogContext) {
-        final colorThemeManager = Provider.of<ColorThemeManager>(dialogContext, listen: true);
-        final gxRed = colorThemeManager.nativeSecondaryColor;
-        return StatefulBuilder(
-          builder: (context, setState) {
-            final filteredTabs = tabManager.tabs.where((tab) {
-              if (query.isEmpty) return true;
-              final q = query.toLowerCase();
-              return (tab.title?.toLowerCase().contains(q) ?? false) ||
-                  (tab.url?.toLowerCase().contains(q) ?? false);
-            }).toList();
+      title: 'Rechercher un onglet',
+      titleIcon: CupertinoIcons.search,
+      accentColor: gxRed,
+      width: 450,
+      height: 350,
+      child: StatefulBuilder(
+        builder: (context, setState) {
+          final filteredTabs = tabManager.tabs.where((tab) {
+            if (query.isEmpty) return true;
+            final q = query.toLowerCase();
+            return (tab.title?.toLowerCase().contains(q) ?? false) ||
+                (tab.url?.toLowerCase().contains(q) ?? false);
+          }).toList();
 
-            return AlertDialog(
-              backgroundColor: const Color(0xFF15151A),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-                side: BorderSide(color: gxRed.withValues(alpha: 0.6), width: 1),
-              ),
-              titlePadding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-              contentPadding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-              title: Row(
-                children: [
-                  Icon(CupertinoIcons.search, size: 16, color: gxRed),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: TextField(
-                      controller: controller,
-                      autofocus: true,
-                      cursorColor: gxRed,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: const InputDecoration(
-                        hintText: 'Rechercher un onglet...',
-                        hintStyle: TextStyle(color: Colors.white54),
-                        border: InputBorder.none,
-                        focusedBorder: InputBorder.none,
-                        enabledBorder: InputBorder.none,
-                        isDense: true,
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                      onChanged: (value) => setState(() => query = value.trim()),
-                    ),
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: controller,
+                autofocus: true,
+                cursorColor: gxRed,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'Rechercher un onglet...',
+                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: gxRed.withOpacity(0.3)),
                   ),
-                ],
+                  focusedBorder: InputBorder.none,
+                  focusedErrorBorder: InputBorder.none,
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: gxRed.withOpacity(0.3)),
+                  ),
+                  fillColor: Colors.transparent,
+                  filled: true,
+                ),
+                onChanged: (value) => setState(() => query = value.trim()),
               ),
-              content: SizedBox(
-                width: 420,
-                height: 260,
+              const SizedBox(height: 16),
+              Expanded(
                 child: filteredTabs.isEmpty
-                    ? const Center(
+                    ? Center(
                         child: Text(
                           'Aucun onglet trouvé',
-                          style: TextStyle(color: Colors.white54),
+                          style: TextStyle(color: Colors.white.withOpacity(0.5)),
                         ),
                       )
                     : ListView.separated(
                         itemCount: filteredTabs.length,
                         separatorBuilder: (_, __) => Divider(
-                          color: Colors.white.withValues(alpha:0.08),
+                          color: Colors.white.withOpacity(0.08),
                           height: 16,
                         ),
                         itemBuilder: (context, index) {
@@ -365,25 +374,17 @@ class _GXTabBarState extends State<GXTabBar> {
                                     width: 18,
                                     height: 18,
                                     errorBuilder: (_, __, ___) {
-                                      final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: false);
-                                      final gxRed = colorThemeManager.nativeSecondaryColor;
                                       return Icon(
                                         CupertinoIcons.globe,
                                         size: 18,
-                                        color: gxRed.withValues(alpha: 0.85),
+                                        color: gxRed.withOpacity(0.85),
                                       );
                                     },
                                   )
-                                : Builder(
-                                    builder: (context) {
-                                      final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: false);
-                                      final gxRed = colorThemeManager.nativeSecondaryColor;
-                                      return Icon(
-                                        CupertinoIcons.globe,
-                                        size: 18,
-                                        color: gxRed.withValues(alpha: 0.85),
-                                      );
-                                    },
+                                : Icon(
+                                    CupertinoIcons.globe,
+                                    size: 18,
+                                    color: gxRed.withOpacity(0.85),
                                   ),
                             title: Text(
                               tab.title ?? 'Sans titre',
@@ -397,8 +398,8 @@ class _GXTabBarState extends State<GXTabBar> {
                             subtitle: tab.url != null
                                 ? Text(
                                     tab.url!,
-                                    style: const TextStyle(
-                                      color: Colors.white38,
+                                    style: TextStyle(
+                                      color: Colors.white.withOpacity(0.38),
                                       fontSize: 11,
                                     ),
                                     maxLines: 1,
@@ -406,17 +407,17 @@ class _GXTabBarState extends State<GXTabBar> {
                                   )
                                 : null,
                             onTap: () {
-                              Navigator.of(dialogContext).pop();
+                              Navigator.of(context).pop();
                               tabManager.selectTab(tab.id);
                             },
                           );
                         },
                       ),
               ),
-            );
-          },
-        );
-      },
+            ],
+          );
+        },
+      ),
     );
   }
 }
@@ -425,6 +426,7 @@ class _GXTabItem extends StatefulWidget {
   final TabModel tab;
   final double width;
   final bool isActive;
+  final int colorCode;
   final VoidCallback onTap;
   final VoidCallback onClose;
 
@@ -432,6 +434,7 @@ class _GXTabItem extends StatefulWidget {
     required this.tab,
     required this.width,
     required this.isActive,
+    required this.colorCode,
     required this.onTap,
     required this.onClose,
   });
@@ -546,16 +549,10 @@ class _GXTabItemState extends State<_GXTabItem>
     final displayTitle = widget.tab.title ?? 'Speed Dial';
     final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: true);
     final gxRed = colorThemeManager.nativeSecondaryColor;
-    final gxRedDark = colorThemeManager.primaryDarkColor;
+    final domainColor = Color(widget.colorCode);
     
-    final activeGradient = LinearGradient(
-      colors: [
-        gxRed,
-        gxRedDark,
-      ],
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-    );
+    // Utiliser la couleur du domaine si l'onglet est actif, sinon utiliser gxRed
+    final activeColor = widget.isActive ? domainColor : gxRed;
 
     return NotilusTooltip(
       message: widget.tab.title ?? widget.tab.url ?? 'Onglet',
@@ -588,155 +585,507 @@ class _GXTabItemState extends State<_GXTabItem>
             child: SizedBox(
               width: widget.width,
               height: 32,
-              child: Column(
-                children: [
-                  // Indicateur animé en haut de l'onglet
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 250),
-                    curve: Curves.easeOutCubic,
-                    height: 3,
-                    width: widget.isActive ? widget.width : (_isHovered ? widget.width * 0.6 : 0),
-                    decoration: BoxDecoration(
-                      gradient: widget.isActive || _isHovered ? activeGradient : null,
-                      borderRadius: BorderRadius.circular(2),
-                      boxShadow: widget.isActive
-                          ? [
-                              BoxShadow(
-                                color: gxRed.withValues(alpha: 0.5),
-                                blurRadius: 6,
-                                spreadRadius: 0,
-                              ),
-                            ]
-                          : [],
-                    ),
-                  ),
-                  const SizedBox(height: 1),
-                  Expanded(
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      curve: Curves.easeOutCubic,
-                      decoration: BoxDecoration(
-                        gradient: widget.isActive
-                            ? activeGradient
-                            : null,
-                        color: widget.isActive
-                            ? null
-                            : (_isHovered
-                                ? const Color(0xFF1F1F23)
-                                : Colors.transparent),
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: _isHovered && !widget.isActive
-                            ? [
-                                BoxShadow(
-                                  color: gxRed.withValues(alpha: _glowAnimation.value * 0.15),
-                                  blurRadius: 10,
-                                  spreadRadius: 0,
-                                ),
-                              ]
-                            : [],
-                      ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child: Row(
-                        children: [
-                        // Favicon dynamique
-                        SizedBox(
-                          width: 24,
-                          child: Center(
-                            child: widget.tab.favicon != null && 
-                                   widget.tab.favicon!.isNotEmpty &&
-                                   !widget.tab.url!.startsWith('about:')
-                                ? Image.network(
-                                    widget.tab.favicon!,
-                                    width: 16,
-                                    height: 16,
-                                    fit: BoxFit.contain,
-                                    loadingBuilder: (context, child, loadingProgress) {
-                                      if (loadingProgress == null) return child;
-                                      return SizedBox(
-                                        width: 16,
-                                        height: 16,
-                                        child: Center(
-                                          child: SizedBox(
-                                            width: 12,
-                                            height: 12,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 1.5,
-                                              valueColor: AlwaysStoppedAnimation<Color>(
-                                                _gxRed.withValues(alpha: 0.6),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                    errorBuilder: (_, __, ___) => _defaultFavicon(),
-                                  )
-                                : _defaultFavicon(),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        // Title
-                        Expanded(
-                          child: Text(
-                            displayTitle,
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha:widget.isActive ? 0.95 : 0.8),
-                              fontSize: 12,
-                              fontWeight: widget.isActive ? FontWeight.w600 : FontWeight.w400,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        // Close button
-                        NotilusTooltip(
-                          message: 'Fermer cet onglet',
-                          child: MouseRegion(
-                            onEnter: (_) => setState(() => _closeHovered = true),
-                            onExit: (_) => setState(() => _closeHovered = false),
-                            child: GestureDetector(
-                              onTap: widget.onClose,
-                              child: Container(
-                                width: 22,
-                                height: 22,
-                                decoration: BoxDecoration(
-                                  color: _closeHovered
-                                      ? Colors.white.withValues(alpha:0.12)
-                                      : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Icon(
-                                  CupertinoIcons.xmark,
-                                  size: 12,
-                                  color: widget.isActive || _isHovered
-                                      ? Colors.white
-                                      : Colors.white.withValues(alpha:0.6),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+              child: Container(
+                decoration: BoxDecoration(
+                  color: widget.isActive
+                      ? domainColor.withOpacity(0.15)
+                      : (_isHovered
+                          ? Colors.white.withOpacity(0.05)
+                          : Colors.transparent),
+                  border: Border(
+                    bottom: BorderSide(
+                      color: widget.isActive ? domainColor : Colors.transparent,
+                      width: 2,
                     ),
                   ),
                 ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  child: Row(
+                    children: [
+                      // Favicon dynamique
+                      SizedBox(
+                        width: 24,
+                        child: Center(
+                          child: widget.tab.favicon != null && 
+                                 widget.tab.favicon!.isNotEmpty &&
+                                 widget.tab.url != null &&
+                                 !widget.tab.url!.startsWith('about:')
+                              ? Image.network(
+                                  widget.tab.favicon!,
+                                  width: 16,
+                                  height: 16,
+                                  fit: BoxFit.contain,
+                                  loadingBuilder: (context, child, loadingProgress) {
+                                    if (loadingProgress == null) return child;
+                                    return SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: Center(
+                                        child: SizedBox(
+                                          width: 12,
+                                          height: 12,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 1.5,
+                                            valueColor: AlwaysStoppedAnimation<Color>(
+                                              _gxRed.withOpacity(0.6),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  errorBuilder: (_, __, ___) => _defaultFavicon(),
+                                )
+                              : _defaultFavicon(),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      // Title
+                      Expanded(
+                        child: Text(
+                          displayTitle,
+                          style: NotilusFonts.rajdhani(
+                            fontSize: 12,
+                            fontWeight: widget.isActive ? FontWeight.w700 : FontWeight.w500,
+                            color: widget.isActive ? domainColor : Colors.white.withOpacity(0.6),
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      // Close button
+                      NotilusTooltip(
+                        message: 'Fermer cet onglet',
+                        child: MouseRegion(
+                          onEnter: (_) => setState(() => _closeHovered = true),
+                          onExit: (_) => setState(() => _closeHovered = false),
+                          child: GestureDetector(
+                            onTap: widget.onClose,
+                            child: Container(
+                              width: 22,
+                              height: 22,
+                              decoration: BoxDecoration(
+                                color: _closeHovered
+                                    ? Colors.white.withOpacity(0.12)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Icon(
+                                CupertinoIcons.xmark,
+                                size: 12,
+                                color: widget.isActive || _isHovered
+                                    ? Colors.white
+                                    : Colors.white.withOpacity(0.6),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ],
+            ),
           ),
         ),
       ),
-    ),
-  ),
     );
   }
 
   Widget _defaultFavicon() {
+    final domainColor = Color(widget.colorCode);
     return Icon(
       CupertinoIcons.globe,
       size: 16,
-      color: _gxRed,
+      color: widget.isActive ? domainColor : _gxRed,
+    );
+  }
+}
+
+/// Widget pour les onglets insérés dans la tab bar quand un groupe est expandé (style GX)
+class _GXExpandedTabItem extends StatefulWidget {
+  final TabModel tab;
+  final bool isActive;
+  final int colorCode;
+  final Color accentColor;
+  final TabManager tabManager;
+  final VoidCallback? onSelect;
+
+  const _GXExpandedTabItem({
+    required this.tab,
+    required this.isActive,
+    required this.colorCode,
+    required this.accentColor,
+    required this.tabManager,
+    this.onSelect,
+  });
+
+  @override
+  State<_GXExpandedTabItem> createState() => _GXExpandedTabItemState();
+}
+
+class _GXExpandedTabItemState extends State<_GXExpandedTabItem>
+    with SingleTickerProviderStateMixin {
+  bool _isHovered = false;
+  bool _closeHovered = false;
+  bool _isPressed = false;
+  late AnimationController _animController;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.02).animate(
+      CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic),
+    );
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
+  }
+
+  void _handleHoverChange(bool hover) {
+    setState(() => _isHovered = hover);
+    if (hover) {
+      _animController.forward();
+    } else if (!_isPressed) {
+      _animController.reverse();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final displayTitle = widget.tab.title ?? 'Speed Dial';
+    final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: true);
+    final gxRed = colorThemeManager.nativeSecondaryColor;
+    final domainColor = Color(widget.colorCode);
+    
+    return NotilusTooltip(
+      message: widget.tab.title ?? widget.tab.url ?? 'Onglet',
+      child: MouseRegion(
+        onEnter: (_) => _handleHoverChange(true),
+        onExit: (_) => _handleHoverChange(false),
+        child: GestureDetector(
+          onTapDown: (_) => setState(() => _isPressed = true),
+          onTapUp: (_) {
+            setState(() => _isPressed = false);
+            if (widget.onSelect != null) {
+              widget.onSelect!();
+            } else {
+              widget.tabManager.selectTab(widget.tab.id);
+            }
+          },
+          onTapCancel: () => setState(() => _isPressed = false),
+          child: AnimatedBuilder(
+            animation: _animController,
+            builder: (context, child) {
+              return Transform.scale(
+                scale: _isPressed ? 0.97 : _scaleAnimation.value,
+                child: child,
+              );
+            },
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+              height: 32,
+              decoration: BoxDecoration(
+                color: widget.isActive
+                    ? domainColor.withOpacity(0.15)
+                    : (_isHovered
+                        ? Colors.white.withOpacity(0.05)
+                        : Colors.transparent),
+                border: Border(
+                  bottom: BorderSide(
+                    color: widget.isActive ? domainColor : Colors.transparent,
+                    width: 2,
+                  ),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Indicateur privé ou favicon dynamique
+                    SizedBox(
+                      width: 24,
+                      child: Center(
+                        child: widget.tab.isPrivate
+                            ? Icon(
+                                CupertinoIcons.lock_fill,
+                                size: 14,
+                                color: widget.isActive ? domainColor : gxRed,
+                              )
+                            : (widget.tab.favicon != null && 
+                               widget.tab.favicon!.isNotEmpty &&
+                               widget.tab.url != null &&
+                               !widget.tab.url!.startsWith('about:'))
+                            ? Image.network(
+                                widget.tab.favicon!,
+                                width: 16,
+                                height: 16,
+                                fit: BoxFit.contain,
+                                loadingBuilder: (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: Center(
+                                      child: SizedBox(
+                                        width: 12,
+                                        height: 12,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 1.5,
+                                          valueColor: AlwaysStoppedAnimation<Color>(
+                                            domainColor.withOpacity(0.6),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                                errorBuilder: (_, __, ___) => _defaultFavicon(),
+                              )
+                            : _defaultFavicon(),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    // Title
+                    Flexible(
+                      child: Text(
+                        displayTitle,
+                        style: NotilusFonts.rajdhani(
+                          fontSize: 12,
+                          fontWeight: widget.isActive ? FontWeight.w700 : FontWeight.w500,
+                          color: widget.isActive ? domainColor : Colors.white.withOpacity(0.6),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    // Close button
+                    NotilusTooltip(
+                      message: 'Fermer cet onglet',
+                      child: MouseRegion(
+                        onEnter: (_) => setState(() => _closeHovered = true),
+                        onExit: (_) => setState(() => _closeHovered = false),
+                        child: GestureDetector(
+                          onTap: () {
+                            final webViewManager = Provider.of<TabWebViewManager>(
+                              context,
+                              listen: false,
+                            );
+                            webViewManager.removeEngineForTab(widget.tab.id);
+                            widget.tabManager.closeTab(widget.tab.id);
+                          },
+                          child: Container(
+                            width: 22,
+                            height: 22,
+                            decoration: BoxDecoration(
+                              color: _closeHovered
+                                  ? Colors.white.withOpacity(0.12)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Icon(
+                              CupertinoIcons.xmark,
+                              size: 12,
+                              color: widget.isActive || _isHovered
+                                  ? Colors.white
+                                  : Colors.white.withOpacity(0.6),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _defaultFavicon() {
+    final domainColor = Color(widget.colorCode);
+    return Icon(
+      CupertinoIcons.globe,
+      size: 16,
+      color: widget.isActive ? domainColor : _gxRed,
+    );
+  }
+
+  Color get _gxRed {
+    final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: false);
+    return colorThemeManager.nativeSecondaryColor;
+  }
+}
+
+/// Widget de groupe pour GXTabBar
+class _GXGroupWidget extends StatelessWidget {
+  final TabGroup group;
+  final TabManager tabManager;
+  final TabGroupService groupService;
+  final Color accentColor;
+
+  const _GXGroupWidget({
+    required this.group,
+    required this.tabManager,
+    required this.groupService,
+    required this.accentColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final activeTab = tabManager.activeTab;
+    final isGroupActive = group.tabIds.contains(activeTab?.id);
+    
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+      constraints: const BoxConstraints(
+        maxWidth: 400,
+        minWidth: 150,
+      ),
+      decoration: BoxDecoration(
+        color: Color(group.colorCode).withOpacity(isGroupActive ? 0.2 : 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isGroupActive
+              ? Color(group.colorCode).withOpacity(0.6)
+              : Color(group.colorCode).withOpacity(0.3),
+          width: isGroupActive ? 1.5 : 1,
+        ),
+      ),
+      child: Container(
+        height: 28, // Hauteur fixe pour le groupe
+        child: _GXGroupHeader(
+          group: group,
+          isActive: isGroupActive,
+          groupService: groupService,
+          accentColor: accentColor,
+          colorCode: group.colorCode,
+          onToggle: () {
+            // toggleGroup ferme déjà automatiquement les autres groupes
+            groupService.toggleGroup(group.id);
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _GXGroupHeader extends StatelessWidget {
+  final TabGroup group;
+  final bool isActive;
+  final TabGroupService groupService;
+  final Color accentColor;
+  final int colorCode;
+
+  final VoidCallback? onToggle;
+
+  const _GXGroupHeader({
+    required this.group,
+    required this.isActive,
+    required this.groupService,
+    required this.accentColor,
+    required this.colorCode,
+    this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onToggle ?? () => groupService.toggleGroup(group.id),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        height: 18, // Hauteur fixe pour l'en-tête
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Indicateur de couleur
+            Container(
+              width: 12,
+              height: 12,
+              decoration: BoxDecoration(
+                color: Color(colorCode),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            // Nom du groupe
+            Text(
+              group.displayName,
+              style: NotilusFonts.rajdhani(
+                fontSize: 10,
+                fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                color: isActive ? Colors.white : Colors.white70,
+              ),
+            ),
+            const SizedBox(width: 4),
+            // Badge avec nombre d'onglets
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Color(colorCode).withOpacity(0.3),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '${group.tabCount}',
+                style: TextStyle(
+                  color: Color(colorCode),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            // Icône d'expansion
+            Icon(
+              group.isExpanded
+                  ? CupertinoIcons.chevron_down
+                  : CupertinoIcons.chevron_right,
+              size: 12,
+              color: Colors.white60,
+            ),
+            const SizedBox(width: 4),
+            // Bouton épingler
+            GestureDetector(
+              onTap: () => groupService.togglePinGroup(group.id),
+              child: Icon(
+                group.isPinned
+                    ? CupertinoIcons.pin_fill
+                    : CupertinoIcons.pin,
+                size: 12,
+                color: group.isPinned ? Color(colorCode) : Colors.white.withOpacity(0.4),
+              ),
+            ),
+            const SizedBox(width: 4),
+            // Bouton fermer le groupe
+            GestureDetector(
+              onTap: () => groupService.closeGroup(group.id),
+              child: Icon(
+                CupertinoIcons.xmark_circle_fill,
+                size: 14,
+                color: Colors.white.withOpacity(0.4),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -776,7 +1125,7 @@ class _GXTabBarIconButtonState extends State<_GXTabBarIconButton> {
         height: 28,
         decoration: BoxDecoration(
           color: _isHovered && widget.onPressed != null
-              ? gxRed.withValues(alpha:0.12)
+              ? gxRed.withOpacity(0.12)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(4),
         ),
@@ -784,8 +1133,8 @@ class _GXTabBarIconButtonState extends State<_GXTabBarIconButton> {
           widget.icon,
           size: widget.compact ? 16 : 18,
           color: widget.onPressed != null
-              ? (_isHovered ? gxRed : gxRed.withValues(alpha:0.8))
-              : gxRed.withValues(alpha:0.35),
+              ? (_isHovered ? gxRed : gxRed.withOpacity(0.8))
+              : gxRed.withOpacity(0.35),
         ),
       ),
     );
@@ -867,33 +1216,43 @@ class _GXWindowControlsState extends State<GXWindowControls>
     final gxRed = colorThemeManager.nativeSecondaryColor;
     return Row(
       children: [
-        _WindowButton(
-          icon: CupertinoIcons.minus,
-          iconSize: 13,
-          tooltip: 'Minimiser',
-          iconColor: gxRed,
-          onTap: () => windowManager.minimize(),
-        ),
-        _WindowButton(
-          icon: _isMaximized ? CupertinoIcons.rectangle : CupertinoIcons.square,
-          iconSize: 13,
-          tooltip: _isMaximized ? 'Restaurer' : 'Agrandir',
-          iconColor: gxRed,
-          onTap: () async {
-            if (_isMaximized) {
-              await windowManager.restore();
-            } else {
-              await windowManager.maximize();
-            }
+        Builder(
+          builder: (context) {
+            final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: true);
+            final iconColor = colorThemeManager.getIconColor();
+            return Row(
+              children: [
+                _WindowButton(
+                  icon: CupertinoIcons.minus,
+                  iconSize: 13,
+                  tooltip: 'Minimiser',
+                  iconColor: iconColor,
+                  onTap: () => windowManager.minimize(),
+                ),
+                _WindowButton(
+                  icon: _isMaximized ? CupertinoIcons.rectangle : CupertinoIcons.square,
+                  iconSize: 13,
+                  tooltip: _isMaximized ? 'Restaurer' : 'Agrandir',
+                  iconColor: iconColor,
+                  onTap: () async {
+                    if (_isMaximized) {
+                      await windowManager.restore();
+                    } else {
+                      await windowManager.maximize();
+                    }
+                  },
+                ),
+                _WindowButton(
+                  icon: CupertinoIcons.xmark,
+                  iconSize: 13,
+                  tooltip: 'Fermer',
+                  hoverColor: iconColor.withOpacity(0.2),
+                  iconColor: iconColor,
+                  onTap: () => windowManager.close(),
+                ),
+              ],
+            );
           },
-        ),
-        _WindowButton(
-          icon: CupertinoIcons.xmark,
-          iconSize: 13,
-          tooltip: 'Fermer',
-          hoverColor: gxRed.withValues(alpha:0.2),
-          iconColor: gxRed,
-          onTap: () => windowManager.close(),
         ),
       ],
     );
@@ -934,7 +1293,7 @@ class _WindowButtonState extends State<_WindowButton> {
         width: 44,
         height: 32,
         color: _hovered
-            ? (widget.hoverColor ?? Colors.white.withValues(alpha:0.08))
+            ? (widget.hoverColor ?? Colors.white.withOpacity(0.08))
             : Colors.transparent,
         child: Center(
           child: Icon(
@@ -942,7 +1301,7 @@ class _WindowButtonState extends State<_WindowButton> {
             size: widget.iconSize,
             color: _hovered
                 ? (widget.iconColor ?? Colors.white)
-                : (widget.iconColor ?? Colors.white.withValues(alpha:0.8)),
+                : (widget.iconColor ?? Colors.white.withOpacity(0.8)),
           ),
         ),
       ),

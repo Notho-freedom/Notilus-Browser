@@ -372,84 +372,87 @@ class StudioScreenshotService extends ChangeNotifier {
 
   /// Capture viewport interne
   Future<Map<String, dynamic>?> _captureViewportInternal(ScreenshotConfig config) async {
-    // Utiliser l'API native du moteur si disponible
-    // Sinon, utiliser une capture canvas
-    final result = await _studioService.executeScript('''
-      (function() {
-        return JSON.stringify({
-          width: window.innerWidth,
-          height: window.innerHeight,
-          devicePixelRatio: window.devicePixelRatio
-        });
-      })();
-    ''');
-
-    if (result != null) {
-      final data = jsonDecode(result);
-      // Note: La capture réelle nécessite l'API native du WebView
-      // Retourner les dimensions pour l'instant
+    if (_engine == null) return null;
+    
+    try {
+      // Utiliser la nouvelle méthode captureScreenshot de l'engine
+      final result = await _engine!.captureScreenshot(fullPage: false);
+      if (result == null) return null;
+      
+      // Convertir dataUrl en Uint8List
+      final dataUrl = result['dataUrl'] as String?;
+      if (dataUrl == null) return null;
+      
+      final base64 = dataUrl.split(',').length > 1 ? dataUrl.split(',')[1] : dataUrl;
+      final bytes = base64Decode(base64);
+      
       return {
-        'width': data['width'] as int,
-        'height': data['height'] as int,
-        'data': Uint8List(0), // Placeholder
+        'data': bytes,
+        'width': result['width'] as int? ?? 0,
+        'height': result['height'] as int? ?? 0,
       };
+    } catch (e) {
+      debugPrint('Screenshot viewport error: $e');
+      return null;
     }
-
-    return null;
   }
+  
 
   /// Capture page complète interne
   Future<Map<String, dynamic>?> _captureFullPageInternal(ScreenshotConfig config) async {
-    final result = await _studioService.executeScript('''
-      (function() {
-        return JSON.stringify({
-          width: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
-          height: Math.max(document.documentElement.scrollHeight, document.body.scrollHeight),
-          devicePixelRatio: window.devicePixelRatio
-        });
-      })();
-    ''');
-
-    if (result != null) {
-      final data = jsonDecode(result);
+    if (_engine == null) return null;
+    
+    try {
+      // Utiliser la nouvelle méthode captureScreenshot de l'engine
+      final result = await _engine!.captureScreenshot(fullPage: true);
+      if (result == null) return null;
+      
+      // Convertir dataUrl en Uint8List
+      final dataUrl = result['dataUrl'] as String?;
+      if (dataUrl == null) return null;
+      
+      final base64 = dataUrl.split(',').length > 1 ? dataUrl.split(',')[1] : dataUrl;
+      final bytes = base64Decode(base64);
+      
       return {
-        'width': data['width'] as int,
-        'height': data['height'] as int,
-        'data': Uint8List(0), // Placeholder
+        'data': bytes,
+        'width': result['width'] as int? ?? 0,
+        'height': result['height'] as int? ?? 0,
       };
+    } catch (e) {
+      debugPrint('Screenshot fullPage error: $e');
+      return null;
     }
-
-    return null;
   }
 
   /// Capture élément interne
   Future<Map<String, dynamic>?> _captureElementInternal(ScreenshotConfig config) async {
-    if (config.selector == null) return null;
-
-    final result = await _studioService.executeScript('''
-      (function() {
-        const el = document.querySelector('${config.selector}');
-        if (!el) return null;
-        const rect = el.getBoundingClientRect();
-        return JSON.stringify({
-          width: Math.round(rect.width),
-          height: Math.round(rect.height),
-          x: Math.round(rect.x),
-          y: Math.round(rect.y)
-        });
-      })();
-    ''');
-
-    if (result != null && result != 'null') {
-      final data = jsonDecode(result);
+    if (_engine == null || config.selector == null) return null;
+    
+    try {
+      // Utiliser la nouvelle méthode captureScreenshot de l'engine
+      final result = await _engine!.captureScreenshot(
+        fullPage: false,
+        selector: config.selector,
+      );
+      if (result == null) return null;
+      
+      // Convertir dataUrl en Uint8List
+      final dataUrl = result['dataUrl'] as String?;
+      if (dataUrl == null) return null;
+      
+      final base64 = dataUrl.split(',').length > 1 ? dataUrl.split(',')[1] : dataUrl;
+      final bytes = base64Decode(base64);
+      
       return {
-        'width': data['width'] as int,
-        'height': data['height'] as int,
-        'data': Uint8List(0), // Placeholder
+        'data': bytes,
+        'width': result['width'] as int? ?? 0,
+        'height': result['height'] as int? ?? 0,
       };
+    } catch (e) {
+      debugPrint('Screenshot element error: $e');
+      return null;
     }
-
-    return null;
   }
 
   /// Capture zone interne

@@ -101,10 +101,8 @@ class AppTheme {
           borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide(color: border),
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: primary, width: 2),
-        ),
+        focusedBorder: InputBorder.none,
+        focusedErrorBorder: InputBorder.none,
       ),
     );
   }

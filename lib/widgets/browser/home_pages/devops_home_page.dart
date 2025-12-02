@@ -4,12 +4,25 @@ import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:math' as math;
+import 'dart:async';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../../../services/tab_manager.dart';
 import '../../../core/services/wallpaper_manager.dart';
 import '../../../services/settings_service.dart';
 import '../../../services/system_metrics_service.dart';
 import '../../../core/services/color_theme_manager.dart';
-import '../../common/notilus_monogram.dart';
+import '../../../services/backend_lab/backend_lab_service.dart';
+import '../../../models/backend_lab/backend_lab_models.dart';
+import '../../../services/history_service.dart';
+import '../../../models/history_item.dart';
+import '../../../services/ai_service.dart';
+import '../../common/notilus_logo_image.dart';
+import '../../common/gx_futuristic_dialog.dart';
+import '../../common/gx_futuristic_components.dart';
+import '../../common/hack_loading_indicator.dart';
+import '../../../core/constants/notilus_fonts.dart';
+import '../../dev_tools/backend_lab_mini_panel.dart';
 
 /// Page d'accueil DevOps - Style monitoring/infrastructure
 class DevOpsHomePage extends StatefulWidget {
@@ -34,6 +47,13 @@ class _DevOpsHomePageState extends State<DevOpsHomePage>
   late AnimationController _radarController;
   late AnimationController _dataFlowController;
   String _currentTime = '';
+  
+  // Variables pour Backend Lab
+  late TabController _tabController;
+  String? _selectedServerId;
+  bool _isLoadingRoutes = false;
+  String? _routesError;
+  final List<DiscoveredServer> _historyServers = [];
 
   // Services status simulés
   final List<_ServiceStatus> _services = [
@@ -82,6 +102,7 @@ class _DevOpsHomePageState extends State<DevOpsHomePage>
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 3, vsync: this);
     _radarController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 4),
@@ -96,7 +117,39 @@ class _DevOpsHomePageState extends State<DevOpsHomePage>
     _startClock();
     _metricsService.addListener(_onMetricsUpdate);
     _settings.addListener(_onSettingsChanged);
+    _loadHistoryServers();
   }
+  
+  Future<void> _loadHistoryServers() async {
+    try {
+      final historyService = HistoryService();
+      final items = await historyService.getHistory();
+      
+      // Filtrer les serveurs (URLs locales/backend)
+      for (final item in items) {
+        if (item.url.contains('localhost') || 
+            item.url.contains('127.0.0.1') ||
+            (item.url.contains(':') && RegExp(r':\d+').hasMatch(item.url))) {
+          final uri = Uri.tryParse(item.url);
+          if (uri != null) {
+            _historyServers.add(DiscoveredServer(
+              id: 'history_${item.id}',
+              host: uri.host,
+              port: uri.port,
+              protocol: uri.scheme,
+              name: item.title.isNotEmpty ? item.title : 'History Server',
+              discoveredAt: DateTime.now(),
+            ));
+          }
+        }
+      }
+      
+      if (mounted) setState(() {});
+    } catch (e) {
+      print('Error loading history servers: $e');
+    }
+  }
+  
 
   void _startClock() async {
     while (mounted) {
@@ -124,6 +177,7 @@ class _DevOpsHomePageState extends State<DevOpsHomePage>
   void dispose() {
     _radarController.dispose();
     _dataFlowController.dispose();
+    _tabController.dispose();
     _searchController.dispose();
     _metricsService.removeListener(_onMetricsUpdate);
     _settings.removeListener(_onSettingsChanged);
@@ -156,17 +210,20 @@ class _DevOpsHomePageState extends State<DevOpsHomePage>
     final gxRed = Provider.of<ColorThemeManager>(context, listen: true).nativeSecondaryColor;
     final wallpaperManager = context.watch<WallpaperManager>();
     final transparency = _settings.widgetTransparency;
+    final currentUrl = wallpaperManager.current;
 
     return Container(
       decoration: BoxDecoration(
-        image: DecorationImage(
-          image: CachedNetworkImageProvider(wallpaperManager.current),
-          fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(
-            Colors.black.withOpacity(0.93),
-            BlendMode.srcOver,
-          ),
-        ),
+        image: currentUrl.isNotEmpty && !wallpaperManager.isVideo
+            ? DecorationImage(
+                image: CachedNetworkImageProvider(currentUrl),
+                fit: BoxFit.cover,
+                colorFilter: ColorFilter.mode(
+                  Colors.black.withOpacity(0.93),
+                  BlendMode.srcOver,
+                ),
+              )
+            : null,
       ),
       child: Stack(
         children: [
@@ -189,18 +246,33 @@ class _DevOpsHomePageState extends State<DevOpsHomePage>
                       
                       // Main content
                       Expanded(
-                        child: SingleChildScrollView(
-                          padding: const EdgeInsets.all(24),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildCommandCenter(gxRed, transparency),
-                              const SizedBox(height: 32),
-                              _buildMetricsDashboard(gxRed, transparency),
-                              const SizedBox(height: 32),
-                              _buildToolsSection(gxRed, transparency),
-                            ],
-                          ),
+                        child: Row(
+                          children: [
+                            // Main content area
+                            Expanded(
+                              flex: 2,
+                              child: SingleChildScrollView(
+                                padding: const EdgeInsets.all(24),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildCommandCenter(gxRed, transparency),
+                                    const SizedBox(height: 32),
+                                    _buildMetricsDashboard(gxRed, transparency),
+                                    const SizedBox(height: 32),
+                                    _buildToolsSection(gxRed, transparency),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            
+                            // Right panel - Server list + FastAPI Console
+                            BackendLabMiniPanel(
+                              accentColor: gxRed,
+                              width: 320.0,
+                              transparency: transparency,
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -248,7 +320,7 @@ class _DevOpsHomePageState extends State<DevOpsHomePage>
       ),
       child: Row(
         children: [
-          const NotilusMonogram(size: 24),
+          const NotilusMonogramImage(size: 24),
           const SizedBox(width: 16),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
@@ -370,7 +442,7 @@ class _DevOpsHomePageState extends State<DevOpsHomePage>
     return Container(
       width: 260,
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(1 - transparency * 0.5),
+        color: Colors.black.withOpacity((1 - transparency * 0.5).clamp(0.0, 1.0)),
         border: Border(
           right: BorderSide(color: const Color(0xFF00FF88).withOpacity(0.15)),
         ),
@@ -622,6 +694,10 @@ class _DevOpsHomePageState extends State<DevOpsHomePage>
                       color: Colors.white.withOpacity(0.3),
                     ),
                     border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    fillColor: Colors.transparent,
+                    filled: true,
                   ),
                   cursorColor: const Color(0xFF00FF88),
                   onSubmitted: _handleSearch,
@@ -750,6 +826,9 @@ class _DevOpsHomePageState extends State<DevOpsHomePage>
     ).animate().fadeIn(duration: 400.ms, delay: (600 + index * 80).ms);
   }
 
+  // Backend Lab Panel - Now using BackendLabMiniPanel widget
+  // All methods have been moved to BackendLabMiniPanel
+  
   Widget _buildToolButton(_DevOpsTool tool, double transparency) {
     return GestureDetector(
       onTap: () => _openUrl(tool.url),
@@ -791,7 +870,12 @@ class _DevOpsHomePageState extends State<DevOpsHomePage>
   }
 }
 
+// === HACK LOADING INDICATOR ===
+
+// _HackLoadingIndicator remplacé par le composant réutilisable HackLoadingIndicator
+
 // === DATA CLASSES ===
+
 
 class _ServiceStatus {
   final String name;
@@ -823,16 +907,18 @@ class _DevOpsTool {
 
 class _GridPatternPainter extends CustomPainter {
   final Color color;
+  final bool isSecondary;
 
-  _GridPatternPainter({required this.color});
+  _GridPatternPainter({required this.color, this.isSecondary = false});
 
   @override
   void paint(Canvas canvas, Size size) {
+    // Mode secondary : grille plus dense et visible
+    final opacity = isSecondary ? 0.08 : 0.03;
+    final spacing = isSecondary ? 30.0 : 40.0;
     final paint = Paint()
-      ..color = const Color(0xFF00FF88).withOpacity(0.03)
-      ..strokeWidth = 0.5;
-
-    const spacing = 40.0;
+      ..color = const Color(0xFF00FF88).withOpacity(opacity)
+      ..strokeWidth = isSecondary ? 0.8 : 0.5;
 
     for (double x = 0; x < size.width; x += spacing) {
       canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
@@ -844,7 +930,8 @@ class _GridPatternPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => 
+      (oldDelegate as _GridPatternPainter).isSecondary != isSecondary;
 }
 
 class _RadarSweepPainter extends CustomPainter {

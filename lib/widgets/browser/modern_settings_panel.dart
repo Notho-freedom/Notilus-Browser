@@ -19,10 +19,15 @@ import '../../widgets/auth/auth_dialog.dart';
 import '../common/color_picker_dialog.dart';
 import '../common/gx_futuristic_dialog.dart';
 import '../common/gx_futuristic_components.dart';
+import '../common/notilus_about_page.dart';
 import '../../core/constants/notilus_fonts.dart';
 import '../../services/gx_notification_service.dart';
 import '../../services/tts_service.dart';
 import '../../services/ai_service.dart';
+import '../../services/cloudinary_service.dart';
+import '../../services/adblocker_service.dart';
+import '../../services/cookie_manager_service.dart';
+import 'cloudinary_media_manager.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
@@ -46,6 +51,10 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   
+  // Controllers pour Cloudinary
+  late final TextEditingController _cloudinaryCloudNameController;
+  late final TextEditingController _cloudinaryUploadPresetController;
+  
   // Cache pour optimiser les performances
   Timer? _searchDebounceTimer;
   List<_SectionItem>? _cachedFilteredSections;
@@ -61,6 +70,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
     _SectionItem('wallpaper', 'Fonds d\'écran', CupertinoIcons.photo),
     _SectionItem('tabs', 'Onglets', CupertinoIcons.square_on_square),
     _SectionItem('downloads', 'Téléchargements', CupertinoIcons.arrow_down_circle),
+    _SectionItem('panels', 'Panels latéraux', CupertinoIcons.sidebar_left),
     _SectionItem('terminal', 'Terminal', CupertinoIcons.square_list),
     _SectionItem('homepage', 'Page d\'accueil', CupertinoIcons.house),
     _SectionItem('webservices', 'Services Web', CupertinoIcons.globe),
@@ -80,6 +90,18 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
     _settings.initialize();
     _searchController.addListener(_onSearchChanged);
     _buildSettingsIndex();
+    
+    // Initialiser les controllers Cloudinary
+    _cloudinaryCloudNameController = TextEditingController(text: _settings.cloudinaryCloudName ?? '');
+    _cloudinaryUploadPresetController = TextEditingController(text: _settings.cloudinaryUploadPreset ?? '');
+    
+    // Écouter les changements
+    _cloudinaryCloudNameController.addListener(() {
+      _settings.setCloudinaryCloudName(_cloudinaryCloudNameController.text.isEmpty ? null : _cloudinaryCloudNameController.text);
+    });
+    _cloudinaryUploadPresetController.addListener(() {
+      _settings.setCloudinaryUploadPreset(_cloudinaryUploadPresetController.text.isEmpty ? null : _cloudinaryUploadPresetController.text);
+    });
   }
   
   void _buildSettingsIndex() {
@@ -107,6 +129,9 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
       _SettingIndex('downloads', 'Dossier de téléchargement', 'Configurez le dossier de téléchargement', 'Dossier', 'downloads'),
       _SettingIndex('downloads', 'Demander l\'emplacement', 'Demander où enregistrer chaque fichier', 'Emplacement', 'downloads'),
       _SettingIndex('downloads', 'Ouvrir automatiquement', 'Ouvrir les fichiers après téléchargement', 'Auto ouvrir', 'downloads'),
+      
+      // Section Panels latéraux
+      _SettingIndex('panels', 'Taille par défaut', 'Taille des panels latéraux (sauf paramètres)', 'Taille', 'panels'),
       
       // Section Terminal
       _SettingIndex('terminal', 'Terminal préféré', 'PowerShell, CMD, WSL', 'Terminal', 'terminal'),
@@ -324,21 +349,25 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
     final settings = SettingsService();
     final panelOpacity = 1.0 - settings.panelTransparency;
 
+    final wallpaperUrl = wallpaperManager.currentImageUrl;
+    
     return Container(
       decoration: BoxDecoration(
-        image: DecorationImage(
-          image: NetworkImage(wallpaperManager.current),
-          fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(
-            Colors.black.withOpacity(0.88),
-            BlendMode.srcOver,
-          ),
-        ),
+        image: wallpaperUrl.isNotEmpty
+            ? DecorationImage(
+                image: NetworkImage(wallpaperUrl),
+                fit: BoxFit.cover,
+                colorFilter: ColorFilter.mode(
+                  Colors.black.withOpacity(0.88),
+                  BlendMode.srcOver,
+                ),
+              )
+            : null,
       ),
       child: ListenableBuilder(
         listenable: _settings,
         builder: (context, _) => Container(
-          color: Colors.black.withOpacity(panelOpacity),
+          color: Colors.black.withOpacity(panelOpacity.clamp(0.0, 1.0)),
           child: LayoutBuilder(
             builder: (context, constraints) {
               final isCompact = constraints.maxWidth < 600;
@@ -651,6 +680,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                 'wallpaper' => _buildWallpaperSection(context, theme, gxRed, isCompact, isMedium, spacing),
                 'tabs' => _buildTabsSection(context, theme, gxRed, isCompact, isMedium, spacing),
                 'downloads' => _buildDownloadsSection(context, theme, gxRed, isCompact, isMedium, spacing),
+                'panels' => _buildPanelsSection(context, theme, gxRed, isCompact, isMedium, spacing),
                 'terminal' => _buildTerminalSection(context, theme, gxRed, isCompact, isMedium, spacing),
                 'homepage' => _buildHomepageSection(context, theme, gxRed, isCompact, isMedium, spacing),
                 'webservices' => _buildWebServicesSection(context, theme, gxRed, isCompact, isMedium, spacing),
@@ -677,6 +707,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
       'wallpaper': ('Fonds d\'écran', 'Gérez les fonds d\'écran dynamiques'),
       'tabs': ('Onglets', 'Comportement des onglets au démarrage'),
       'downloads': ('Téléchargements', 'Configurez le dossier et le comportement'),
+      'panels': ('Panels latéraux', 'Configurez la taille des panels latéraux'),
       'terminal': ('Terminal', 'Choisissez votre terminal préféré'),
       'homepage': ('Page d\'accueil', 'Personnalisez la page d\'accueil'),
       'webservices': ('Services Web', 'Gérez les services de la sidebar'),
@@ -818,6 +849,35 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                         }
                       },
                     ),
+                    const SizedBox(height: 12),
+                    _buildColorPickerTile(
+                      context,
+                      title: 'Couleur des icônes',
+                      subtitle: 'Personnalisez la couleur des icônes (sidebar, topbars)',
+                      color: _settings.iconColorCustomEnabled 
+                          ? Color(_settings.iconColorCustom)
+                          : colorThemeManager.nativeSecondaryColor,
+                      onTap: () async {
+                        final color = await ColorPickerDialog.show(
+                          context,
+                          initialColor: _settings.iconColorCustomEnabled 
+                              ? Color(_settings.iconColorCustom)
+                              : colorThemeManager.nativeSecondaryColor,
+                          title: 'Couleur des icônes',
+                        );
+                        if (color != null) {
+                          await _settings.setIconColorCustom(color.value);
+                          if (!_settings.iconColorCustomEnabled) {
+                            await _settings.setIconColorCustomEnabled(true);
+                          }
+                        }
+                      },
+                      trailing: Switch(
+                        value: _settings.iconColorCustomEnabled,
+                        onChanged: (v) => _settings.setIconColorCustomEnabled(v),
+                        activeColor: gxRed,
+                      ),
+                    ),
                     const SizedBox(height: 16),
                     Align(
                       alignment: Alignment.centerLeft,
@@ -899,6 +959,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
   }
 
   Widget _buildColorPickerTile(BuildContext context, {
+    Widget? trailing,
     required String title,
     required String subtitle,
     required Color color,
@@ -935,7 +996,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                 ],
               ),
             ),
-            Icon(Icons.chevron_right, color: Colors.white.withOpacity(0.5), size: 20),
+            if (trailing != null) trailing else Icon(Icons.chevron_right, color: Colors.white.withOpacity(0.5), size: 20),
           ],
         ),
       ),
@@ -979,6 +1040,10 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
             SizedBox(height: spacing),
             _buildIntervalSelector(gxRed),
             SizedBox(height: spacing * 2),
+            _buildSubsectionTitle('Cloudinary - Médias personnalisés', gxRed, isCompact: isCompact, isMedium: isMedium),
+            SizedBox(height: spacing),
+            _buildCloudinaryConfig(context, gxRed, isCompact, isMedium, spacing),
+            SizedBox(height: spacing * 2),
             _buildSubsectionTitle('Aperçu', gxRed, isCompact: isCompact, isMedium: isMedium),
             SizedBox(height: spacing),
             Consumer<WallpaperManager>(
@@ -990,10 +1055,13 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                       width: double.infinity,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
-                        image: DecorationImage(
-                          image: NetworkImage(wallpaperManager.current),
-                          fit: BoxFit.cover,
-                        ),
+                        image: () {
+                          final url = wallpaperManager.currentImageUrl;
+                          return url.isNotEmpty ? DecorationImage(
+                            image: NetworkImage(url),
+                            fit: BoxFit.cover,
+                          ) : null;
+                        }(),
                         border: Border.all(color: gxRed.withOpacity(0.3)),
                       ),
                     ),
@@ -1015,6 +1083,94 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
           ],
         );
       },
+    );
+  }
+
+  Widget _buildCloudinaryConfig(BuildContext context, Color gxRed, bool isCompact, bool isMedium, double spacing) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Configuration Cloudinary
+        _buildSubsectionTitle('Configuration Cloudinary', gxRed, isCompact: isCompact, isMedium: isMedium),
+        SizedBox(height: spacing),
+        GxFuturisticInput(
+          label: 'Cloud Name',
+          controller: _cloudinaryCloudNameController,
+          hint: 'votre-cloud-name',
+        ),
+        SizedBox(height: spacing),
+        GxFuturisticInput(
+          label: 'Upload Preset (UNSIGNED)',
+          controller: _cloudinaryUploadPresetController,
+          hint: 'nom-de-votre-preset-unsigned',
+        ),
+        SizedBox(height: spacing),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: gxRed.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: gxRed.withOpacity(0.3)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(CupertinoIcons.info, size: 16, color: gxRed),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Comment créer un Upload Preset UNSIGNED',
+                    style: NotilusFonts.rajdhani(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: gxRed,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '1. Allez dans votre dashboard Cloudinary\n'
+                '2. Settings → Upload → Upload Presets\n'
+                '3. Cliquez sur "Add Upload Preset"\n'
+                '4. Activez "Unsigned"\n'
+                '5. Configurez le dossier, formats, taille max\n'
+                '6. Donnez un nom à votre preset\n'
+                '7. Entrez ce nom dans le champ ci-dessus',
+                style: NotilusFonts.rajdhani(
+                  fontSize: 11,
+                  color: Colors.white.withOpacity(0.7),
+                ),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: spacing * 2),
+        
+        // Gestion des backgrounds
+        CloudinaryMediaManager(
+          resourceType: CloudinaryResourceType.image,
+          title: 'Images de fond',
+          allowMultiple: true,
+        ),
+        SizedBox(height: spacing * 2),
+        
+        // Gestion des vidéos
+        CloudinaryMediaManager(
+          resourceType: CloudinaryResourceType.video,
+          title: 'Vidéos de fond',
+          allowMultiple: true,
+        ),
+        SizedBox(height: spacing * 2),
+        
+        // Gestion de la musique
+        CloudinaryMediaManager(
+          resourceType: CloudinaryResourceType.raw,
+          title: 'Musique de fond',
+          allowMultiple: false,
+        ),
+      ],
     );
   }
 
@@ -1077,9 +1233,64 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
             _buildSubsectionTitle('Nouvel onglet', gxRed, isCompact: isCompact, isMedium: isMedium),
             SizedBox(height: spacing),
             _buildNewTabBehaviorSelector(gxRed),
+            SizedBox(height: spacing * 2),
+            _buildSubsectionTitle('Style des onglets', gxRed, isCompact: isCompact, isMedium: isMedium),
+            SizedBox(height: spacing),
+            _buildTabModeSelector(gxRed, isCompact: isCompact, isMedium: isMedium),
+            SizedBox(height: spacing),
+            _buildSettingSwitch(
+              title: 'Groupement automatique',
+              subtitle: 'Groupe automatiquement les onglets par domaine',
+              value: _settings.tabGroupingEnabled,
+              onChanged: (v) => _settings.setTabGroupingEnabled(v),
+              gxRed: gxRed,
+              isCompact: isCompact,
+              isMedium: isMedium,
+            ),
           ],
         );
       },
+    );
+  }
+
+  Widget _buildTabModeSelector(Color gxRed, {bool isCompact = false, bool isMedium = false}) {
+    final modes = {
+      'classic': 'Mode classique',
+      'native': 'Mode natif (GX Futuriste)',
+    };
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: modes.entries.map((entry) {
+            final isSelected = _settings.tabMode == entry.key;
+            return ChoiceChip(
+              label: Text(entry.value),
+              selected: isSelected,
+              onSelected: (_) => _settings.setTabMode(entry.key),
+              selectedColor: gxRed.withOpacity(0.2),
+              backgroundColor: Colors.white.withOpacity(0.05),
+              side: BorderSide(color: isSelected ? gxRed : Colors.white24),
+              labelStyle: TextStyle(
+                color: isSelected ? gxRed : Colors.white70,
+                fontSize: isCompact ? 10 : (isMedium ? 11 : 12),
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          _settings.tabMode == 'classic'
+              ? 'Affichage classique des onglets sans groupement'
+              : 'Affichage futuriste GX avec style natif',
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.6),
+            fontSize: isCompact ? 10 : (isMedium ? 11 : 12),
+          ),
+        ),
+      ],
     );
   }
 
@@ -1121,7 +1332,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
               hintText: 'https://example.com',
               hintStyle: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12),
               filled: true,
-              fillColor: Colors.white.withOpacity(0.05),
+              fillColor: Colors.transparent,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(color: Colors.white24),
@@ -1130,10 +1341,8 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(color: Colors.white24),
               ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: gxRed),
-              ),
+              focusedBorder: InputBorder.none,
+              focusedErrorBorder: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             ),
           ),
@@ -1188,11 +1397,10 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                       if (selectedDirectory != null) {
                         await _settings.setDownloadFolder(selectedDirectory);
                         if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Dossier défini: $selectedDirectory'),
-                              backgroundColor: gxRed,
-                            ),
+                          GxNotificationService().showSuccess(
+                            title: 'Succès',
+                            message: 'Dossier défini: $selectedDirectory',
+                            context: context,
                           );
                         }
                       }
@@ -1219,6 +1427,89 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
               value: _settings.autoOpenDownloads,
               onChanged: (v) => _settings.setAutoOpenDownloads(v),
               gxRed: gxRed,
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // ============================================
+  // SECTION PANELS LATÉRAUX
+  // ============================================
+  
+  Widget _buildPanelsSection(BuildContext context, ThemeData theme, Color gxRed, bool isCompact, bool isMedium, double spacing) {
+    return ListenableBuilder(
+      listenable: _settings,
+      builder: (context, _) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSubsectionTitle('Taille des panels', gxRed),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.white.withOpacity(0.1)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(CupertinoIcons.sidebar_left, color: gxRed, size: 20),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Taille par défaut des panels', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500)),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${_settings.panelDefaultWidth.toInt()} px (le panel Paramètres reste toujours en taille maximale)',
+                              style: TextStyle(color: Colors.white60, fontSize: 10),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Slider(
+                          value: _settings.panelDefaultWidth,
+                          min: 400.0,
+                          max: 1000.0,
+                          divisions: 60,
+                          activeColor: gxRed,
+                          inactiveColor: Colors.white.withOpacity(0.1),
+                          onChanged: (value) {
+                            _settings.setPanelDefaultWidth(value);
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Container(
+                        width: 60,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          '${_settings.panelDefaultWidth.toInt()}',
+                          style: const TextStyle(color: Colors.white, fontSize: 12),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ],
         );
@@ -1512,6 +1803,14 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
             ),
             const SizedBox(height: 12),
             _buildTransparencySlider(
+              label: 'Éclairage des sidemenus',
+              value: _settings.sideMenuBrightness,
+              onChanged: (v) => _settings.setSideMenuBrightness(v),
+              gxRed: gxRed,
+              tooltip: 'Contrôle l\'éclairage des menus latéraux (comme pour les pages d\'accueil)',
+            ),
+            const SizedBox(height: 12),
+            _buildTransparencySlider(
               label: 'Overlays',
               value: _settings.overlayTransparency,
               onChanged: (v) => _settings.setOverlayTransparency(v),
@@ -1520,11 +1819,19 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
             ),
             const SizedBox(height: 12),
             _buildTransparencySlider(
-              label: 'Page d\'accueil',
+              label: 'Page d\'accueil (gradient)',
               value: _settings.homePageBlur,
               onChanged: (v) => _settings.setHomePageBlur(v),
               gxRed: gxRed,
-              tooltip: 'Contrôle l\'opacité du fond d\'écran et du flou sur la page d\'accueil',
+              tooltip: 'Contrôle l\'opacité du gradient de fond sur la page d\'accueil',
+            ),
+            const SizedBox(height: 12),
+            _buildTransparencySlider(
+              label: 'Visibilité du fond',
+              value: 1.0 - _settings.homePageOverlayOpacity,
+              onChanged: (v) => _settings.setHomePageOverlayOpacity(1.0 - v),
+              gxRed: gxRed,
+              tooltip: 'Contrôle la visibilité de l\'image/vidéo de fond. Plus la valeur est élevée, plus le fond est visible',
             ),
             const SizedBox(height: 12),
             Row(
@@ -1553,6 +1860,60 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
               activeColor: gxRed,
               inactiveColor: Colors.white24,
               onChanged: (v) => _settings.setGlassBlurIntensity(v),
+            ),
+            
+            const SizedBox(height: 28),
+            
+            // === PARAMÈTRES DES DIALOGS ===
+            _buildSubsectionTitle('Paramètres des dialogs', gxRed),
+            const SizedBox(height: 4),
+            Text(
+              'Contrôlez l\'assombrissement et le flou des pop-ups et dialogs',
+              style: TextStyle(color: Colors.white60, fontSize: 10),
+            ),
+            const SizedBox(height: 16),
+            _buildTransparencySlider(
+              label: 'Assombrissement du fond',
+              value: _settings.dialogBarrierOpacity,
+              onChanged: (v) => _settings.setDialogBarrierOpacity(v),
+              gxRed: gxRed,
+              tooltip: 'Opacité du fond assombri derrière les dialogs (0 = transparent, 1 = opaque)',
+            ),
+            const SizedBox(height: 12),
+            _buildTransparencySlider(
+              label: 'Menus contextuels',
+              value: _settings.contextMenuOpacity,
+              onChanged: (v) => _settings.setContextMenuOpacity(v),
+              gxRed: gxRed,
+              tooltip: 'Opacité des menus contextuels (0 = transparent, 1 = opaque)',
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Text('Intensité du flou des dialogs', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    '${_settings.dialogBlurIntensity.toStringAsFixed(1)}',
+                    style: TextStyle(color: gxRed, fontSize: 11, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Slider(
+              value: _settings.dialogBlurIntensity,
+              min: 0,
+              max: 20,
+              divisions: 40,
+              activeColor: gxRed,
+              inactiveColor: Colors.white24,
+              onChanged: (v) => _settings.setDialogBlurIntensity(v),
             ),
             
             const SizedBox(height: 28),
@@ -1596,7 +1957,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                 hintText: 'Ex: Bonjour, [Votre nom]!',
                 hintStyle: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 12),
                 filled: true,
-                fillColor: Colors.white.withOpacity(0.05),
+                fillColor: Colors.transparent,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(color: Colors.white24),
@@ -1605,10 +1966,8 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(color: Colors.white24),
                 ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: gxRed),
-                ),
+                focusedBorder: InputBorder.none,
+                focusedErrorBorder: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               ),
             ),
@@ -1801,11 +2160,11 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
         Colors.white,
       ),
       (
-        'gx_futuristic',
-        'GX Futuristic',
-        'Design ultra-futuriste avec contours géométriques façon OS Science-Fiction',
-        CupertinoIcons.flame,
-        '🚀',
+        'customizable',
+        'Personnalisable',
+        'Page d\'accueil entièrement personnalisable avec widgets dockables',
+        CupertinoIcons.square_grid_2x2,
+        '🎨',
         const Color(0xFFFF2D55),
       ),
     ];
@@ -1940,6 +2299,18 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
               onChanged: (v) => _settings.setBlockTrackers(v),
               gxRed: gxRed,
             ),
+            const SizedBox(height: 12),
+            Consumer<AdBlockerService>(
+              builder: (context, adBlocker, _) {
+                return _buildSettingSwitch(
+                  title: 'Bloqueur de publicités',
+                  subtitle: 'Bloque les publicités et les trackers (${adBlocker.blockedCount} bloquées)',
+                  value: adBlocker.isEnabled,
+                  onChanged: (v) => adBlocker.setEnabled(v),
+                  gxRed: gxRed,
+                );
+              },
+            ),
             const SizedBox(height: 24),
             _buildSubsectionTitle('Effacer les données', gxRed),
             const SizedBox(height: 12),
@@ -1957,11 +2328,10 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                   if (confirm == true) {
                     await HistoryService().clearHistory();
                     if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: const Text('Historique effacé'),
-                          backgroundColor: gxRed,
-                        ),
+                      GxNotificationService().showSuccess(
+                        title: 'Succès',
+                        message: 'Historique effacé',
+                        context: context,
                       );
                     }
                   }
@@ -1974,19 +2344,17 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                     gxRed,
                   );
                   if (confirm == true) {
-                    // Appeler clearCookies sur tous les engines actifs
                     try {
-                      final webViewManager = Provider.of<TabWebViewManager>(context, listen: false);
-                      await webViewManager.clearAllCookies();
+                      final cookieManager = Provider.of<CookieManagerService>(context, listen: false);
+                      await cookieManager.clearAllCookies();
                     } catch (e) {
                       debugPrint('Erreur clear cookies: $e');
                     }
                     if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: const Text('Cookies effacés'),
-                          backgroundColor: gxRed,
-                        ),
+                      GxNotificationService().showSuccess(
+                        title: 'Succès',
+                        message: 'Cookies effacés',
+                        context: context,
                       );
                     }
                   }
@@ -2007,11 +2375,10 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                       debugPrint('Erreur clear cache: $e');
                     }
                     if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: const Text('Cache effacé'),
-                          backgroundColor: gxRed,
-                        ),
+                      GxNotificationService().showSuccess(
+                        title: 'Succès',
+                        message: 'Cache effacé',
+                        context: context,
                       );
                     }
                   }
@@ -2042,11 +2409,10 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                     await prefs.remove('notilus_bookmarks');
                     
                     if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: const Text('Toutes les données effacées'),
-                          backgroundColor: Colors.red,
-                        ),
+                      GxNotificationService().showSuccess(
+                        title: 'Succès',
+                        message: 'Toutes les données effacées',
+                        context: context,
                       );
                     }
                   }
@@ -2341,8 +2707,10 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                     onPressed: () {
                       // Reset DevTools settings
                       _settings.resetDevToolsSettings();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: const Text('Paramètres DevTools réinitialisés'), backgroundColor: gxRed),
+                      GxNotificationService().showSuccess(
+                        title: 'Succès',
+                        message: 'Paramètres DevTools réinitialisés',
+                        context: context,
                       );
                     },
                     icon: const Icon(Icons.restart_alt, size: 16),
@@ -2359,8 +2727,10 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                   child: OutlinedButton.icon(
                     onPressed: () {
                       // Export DevTools config
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: const Text('Configuration exportée dans le presse-papiers'), backgroundColor: gxRed),
+                      GxNotificationService().showSuccess(
+                        title: 'Succès',
+                        message: 'Configuration exportée dans le presse-papiers',
+                        context: context,
                       );
                     },
                     icon: const Icon(Icons.upload_outlined, size: 16),
@@ -3962,6 +4332,20 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
           ),
         ),
         const SizedBox(height: 32),
+        
+        // Bouton pour ouvrir la carte avec le logo
+        Center(
+          child: GxFuturisticButton(
+            label: 'Voir le logo',
+            icon: CupertinoIcons.info_circle,
+            variant: GxFuturisticButtonVariant.primary,
+            onPressed: () {
+              NotilusAboutCard.show(context);
+            },
+          ),
+        ),
+        const SizedBox(height: 32),
+        
         _buildSubsectionTitle('Informations', gxRed),
         const SizedBox(height: 12),
         _buildInfoRow('Moteur', 'WebView2 / WebKit'),
@@ -3994,29 +4378,37 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
             ),
             OutlinedButton.icon(
               onPressed: () {
-                showDialog(
+                GxFuturisticDialog.show<bool>(
                   context: context,
-                  builder: (ctx) => AlertDialog(
-                    backgroundColor: const Color(0xFF15151A),
-                    title: const Text('Réinitialiser tout', style: TextStyle(color: Colors.white)),
-                    content: const Text(
-                      'Cette action va réinitialiser tous les paramètres aux valeurs par défaut.',
-                      style: TextStyle(color: Colors.white70),
+                  title: 'Réinitialiser tout',
+                  titleIcon: CupertinoIcons.refresh,
+                  accentColor: Colors.red,
+                  width: 450,
+                  child: Text(
+                    'Cette action va réinitialiser tous les paramètres aux valeurs par défaut.',
+                    style: NotilusFonts.rajdhani(
+                      fontSize: 13,
+                      color: Colors.white.withOpacity(0.7),
                     ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        child: const Text('Annuler'),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          _settings.resetAllSettings();
-                          Navigator.pop(ctx);
-                        },
-                        child: Text('Réinitialiser', style: TextStyle(color: Colors.red)),
-                      ),
-                    ],
                   ),
+                  actions: [
+                    GxFuturisticButton(
+                      label: 'Annuler',
+                      variant: GxFuturisticButtonVariant.secondary,
+                      accentColor: gxRed,
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                    GxFuturisticButton(
+                      label: 'Réinitialiser',
+                      icon: CupertinoIcons.refresh,
+                      variant: GxFuturisticButtonVariant.primary,
+                      accentColor: Colors.red,
+                      onPressed: () {
+                        _settings.resetAllSettings();
+                        Navigator.pop(context);
+                      },
+                    ),
+                  ],
                 );
               },
               icon: const Icon(CupertinoIcons.refresh, size: 14),

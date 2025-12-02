@@ -10,6 +10,8 @@ import '../../services/lighthouse/lighthouse_service.dart';
 import '../../services/lighthouse/audit_history_service.dart';
 import '../../models/lighthouse/audit_models.dart';
 import '../../core/services/color_theme_manager.dart';
+import '../common/gx_futuristic_dialog.dart';
+import '../common/gx_futuristic_components.dart';
 
 /// Panneau History & Trends
 class HistoryTrendsPanel extends StatefulWidget {
@@ -547,23 +549,32 @@ class _HistoryTrendsPanelState extends State<HistoryTrendsPanel> {
   }
 
   Future<void> _showClearHistoryDialog(AuditHistoryService historyService) async {
-    final confirmed = await showDialog<bool>(
+    final colorTheme = Provider.of<ColorThemeManager>(context, listen: false);
+    final accentColor = colorTheme.nativeSecondaryColor;
+    
+    final confirmed = await GxFuturisticDialog.show<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Effacer l\'historique'),
-        content: const Text(
-          'Êtes-vous sûr de vouloir effacer tout l\'historique des audits ?',
+      title: 'Effacer l\'historique',
+      titleIcon: Icons.delete_forever_rounded,
+      accentColor: Colors.red,
+      width: 400,
+      actions: [
+        GxFuturisticButton(
+          label: 'Annuler',
+          variant: GxFuturisticButtonVariant.secondary,
+          accentColor: accentColor,
+          onPressed: () => Navigator.of(context).pop(false),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Annuler'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Effacer', style: TextStyle(color: Colors.red)),
-          ),
-        ],
+        GxFuturisticButton(
+          label: 'Effacer',
+          variant: GxFuturisticButtonVariant.primary,
+          accentColor: Colors.red,
+          onPressed: () => Navigator.of(context).pop(true),
+        ),
+      ],
+      child: const Text(
+        'Êtes-vous sûr de vouloir effacer tout l\'historique des audits ?',
+        style: TextStyle(fontSize: 14),
       ),
     );
 

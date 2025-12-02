@@ -1,3 +1,8 @@
+// Ce fichier est désactivé car le package webview_flutter n'est pas utilisé sur Windows
+// Il sera réactivé lors du support mobile (Android/iOS)
+// Pour l'instant, l'application utilise WebView2 sur Windows
+
+/*
 import 'package:webview_flutter/webview_flutter.dart';
 import 'browser_engine.dart';
 import '../models/tab_model.dart';
@@ -58,51 +63,61 @@ class WebViewBrowserEngine extends BrowserEngine {
       // TODO: Implémenter navigation WebView pour mobile
       _currentUrl = url;
       onStateChanged?.call(TabState.loading);
-      onUrlChanged?.call(url);
-      
-      // Simuler le chargement
-      Future.delayed(const Duration(seconds: 1), () {
-        _currentTitle = url;
-        _canGoBack = false;
-        _canGoForward = false;
-        onStateChanged?.call(TabState.loaded);
-        onTitleChanged?.call(_currentTitle ?? url);
-      });
+      final controller = await _getController();
+      await controller.loadRequest(Uri.parse(url));
     }
   }
 
   @override
   Future<void> goBack() async {
-    // TODO: Implémenter pour mobile
+    if (await canGoBack() && _controller != null) {
+      await _controller!.goBack();
+      _updateNavigationState();
+    }
   }
 
   @override
   Future<void> goForward() async {
-    // TODO: Implémenter pour mobile
+    if (await canGoForward() && _controller != null) {
+      await _controller!.goForward();
+      _updateNavigationState();
+    }
   }
 
   @override
   Future<void> reload() async {
-    // TODO: Implémenter pour mobile
+    if (_controller != null) {
+      await _controller!.reload();
+    }
   }
 
   @override
   Future<void> stop() async {
-    // TODO: Implémenter pour mobile
+    if (_controller != null) {
+      await _controller!.stopLoading();
+    }
   }
 
   @override
   Future<bool> canGoBack() async {
-    if (_controller == null) return false;
-    _canGoBack = await _controller!.canGoBack();
-    return _canGoBack;
+    if (_controller == null) return _canGoBack;
+    try {
+      _canGoBack = await _controller!.canGoBack();
+      return _canGoBack;
+    } catch (e) {
+      return _canGoBack;
+    }
   }
 
   @override
   Future<bool> canGoForward() async {
-    if (_controller == null) return false;
-    _canGoForward = await _controller!.canGoForward();
-    return _canGoForward;
+    if (_controller == null) return _canGoForward;
+    try {
+      _canGoForward = await _controller!.canGoForward();
+      return _canGoForward;
+    } catch (e) {
+      return _canGoForward;
+    }
   }
 
   @override
@@ -131,22 +146,47 @@ class WebViewBrowserEngine extends BrowserEngine {
 
   @override
   Future<String?> executeJavaScript(String script) async {
-    // TODO: Implémenter pour mobile
-    return null;
+    if (_controller == null) return null;
+    try {
+      await _controller!.runJavaScript(script);
+      return 'executed';
+    } catch (e) {
+      return null;
+    }
   }
 
   @override
   Future<dynamic> evaluateJavaScript(String script) async {
-    // TODO: Implémenter pour mobile
-    return null;
+    if (_controller == null) return null;
+    try {
+      final result = await _controller!.runJavaScriptReturningResult(script);
+      return result;
+    } catch (e) {
+      return null;
+    }
   }
 
-  /// Récupère le contrôleur WebView pour l'affichage
-  Future<WebViewController?> getController() async {
+  @override
+  Future<dynamic> getController() async {
     if (_controller == null) {
       await _getController();
     }
     return _controller;
   }
-}
 
+  Future<void> _updateNavigationState() async {
+    if (_controller != null) {
+      _canGoBack = await _controller!.canGoBack();
+      _canGoForward = await _controller!.canGoForward();
+      onCanGoBackChanged?.call(_canGoBack);
+      onCanGoForwardChanged?.call(_canGoForward);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    _controller = null;
+  }
+}
+*/

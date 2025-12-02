@@ -19,6 +19,7 @@ import '../../models/devtools_models.dart';
 import '../common/notilus_tooltip.dart';
 import '../../services/gx_notification_service.dart';
 import 'notilus_devtools.dart';
+import 'notilus_mini_ai_panel.dart';
 
 /// Mini panel DevTools flottant avec style Notilus dans une carte futuriste
 class NotilusMiniDevToolsPanel extends StatefulWidget {
@@ -50,6 +51,10 @@ class _NotilusMiniDevToolsPanelState extends State<NotilusMiniDevToolsPanel>
   String _activeTab = 'console'; // 'console' ou 'network'
   final ScrollController _consoleScrollController = ScrollController();
   final ScrollController _networkScrollController = ScrollController();
+  
+  // État pour le module IA
+  bool _isAiPanelVisible = false;
+  ConsoleEntry? _selectedError;
   
   // État pour le déplacement et collapse/expand
   bool _isCollapsed = false;
@@ -192,7 +197,7 @@ class _NotilusMiniDevToolsPanelState extends State<NotilusMiniDevToolsPanel>
 
   @override
   Widget build(BuildContext context) {
-    if (!widget.isVisible && _animationController.value == 0) {
+    if (!widget.isVisible && _animationController.value == 0 && !_isAiPanelVisible) {
       return const SizedBox.shrink();
     }
 
@@ -200,49 +205,66 @@ class _NotilusMiniDevToolsPanelState extends State<NotilusMiniDevToolsPanel>
     final gxRed = colorThemeManager.nativeSecondaryColor;
     final bgColor = colorThemeManager.nativeBackgroundColor;
 
-    return Positioned(
-      left: _position.dx,
-      top: _position.dy,
-      child: FadeTransition(
-        opacity: _fadeAnimation,
-        child: SlideTransition(
-          position: _slideAnimation,
-          child: MouseRegion(
-            cursor: _isDragging ? SystemMouseCursors.move : SystemMouseCursors.basic,
-            child: GestureDetector(
-              onPanStart: _onPanStart,
-              onPanUpdate: _onPanUpdate,
-              onPanEnd: _onPanEnd,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                  child: Container(
-                    width: _isCollapsed ? _collapsedWidth : _expandedWidth,
-                    height: _isCollapsed ? _collapsedHeight : _expandedHeight,
-                    decoration: BoxDecoration(
-                      color: bgColor.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(_isCollapsed ? 6 : 12),
-                      border: Border.all(
-                        color: gxRed.withOpacity(0.3),
-                        width: 1,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.5),
-                          blurRadius: _isCollapsed ? 10 : 20,
-                          offset: const Offset(0, 4),
+    return Stack(
+      children: [
+        // DevTools Mini Panel
+        if (widget.isVisible)
+          Positioned(
+            left: _position.dx,
+            top: _position.dy,
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: SlideTransition(
+                position: _slideAnimation,
+                child: MouseRegion(
+                  cursor: _isDragging ? SystemMouseCursors.move : SystemMouseCursors.basic,
+                  child: GestureDetector(
+                    onPanStart: _onPanStart,
+                    onPanUpdate: _onPanUpdate,
+                    onPanEnd: _onPanEnd,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                        child: Container(
+                          width: _isCollapsed ? _collapsedWidth : _expandedWidth,
+                          height: _isCollapsed ? _collapsedHeight : _expandedHeight,
+                          decoration: BoxDecoration(
+                            color: bgColor.withOpacity(0.3),
+                            borderRadius: BorderRadius.circular(_isCollapsed ? 6 : 12),
+                            border: Border.all(
+                              color: gxRed.withOpacity(0.3),
+                              width: 1,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.5),
+                                blurRadius: _isCollapsed ? 10 : 20,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: _isCollapsed ? _buildCollapsedView(context, gxRed) : _buildExpandedView(context, gxRed),
                         ),
-                      ],
+                      ),
                     ),
-                    child: _isCollapsed ? _buildCollapsedView(context, gxRed) : _buildExpandedView(context, gxRed),
                   ),
                 ),
               ),
             ),
           ),
+        // Module IA Mini
+        NotilusMiniAiPanel(
+          isVisible: _isAiPanelVisible,
+          errorEntry: _selectedError,
+          onClose: () {
+            setState(() {
+              _isAiPanelVisible = false;
+              _selectedError = null;
+            });
+          },
         ),
-      ),
+      ],
     );
   }
 
@@ -479,8 +501,15 @@ class _NotilusMiniDevToolsPanelState extends State<NotilusMiniDevToolsPanel>
   Widget _buildConsoleLogItem(ConsoleEntry log, Color gxRed) {
     final logColor = log.level.color;
     final logIcon = log.level.icon;
+    final isError = log.level == ConsoleLevel.error;
 
     return GestureDetector(
+      onTap: isError ? () {
+        setState(() {
+          _selectedError = log;
+          _isAiPanelVisible = true;
+        });
+      } : null,
       onLongPress: () => _copyLogMessage(log),
       child: Container(
         margin: const EdgeInsets.only(bottom: 4),
@@ -557,6 +586,27 @@ class _NotilusMiniDevToolsPanelState extends State<NotilusMiniDevToolsPanel>
               ],
             ),
           ),
+          const SizedBox(width: 4),
+          // Bouton IA pour les erreurs
+          if (isError)
+            NotilusTooltip(
+              message: 'Analyser avec l\'IA',
+              child: CupertinoButton(
+                padding: EdgeInsets.zero,
+                minSize: 20,
+                onPressed: () {
+                  setState(() {
+                    _selectedError = log;
+                    _isAiPanelVisible = true;
+                  });
+                },
+                child: Icon(
+                  CupertinoIcons.sparkles,
+                  size: 12,
+                  color: gxRed,
+                ),
+              ),
+            ),
           const SizedBox(width: 4),
           // Bouton de copie
           NotilusTooltip(

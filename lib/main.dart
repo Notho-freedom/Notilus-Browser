@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
+import 'dart:io' show Platform;
 import 'core/theme/modern_theme.dart';
 import 'core/services/theme_mode_notifier.dart';
 import 'core/services/wallpaper_manager.dart';
 import 'core/services/color_theme_manager.dart';
+import 'core/services/background_music_service.dart';
 import 'screens/home_screen.dart';
 import 'screens/splash_screen.dart';
 import 'services/tab_manager.dart';
@@ -20,18 +23,31 @@ import 'services/download_service.dart';
 import 'services/devtools_service.dart';
 import 'services/settings_service.dart';
 import 'services/mosaic_service.dart';
+import 'services/home_widget_service.dart';
 import 'services/studio/studio_service.dart';
 import 'services/lighthouse/lighthouse_service.dart';
 import 'services/documentation_service.dart';
 import 'services/adblocker_service.dart';
+import 'services/cloudinary_service.dart';
+import 'services/tabs_preview_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'services/auth/firebase_auth_service.dart';
 import 'services/auth/config_sync_service.dart';
 import 'services/github/github_repos_service.dart';
+import 'services/text_selection_service.dart';
+import 'services/cookie_manager_service.dart';
+import 'services/backend_process_service.dart';
+import 'services/backend_lab/backend_lab_service.dart';
+import 'widgets/common/text_selection_wrapper.dart';
+import 'core/services/logger_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialiser le service de logging
+  await LoggerService().initialize(enableFileLogging: kDebugMode);
+  LoggerService().info('Notilus Browser - Démarrage');
 
   // Initialiser Firebase (si configuré)
   try {
@@ -40,7 +56,7 @@ void main() async {
     );
   } catch (e) {
     // Firebase non configuré, continuer sans
-    debugPrint('Firebase non initialisé: $e');
+    LoggerService().error('Firebase non initialisé', context: 'main', error: e);
   }
 
   // Supprime le halo bleu Windows autour des champs focus
@@ -55,6 +71,23 @@ void main() async {
     settingsService.initialize(),
     mosaicService.initialize(),
   ]);
+  
+  // Pré-chauffer un WebView au lancement pour accélérer le premier chargement
+  if (Platform.isWindows) {
+    try {
+      // Lancer le pré-chauffage en arrière-plan (ne pas attendre)
+      // Le TabWebViewManager sera créé dans le Provider, donc on le fera après runApp
+      Future.delayed(const Duration(seconds: 1), () {
+        try {
+          // Le pré-chauffage sera géré par TabWebViewManager lors de sa création
+        } catch (e) {
+          LoggerService().error('Erreur lors du pré-chauffage du WebView', context: 'main', error: e);
+        }
+      });
+    } catch (e) {
+      LoggerService().error('Impossible de pré-chauffer le WebView', context: 'main', error: e);
+    }
+  }
 
   // Initialiser Firebase Auth et Config Sync (si Firebase est configuré)
   FirebaseAuthService? authService;
@@ -65,7 +98,7 @@ void main() async {
     syncService = ConfigSyncService(authService, settingsService);
     githubReposService = GitHubReposService(authService);
   } catch (e) {
-    debugPrint('Services Firebase non initialisés: $e');
+    LoggerService().error('Services Firebase non initialisés', context: 'main', error: e);
   }
   
   // Initialisation de window_manager AVANT runApp
@@ -115,8 +148,30 @@ class _SplashWrapper extends StatefulWidget {
   State<_SplashWrapper> createState() => _SplashWrapperState();
 }
 
-class _SplashWrapperState extends State<_SplashWrapper> {
+class _SplashWrapperState extends State<_SplashWrapper> with WidgetsBindingObserver {
   bool _showSplash = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    // Arrêter le backend quand l'app se ferme
+    BackendProcessService().stop();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.detached || state == AppLifecycleState.paused) {
+      // Arrêter le backend si l'app se ferme ou passe en arrière-plan
+      BackendProcessService().stop();
+    }
+  }
 
   void _onSplashComplete() {
     setState(() {
@@ -155,15 +210,6 @@ class _InvisibleScrollBehavior extends ScrollBehavior {
     // Ne pas afficher de scrollbar
     return child;
   }
-  
-  @override
-  ScrollbarThemeData? getScrollbarTheme(BuildContext context) {
-    return const ScrollbarThemeData(
-      thumbVisibility: WidgetStatePropertyAll<bool>(false),
-      trackVisibility: WidgetStatePropertyAll<bool>(false),
-      thickness: WidgetStatePropertyAll<double>(0),
-    );
-  }
 }
 
 class NotilusApp extends StatelessWidget {
@@ -172,6 +218,9 @@ class NotilusApp extends StatelessWidget {
   final FirebaseAuthService? authService;
   final ConfigSyncService? syncService;
   final GitHubReposService? githubReposService;
+  
+  // GlobalKey pour le Navigator root
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
   
   const NotilusApp({
     super.key,
@@ -190,6 +239,7 @@ class NotilusApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ThemeModeNotifier()),
         ChangeNotifierProvider(create: (_) => ColorThemeManager()),
         ChangeNotifierProvider(create: (_) => WallpaperManager()),
+        ChangeNotifierProvider.value(value: BackgroundMusicService()),
         ChangeNotifierProvider(create: (_) => DownloadService()),
         ChangeNotifierProvider(create: (_) => TabManager()),
         ChangeNotifierProvider(create: (context) {
@@ -200,10 +250,14 @@ class NotilusApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => StudioService()),
         ChangeNotifierProvider(create: (_) => LighthouseService()),
         ChangeNotifierProvider(create: (_) => AdBlockerService()),
+        ChangeNotifierProvider.value(value: CloudinaryService()),
+        ChangeNotifierProvider.value(value: TabsPreviewService()),
         ChangeNotifierProvider.value(value: mosaicService),
+        ChangeNotifierProvider(create: (_) => HomeWidgetService()..initialize()),
             ChangeNotifierProvider(
               create: (context) {
                 final tabWebViewManager = TabWebViewManager();
+                final tabManager = context.read<TabManager>();
                 final downloadService = context.read<DownloadService>();
                 final studioService = context.read<StudioService>();
                 final lighthouseService = context.read<LighthouseService>();
@@ -212,6 +266,18 @@ class NotilusApp extends StatelessWidget {
                 tabWebViewManager.setStudioService(studioService);
                 tabWebViewManager.setLighthouseService(lighthouseService);
                 tabWebViewManager.setAdBlockerService(adBlockerService);
+                
+                // Initialiser le service de preview
+                final previewService = context.read<TabsPreviewService>();
+                previewService.initialize(tabWebViewManager, tabManager);
+                
+                // Pré-chauffer un engine en arrière-plan
+                if (Platform.isWindows) {
+                  tabWebViewManager.preWarmEngine().catchError((e) {
+                    LoggerService().error('Erreur lors du pré-chauffage', context: 'main', error: e);
+                  });
+                }
+                
                 return tabWebViewManager;
               },
             ),
@@ -229,6 +295,20 @@ class NotilusApp extends StatelessWidget {
           ChangeNotifierProvider.value(value: syncService),
         if (githubReposService != null)
           ChangeNotifierProvider<GitHubReposService>.value(value: githubReposService!),
+        ChangeNotifierProvider.value(value: TextSelectionService()),
+        ChangeNotifierProvider(
+          create: (context) {
+            final tabWebViewManager = context.read<TabWebViewManager>();
+            final tabManager = context.read<TabManager>();
+            return CookieManagerService(
+              webViewManager: tabWebViewManager,
+              tabManager: tabManager,
+            );
+          },
+        ),
+        // Backend Process Service
+        ChangeNotifierProvider.value(value: BackendProcessService()),
+        ChangeNotifierProvider(create: (_) => BackendLabService()..checkConnection()),
       ],
       child: Consumer<ThemeModeNotifier>(
         builder: (context, themeModeNotifier, _) {
@@ -247,6 +327,7 @@ class NotilusApp extends StatelessWidget {
           return MaterialApp(
             title: 'Notilus Browser',
             debugShowCheckedModeBanner: false,
+            navigatorKey: NotilusApp.navigatorKey,
             // ScrollBehavior personnalisé pour cacher toutes les scrollbars
             scrollBehavior: const _InvisibleScrollBehavior(),
             theme: ModernTheme.lightTheme.copyWith(
@@ -256,6 +337,11 @@ class NotilusApp extends StatelessWidget {
               scrollbarTheme: invisibleScrollbarTheme,
             ),
             themeMode: themeModeNotifier.mode,
+            builder: (context, child) {
+              return TextSelectionWrapper(
+                child: child ?? const SizedBox.shrink(),
+              );
+            },
             home: const _SplashWrapper(),
           );
         },

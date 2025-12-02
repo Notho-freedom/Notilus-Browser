@@ -3,17 +3,21 @@
 library ai_advisor_service;
 
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import '../../models/lighthouse/audit_models.dart';
+import '../../services/ai_service.dart';
 import 'lighthouse_service.dart';
 
 /// Service AI Advisor
 class AIAdvisorService extends ChangeNotifier {
   final LighthouseService _lighthouseService;
+  final AiService _aiService = AiService();
 
   // État du chat
   final List<ChatMessage> _chatHistory = [];
   bool _isProcessing = false;
+  bool _hasInitialized = false;
 
   // Recommandations intelligentes
   List<SmartRecommendation> _smartRecommendations = [];
@@ -42,10 +46,110 @@ class AIAdvisorService extends ChangeNotifier {
 
       // Trier par priorité
       _smartRecommendations.sort((a, b) => b.priorityScore.compareTo(a.priorityScore));
+      
+      // Initialiser le chat avec le rapport en contexte
+      _hasInitialized = false;
+      _chatHistory.clear();
     } finally {
       _isProcessing = false;
       notifyListeners();
     }
+  }
+  
+  /// Initialise le chat avec le rapport d'analyse (appelé automatiquement lors de l'ouverture du chat)
+  Future<void> initializeChat() async {
+    if (_hasInitialized) return;
+    
+    final result = _lighthouseService.lastResult;
+    if (result == null) return;
+    
+    _hasInitialized = true;
+    _isProcessing = true;
+    notifyListeners();
+    
+    try {
+      // Préparer le contexte du rapport
+      final context = _buildAuditContext(result);
+      
+      // Envoyer le premier message de l'IA avec le contexte
+      final response = await _aiService.chat(
+        prompt: 'Analyse ce rapport Lighthouse et donne-moi un résumé des points clés et des recommandations prioritaires.',
+        context: context,
+        type: 'lighthouse_analysis',
+      );
+      
+      if (response != null && response['response'] != null) {
+        _chatHistory.add(ChatMessage(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          role: ChatRole.assistant,
+          content: response['response'] as String,
+          timestamp: DateTime.now(),
+        ));
+      } else {
+        // Fallback si l'IA ne répond pas
+        _chatHistory.add(ChatMessage(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          role: ChatRole.assistant,
+          content: _generateInitialMessage(result),
+          timestamp: DateTime.now(),
+        ));
+      }
+    } catch (e) {
+      debugPrint('Erreur initialisation chat IA: $e');
+      // Fallback avec message généré localement
+      final result = _lighthouseService.lastResult;
+      if (result != null) {
+        _chatHistory.add(ChatMessage(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          role: ChatRole.assistant,
+          content: _generateInitialMessage(result),
+          timestamp: DateTime.now(),
+        ));
+      }
+    } finally {
+      _isProcessing = false;
+      notifyListeners();
+    }
+  }
+  
+  /// Construit le contexte du rapport pour l'IA
+  Map<String, dynamic> _buildAuditContext(AuditResult result) {
+    return {
+      'overallScore': result.overallScore,
+      'url': result.url,
+      'categories': {
+        'performance': result.categories[AuditCategory.performance]?.score,
+        'accessibility': result.categories[AuditCategory.accessibility]?.score,
+        'bestPractices': result.categories[AuditCategory.bestPractices]?.score,
+        'seo': result.categories[AuditCategory.seo]?.score,
+      },
+      'webVitals': {
+        'lcp': result.webVitals.lcp,
+        'fid': result.webVitals.fid,
+        'cls': result.webVitals.cls,
+        'ttfb': result.webVitals.ttfb,
+      },
+      'issuesCount': result.issues.length,
+      'issues': result.issues.take(20).map((issue) => {
+        'title': issue.title,
+        'description': issue.description,
+        'category': issue.category.toString(),
+        'severity': issue.severity.toString(),
+      }).toList(),
+      'quickWinsCount': _quickWins.length,
+      'recommendationsCount': _smartRecommendations.length,
+    };
+  }
+  
+  /// Génère un message initial si l'IA ne répond pas
+  String _generateInitialMessage(AuditResult result) {
+    return 'Bonjour ! J\'ai analysé votre site et voici un résumé :\n\n'
+        '📊 Score global : ${result.overallScore}/100\n\n'
+        '🔍 Points clés :\n'
+        '• ${result.issues.length} problème(s) détecté(s)\n'
+        '• ${_quickWins.length} quick win(s) disponible(s)\n'
+        '• ${_smartRecommendations.length} recommandation(s) intelligente(s)\n\n'
+        'Posez-moi une question pour en savoir plus !';
   }
 
   /// Identifie les quick wins (corrections faciles avec grand impact)
@@ -307,6 +411,11 @@ class AIAdvisorService extends ChangeNotifier {
 
   /// Envoie un message dans le chat
   Future<void> sendMessage(String message) async {
+    // Initialiser le chat si ce n'est pas déjà fait
+    if (!_hasInitialized) {
+      await initializeChat();
+    }
+    
     // Ajouter le message utilisateur
     _chatHistory.add(ChatMessage(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -316,22 +425,52 @@ class AIAdvisorService extends ChangeNotifier {
     ));
     notifyListeners();
 
-    // Simuler une réponse IA (dans une vraie implémentation, appeler une API IA)
+    // Appeler l'IA avec le contexte du rapport
     _isProcessing = true;
     notifyListeners();
 
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    final response = _generateChatResponse(message);
-    _chatHistory.add(ChatMessage(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      role: ChatRole.assistant,
-      content: response,
-      timestamp: DateTime.now(),
-    ));
-
-    _isProcessing = false;
-    notifyListeners();
+    try {
+      final result = _lighthouseService.lastResult;
+      Map<String, dynamic>? context;
+      
+      if (result != null) {
+        context = _buildAuditContext(result);
+      }
+      
+      final response = await _aiService.chat(
+        prompt: message,
+        context: context,
+        type: 'lighthouse_analysis',
+      );
+      
+      String aiResponse;
+      if (response != null && response['response'] != null) {
+        aiResponse = response['response'] as String;
+      } else {
+        // Fallback sur la génération locale
+        aiResponse = _generateChatResponse(message);
+      }
+      
+      _chatHistory.add(ChatMessage(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        role: ChatRole.assistant,
+        content: aiResponse,
+        timestamp: DateTime.now(),
+      ));
+    } catch (e) {
+      debugPrint('Erreur chat IA: $e');
+      // Fallback sur la génération locale
+      final response = _generateChatResponse(message);
+      _chatHistory.add(ChatMessage(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        role: ChatRole.assistant,
+        content: response,
+        timestamp: DateTime.now(),
+      ));
+    } finally {
+      _isProcessing = false;
+      notifyListeners();
+    }
   }
 
   /// Génère une réponse de chat basée sur le contexte

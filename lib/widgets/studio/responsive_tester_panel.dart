@@ -9,6 +9,7 @@ import '../../services/studio/studio_service.dart';
 import '../../services/studio/responsive_tester_service.dart';
 import '../../models/studio/viewport_preset.dart';
 import '../../core/services/color_theme_manager.dart';
+import '../common/gx_futuristic_dialog.dart';
 
 /// Panneau du testeur responsive
 class ResponsiveTesterPanel extends StatefulWidget {
@@ -439,10 +440,14 @@ class _ResponsiveTesterPanelState extends State<ResponsiveTesterPanel> {
     ResponsiveTesterService tester,
     Color accentColor,
   ) {
-    showModalBottomSheet(
+    GxFuturisticDialog.show(
       context: context,
-      backgroundColor: const Color(0xFF18181E),
-      builder: (context) => _DeviceSelectorSheet(
+      title: 'Sélectionner un appareil',
+      titleIcon: Icons.phone_android_rounded,
+      accentColor: accentColor,
+      width: 500,
+      height: 400,
+      child: _DeviceSelectorSheet(
         onSelect: (preset) {
           tester.addViewport(preset);
           Navigator.pop(context);
@@ -940,7 +945,7 @@ class _DeviceSelectorSheetState extends State<_DeviceSelectorSheet> {
                 borderSide: BorderSide.none,
               ),
               filled: true,
-              fillColor: Colors.white.withOpacity(0.05),
+              fillColor: Colors.transparent,
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
             style: const TextStyle(fontSize: 13),

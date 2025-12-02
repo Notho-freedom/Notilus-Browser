@@ -18,8 +18,35 @@ enum MosaicTileType {
   settings,      // Paramètres
   webService,    // Service web (YouTube, WhatsApp, etc.)
   documentation, // Documentation
+  backendLab,    // Backend Lab - Découverte et test de serveurs
+  studio,        // Studio - Outils de test front-end
+  lighthouse,    // Lighthouse - Analyse de performance
+  github,        // GitHub - Gestion des dépôts
+  extensions,    // Extensions - Gestion des extensions
+  cloudinary,    // Cloudinary - Gestion des médias
   empty,         // Tile vide (placeholder)
   custom,        // Widget personnalisé
+  // Widgets Frontend
+  frontendResources,  // Ressources frontend
+  frontendTools,      // Outils frontend
+  // Widgets Backend
+  backendLanguages,   // Langages backend
+  backendTools,       // Outils backend
+  systemMetrics,      // Métriques système
+  commandPrompt,      // Invite de commande
+  // Widgets DevOps
+  serviceStatus,      // Statut des services
+  infrastructureMetrics, // Métriques infrastructure
+  devopsTools,        // Outils DevOps
+  commandCenter,      // Centre de commande
+  // Widgets Data Science
+  dataScienceLibraries, // Librairies data science
+  dataScienceTools,     // Outils data science
+  // Widgets génériques
+  quickLinks,         // Liens rapides
+  searchBar,          // Barre de recherche
+  developerQuotes,    // Citations développeur
+  timeDisplay,        // Affichage de l'heure
 }
 
 extension MosaicTileTypeExtension on MosaicTileType {
@@ -36,8 +63,35 @@ extension MosaicTileTypeExtension on MosaicTileType {
       case MosaicTileType.settings: return 'Paramètres';
       case MosaicTileType.webService: return 'Service Web';
       case MosaicTileType.documentation: return 'Documentation';
+      case MosaicTileType.backendLab: return 'Backend Lab';
+      case MosaicTileType.studio: return 'Studio';
+      case MosaicTileType.lighthouse: return 'Lighthouse';
+      case MosaicTileType.github: return 'GitHub';
+      case MosaicTileType.extensions: return 'Extensions';
+      case MosaicTileType.cloudinary: return 'Cloudinary';
       case MosaicTileType.empty: return 'Vide';
       case MosaicTileType.custom: return 'Personnalisé';
+      // Widgets Frontend
+      case MosaicTileType.frontendResources: return 'Ressources Frontend';
+      case MosaicTileType.frontendTools: return 'Outils Frontend';
+      // Widgets Backend
+      case MosaicTileType.backendLanguages: return 'Langages Backend';
+      case MosaicTileType.backendTools: return 'Outils Backend';
+      case MosaicTileType.systemMetrics: return 'Métriques Système';
+      case MosaicTileType.commandPrompt: return 'Invite Commande';
+      // Widgets DevOps
+      case MosaicTileType.serviceStatus: return 'Statut Services';
+      case MosaicTileType.infrastructureMetrics: return 'Métriques Infrastructure';
+      case MosaicTileType.devopsTools: return 'Outils DevOps';
+      case MosaicTileType.commandCenter: return 'Centre Commande';
+      // Widgets Data Science
+      case MosaicTileType.dataScienceLibraries: return 'Librairies Data Science';
+      case MosaicTileType.dataScienceTools: return 'Outils Data Science';
+      // Widgets génériques
+      case MosaicTileType.quickLinks: return 'Liens Rapides';
+      case MosaicTileType.searchBar: return 'Barre Recherche';
+      case MosaicTileType.developerQuotes: return 'Citations Développeur';
+      case MosaicTileType.timeDisplay: return 'Affichage Heure';
     }
   }
 
@@ -54,8 +108,35 @@ extension MosaicTileTypeExtension on MosaicTileType {
       case MosaicTileType.settings: return Icons.settings_rounded;
       case MosaicTileType.webService: return Icons.public_rounded;
       case MosaicTileType.documentation: return Icons.menu_book_rounded;
+      case MosaicTileType.backendLab: return Icons.dns_rounded;
+      case MosaicTileType.studio: return Icons.palette_rounded;
+      case MosaicTileType.lighthouse: return Icons.light_mode_rounded;
+      case MosaicTileType.github: return Icons.code_rounded;
+      case MosaicTileType.extensions: return Icons.extension_rounded;
+      case MosaicTileType.cloudinary: return Icons.cloud_upload_rounded;
       case MosaicTileType.empty: return Icons.add_rounded;
       case MosaicTileType.custom: return Icons.extension_rounded;
+      // Widgets Frontend
+      case MosaicTileType.frontendResources: return Icons.code_rounded;
+      case MosaicTileType.frontendTools: return Icons.build_rounded;
+      // Widgets Backend
+      case MosaicTileType.backendLanguages: return Icons.developer_mode_rounded;
+      case MosaicTileType.backendTools: return Icons.storage_rounded;
+      case MosaicTileType.systemMetrics: return Icons.speed_rounded;
+      case MosaicTileType.commandPrompt: return Icons.terminal_rounded;
+      // Widgets DevOps
+      case MosaicTileType.serviceStatus: return Icons.dns_rounded;
+      case MosaicTileType.infrastructureMetrics: return Icons.analytics_rounded;
+      case MosaicTileType.devopsTools: return Icons.cloud_rounded;
+      case MosaicTileType.commandCenter: return Icons.dashboard_rounded;
+      // Widgets Data Science
+      case MosaicTileType.dataScienceLibraries: return Icons.science_rounded;
+      case MosaicTileType.dataScienceTools: return Icons.insights_rounded;
+      // Widgets génériques
+      case MosaicTileType.quickLinks: return Icons.link_rounded;
+      case MosaicTileType.searchBar: return Icons.search_rounded;
+      case MosaicTileType.developerQuotes: return Icons.format_quote_rounded;
+      case MosaicTileType.timeDisplay: return Icons.access_time_rounded;
     }
   }
 }

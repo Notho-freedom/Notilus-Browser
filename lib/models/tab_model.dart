@@ -12,6 +12,7 @@ class TabModel {
   final DateTime createdAt;
   bool isPinned;
   bool isSelected;
+  bool isPrivate;
   String? groupId;
   final TabType type;
 
@@ -24,6 +25,7 @@ class TabModel {
     DateTime? createdAt,
     this.isPinned = false,
     this.isSelected = false,
+    this.isPrivate = false,
     this.groupId,
     this.type = TabType.web,
   })  : id = id ?? const Uuid().v4(),
@@ -38,6 +40,7 @@ class TabModel {
     DateTime? createdAt,
     bool? isPinned,
     bool? isSelected,
+    bool? isPrivate,
     String? groupId,
     TabType? type,
   }) {
@@ -50,6 +53,7 @@ class TabModel {
       createdAt: createdAt ?? this.createdAt,
       isPinned: isPinned ?? this.isPinned,
       isSelected: isSelected ?? this.isSelected,
+      isPrivate: isPrivate ?? this.isPrivate,
       groupId: groupId ?? this.groupId,
       type: type ?? this.type,
     );
@@ -65,6 +69,7 @@ class TabModel {
       'createdAt': createdAt.toIso8601String(),
       'isPinned': isPinned,
       'isSelected': isSelected,
+      'isPrivate': isPrivate,
       'groupId': groupId,
       'type': type.toString(),
     };
@@ -83,6 +88,7 @@ class TabModel {
       createdAt: DateTime.parse(json['createdAt']),
       isPinned: json['isPinned'] ?? false,
       isSelected: json['isSelected'] ?? false,
+      isPrivate: json['isPrivate'] ?? false,
       groupId: json['groupId'],
       type: json['type'] != null
           ? TabType.values.firstWhere(

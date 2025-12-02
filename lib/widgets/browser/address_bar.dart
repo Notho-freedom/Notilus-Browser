@@ -92,8 +92,10 @@ class AddressBarState extends State<AddressBar> {
         state: TabState.loading,
       );
       
-      // Ajouter à l'historique
-      await _historyService.addHistoryItem(formattedUrl, domain);
+      // Ajouter à l'historique (ne pas sauvegarder pour les onglets privés)
+      if (!activeTab.isPrivate) {
+        await _historyService.addHistoryItem(formattedUrl, domain);
+      }
       
       // Récupérer le favicon
       _loadFavicon(formattedUrl, activeTab.id, tabManager);
@@ -410,7 +412,7 @@ class AddressBarState extends State<AddressBar> {
                 builder: (context, adBlocker, _) {
                   return Tooltip(
                     message: adBlocker.isEnabled 
-                        ? 'Bloqueur de pubs activé (${adBlocker.blockedCount} bloquées)\nCliquer pour désactiver'
+                        ? 'Bloqueur de pubs activé\nCliquer pour désactiver'
                         : 'Bloqueur de pubs désactivé\nCliquer pour activer',
                     child: GestureDetector(
                       onTap: () => adBlocker.setEnabled(!adBlocker.isEnabled),

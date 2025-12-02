@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../core/services/color_theme_manager.dart';
 import '../../services/tab_manager.dart';
 import '../../services/tab_webview_manager.dart';
+import '../../services/webview2_browser_engine.dart';
 import '../../core/utils/url_validator.dart';
 import '../../services/history_service.dart';
 import '../../services/bookmark_service.dart';
@@ -24,6 +25,8 @@ import '../../services/gx_notification_service.dart';
 import 'address_suggestions.dart';
 import 'gx_address_suggestions.dart';
 import 'gx_futuristic_more_menu.dart';
+import '../common/gx_futuristic_dialog.dart';
+import '../common/gx_futuristic_components.dart';
 
 // La couleur rouge est maintenant gérée par ColorThemeManager
 
@@ -125,9 +128,15 @@ class _GXAddressBarState extends State<GXAddressBar> {
   void _hideSuggestionsOverlay() {
     _overlayEntry?.remove();
     _overlayEntry = null;
-    setState(() {
+    // Ne pas appeler setState() si le widget est en train d'être démonté
+    if (mounted) {
+      setState(() {
+        _showSuggestions = false;
+      });
+    } else {
+      // Si le widget n'est plus monté, juste mettre à jour la variable
       _showSuggestions = false;
-    });
+    }
   }
   
   void _updateSuggestionsOverlay() {
@@ -247,9 +256,9 @@ class _GXAddressBarState extends State<GXAddressBar> {
         child: Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: bgColor.withValues(alpha: panelOpacity.clamp(0.0, 1.0)),
+            color: bgColor.withOpacity(panelOpacity.clamp(0.0, 1.0)),
             border: Border.all(
-              color: gxRed.withValues(alpha: 0.4),
+              color: gxRed.withOpacity(0.4),
               width: 1.5,
             ),
           ),
@@ -353,7 +362,10 @@ class _GXAddressBarState extends State<GXAddressBar> {
         state: TabState.loading,
       );
 
-      await _historyService.addHistoryItem(formattedUrl, domain);
+      // Ne pas sauvegarder l'historique pour les onglets privés
+      if (!activeTab.isPrivate) {
+        await _historyService.addHistoryItem(formattedUrl, domain);
+      }
       _loadFavicon(formattedUrl, activeTab.id, tabManager);
 
       final webViewManager = Provider.of<TabWebViewManager>(context, listen: false);
@@ -428,115 +440,146 @@ class _GXAddressBarState extends State<GXAddressBar> {
   }
 
   void _showAccountDialog(BuildContext context, Color accentColor) {
-    showDialog(
+    GxFuturisticDialog.show(
       context: context,
-      builder: (dialogContext) {
-        final authService = Provider.of<FirebaseAuthService?>(dialogContext, listen: true);
-        final isSignedIn = authService?.isSignedIn ?? false;
-        final user = authService?.currentUser;
-        
-        return AlertDialog(
-          backgroundColor: const Color(0xFF1A1A20),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Row(
+      title: 'Compte Notilus',
+      titleIcon: CupertinoIcons.person_fill,
+      accentColor: accentColor,
+      width: 450,
+      child: Builder(
+        builder: (dialogContext) {
+          final authService = Provider.of<FirebaseAuthService?>(dialogContext, listen: true);
+          final isSignedIn = authService?.isSignedIn ?? false;
+          final user = authService?.currentUser;
+          
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              isSignedIn && user?.photoURL != null
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.network(
-                      user!.photoURL!,
-                      width: 48,
-                      height: 48,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(
+              // Header avec avatar
+              Row(
+                children: [
+                  isSignedIn && user?.photoURL != null
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.network(
+                          user!.photoURL!,
+                          width: 48,
+                          height: 48,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [accentColor, accentColor.withOpacity(0.7)],
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(CupertinoIcons.person_fill, color: Colors.white, size: 24),
+                          ),
+                        ),
+                      )
+                    : Container(
                         width: 48,
                         height: 48,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [accentColor, accentColor.withValues(alpha: 0.7)],
+                            colors: [accentColor, accentColor.withOpacity(0.7)],
                           ),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: const Icon(CupertinoIcons.person_fill, color: Colors.white, size: 24),
                       ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isSignedIn ? (user?.displayName ?? user?.email ?? 'Compte Notilus') : 'Compte Notilus',
+                          style: NotilusFonts.orbitron(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          isSignedIn ? 'Connecté' : 'Non connecté',
+                          style: NotilusFonts.rajdhani(
+                            fontSize: 12,
+                            color: isSignedIn ? accentColor : Colors.white54,
+                          ),
+                        ),
+                      ],
                     ),
-                  )
-                : Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [accentColor, accentColor.withValues(alpha: 0.7)],
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(CupertinoIcons.person_fill, color: Colors.white, size: 24),
-                  ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    isSignedIn ? (user?.displayName ?? user?.email ?? 'Compte Notilus') : 'Compte Notilus',
-                    style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
-                  Text(
-                    isSignedIn ? 'Connecté' : 'Non connecté',
-                    style: TextStyle(color: isSignedIn ? accentColor : Colors.white54, fontSize: 12),
                   ),
                 ],
               ),
-            ),
-          ],
+              const SizedBox(height: 20),
+              // Options
+              _buildAccountOption(CupertinoIcons.cloud_upload, 'Synchroniser les données', accentColor, () {}),
+              _buildAccountOption(CupertinoIcons.bookmark_fill, 'Favoris synchronisés', accentColor, () {}),
+              _buildAccountOption(CupertinoIcons.clock_fill, 'Historique synchronisé', accentColor, () {}),
+              _buildAccountOption(CupertinoIcons.gear, 'Paramètres du compte', accentColor, () {}),
+            ],
+          );
+        },
+      ),
+      actions: [
+        Builder(
+          builder: (dialogContext) {
+            final authService = Provider.of<FirebaseAuthService?>(dialogContext, listen: false);
+            final isSignedIn = authService?.isSignedIn ?? false;
+            
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                GxFuturisticButton(
+                  label: 'Fermer',
+                  variant: GxFuturisticButtonVariant.secondary,
+                  accentColor: accentColor,
+                  onPressed: () => Navigator.pop(dialogContext),
+                ),
+                const SizedBox(width: 8),
+                if (!isSignedIn)
+                  GxFuturisticButton(
+                    label: 'Se connecter',
+                    icon: CupertinoIcons.person_fill,
+                    variant: GxFuturisticButtonVariant.primary,
+                    accentColor: accentColor,
+                    onPressed: () {
+                      Navigator.pop(dialogContext);
+                      showDialog(
+                        context: context,
+                        builder: (ctx) => AuthDialog(authService: authService!),
+                      );
+                    },
+                  )
+                else
+                  GxFuturisticButton(
+                    label: 'Se déconnecter',
+                    icon: CupertinoIcons.power,
+                    variant: GxFuturisticButtonVariant.primary,
+                    accentColor: Colors.red,
+                    onPressed: () async {
+                      await authService?.signOut();
+                      if (dialogContext.mounted) {
+                        Navigator.pop(dialogContext);
+                        GxNotificationService().showSuccess(
+                          title: 'Déconnexion',
+                          message: 'Déconnexion réussie',
+                          context: dialogContext,
+                        );
+                      }
+                    },
+                  ),
+              ],
+            );
+          },
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildAccountOption(CupertinoIcons.cloud_upload, 'Synchroniser les données', accentColor, () {}),
-            _buildAccountOption(CupertinoIcons.bookmark_fill, 'Favoris synchronisés', accentColor, () {}),
-            _buildAccountOption(CupertinoIcons.clock_fill, 'Historique synchronisé', accentColor, () {}),
-            _buildAccountOption(CupertinoIcons.gear, 'Paramètres du compte', accentColor, () {}),
-          ],
-        ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: Text('Fermer', style: TextStyle(color: accentColor)),
-            ),
-            if (!isSignedIn)
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(dialogContext);
-                  // Ouvrir le dialog d'authentification
-                  showDialog(
-                    context: context,
-                    builder: (ctx) => AuthDialog(authService: authService!),
-                  );
-                },
-                style: ElevatedButton.styleFrom(backgroundColor: accentColor),
-                child: const Text('Se connecter', style: TextStyle(color: Colors.white)),
-              )
-            else
-              ElevatedButton(
-                onPressed: () async {
-                  await authService?.signOut();
-                  if (dialogContext.mounted) {
-                    Navigator.pop(dialogContext);
-                    ScaffoldMessenger.of(dialogContext).showSnackBar(
-                      SnackBar(
-                        content: const Text('Déconnexion réussie'),
-                        backgroundColor: accentColor,
-                      ),
-                    );
-                  }
-                },
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.red.withOpacity(0.2)),
-                child: const Text('Se déconnecter', style: TextStyle(color: Colors.red)),
-              ),
-          ],
-        );
-      },
+      ],
     );
   }
 
@@ -605,21 +648,36 @@ class _GXAddressBarState extends State<GXAddressBar> {
                     } : null,
                   ),
                   const SizedBox(width: 2),
-                  _GXNavButton(
-                    icon: activeTab?.state == TabState.loading 
-                        ? CupertinoIcons.xmark
-                        : CupertinoIcons.arrow_clockwise,
-                    size: 16,
-                    tooltip: activeTab?.state == TabState.loading ? 'Arrêter' : 'Actualiser',
-                    onPressed: activeTab != null ? () {
-                      final engine = Provider.of<TabWebViewManager>(context, listen: false)
-                          .getEngineForTab(activeTab.id);
-                      if (activeTab.state == TabState.loading) {
-                        engine.stop();
-                      } else {
-                        engine.reload();
+                  Consumer<TabWebViewManager>(
+                    builder: (context, webViewManager, _) {
+                      // Obtenir l'état réel du WebView (plus précis)
+                      bool isLoading = false;
+                      if (activeTab != null) {
+                        final engine = webViewManager.getEngine(activeTab.id);
+                        if (engine is WebView2BrowserEngine) {
+                          isLoading = engine.isLoading;
+                        } else {
+                          // Fallback sur TabState si l'engine n'est pas WebView2
+                          isLoading = activeTab.state == TabState.loading;
+                        }
                       }
-                    } : null,
+                      
+                      return _GXNavButton(
+                        icon: isLoading 
+                            ? CupertinoIcons.xmark
+                            : CupertinoIcons.arrow_clockwise,
+                        size: 16,
+                        tooltip: isLoading ? 'Arrêter' : 'Actualiser',
+                        onPressed: activeTab != null ? () {
+                          final engine = webViewManager.getEngineForTab(activeTab.id);
+                          if (isLoading) {
+                            engine.stop();
+                          } else {
+                            engine.reload();
+                          }
+                        } : null,
+                      );
+                    },
                   ),
                   const SizedBox(width: 2),
                   _GXNavButton(
@@ -645,8 +703,8 @@ class _GXAddressBarState extends State<GXAddressBar> {
                       begin: Alignment.centerLeft,
                       end: Alignment.centerRight,
                       colors: [
-                        gxRed.withValues(alpha: 0.9),
-                        gxRed.withValues(alpha: 0.0),
+                        gxRed.withOpacity(0.9),
+                        gxRed.withOpacity(0.0),
                       ],
                     ),
                   ),
@@ -654,7 +712,7 @@ class _GXAddressBarState extends State<GXAddressBar> {
                     margin: const EdgeInsets.all(1.2),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(17),
-                      color: colorThemeManager.nativeBackgroundColor.withValues(alpha: 0.88),
+                      color: colorThemeManager.nativeBackgroundColor.withOpacity(0.88),
                     ),
                     child: CompositedTransformTarget(
                       key: _inputAreaKey, // Cette clé est utilisée pour mesurer la largeur
@@ -679,7 +737,7 @@ class _GXAddressBarState extends State<GXAddressBar> {
                           Expanded(
                             child: TextSelectionTheme(
                               data: TextSelectionThemeData(
-                                selectionColor: gxRed.withValues(alpha: 0.3),
+                                selectionColor: gxRed.withOpacity(0.3),
                                 selectionHandleColor: gxRed,
                                 cursorColor: gxRed,
                               ),
@@ -696,7 +754,7 @@ class _GXAddressBarState extends State<GXAddressBar> {
                                 decoration: InputDecoration(
                                   hintText: 'Enter search or web address',
                                   hintStyle: TextStyle(
-                                    color: Colors.white.withValues(alpha:0.35),
+                                    color: Colors.white.withOpacity(0.35),
                                     fontSize: 12,
                                   ),
                                   border: InputBorder.none,
@@ -744,11 +802,11 @@ class _GXAddressBarState extends State<GXAddressBar> {
                                       createdAt: DateTime.now(),
                                     );
                                     await _bookmarkService.addBookmark(bookmark);
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Ajouté aux favoris'),
-                                        duration: Duration(seconds: 2),
-                                      ),
+                                    GxNotificationService().showSuccess(
+                                      title: 'Favoris',
+                                      message: 'Ajouté aux favoris',
+                                      context: context,
+                                      duration: const Duration(seconds: 2),
                                     );
                                   }
                                 : null,
@@ -759,7 +817,7 @@ class _GXAddressBarState extends State<GXAddressBar> {
                             builder: (context, adBlocker, _) {
                               return NotilusTooltip(
                                 message: adBlocker.isEnabled 
-                                    ? 'Bloqueur de pubs activé (${adBlocker.blockedCount} bloquées)\nCliquer pour désactiver'
+                                    ? 'Bloqueur de pubs activé\nCliquer pour désactiver'
                                     : 'Bloqueur de pubs désactivé\nCliquer pour activer',
                                 child: GestureDetector(
                                   onTap: () => adBlocker.setEnabled(!adBlocker.isEnabled),
@@ -777,7 +835,7 @@ class _GXAddressBarState extends State<GXAddressBar> {
                                             ? CupertinoIcons.shield_fill
                                             : CupertinoIcons.shield,
                                         size: 16,
-                                        color: adBlocker.isEnabled ? gxRed : gxRed.withValues(alpha: 0.5),
+                                        color: adBlocker.isEnabled ? gxRed : gxRed.withOpacity(0.5),
                                       ),
                                       onPressed: () => adBlocker.setEnabled(!adBlocker.isEnabled),
                                     ),
@@ -872,7 +930,7 @@ class _GXNavButtonState extends State<_GXNavButton> {
         height: 26,
         decoration: BoxDecoration(
           color: _isHovered && isEnabled
-              ? gxRed.withValues(alpha: 0.14)
+              ? gxRed.withOpacity(0.14)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(6),
         ),
@@ -880,8 +938,8 @@ class _GXNavButtonState extends State<_GXNavButton> {
           widget.icon,
           size: widget.size,
           color: isEnabled
-              ? (_isHovered ? gxRed : gxRed.withValues(alpha: 0.8))
-              : gxRed.withValues(alpha: 0.3),
+              ? (_isHovered ? gxRed : gxRed.withOpacity(0.8))
+              : gxRed.withOpacity(0.3),
         ),
       ),
     );
@@ -1010,19 +1068,25 @@ class _GXActionButtonState extends State<_GXActionButton> {
         height: 26,
         decoration: BoxDecoration(
           color: (_isHovered && isEnabled) || widget.isActive
-              ? gxRed.withValues(alpha: widget.isActive ? 0.2 : 0.14)
+              ? gxRed.withOpacity(widget.isActive ? 0.2 : 0.14)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(6),
           border: widget.isActive
-              ? Border.all(color: gxRed.withValues(alpha: 0.5), width: 1)
+              ? Border.all(color: gxRed.withOpacity(0.5), width: 1)
               : null,
         ),
-        child: Icon(
-          widget.icon,
-          size: 18,
-          color: isEnabled
-              ? (widget.isActive || _isHovered ? gxRed : gxRed.withValues(alpha: 0.8))
-              : gxRed.withValues(alpha: 0.3),
+        child: Builder(
+          builder: (context) {
+            final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: true);
+            final iconColor = colorThemeManager.getIconColor();
+            return Icon(
+              widget.icon,
+              size: 18,
+              color: isEnabled
+                  ? (widget.isActive || _isHovered ? iconColor : iconColor.withOpacity(0.8))
+                  : iconColor.withOpacity(0.3),
+            );
+          },
         ),
       ),
     );

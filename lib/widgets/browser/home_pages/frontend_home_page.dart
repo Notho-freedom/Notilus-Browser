@@ -8,7 +8,7 @@ import '../../../services/tab_manager.dart';
 import '../../../core/services/wallpaper_manager.dart';
 import '../../../services/settings_service.dart';
 import '../../../core/services/color_theme_manager.dart';
-import '../../common/notilus_monogram.dart';
+import '../../common/notilus_logo_image.dart';
 
 /// Page d'accueil Frontend Developer - Style moderne avec focus sur CSS/HTML/JS
 class FrontendHomePage extends StatefulWidget {
@@ -154,17 +154,20 @@ class _FrontendHomePageState extends State<FrontendHomePage>
     final gxRed = Provider.of<ColorThemeManager>(context, listen: true).nativeSecondaryColor;
     final wallpaperManager = context.watch<WallpaperManager>();
     final transparency = _settings.widgetTransparency;
+    final currentUrl = wallpaperManager.current;
 
     return Container(
       decoration: BoxDecoration(
-        image: DecorationImage(
-          image: CachedNetworkImageProvider(wallpaperManager.current),
-          fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(
-            Colors.black.withOpacity(0.85),
-            BlendMode.srcOver,
-          ),
-        ),
+        image: currentUrl.isNotEmpty && !wallpaperManager.isVideo
+            ? DecorationImage(
+                image: CachedNetworkImageProvider(currentUrl),
+                fit: BoxFit.cover,
+                colorFilter: ColorFilter.mode(
+                  Colors.black.withOpacity(0.85),
+                  BlendMode.srcOver,
+                ),
+              )
+            : null,
       ),
       child: Stack(
         children: [
@@ -307,7 +310,7 @@ class _FrontendHomePageState extends State<FrontendHomePage>
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Row(
         children: [
-          const NotilusMonogram(size: 24),
+          const NotilusMonogramImage(size: 24),
           const SizedBox(width: 12),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -448,6 +451,10 @@ class _FrontendHomePageState extends State<FrontendHomePage>
                     fontSize: 14,
                   ),
                   border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  fillColor: Colors.transparent,
+                  filled: true,
                 ),
                 onSubmitted: _handleSearch,
                 cursorColor: const Color(0xFF61DAFB),

@@ -20,11 +20,11 @@ import 'modern_downloads_panel.dart';
 import 'gx_futuristic_history_panel.dart';
 import 'gx_futuristic_bookmarks_panel.dart';
 import 'gx_futuristic_downloads_panel.dart';
+import 'downloads_popup_menu.dart';
 import 'gx_futuristic_widgets_panel.dart';
 import 'gx_futuristic_ai_panel.dart';
 import 'gx_futuristic_updates_panel.dart';
 import 'modern_settings_panel.dart';
-import 'extensions_panel.dart';
 import 'webview_service_panel.dart';
 import '../../core/services/wallpaper_manager.dart';
 import '../../core/services/color_theme_manager.dart';
@@ -41,6 +41,10 @@ import '../../widgets/github/github_repos_panel.dart';
 import '../../services/lighthouse/lighthouse_service.dart';
 import '../../services/studio/studio_service.dart';
 import '../../widgets/common/gx_test_panel.dart';
+import '../../services/gx_notification_service.dart';
+import '../../widgets/common/gx_futuristic_dialog.dart';
+import 'gx_3d_coverflow_tabs_view.dart';
+import 'package:window_manager/window_manager.dart';
 
 // Intent pour les raccourcis clavier
 class _ToggleMosaicIntent extends Intent {}
@@ -48,6 +52,7 @@ class _OpenDevToolsIntent extends Intent {}
 class _OpenLighthouseIntent extends Intent {}
 class _OpenStudioIntent extends Intent {}
 class _RunLighthouseAuditIntent extends Intent {}
+class _NewPrivateTabIntent extends Intent {}
 
 class ModernBrowserWindow extends StatefulWidget {
   const ModernBrowserWindow({super.key});
@@ -62,7 +67,7 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
   SidebarSection _currentSection = SidebarSection.home;
   late AnimationController _sidebarAnimationController;
   late Animation<double> _sidebarAnimation;
-  double _sideMenuWidth = 380.0;
+  double _sideMenuWidth = 800.0; // Taille maximale par défaut
   bool _isResizing = false;
   bool _isDevToolsOpen = false; // État du panneau DevTools en bas
   bool _isMiniDevToolsVisible = false; // État du mini DevTools flottant
@@ -79,6 +84,21 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
       curve: Curves.easeInOutCubic,
     );
     _sidebarAnimationController.forward();
+    
+    // Connecter TabManager à TabWebViewManager pour la synchronisation
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final context = this.context;
+      if (mounted && context != null) {
+        final tabManager = Provider.of<TabManager>(context, listen: false);
+        final webViewManager = Provider.of<TabWebViewManager>(context, listen: false);
+        tabManager.setWebViewManager(webViewManager);
+        
+        // Définir l'onglet actif initial
+        if (tabManager.activeTab != null) {
+          webViewManager.setActiveTab(tabManager.activeTab!.id);
+        }
+      }
+    });
   }
 
   @override
@@ -173,6 +193,7 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
         LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.shift, LogicalKeyboardKey.keyL): _OpenLighthouseIntent(),
         LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.shift, LogicalKeyboardKey.keyS): _OpenStudioIntent(),
         LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.shift, LogicalKeyboardKey.keyR): _RunLighthouseAuditIntent(),
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.shift, LogicalKeyboardKey.keyN): _NewPrivateTabIntent(),
       },
       child: Actions(
         actions: {
@@ -219,12 +240,18 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
               return null;
             },
           ),
+          _NewPrivateTabIntent: CallbackAction<_NewPrivateTabIntent>(
+            onInvoke: (_) {
+              final tabManager = Provider.of<TabManager>(context, listen: false);
+              tabManager.addPrivateTab();
+              return null;
+            },
+          ),
         },
         child: Focus(
           autofocus: true,
           child: Container(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -237,69 +264,175 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
             child: Container(
         margin: const EdgeInsets.all(1.8),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
           color: const Color(0xFF0B0B0E),
           border: Border.all(
-            color: Colors.white.withValues(alpha: 0.02),
+            color: Colors.white.withOpacity(0.02),
             width: 0.6,
           ),
         ),
-        child: Row(
+        child: Stack(
           children: [
-            // Sidebar moderne
-            AnimatedBuilder(
-              animation: _sidebarAnimation,
-              builder: (context, child) {
-                return Container(
-                  width: _sidebarAnimation.value * 48,
-                  child: _sidebarAnimation.value > 0
-                      ? GXSidebar(
-                          onClose: _toggleSidebar,
-                          onSectionSelected: (section) {
-                            // DevTools natif - ouvre les DevTools du WebView
-                            if (section == SidebarSection.nativeDevtools) {
-                              _openNativeDevTools();
-                              return;
-                            }
-                            setState(() {
-                              _currentSection = section;
-                            });
-                          },
-                        )
-                      : null,
-                );
-              },
+            // Zone draggable pour la fenêtre (en haut)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 40,
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onPanStart: (details) {
+                  windowManager.startDragging();
+                },
+                onPanUpdate: (details) {
+                  // Continuer le drag pendant le mouvement
+                  windowManager.startDragging();
+                },
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.move,
+                  child: Container(
+                    color: Colors.transparent,
+                  ),
+                ),
+              ),
             ),
-
-          // Zone principale avec sidemenu en position absolue
-          Expanded(
-            child: Stack(
-              clipBehavior: Clip.none,
+            // Contenu principal
+            Row(
               children: [
+                // Sidebar moderne
+                AnimatedBuilder(
+                  animation: _sidebarAnimation,
+                  builder: (context, child) {
+                    return Container(
+                      width: _sidebarAnimation.value * 48,
+                      child: _sidebarAnimation.value > 0
+                          ? GXSidebar(
+                              onClose: _toggleSidebar,
+                              currentSection: _currentSection,
+                              onSectionSelected: (section) {
+                                // DevTools natif - ouvre les DevTools du WebView
+                                if (section == SidebarSection.nativeDevtools) {
+                                  _openNativeDevTools();
+                                  return;
+                                }
+                                // Si on clique sur la section déjà active, fermer le panel
+                                if (section == _currentSection && section != SidebarSection.home) {
+                                  _closePanel();
+                                  return;
+                                }
+                                setState(() {
+                                  _currentSection = section;
+                                  // Taille du panel selon la section
+                                  final screenWidth = MediaQuery.of(context).size.width;
+                                  final settings = Provider.of<SettingsService>(context, listen: false);
+                                  
+                                  if (section == SidebarSection.settings) {
+                                    // Paramètres toujours en MAX
+                                    _sideMenuWidth = (screenWidth * 0.8).clamp(600.0, 1200.0);
+                                  } else {
+                                    // Autres panels avec taille configurable
+                                    _sideMenuWidth = settings.panelDefaultWidth;
+                                  }
+                                });
+                              },
+                            )
+                          : null,
+                    );
+                  },
+                ),
+
+                // Zone principale avec sidemenu en position absolue
+                Expanded(
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
                 Column(
                   children: [
-                    GroupedTabBar(
-                      onMenuTap: _toggleSidebar,
-                      onGroupsPressed: () {
-                        setState(() {
-                          _currentSection = SidebarSection.favorites;
-                          _isSidebarVisible = true;
-                        });
+                    // Sélectionner le composant d'onglets selon le mode
+                    Consumer<SettingsService>(
+                      builder: (context, settings, _) {
+                        final tabMode = settings.tabMode;
+                        final groupingEnabled = settings.tabGroupingEnabled;
+                        
+                        // Mode natif GX
+                        if (tabMode == 'native') {
+                          return GXTabBar(
+                            onMenuTap: _toggleSidebar,
+                            onGroupsPressed: groupingEnabled ? () {
+                              // Créer ou activer l'onglet 3D Cover Flow
+                              final tabManager = Provider.of<TabManager>(context, listen: false);
+                              final existing3DTabs = tabManager.tabs.where(
+                                (tab) => tab.url == 'about:3dtabs',
+                              );
+                              
+                              if (existing3DTabs.isEmpty) {
+                                // Créer un nouvel onglet dédié
+                                final newTab = tabManager.createNewTab();
+                                tabManager.updateTab(
+                                  newTab.id,
+                                  url: 'about:3dtabs',
+                                  title: 'Onglets en 3D',
+                                );
+                                tabManager.selectTab(newTab.id);
+                              } else {
+                                // Activer l'onglet existant
+                                tabManager.selectTab(existing3DTabs.first.id);
+                              }
+                            } : null,
+                            isSidebarVisible: _isSidebarVisible,
+                          );
+                        }
+                        
+                        // Mode classique (avec ou sans groupement)
+                        return GroupedTabBar(
+                          onMenuTap: _toggleSidebar,
+                            onGroupsPressed: groupingEnabled ? () {
+                              // Créer ou activer l'onglet 3D Cover Flow
+                              final tabManager = Provider.of<TabManager>(context, listen: false);
+                              final existing3DTabs = tabManager.tabs.where(
+                                (tab) => tab.url == 'about:3dtabs',
+                              );
+                              
+                              if (existing3DTabs.isEmpty) {
+                                // Créer un nouvel onglet dédié
+                                final newTab = tabManager.createNewTab();
+                                tabManager.updateTab(
+                                  newTab.id,
+                                  url: 'about:3dtabs',
+                                  title: 'Onglets en 3D',
+                                );
+                                tabManager.selectTab(newTab.id);
+                              } else {
+                                // Activer l'onglet existant
+                                tabManager.selectTab(existing3DTabs.first.id);
+                              }
+                            } : null,
+                          isSidebarVisible: _isSidebarVisible,
+                        );
                       },
-                      isSidebarVisible: _isSidebarVisible,
                     ),
                     GXAddressBar(
                       onWidgetsPressed: () {
                         setState(() {
                           _currentSection = SidebarSection.widgets;
                           _isSidebarVisible = true;
+                          // Ouvrir le panel en taille maximale
+                          final screenWidth = MediaQuery.of(context).size.width;
+                          _sideMenuWidth = (screenWidth * 0.6).clamp(400.0, 1000.0);
                         });
                       },
                       onDownloadsPressed: () {
-                        setState(() {
-                          _currentSection = SidebarSection.downloads;
-                          _isSidebarVisible = true;
-                        });
+                        // Ouvrir un menu popup au lieu du panel
+                        final colorTheme = Provider.of<ColorThemeManager>(context, listen: false);
+                        final accentColor = colorTheme.nativeSecondaryColor;
+                        
+                        GxFuturisticDialog.show(
+                          context: context,
+                          title: 'Téléchargements',
+                          titleIcon: CupertinoIcons.tray_arrow_down,
+                          accentColor: accentColor,
+                          width: 400,
+                          child: const DownloadsPopupMenu(),
+                        );
                       },
                       onMiniDevToolsToggle: () {
                         setState(() {
@@ -379,6 +512,21 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                                 activeTab.url == 'about:newtab') {
                               return _buildHomePageWidget();
                             }
+                            
+                            // Onglet 3D Cover Flow dédié
+                            if (activeTab.url == 'about:3dtabs') {
+                              return Gx3DCoverFlowTabsView(
+                                onClose: () {
+                                  // Fermer l'onglet 3D
+                                  final tabManager = context.read<TabManager>();
+                                  tabManager.closeTab(activeTab.id);
+                                },
+                                onTabSelected: () {
+                                  // L'onglet sélectionné sera automatiquement activé
+                                },
+                              );
+                            }
+                            
                             return WebContentView(tab: activeTab);
                           },
                         ),
@@ -411,32 +559,34 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                       ),
                   ],
                 ),
-                // Mini DevTools flottant
+                // Mini DevTools flottant (dans un Stack pour qu'il soit au-dessus)
                 if (_isMiniDevToolsVisible)
-                  Builder(
-                    builder: (context) {
-                      final tabWebViewManager = context.read<TabWebViewManager>();
-                      final tabManager = context.read<TabManager>();
-                      final activeTab = tabManager.activeTab;
-                      final engine = activeTab != null 
-                          ? tabWebViewManager.getEngineForTab(activeTab.id)
-                          : null;
-                      return NotilusMiniDevToolsPanel(
-                        isVisible: _isMiniDevToolsVisible,
-                        engine: engine,
-                        onClose: () {
-                          setState(() {
-                            _isMiniDevToolsVisible = false;
-                          });
-                        },
-                        onSwitchToNative: () {
-                          setState(() {
-                            _isMiniDevToolsVisible = false;
-                            _isDevToolsOpen = true;
-                          });
-                        },
-                      );
-                    },
+                  Positioned.fill(
+                    child: Builder(
+                      builder: (context) {
+                        final tabWebViewManager = context.read<TabWebViewManager>();
+                        final tabManager = context.read<TabManager>();
+                        final activeTab = tabManager.activeTab;
+                        final engine = activeTab != null 
+                            ? tabWebViewManager.getEngineForTab(activeTab.id)
+                            : null;
+                        return NotilusMiniDevToolsPanel(
+                          isVisible: _isMiniDevToolsVisible,
+                          engine: engine,
+                          onClose: () {
+                            setState(() {
+                              _isMiniDevToolsVisible = false;
+                            });
+                          },
+                          onSwitchToNative: () {
+                            setState(() {
+                              _isMiniDevToolsVisible = false;
+                              _isDevToolsOpen = true;
+                            });
+                          },
+                        );
+                      },
+                    ),
                   ),
                 // Menu latéral en position absolue à droite de la sidebar
                 Positioned(
@@ -473,7 +623,9 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                                 },
                                 onPanUpdate: (details) {
                                   setState(() {
-                                    _sideMenuWidth = (_sideMenuWidth + details.delta.dx).clamp(200.0, 800.0);
+                                    final screenWidth = MediaQuery.of(context).size.width;
+                                    final maxWidth = (screenWidth * 0.7).clamp(400.0, 1200.0);
+                                    _sideMenuWidth = (_sideMenuWidth + details.delta.dx).clamp(200.0, maxWidth);
                                   });
                                 },
                                 onPanEnd: (_) {
@@ -486,12 +638,12 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                                   child: Container(
                                     width: 4,
                                     color: _isResizing
-                                        ? gxRed.withValues(alpha: 0.8)
+                                        ? gxRed.withOpacity(0.8)
                                         : Colors.transparent,
                                     child: Container(
                                       margin: const EdgeInsets.symmetric(vertical: 8),
                                       decoration: BoxDecoration(
-                                        color: gxRed.withValues(alpha: 0.3),
+                                        color: gxRed.withOpacity(0.3),
                                         borderRadius: BorderRadius.circular(2),
                                       ),
                                     ),
@@ -505,9 +657,11 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                     ),
                   ),
                 ),
+                    ],
+                  ),
+                ),
               ],
             ),
-          ),
           ],
         ),
             ),
@@ -522,69 +676,87 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
     if (config == null) return const SizedBox.shrink();
     final colorThemeManager = Provider.of<ColorThemeManager>(context, listen: true);
     final gxRed = colorThemeManager.nativeSecondaryColor;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: colorThemeManager.nativeBackgroundColor,
-        border: Border(
-          right: BorderSide(
-            color: gxRed.withValues(alpha: 0.3),
-            width: 1,
-          ),
-        ),
-      ),
-      child: Column(
-        children: [
-          // Header du menu
-          Container(
-            height: 36,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: colorThemeManager.nativeBackgroundColor,
-              border: Border(
-                bottom: BorderSide(
-                  color: gxRed.withValues(alpha: 0.2),
-                  width: 1,
-                ),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(config.icon, color: gxRed, size: 18),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    config.title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                GestureDetector(
-                  onTap: _closePanel,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    child: Icon(
-                      CupertinoIcons.xmark,
-                      color: Colors.white.withValues(alpha: 0.7),
-                      size: 16,
-                    ),
-                  ),
-                ),
+    final settings = SettingsService();
+    
+    return ListenableBuilder(
+      listenable: settings,
+      builder: (context, _) {
+        final brightness = settings.sideMenuBrightness;
+        
+        return Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.black.withOpacity((brightness * (1.0 - settings.widgetTransparency)).clamp(0.0, 1.0)),
+                Colors.black.withOpacity(((brightness + 0.06) * (1.0 - settings.widgetTransparency)).clamp(0.0, 1.0)),
               ],
             ),
-          ),
-          // Contenu du menu
-          Expanded(
-            child: Container(
-              color: Colors.black.withValues(alpha: 0.05),
-              child: config.child,
+            border: Border(
+              right: BorderSide(
+                color: gxRed.withOpacity(0.3),
+                width: 1,
+              ),
             ),
           ),
-        ],
-      ),
+          child: Column(
+            children: [
+              // Header du menu
+              Container(
+                height: 36,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      color: gxRed.withOpacity(0.2),
+                      width: 1,
+                    ),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Builder(
+                      builder: (context) {
+                        final iconColor = colorThemeManager.getIconColor();
+                        return Icon(config.icon, color: iconColor, size: 18);
+                      },
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        config.title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: _closePanel,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        child: Icon(
+                          CupertinoIcons.xmark,
+                          color: Colors.white.withOpacity(0.7),
+                          size: 16,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Contenu du menu
+              Expanded(
+                child: Container(
+                  child: config.child,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -638,12 +810,6 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
           title: 'Mises à jour',
           icon: CupertinoIcons.arrow_up_circle,
           child: const GxFuturisticUpdatesPanel(),
-        );
-      case SidebarSection.extensions:
-        return _SidebarPanelConfig(
-          title: 'Extensions',
-          icon: CupertinoIcons.square_grid_2x2,
-          child: ExtensionsPanel(isVisible: true),
         );
       case SidebarSection.terminal:
         return _SidebarPanelConfig(
@@ -751,6 +917,9 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
           icon: CupertinoIcons.square_grid_2x2,
           child: const GxTestPanel(),
         );
+      case SidebarSection.extensions:
+        // Extensions retiré de la sidebar, mais gardé pour compatibilité
+        return null;
     }
   }
 }
@@ -777,20 +946,25 @@ class _NotilusWidgetsPanel extends StatelessWidget {
     
     return Selector<SettingsService, double>(
       selector: (_, settings) => settings.panelTransparency,
-      builder: (context, panelTransparency, _) => Container(
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: NetworkImage(context.watch<WallpaperManager>().current),
-            fit: BoxFit.cover,
-            colorFilter: ColorFilter.mode(
-              Colors.black.withValues(alpha: 0.85),
-              BlendMode.srcOver,
-            ),
+      builder: (context, panelTransparency, _) {
+        final wallpaperManager = context.watch<WallpaperManager>();
+        final wallpaperUrl = wallpaperManager.currentImageUrl;
+        return Container(
+          decoration: BoxDecoration(
+            image: wallpaperUrl.isNotEmpty
+                ? DecorationImage(
+                    image: NetworkImage(wallpaperUrl),
+                    fit: BoxFit.cover,
+                    colorFilter: ColorFilter.mode(
+                      Colors.black.withOpacity(0.85),
+                      BlendMode.srcOver,
+                    ),
+                  )
+                : null,
           ),
-        ),
-        child: Container(
-          color: Colors.black.withValues(alpha: 1.0 - panelTransparency),
-          child: Column(
+          child: Container(
+            color: Colors.black.withOpacity((1.0 - panelTransparency).clamp(0.0, 1.0)),
+            child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
@@ -813,7 +987,7 @@ class _NotilusWidgetsPanel extends StatelessWidget {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.green.withValues(alpha: 0.5),
+                          color: Colors.green.withOpacity(0.5),
                           blurRadius: 4,
                         ),
                       ],
@@ -879,7 +1053,8 @@ class _NotilusWidgetsPanel extends StatelessWidget {
           ],
         ),
       ),
-      ),
+      );
+      },
     );
   }
 
@@ -909,8 +1084,8 @@ class _SystemWidgetTile extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        color: Colors.white.withValues(alpha: 0.05),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        color: Colors.white.withOpacity(0.05),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Row(
         children: [
@@ -918,7 +1093,7 @@ class _SystemWidgetTile extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: widget.valueColor.withValues(alpha: 0.15),
+              color: widget.valueColor.withOpacity(0.15),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(widget.icon, color: widget.valueColor, size: 18),
@@ -940,7 +1115,7 @@ class _SystemWidgetTile extends StatelessWidget {
                 Text(
                   widget.subtitle,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.5),
+                    color: Colors.white.withOpacity(0.5),
                     fontSize: 10,
                   ),
                 ),
@@ -950,7 +1125,7 @@ class _SystemWidgetTile extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: widget.valueColor.withValues(alpha: 0.15),
+              color: widget.valueColor.withOpacity(0.15),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
@@ -1001,19 +1176,24 @@ class _NotilusAiPanelState extends State<_NotilusAiPanel> {
     final gxRed = Provider.of<ColorThemeManager>(context).nativeSecondaryColor;
     final gxRedDark = Provider.of<ColorThemeManager>(context).primaryDarkColor;
     
+    final wallpaperManager = context.watch<WallpaperManager>();
+    final wallpaperUrl = wallpaperManager.currentImageUrl;
+    
     return Container(
       decoration: BoxDecoration(
-        image: DecorationImage(
-          image: NetworkImage(context.watch<WallpaperManager>().current),
-          fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(
-            Colors.black.withValues(alpha: 0.85),
-            BlendMode.srcOver,
+        image: wallpaperUrl.isNotEmpty
+            ? DecorationImage(
+                image: NetworkImage(wallpaperUrl),
+                fit: BoxFit.cover,
+                colorFilter: ColorFilter.mode(
+                  Colors.black.withOpacity(0.85),
+                  BlendMode.srcOver,
+                ),
+              )
+            : null,
           ),
-        ),
-      ),
-      child: Container(
-        color: Colors.black.withValues(alpha: 0.5),
+          child: Container(
+        color: Colors.black.withOpacity(0.5),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1034,7 +1214,7 @@ class _NotilusAiPanelState extends State<_NotilusAiPanel> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: gxRed.withValues(alpha: 0.2),
+                      color: gxRed.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
@@ -1089,12 +1269,12 @@ class _NotilusAiPanelState extends State<_NotilusAiPanel> {
                           borderRadius: BorderRadius.circular(12),
                           gradient: LinearGradient(
                             colors: [
-                              gxRed.withValues(alpha: 0.15),
-                              gxRedDark.withValues(alpha: 0.15),
+                              gxRed.withOpacity(0.15),
+                              gxRedDark.withOpacity(0.15),
                             ],
                           ),
                           border: Border.all(
-                            color: gxRed.withValues(alpha: 0.3),
+                            color: gxRed.withOpacity(0.3),
                             width: 1,
                           ),
                         ),
@@ -1126,15 +1306,21 @@ class _NotilusAiPanelState extends State<_NotilusAiPanel> {
                               decoration: InputDecoration(
                                 hintText: 'Décrivez ce que vous voulez faire...',
                                 hintStyle: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.3),
+                                  color: Colors.white.withOpacity(0.3),
                                   fontSize: 12,
                                 ),
                                 filled: true,
-                                fillColor: Colors.black.withValues(alpha: 0.3),
+                                fillColor: Colors.transparent,
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(8),
                                   borderSide: BorderSide.none,
                                 ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide.none,
+                                ),
+                                focusedBorder: InputBorder.none,
+                                focusedErrorBorder: InputBorder.none,
                                 contentPadding: const EdgeInsets.all(12),
                               ),
                             ),
@@ -1145,7 +1331,7 @@ class _NotilusAiPanelState extends State<_NotilusAiPanel> {
                                   child: Text(
                                     'Ex: "Résume cette page", "Trouve des alternatives"',
                                     style: TextStyle(
-                                      color: Colors.white.withValues(alpha: 0.4),
+                                      color: Colors.white.withOpacity(0.4),
                                       fontSize: 9,
                                     ),
                                   ),
@@ -1153,11 +1339,10 @@ class _NotilusAiPanelState extends State<_NotilusAiPanel> {
                                 InkWell(
                                   onTap: () {
                                     if (_promptController.text.isNotEmpty) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text('Fonctionnalité AI en développement'),
-                                          backgroundColor: gxRed,
-                                        ),
+                                      GxNotificationService().showInfo(
+                                        title: 'Information',
+                                        message: 'Fonctionnalité AI en développement',
+                                        context: context,
                                       );
                                     }
                                   },
@@ -1195,7 +1380,7 @@ class _NotilusAiPanelState extends State<_NotilusAiPanel> {
                       Text(
                         'Actions rapides',
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.5),
+                          color: Colors.white.withOpacity(0.5),
                           fontSize: 10,
                           fontWeight: FontWeight.w600,
                         ),
@@ -1234,20 +1419,19 @@ class _QuickActionChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('$label: fonctionnalité AI en développement'),
-            backgroundColor: color,
-          ),
+        GxNotificationService().showInfo(
+          title: 'Information',
+          message: '$label: fonctionnalité AI en développement',
+          context: context,
         );
       },
       borderRadius: BorderRadius.circular(20),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
+          color: color.withOpacity(0.1),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
+          border: Border.all(color: color.withOpacity(0.3)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -1293,12 +1477,12 @@ class _AiToggleTile extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         color: value 
-            ? gxRed.withValues(alpha: 0.08)
-            : Colors.white.withValues(alpha: 0.05),
+            ? gxRed.withOpacity(0.08)
+            : Colors.white.withOpacity(0.05),
         border: Border.all(
           color: value 
-              ? gxRed.withValues(alpha: 0.3)
-              : Colors.white.withValues(alpha: 0.1),
+              ? gxRed.withOpacity(0.3)
+              : Colors.white.withOpacity(0.1),
         ),
       ),
       child: Row(
@@ -1308,14 +1492,14 @@ class _AiToggleTile extends StatelessWidget {
             height: 32,
             decoration: BoxDecoration(
               color: value 
-                  ? gxRed.withValues(alpha: 0.2)
-                  : Colors.white.withValues(alpha: 0.1),
+                  ? gxRed.withOpacity(0.2)
+                  : Colors.white.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
               icon,
               size: 16,
-              color: value ? gxRed : Colors.white.withValues(alpha: 0.5),
+              color: value ? gxRed : Colors.white.withOpacity(0.5),
             ),
           ),
           const SizedBox(width: 12),
@@ -1326,7 +1510,7 @@ class _AiToggleTile extends StatelessWidget {
                 Text(
                   title,
                   style: TextStyle(
-                    color: value ? Colors.white : Colors.white.withValues(alpha: 0.8),
+                    color: value ? Colors.white : Colors.white.withOpacity(0.8),
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
@@ -1335,7 +1519,7 @@ class _AiToggleTile extends StatelessWidget {
                 Text(
                   subtitle,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.5),
+                    color: Colors.white.withOpacity(0.5),
                     fontSize: 10,
                   ),
                 ),
@@ -1345,7 +1529,7 @@ class _AiToggleTile extends StatelessWidget {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeTrackColor: gxRed.withValues(alpha: 0.5),
+            activeTrackColor: gxRed.withOpacity(0.5),
             activeColor: gxRed,
           ),
         ],
@@ -1380,19 +1564,24 @@ class _NotilusUpdatesPanelState extends State<_NotilusUpdatesPanel> {
     final theme = Theme.of(context);
     final gxRed = Provider.of<ColorThemeManager>(context).nativeSecondaryColor;
     
+    final wallpaperManager = context.watch<WallpaperManager>();
+    final wallpaperUrl = wallpaperManager.currentImageUrl;
+    
     return Container(
       decoration: BoxDecoration(
-        image: DecorationImage(
-          image: NetworkImage(context.watch<WallpaperManager>().current),
-          fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(
-            Colors.black.withValues(alpha: 0.85),
-            BlendMode.srcOver,
+        image: wallpaperUrl.isNotEmpty
+            ? DecorationImage(
+                image: NetworkImage(wallpaperUrl),
+                fit: BoxFit.cover,
+                colorFilter: ColorFilter.mode(
+                  Colors.black.withOpacity(0.85),
+                  BlendMode.srcOver,
+                ),
+              )
+            : null,
           ),
-        ),
-      ),
-      child: Container(
-        color: Colors.black.withValues(alpha: 0.5),
+          child: Container(
+        color: Colors.black.withOpacity(0.5),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1413,7 +1602,7 @@ class _NotilusUpdatesPanelState extends State<_NotilusUpdatesPanel> {
                   Text(
                     'v${_updateService.version}',
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.5),
+                      color: Colors.white.withOpacity(0.5),
                       fontSize: 10,
                     ),
                   ),
@@ -1434,12 +1623,12 @@ class _NotilusUpdatesPanelState extends State<_NotilusUpdatesPanel> {
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            gxRed.withValues(alpha: 0.2),
-                            gxRed.withValues(alpha: 0.1),
+                            gxRed.withOpacity(0.2),
+                            gxRed.withOpacity(0.1),
                           ],
                         ),
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: gxRed.withValues(alpha: 0.3)),
+                        border: Border.all(color: gxRed.withOpacity(0.3)),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -1479,7 +1668,7 @@ class _NotilusUpdatesPanelState extends State<_NotilusUpdatesPanel> {
                 child: Text(
                   'Dernière vérification: ${_updateService.formatRelativeDate(_updateService.lastCheck!)}',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.4),
+                    color: Colors.white.withOpacity(0.4),
                     fontSize: 9,
                   ),
                 ),
@@ -1490,7 +1679,7 @@ class _NotilusUpdatesPanelState extends State<_NotilusUpdatesPanel> {
               child: Text(
                 'Changements récents',
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.6),
+                  color: Colors.white.withOpacity(0.6),
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
                 ),
@@ -1526,7 +1715,7 @@ class _NotilusUpdatesPanelState extends State<_NotilusUpdatesPanel> {
                           Text(
                             'Notilus v${_updateService.version}',
                             style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.5),
+                              color: Colors.white.withOpacity(0.5),
                               fontSize: 11,
                             ),
                           ),
@@ -1587,11 +1776,11 @@ class _UpdateCard extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        color: Colors.white.withValues(alpha: 0.05),
+        color: Colors.white.withOpacity(0.05),
         border: Border.all(
           color: isNew
-              ? gxRed.withValues(alpha: 0.4)
-              : Colors.white.withValues(alpha: 0.1),
+              ? gxRed.withOpacity(0.4)
+              : Colors.white.withOpacity(0.1),
           width: 1,
         ),
       ),
@@ -1609,7 +1798,7 @@ class _UpdateCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: gxRed.withValues(alpha: 0.2),
+                    color: gxRed.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
@@ -1639,7 +1828,7 @@ class _UpdateCard extends StatelessWidget {
           Text(
             description,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.6),
+              color: Colors.white.withOpacity(0.6),
               fontSize: 10,
             ),
           ),
@@ -1649,13 +1838,13 @@ class _UpdateCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.1),
+                  color: Colors.white.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
                   category.label,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.5),
+                    color: Colors.white.withOpacity(0.5),
                     fontSize: 8,
                     fontWeight: FontWeight.w500,
                   ),
@@ -1665,7 +1854,7 @@ class _UpdateCard extends StatelessWidget {
               Text(
                 date,
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.4),
+                  color: Colors.white.withOpacity(0.4),
                   fontSize: 9,
                 ),
               ),

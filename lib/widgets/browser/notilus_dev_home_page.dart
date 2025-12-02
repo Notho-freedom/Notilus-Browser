@@ -14,7 +14,7 @@ import '../../models/history_item.dart';
 import '../../services/favicon_service.dart';
 import '../../core/utils/url_validator.dart';
 import '../../core/services/color_theme_manager.dart';
-import '../common/notilus_monogram.dart';
+import '../common/notilus_logo_image.dart';
 
 /// Page d'accueil Notilus Dev - Style développeur/IDE immersif
 class NotilusDevHomePage extends StatefulWidget {
@@ -219,17 +219,20 @@ class _NotilusDevHomePageState extends State<NotilusDevHomePage>
     final theme = Theme.of(context);
     final gxRed = Provider.of<ColorThemeManager>(context, listen: true).nativeSecondaryColor;
     final wallpaperManager = context.watch<WallpaperManager>();
+    final currentUrl = wallpaperManager.current;
     
     return Container(
       decoration: BoxDecoration(
-        image: DecorationImage(
-          image: CachedNetworkImageProvider(wallpaperManager.current),
-          fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(
-            Colors.black.withValues(alpha: 0.92),
-            BlendMode.srcOver,
-          ),
-        ),
+        image: currentUrl.isNotEmpty && !wallpaperManager.isVideo
+            ? DecorationImage(
+                image: CachedNetworkImageProvider(currentUrl),
+                fit: BoxFit.cover,
+                colorFilter: ColorFilter.mode(
+                  Colors.black.withOpacity(0.92),
+                  BlendMode.srcOver,
+                ),
+              )
+            : null,
       ),
       child: Stack(
         children: [
@@ -312,7 +315,7 @@ class _NotilusDevHomePageState extends State<NotilusDevHomePage>
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
-            color: gxRed.withValues(alpha: 0.15),
+            color: gxRed.withOpacity(0.15),
             width: 1,
           ),
         ),
@@ -322,9 +325,9 @@ class _NotilusDevHomePageState extends State<NotilusDevHomePage>
           // Logo + Version
           Row(
             children: [
-              NotilusMonogram(size: 18)
+              const NotilusMonogramImage(size: 18)
                   .animate(onPlay: (c) => c.repeat())
-                  .shimmer(duration: 3000.ms, color: gxRed.withValues(alpha: 0.3)),
+                  .shimmer(duration: 3000.ms, color: gxRed.withOpacity(0.3)),
               const SizedBox(width: 10),
               Text(
                 'NOTILUS',
@@ -340,9 +343,9 @@ class _NotilusDevHomePageState extends State<NotilusDevHomePage>
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: gxRed.withValues(alpha: 0.15),
+                  color: gxRed.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: gxRed.withValues(alpha: 0.3)),
+                  border: Border.all(color: gxRed.withOpacity(0.3)),
                 ),
                 child: Text(
                   'DEV',
@@ -372,9 +375,9 @@ class _NotilusDevHomePageState extends State<NotilusDevHomePage>
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.3),
+                  color: Colors.black.withOpacity(0.3),
                   borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: gxRed.withValues(alpha: 0.2)),
+                  border: Border.all(color: gxRed.withOpacity(0.2)),
                 ),
                 child: Text(
                   _currentTime,
@@ -400,7 +403,7 @@ class _NotilusDevHomePageState extends State<NotilusDevHomePage>
   Widget _buildHeaderMetric(IconData icon, String value, Color gxRed) {
     return Row(
       children: [
-        Icon(icon, size: 12, color: gxRed.withValues(alpha: 0.7)),
+        Icon(icon, size: 12, color: gxRed.withOpacity(0.7)),
         const SizedBox(width: 4),
         Text(
           value,
@@ -408,7 +411,7 @@ class _NotilusDevHomePageState extends State<NotilusDevHomePage>
             fontFamily: 'JetBrains Mono',
             fontSize: 10,
             fontWeight: FontWeight.w500,
-            color: Colors.white.withValues(alpha: 0.7),
+            color: Colors.white.withOpacity(0.7),
           ),
         ),
       ],
@@ -454,7 +457,7 @@ class _NotilusDevHomePageState extends State<NotilusDevHomePage>
             style: TextStyle(
               fontFamily: 'JetBrains Mono',
               fontSize: 10,
-              color: gxRed.withValues(alpha: 0.5),
+              color: gxRed.withOpacity(0.5),
               letterSpacing: 0.5,
             ),
           ),
@@ -467,12 +470,12 @@ class _NotilusDevHomePageState extends State<NotilusDevHomePage>
               color: const Color(0xFF0D0D12),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: gxRed.withValues(alpha: 0.4),
+                color: gxRed.withOpacity(0.4),
                 width: 1.5,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: gxRed.withValues(alpha: 0.1),
+                  color: gxRed.withOpacity(0.1),
                   blurRadius: 20,
                   spreadRadius: 0,
                 ),
@@ -506,9 +509,11 @@ class _NotilusDevHomePageState extends State<NotilusDevHomePage>
                       hintStyle: TextStyle(
                         fontFamily: 'JetBrains Mono',
                         fontSize: 14,
-                        color: Colors.white.withValues(alpha: 0.25),
+                        color: Colors.white.withOpacity(0.25),
                       ),
                       border: InputBorder.none,
+                      fillColor: Colors.transparent,
+                      filled: true,
                     ),
                     onSubmitted: _handleCommand,
                     cursorColor: gxRed,
@@ -518,12 +523,12 @@ class _NotilusDevHomePageState extends State<NotilusDevHomePage>
                   margin: const EdgeInsets.only(right: 8),
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    color: gxRed.withValues(alpha: 0.15),
+                    color: gxRed.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Row(
                     children: [
-                      Icon(CupertinoIcons.command, size: 10, color: gxRed.withValues(alpha: 0.7)),
+                      Icon(CupertinoIcons.command, size: 10, color: gxRed.withOpacity(0.7)),
                       const SizedBox(width: 4),
                       Text(
                         'K',
@@ -531,7 +536,7 @@ class _NotilusDevHomePageState extends State<NotilusDevHomePage>
                           fontFamily: 'JetBrains Mono',
                           fontSize: 10,
                           fontWeight: FontWeight.w600,
-                          color: gxRed.withValues(alpha: 0.7),
+                          color: gxRed.withOpacity(0.7),
                         ),
                       ),
                     ],
@@ -578,10 +583,10 @@ class _NotilusDevHomePageState extends State<NotilusDevHomePage>
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.03),
+            color: Colors.white.withOpacity(0.03),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: gxRed.withValues(alpha: 0.2),
+              color: gxRed.withOpacity(0.2),
               width: 1,
             ),
           ),
@@ -607,7 +612,7 @@ class _NotilusDevHomePageState extends State<NotilusDevHomePage>
                     style: TextStyle(
                       fontFamily: 'JetBrains Mono',
                       fontSize: 9,
-                      color: gxRed.withValues(alpha: 0.6),
+                      color: gxRed.withOpacity(0.6),
                     ),
                   ),
                 ],
@@ -642,10 +647,10 @@ class _NotilusDevHomePageState extends State<NotilusDevHomePage>
       width: 280,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.3),
+        color: Colors.black.withOpacity(0.3),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: gxRed.withValues(alpha: 0.15),
+          color: gxRed.withOpacity(0.15),
           width: 1,
         ),
       ),
@@ -716,7 +721,7 @@ class _NotilusDevHomePageState extends State<NotilusDevHomePage>
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.05),
+                  color: Colors.white.withOpacity(0.05),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
@@ -724,7 +729,7 @@ class _NotilusDevHomePageState extends State<NotilusDevHomePage>
                   style: TextStyle(
                     fontFamily: 'JetBrains Mono',
                     fontSize: 9,
-                    color: Colors.white.withValues(alpha: 0.4),
+                    color: Colors.white.withOpacity(0.4),
                   ),
                 ),
               ),
@@ -739,10 +744,10 @@ class _NotilusDevHomePageState extends State<NotilusDevHomePage>
     return Container(
       width: 280,
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.3),
+        color: Colors.black.withOpacity(0.3),
         border: Border(
           left: BorderSide(
-            color: gxRed.withValues(alpha: 0.15),
+            color: gxRed.withOpacity(0.15),
             width: 1,
           ),
         ),
@@ -756,7 +761,7 @@ class _NotilusDevHomePageState extends State<NotilusDevHomePage>
             decoration: BoxDecoration(
               border: Border(
                 bottom: BorderSide(
-                  color: gxRed.withValues(alpha: 0.1),
+                  color: gxRed.withOpacity(0.1),
                   width: 1,
                 ),
               ),
@@ -807,10 +812,10 @@ class _NotilusDevHomePageState extends State<NotilusDevHomePage>
           padding: const EdgeInsets.all(10),
           margin: const EdgeInsets.only(bottom: 8),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.02),
+            color: Colors.white.withOpacity(0.02),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.05),
+              color: Colors.white.withOpacity(0.05),
               width: 1,
             ),
           ),
@@ -829,7 +834,7 @@ class _NotilusDevHomePageState extends State<NotilusDevHomePage>
                         errorBuilder: (_, __, ___) => Icon(
                           CupertinoIcons.globe,
                           size: 16,
-                          color: gxRed.withValues(alpha: 0.5),
+                          color: gxRed.withOpacity(0.5),
                         ),
                       ),
                     );
@@ -837,7 +842,7 @@ class _NotilusDevHomePageState extends State<NotilusDevHomePage>
                   return Icon(
                     CupertinoIcons.globe,
                     size: 16,
-                    color: gxRed.withValues(alpha: 0.5),
+                    color: gxRed.withOpacity(0.5),
                   );
                 },
               ),
@@ -861,7 +866,7 @@ class _NotilusDevHomePageState extends State<NotilusDevHomePage>
                       Uri.parse(item.url).host.replaceFirst('www.', ''),
                       style: TextStyle(
                         fontSize: 9,
-                        color: Colors.white.withValues(alpha: 0.4),
+                        color: Colors.white.withOpacity(0.4),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -884,10 +889,10 @@ class _NotilusDevHomePageState extends State<NotilusDevHomePage>
       height: 32,
       padding: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.3),
+        color: Colors.black.withOpacity(0.3),
         border: Border(
           top: BorderSide(
-            color: gxRed.withValues(alpha: 0.15),
+            color: gxRed.withOpacity(0.15),
             width: 1,
           ),
         ),
@@ -905,7 +910,7 @@ class _NotilusDevHomePageState extends State<NotilusDevHomePage>
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF34C759).withValues(alpha: 0.5),
+                      color: const Color(0xFF34C759).withOpacity(0.5),
                       blurRadius: 4,
                     ),
                   ],
@@ -917,14 +922,14 @@ class _NotilusDevHomePageState extends State<NotilusDevHomePage>
                 style: TextStyle(
                   fontFamily: 'JetBrains Mono',
                   fontSize: 9,
-                  color: Colors.white.withValues(alpha: 0.5),
+                  color: Colors.white.withOpacity(0.5),
                 ),
               ),
               const SizedBox(width: 16),
               Text(
                 '•',
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.2),
+                  color: Colors.white.withOpacity(0.2),
                 ),
               ),
               const SizedBox(width: 16),
@@ -935,7 +940,7 @@ class _NotilusDevHomePageState extends State<NotilusDevHomePage>
                   style: TextStyle(
                     fontFamily: 'JetBrains Mono',
                     fontSize: 9,
-                    color: Colors.white.withValues(alpha: 0.5),
+                    color: Colors.white.withOpacity(0.5),
                   ),
                 ),
               ),
@@ -970,7 +975,7 @@ class _NotilusDevHomePageState extends State<NotilusDevHomePage>
           style: TextStyle(
             fontFamily: 'JetBrains Mono',
             fontSize: 9,
-            color: Colors.white.withValues(alpha: 0.4),
+            color: Colors.white.withOpacity(0.4),
           ),
         ),
         Text(
@@ -979,7 +984,7 @@ class _NotilusDevHomePageState extends State<NotilusDevHomePage>
             fontFamily: 'JetBrains Mono',
             fontSize: 9,
             fontWeight: FontWeight.w600,
-            color: gxRed.withValues(alpha: 0.7),
+            color: gxRed.withOpacity(0.7),
           ),
         ),
       ],
@@ -1003,7 +1008,7 @@ class _TechGridPainter extends CustomPainter {
 
     final spacing = 60.0;
     final opacity = 0.03 + (math.sin(progress * math.pi) * 0.02);
-    paint.color = color.withValues(alpha: opacity);
+    paint.color = color.withOpacity(opacity);
 
     // Grille horizontale
     for (double y = 0; y < size.height; y += spacing) {
@@ -1017,7 +1022,7 @@ class _TechGridPainter extends CustomPainter {
 
     // Points aux intersections
     final pointPaint = Paint()
-      ..color = color.withValues(alpha: opacity * 2)
+      ..color = color.withOpacity((opacity * 2).clamp(0.0, 1.0))
       ..style = PaintingStyle.fill;
 
     for (double x = 0; x < size.width; x += spacing) {
@@ -1040,7 +1045,7 @@ class _ScanlinePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.03)
+      ..color = Colors.white.withOpacity(0.03)
       ..strokeWidth = 1;
 
     // Lignes de scan

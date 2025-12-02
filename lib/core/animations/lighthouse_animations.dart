@@ -2,7 +2,6 @@
 library lighthouse_animations;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
 
 /// Animation de fade-in avec délai
 class LighthouseFadeIn extends StatefulWidget {

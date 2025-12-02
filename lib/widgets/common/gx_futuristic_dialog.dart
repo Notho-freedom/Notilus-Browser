@@ -9,6 +9,7 @@ import '../../core/constants/notilus_colors.dart';
 import '../../core/constants/notilus_fonts.dart';
 import '../../core/services/color_theme_manager.dart';
 import '../../services/settings_service.dart';
+import '../../services/sound_effects_service.dart';
 import 'gx_futuristic_components.dart';
 
 /// Dialog futuriste avec contours géométriques façon OS SF
@@ -21,6 +22,7 @@ class GxFuturisticDialog extends StatelessWidget {
   final double? height;
   final Color? accentColor;
   final bool showCloseButton;
+  final bool disableScroll;
 
   const GxFuturisticDialog({
     super.key,
@@ -32,6 +34,7 @@ class GxFuturisticDialog extends StatelessWidget {
     this.height,
     this.accentColor,
     this.showCloseButton = true,
+    this.disableScroll = false,
   });
 
   /// Affiche un dialog futuriste (méthode statique pour faciliter l'utilisation)
@@ -46,11 +49,18 @@ class GxFuturisticDialog extends StatelessWidget {
     Color? accentColor,
     bool showCloseButton = true,
     bool barrierDismissible = true,
+    bool disableScroll = false,
   }) {
+    // Jouer le son d'ouverture
+    SoundEffectsService().playPopOpen();
+    
+    final settings = SettingsService();
+    final barrierOpacity = settings.dialogBarrierOpacity;
+    
     return showDialog<T>(
       context: context,
       barrierDismissible: barrierDismissible,
-      barrierColor: Colors.black.withOpacity(0.85),
+      barrierColor: Colors.black.withOpacity(barrierOpacity),
       builder: (context) => GxFuturisticDialog(
         title: title,
         titleIcon: titleIcon,
@@ -59,9 +69,14 @@ class GxFuturisticDialog extends StatelessWidget {
         height: height,
         accentColor: accentColor,
         showCloseButton: showCloseButton,
+        disableScroll: disableScroll,
         child: child,
       ),
-    );
+    ).then((value) {
+      // Jouer le son de fermeture
+      SoundEffectsService().playPopClose();
+      return value;
+    });
   }
 
   @override
@@ -94,14 +109,16 @@ class GxFuturisticDialog extends StatelessWidget {
         child: RepaintBoundary(
           child: Container(
             width: width ?? 500,
-            height: height,
             constraints: BoxConstraints(
               maxWidth: MediaQuery.of(context).size.width * 0.9,
-              maxHeight: MediaQuery.of(context).size.height * 0.9,
+              maxHeight: height ?? MediaQuery.of(context).size.height * 0.9,
             ),
             child: ClipRect(
               child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                filter: ImageFilter.blur(
+                  sigmaX: settings.dialogBlurIntensity,
+                  sigmaY: settings.dialogBlurIntensity,
+                ),
                 child: Container(
                   decoration: BoxDecoration(
                     color: bgColor.withOpacity(panelOpacity.clamp(0.0, 1.0)),
@@ -130,17 +147,27 @@ class GxFuturisticDialog extends StatelessWidget {
                             ),
                           
                           // Contenu principal
-                          Flexible(
-                            child: SingleChildScrollView(
-                              padding: EdgeInsets.only(
-                                top: title != null ? 0 : 24,
-                                left: 24,
-                                right: 24,
-                                bottom: actions != null ? 0 : 24,
-                              ),
-                              child: child,
-                            ),
-                          ),
+                          disableScroll
+                              ? Padding(
+                                  padding: EdgeInsets.only(
+                                    top: title != null ? 0 : 24,
+                                    left: 24,
+                                    right: 24,
+                                    bottom: actions != null ? 0 : 24,
+                                  ),
+                                  child: child,
+                                )
+                              : Flexible(
+                                  child: SingleChildScrollView(
+                                    padding: EdgeInsets.only(
+                                      top: title != null ? 0 : 24,
+                                      left: 24,
+                                      right: 24,
+                                      bottom: actions != null ? 0 : 24,
+                                    ),
+                                    child: child,
+                                  ),
+                                ),
                           
                           // Actions
                           if (actions != null)

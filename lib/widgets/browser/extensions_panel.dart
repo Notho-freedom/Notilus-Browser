@@ -221,7 +221,12 @@ class _ExtensionsPanelState extends State<ExtensionsPanel> {
               await _extensionService.toggleExtension(extension.id, value);
               setState(() {});
             },
-            activeThumbColor: theme.colorScheme.primary,
+            thumbColor: WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.selected)) {
+                return theme.colorScheme.primary;
+              }
+              return null;
+            }),
           ),
         ],
       ),

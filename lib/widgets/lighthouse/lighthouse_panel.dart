@@ -11,6 +11,7 @@ import '../../services/lighthouse/report_generator.dart';
 import '../../services/lighthouse/audit_history_service.dart';
 import '../../models/lighthouse/audit_models.dart';
 import '../../core/services/color_theme_manager.dart';
+import '../../services/gx_notification_service.dart';
 import 'package:flutter/services.dart';
 import 'history_trends_panel.dart';
 import 'ai_advisor_panel.dart';
@@ -376,36 +377,32 @@ class _LighthousePanelState extends State<LighthousePanel>
     try {
       final filePath = await ReportGenerator.saveReport(result, format);
       if (filePath != null && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Rapport exporté: ${filePath.split('/').last}'),
-            backgroundColor: accentColor,
-            action: SnackBarAction(
-              label: 'Copier le chemin',
-              onPressed: () {
-                Clipboard.setData(ClipboardData(text: filePath));
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: const Text('Chemin copié'), backgroundColor: accentColor),
-                );
-              },
-            ),
-          ),
+        GxNotificationService().showSuccess(
+          title: 'Rapport exporté',
+          message: 'Rapport exporté: ${filePath.split('/').last}',
+          context: context,
+          onTap: () {
+            Clipboard.setData(ClipboardData(text: filePath));
+            GxNotificationService().showSuccess(
+              title: 'Copié',
+              message: 'Chemin copié',
+              context: context,
+            );
+          },
         );
       } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Erreur lors de l\'export'),
-            backgroundColor: Colors.red,
-          ),
+        GxNotificationService().showError(
+          title: 'Erreur',
+          message: 'Erreur lors de l\'export',
+          context: context,
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur: $e'),
-            backgroundColor: Colors.red,
-          ),
+        GxNotificationService().showError(
+          title: 'Erreur',
+          message: 'Erreur: $e',
+          context: context,
         );
       }
     }

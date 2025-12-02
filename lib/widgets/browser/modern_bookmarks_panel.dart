@@ -6,6 +6,9 @@ import '../../models/bookmark.dart';
 import '../../services/tab_manager.dart';
 import '../../core/services/wallpaper_manager.dart';
 import '../../core/services/color_theme_manager.dart';
+import '../common/gx_futuristic_dialog.dart';
+import '../common/gx_futuristic_components.dart';
+import '../../services/gx_notification_service.dart';
 
 class ModernBookmarksPanel extends StatefulWidget {
   const ModernBookmarksPanel({super.key});
@@ -41,108 +44,109 @@ class _ModernBookmarksPanelState extends State<ModernBookmarksPanel> {
     final descController = TextEditingController();
     final tagsController = TextEditingController();
 
-    return showDialog<Map<String, String>>(
+    return GxFuturisticDialog.show<Map<String, String>>(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A20),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            if (favicon != null)
-              Image.network(
-                favicon,
-                width: 24,
-                height: 24,
-                errorBuilder: (_, __, ___) => Icon(CupertinoIcons.bookmark_fill, color: accentColor, size: 24),
-              )
-            else
-              Icon(CupertinoIcons.bookmark_fill, color: accentColor, size: 24),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Text(
-                'Ajouter aux favoris',
-                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
-              ),
+      title: 'Ajouter aux favoris',
+      titleIcon: CupertinoIcons.bookmark_fill,
+      accentColor: accentColor,
+      width: 500,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (favicon != null)
+            Row(
+              children: [
+                Image.network(
+                  favicon,
+                  width: 24,
+                  height: 24,
+                  errorBuilder: (_, __, ___) => Icon(CupertinoIcons.bookmark_fill, color: accentColor, size: 24),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    url,
+                    style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 10),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            )
+          else
+            Text(
+              url,
+              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 10),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-          ],
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                url,
-                style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 10),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: titleController,
-                style: const TextStyle(color: Colors.white, fontSize: 13),
-                decoration: InputDecoration(
-                  labelText: 'Titre',
-                  labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: accentColor),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: descController,
-                style: const TextStyle(color: Colors.white, fontSize: 13),
-                maxLines: 2,
-                decoration: InputDecoration(
-                  labelText: 'Description (optionnel)',
-                  labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: accentColor),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: tagsController,
-                style: const TextStyle(color: Colors.white, fontSize: 13),
-                decoration: InputDecoration(
-                  labelText: 'Tags (séparés par virgule)',
-                  labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-                  hintText: 'ex: travail, dev, docs',
-                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 11),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: accentColor),
-                  ),
-                ),
-              ),
-            ],
+          const SizedBox(height: 16),
+          TextField(
+            controller: titleController,
+            style: const TextStyle(color: Colors.white, fontSize: 13),
+            decoration: InputDecoration(
+              labelText: 'Titre',
+              labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              focusedBorder: InputBorder.none,
+              focusedErrorBorder: InputBorder.none,
+              fillColor: Colors.transparent,
+              filled: true,
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Annuler', style: TextStyle(color: Colors.white.withOpacity(0.6))),
+          const SizedBox(height: 12),
+          TextField(
+            controller: descController,
+            style: const TextStyle(color: Colors.white, fontSize: 13),
+            maxLines: 2,
+            decoration: InputDecoration(
+              labelText: 'Description (optionnel)',
+              labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              focusedBorder: InputBorder.none,
+              focusedErrorBorder: InputBorder.none,
+              fillColor: Colors.transparent,
+              filled: true,
+            ),
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context, {
-                'title': titleController.text,
-                'description': descController.text,
-                'tags': tagsController.text,
-              });
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: accentColor),
-            child: const Text('Ajouter', style: TextStyle(color: Colors.white)),
+          const SizedBox(height: 12),
+          TextField(
+            controller: tagsController,
+            style: const TextStyle(color: Colors.white, fontSize: 13),
+            decoration: InputDecoration(
+              labelText: 'Tags (séparés par virgule)',
+              labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+              hintText: 'ex: travail, dev, docs',
+              hintStyle: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 11),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              focusedBorder: InputBorder.none,
+              focusedErrorBorder: InputBorder.none,
+            ),
           ),
         ],
       ),
+      actions: [
+        GxFuturisticButton(
+          label: 'Annuler',
+          variant: GxFuturisticButtonVariant.secondary,
+          accentColor: accentColor,
+          onPressed: () => Navigator.pop(context),
+        ),
+        GxFuturisticButton(
+          label: 'Ajouter',
+          icon: CupertinoIcons.bookmark_fill,
+          variant: GxFuturisticButtonVariant.primary,
+          accentColor: accentColor,
+          onPressed: () {
+            Navigator.pop(context, {
+              'title': titleController.text,
+              'description': descController.text,
+              'tags': tagsController.text,
+            });
+          },
+        ),
+      ],
     );
   }
 
@@ -209,20 +213,18 @@ class _ModernBookmarksPanelState extends State<ModernBookmarksPanel> {
                         await _bookmarkService.addBookmark(bookmark);
                         await _refresh();
                         if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: const Text('Favori ajouté'),
-                              backgroundColor: accentColor,
-                            ),
+                          GxNotificationService().showSuccess(
+                            title: 'Favoris',
+                            message: 'Favori ajouté',
+                            context: context,
                           );
                         }
                       }
                     } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: const Text('Aucune page à ajouter aux favoris'),
-                          backgroundColor: Colors.orange,
-                        ),
+                      GxNotificationService().showWarning(
+                        title: 'Avertissement',
+                        message: 'Aucune page à ajouter aux favoris',
+                        context: context,
                       );
                     }
                   },

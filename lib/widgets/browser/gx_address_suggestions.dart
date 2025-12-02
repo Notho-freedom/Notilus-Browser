@@ -74,9 +74,9 @@ class _GXAddressSuggestionsContent extends StatelessWidget {
             minWidth: 0,
           ),
           decoration: BoxDecoration(
-            color: bgColor.withValues(alpha: panelOpacity.clamp(0.0, 1.0)),
+            color: bgColor.withOpacity(panelOpacity.clamp(0.0, 1.0)),
             border: Border.all(
-              color: accentColor.withValues(alpha: 0.4),
+              color: accentColor.withOpacity(0.4),
               width: 1.5,
             ),
           ),
@@ -90,7 +90,7 @@ class _GXAddressSuggestionsContent extends StatelessWidget {
                   thickness: MaterialStateProperty.all(2.0),
                   radius: const Radius.circular(1),
                   thumbColor: MaterialStateProperty.all(
-                    accentColor.withValues(alpha: 0.15),
+                    accentColor.withOpacity(0.15),
                   ),
                   minThumbLength: 20,
                   crossAxisMargin: 2,
@@ -153,7 +153,7 @@ class _GeometricBordersPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = accentColor.withValues(alpha: 0.6)
+      ..color = accentColor.withOpacity(0.6)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1;
 
@@ -246,9 +246,9 @@ class _CompactSuggestionItemState extends State<_CompactSuggestionItem> {
                   width: 18,
                   height: 18,
                   decoration: BoxDecoration(
-                    color: widget.accentColor.withValues(alpha: 0.15),
+                    color: widget.accentColor.withOpacity(0.15),
                     border: Border.all(
-                      color: widget.accentColor.withValues(alpha: 0.4),
+                      color: widget.accentColor.withOpacity(0.4),
                       width: 1,
                     ),
                     borderRadius: BorderRadius.circular(3),
@@ -357,9 +357,9 @@ class _CompactSuggestionItemState extends State<_CompactSuggestionItem> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: widget.accentColor.withValues(alpha: 0.1),
+                      color: widget.accentColor.withOpacity(0.1),
                       border: Border.all(
-                        color: widget.accentColor.withValues(alpha: 0.3),
+                        color: widget.accentColor.withOpacity(0.3),
                         width: 1,
                       ),
                       borderRadius: BorderRadius.circular(4),
