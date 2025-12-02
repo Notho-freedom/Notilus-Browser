@@ -462,6 +462,7 @@ class _ContentMenuButtonState extends State<_ContentMenuButton> {
   OverlayEntry? _overlayEntry;
   final GlobalKey _buttonKey = GlobalKey();
   DateTime? _menuOpenedAt;
+  bool _isDisposing = false;
 
   void _showMenu() {
     if (_overlayEntry != null) {
@@ -548,7 +549,8 @@ class _ContentMenuButtonState extends State<_ContentMenuButton> {
         // L'overlay a déjà été retiré ou n'est plus valide
         // Ignorer l'erreur
       }
-      if (mounted) {
+      // Ne pas appeler setState() si on est en train de disposer
+      if (mounted && !_isDisposing) {
         setState(() {});
       }
     }
@@ -556,6 +558,7 @@ class _ContentMenuButtonState extends State<_ContentMenuButton> {
 
   @override
   void dispose() {
+    _isDisposing = true;
     _hideMenu(force: true);
     super.dispose();
   }

@@ -1103,6 +1103,7 @@ class _BackendLabMiniPanelState extends State<BackendLabMiniPanel>
               }
             } catch (e) {
               if (mounted) {
+                // Fermer la popup de route details
                 Navigator.of(context).pop();
                 for (final controller in pathParamControllers.values) {
                   controller.dispose();
@@ -1111,6 +1112,7 @@ class _BackendLabMiniPanelState extends State<BackendLabMiniPanel>
                   controller.dispose();
                 }
                 
+                // Analyser l'erreur avec l'IA (qui va afficher et fermer la popup de transition automatiquement)
                 await _analyzeErrorWithAI(e, route, finalUri, accentColor);
               }
             }
@@ -1127,6 +1129,7 @@ class _BackendLabMiniPanelState extends State<BackendLabMiniPanel>
     Uri requestUri,
     Color accentColor,
   ) async {
+    // Afficher la popup de transition
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -1153,6 +1156,7 @@ class _BackendLabMiniPanelState extends State<BackendLabMiniPanel>
       ),
     );
 
+    // Attendre un peu pour que la popup s'affiche
     await Future.delayed(const Duration(milliseconds: 500));
 
     try {
@@ -1181,8 +1185,11 @@ Réponds UNIQUEMENT en JSON valide, sans texte avant ou après.''';
         model: settings.aiPreferredModel.isNotEmpty ? settings.aiPreferredModel : null,
       );
 
+      // Fermer la popup de transition avant d'afficher l'analyse
       if (mounted) {
         Navigator.of(context).pop();
+        // Attendre un peu pour que la fermeture soit visible
+        await Future.delayed(const Duration(milliseconds: 200));
       }
 
       if (mounted && response != null) {

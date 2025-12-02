@@ -28,6 +28,23 @@ import '../github/github_repos_panel.dart';
 import '../browser/extensions_panel.dart';
 import '../browser/cloudinary_media_manager.dart';
 import '../../services/cloudinary_service.dart';
+// Widgets autonomes
+import '../home_widgets/frontend_resources_widget.dart';
+import '../home_widgets/frontend_tools_widget.dart';
+import '../home_widgets/backend_languages_widget.dart';
+import '../home_widgets/backend_tools_widget.dart';
+import '../home_widgets/system_metrics_widget.dart';
+import '../home_widgets/command_prompt_widget.dart';
+import '../home_widgets/service_status_widget.dart';
+import '../home_widgets/infrastructure_metrics_widget.dart';
+import '../home_widgets/devops_tools_widget.dart';
+import '../home_widgets/command_center_widget.dart';
+import '../home_widgets/data_science_libraries_widget.dart';
+import '../home_widgets/data_science_tools_widget.dart';
+import '../home_widgets/quick_links_widget.dart';
+import '../home_widgets/search_bar_widget.dart';
+import '../home_widgets/developer_quotes_widget.dart';
+import '../home_widgets/time_display_widget.dart';
 
 /// Widget qui rend le contenu approprié selon le type de tile
 class MosaicTileContent extends StatelessWidget {
@@ -80,6 +97,43 @@ class MosaicTileContent extends StatelessWidget {
         return _EmptyTileContent(tile: tile);
       case MosaicTileType.custom:
         return const _CustomTileContent();
+      // Widgets Frontend
+      case MosaicTileType.frontendResources:
+        return _FrontendResourcesTileContent(tile: tile);
+      case MosaicTileType.frontendTools:
+        return _FrontendToolsTileContent(tile: tile);
+      // Widgets Backend
+      case MosaicTileType.backendLanguages:
+        return _BackendLanguagesTileContent(tile: tile);
+      case MosaicTileType.backendTools:
+        return _BackendToolsTileContent(tile: tile);
+      case MosaicTileType.systemMetrics:
+        return _SystemMetricsTileContent(tile: tile);
+      case MosaicTileType.commandPrompt:
+        return _CommandPromptTileContent(tile: tile);
+      // Widgets DevOps
+      case MosaicTileType.serviceStatus:
+        return _ServiceStatusTileContent(tile: tile);
+      case MosaicTileType.infrastructureMetrics:
+        return _InfrastructureMetricsTileContent(tile: tile);
+      case MosaicTileType.devopsTools:
+        return _DevOpsToolsTileContent(tile: tile);
+      case MosaicTileType.commandCenter:
+        return _CommandCenterTileContent(tile: tile);
+      // Widgets Data Science
+      case MosaicTileType.dataScienceLibraries:
+        return _DataScienceLibrariesTileContent(tile: tile);
+      case MosaicTileType.dataScienceTools:
+        return _DataScienceToolsTileContent(tile: tile);
+      // Widgets génériques
+      case MosaicTileType.quickLinks:
+        return _QuickLinksTileContent(tile: tile);
+      case MosaicTileType.searchBar:
+        return _SearchBarTileContent(tile: tile);
+      case MosaicTileType.developerQuotes:
+        return _DeveloperQuotesTileContent(tile: tile);
+      case MosaicTileType.timeDisplay:
+        return _TimeDisplayTileContent(tile: tile);
     }
   }
 }
@@ -1040,6 +1094,532 @@ class _CustomTileContent extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// === WIDGETS FRONTEND ===
+
+class _FrontendResourcesTileContent extends StatelessWidget {
+  final MosaicTile tile;
+
+  const _FrontendResourcesTileContent({required this.tile});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorTheme = Provider.of<ColorThemeManager>(context);
+    final accentColor = colorTheme.nativeSecondaryColor;
+    final transparency = tile.metadata['transparency'] as double? ?? 0.0;
+    
+    final resources = (tile.metadata['resources'] as List<dynamic>?)
+        ?.map((r) => FrontendResource(
+              name: r['name'] as String,
+              url: r['url'] as String,
+              emoji: r['emoji'] as String,
+              color: Color(r['color'] as int),
+            ))
+        .toList() ?? [
+      FrontendResource(name: 'React', url: 'https://react.dev', emoji: '⚛️', color: const Color(0xFF61DAFB)),
+      FrontendResource(name: 'Vue.js', url: 'https://vuejs.org', emoji: '💚', color: const Color(0xFF42B883)),
+      FrontendResource(name: 'Angular', url: 'https://angular.io', emoji: '🔺', color: const Color(0xFFDD0031)),
+      FrontendResource(name: 'Svelte', url: 'https://svelte.dev', emoji: '🔥', color: const Color(0xFFFF3E00)),
+      FrontendResource(name: 'Next.js', url: 'https://nextjs.org', emoji: '▲', color: const Color(0xFF000000)),
+      FrontendResource(name: 'Tailwind', url: 'https://tailwindcss.com', emoji: '💨', color: const Color(0xFF06B6D4)),
+      FrontendResource(name: 'TypeScript', url: 'https://typescriptlang.org', emoji: '📘', color: const Color(0xFF3178C6)),
+      FrontendResource(name: 'Vite', url: 'https://vitejs.dev', emoji: '⚡', color: const Color(0xFFBD34FE)),
+    ];
+    
+    return Container(
+      color: const Color(0xFF0D0D12),
+      padding: const EdgeInsets.all(16),
+      child: FrontendResourcesWidget(
+        resources: resources,
+        accentColor: accentColor,
+        transparency: transparency,
+      ),
+    );
+  }
+}
+
+class _FrontendToolsTileContent extends StatelessWidget {
+  final MosaicTile tile;
+
+  const _FrontendToolsTileContent({required this.tile});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorTheme = Provider.of<ColorThemeManager>(context);
+    final accentColor = colorTheme.nativeSecondaryColor;
+    final transparency = tile.metadata['transparency'] as double? ?? 0.0;
+    
+    final categories = (tile.metadata['categories'] as List<dynamic>?)
+        ?.map((c) => ToolCategory(
+              name: c['name'] as String,
+              icon: IconData(c['icon'] as int, fontFamily: 'CupertinoIcons'),
+              tools: (c['tools'] as List<dynamic>)
+                  .map((t) => DevTool(
+                        name: t['name'] as String,
+                        url: t['url'] as String,
+                        color: Color(t['color'] as int),
+                      ))
+                  .toList(),
+            ))
+        .toList() ?? [];
+    
+    return Container(
+      color: const Color(0xFF0D0D12),
+      padding: const EdgeInsets.all(16),
+      child: FrontendToolsWidget(
+        categories: categories,
+        accentColor: accentColor,
+        transparency: transparency,
+      ),
+    );
+  }
+}
+
+// === WIDGETS BACKEND ===
+
+class _BackendLanguagesTileContent extends StatelessWidget {
+  final MosaicTile tile;
+
+  const _BackendLanguagesTileContent({required this.tile});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorTheme = Provider.of<ColorThemeManager>(context);
+    final accentColor = colorTheme.nativeSecondaryColor;
+    final transparency = tile.metadata['transparency'] as double? ?? 0.0;
+    
+    final languages = (tile.metadata['languages'] as List<dynamic>?)
+        ?.map((l) => BackendLanguage(
+              name: l['name'] as String,
+              url: l['url'] as String,
+              emoji: l['emoji'] as String,
+              color: Color(l['color'] as int),
+            ))
+        .toList() ?? [
+      BackendLanguage(name: 'Node.js', url: 'https://nodejs.org', emoji: '🟢', color: const Color(0xFF339933)),
+      BackendLanguage(name: 'Python', url: 'https://python.org', emoji: '🐍', color: const Color(0xFF3776AB)),
+      BackendLanguage(name: 'Go', url: 'https://go.dev', emoji: '🔵', color: const Color(0xFF00ADD8)),
+      BackendLanguage(name: 'Rust', url: 'https://rust-lang.org', emoji: '🦀', color: const Color(0xFFDEA584)),
+      BackendLanguage(name: 'Java', url: 'https://java.com', emoji: '☕', color: const Color(0xFFED8B00)),
+      BackendLanguage(name: 'C#', url: 'https://docs.microsoft.com/dotnet/csharp/', emoji: '💜', color: const Color(0xFF512BD4)),
+      BackendLanguage(name: 'Ruby', url: 'https://ruby-lang.org', emoji: '💎', color: const Color(0xFFCC342D)),
+      BackendLanguage(name: 'PHP', url: 'https://php.net', emoji: '🐘', color: const Color(0xFF777BB4)),
+    ];
+    
+    return Container(
+      color: const Color(0xFF0D0D12),
+      padding: const EdgeInsets.all(16),
+      child: BackendLanguagesWidget(
+        languages: languages,
+        accentColor: accentColor,
+        transparency: transparency,
+      ),
+    );
+  }
+}
+
+class _BackendToolsTileContent extends StatelessWidget {
+  final MosaicTile tile;
+
+  const _BackendToolsTileContent({required this.tile});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorTheme = Provider.of<ColorThemeManager>(context);
+    final accentColor = colorTheme.nativeSecondaryColor;
+    final transparency = tile.metadata['transparency'] as double? ?? 0.0;
+    
+    final sections = (tile.metadata['sections'] as List<dynamic>?)
+        ?.map((s) => ToolSection(
+              name: s['name'] as String,
+              icon: IconData(s['icon'] as int, fontFamily: 'CupertinoIcons'),
+              tools: (s['tools'] as List<dynamic>)
+                  .map((t) => BackendTool(
+                        name: t['name'] as String,
+                        url: t['url'] as String,
+                        color: Color(t['color'] as int),
+                      ))
+                  .toList(),
+            ))
+        .toList() ?? [];
+    
+    return Container(
+      color: const Color(0xFF0D0D12),
+      padding: const EdgeInsets.all(16),
+      child: BackendToolsWidget(
+        sections: sections,
+        accentColor: accentColor,
+        transparency: transparency,
+      ),
+    );
+  }
+}
+
+class _SystemMetricsTileContent extends StatelessWidget {
+  final MosaicTile tile;
+
+  const _SystemMetricsTileContent({required this.tile});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorTheme = Provider.of<ColorThemeManager>(context);
+    final accentColor = colorTheme.nativeSecondaryColor;
+    final transparency = tile.metadata['transparency'] as double? ?? 0.0;
+    
+    return SystemMetricsWidget(
+      accentColor: accentColor,
+      transparency: transparency,
+    );
+  }
+}
+
+class _CommandPromptTileContent extends StatelessWidget {
+  final MosaicTile tile;
+
+  const _CommandPromptTileContent({required this.tile});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorTheme = Provider.of<ColorThemeManager>(context);
+    final accentColor = colorTheme.nativeSecondaryColor;
+    final transparency = tile.metadata['transparency'] as double? ?? 0.0;
+    
+    return Container(
+      color: const Color(0xFF0D0D12),
+      padding: const EdgeInsets.all(16),
+      child: CommandPromptWidget(
+        accentColor: accentColor,
+        transparency: transparency,
+        greeting: tile.metadata['greeting'] as String?,
+        subtitle: tile.metadata['subtitle'] as String?,
+      ),
+    );
+  }
+}
+
+// === WIDGETS DEVOPS ===
+
+class _ServiceStatusTileContent extends StatelessWidget {
+  final MosaicTile tile;
+
+  const _ServiceStatusTileContent({required this.tile});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorTheme = Provider.of<ColorThemeManager>(context);
+    final accentColor = colorTheme.nativeSecondaryColor;
+    final transparency = tile.metadata['transparency'] as double? ?? 0.0;
+    
+    final services = (tile.metadata['services'] as List<dynamic>?)
+        ?.map((s) => ServiceStatus(
+              name: s['name'] as String,
+              status: s['status'] as String,
+              isHealthy: s['isHealthy'] as bool,
+              uptime: s['uptime'] as String,
+              latency: s['latency'] as int,
+            ))
+        .toList() ?? [];
+    
+    return ServiceStatusWidget(
+      services: services,
+      accentColor: accentColor,
+      transparency: transparency,
+    );
+  }
+}
+
+class _InfrastructureMetricsTileContent extends StatelessWidget {
+  final MosaicTile tile;
+
+  const _InfrastructureMetricsTileContent({required this.tile});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorTheme = Provider.of<ColorThemeManager>(context);
+    final accentColor = colorTheme.nativeSecondaryColor;
+    final transparency = tile.metadata['transparency'] as double? ?? 0.0;
+    
+    return Container(
+      color: const Color(0xFF0D0D12),
+      padding: const EdgeInsets.all(16),
+      child: InfrastructureMetricsWidget(
+        accentColor: accentColor,
+        transparency: transparency,
+      ),
+    );
+  }
+}
+
+class _DevOpsToolsTileContent extends StatelessWidget {
+  final MosaicTile tile;
+
+  const _DevOpsToolsTileContent({required this.tile});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorTheme = Provider.of<ColorThemeManager>(context);
+    final accentColor = colorTheme.nativeSecondaryColor;
+    final transparency = tile.metadata['transparency'] as double? ?? 0.0;
+    
+    final categories = (tile.metadata['categories'] as List<dynamic>?)
+        ?.map((c) => DevOpsCategory(
+              name: c['name'] as String,
+              emoji: c['emoji'] as String,
+              tools: (c['tools'] as List<dynamic>)
+                  .map((t) => DevOpsTool(
+                        name: t['name'] as String,
+                        url: t['url'] as String,
+                        color: Color(t['color'] as int),
+                      ))
+                  .toList(),
+            ))
+        .toList() ?? [];
+    
+    return Container(
+      color: const Color(0xFF0D0D12),
+      padding: const EdgeInsets.all(16),
+      child: DevOpsToolsWidget(
+        categories: categories,
+        accentColor: accentColor,
+        transparency: transparency,
+      ),
+    );
+  }
+}
+
+class _CommandCenterTileContent extends StatelessWidget {
+  final MosaicTile tile;
+
+  const _CommandCenterTileContent({required this.tile});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorTheme = Provider.of<ColorThemeManager>(context);
+    final accentColor = colorTheme.nativeSecondaryColor;
+    final transparency = tile.metadata['transparency'] as double? ?? 0.0;
+    
+    return Container(
+      color: const Color(0xFF0D0D12),
+      padding: const EdgeInsets.all(16),
+      child: CommandCenterWidget(
+        accentColor: accentColor,
+        transparency: transparency,
+        greeting: tile.metadata['greeting'] as String?,
+        subtitle: tile.metadata['subtitle'] as String?,
+      ),
+    );
+  }
+}
+
+// === WIDGETS DATA SCIENCE ===
+
+class _DataScienceLibrariesTileContent extends StatelessWidget {
+  final MosaicTile tile;
+
+  const _DataScienceLibrariesTileContent({required this.tile});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorTheme = Provider.of<ColorThemeManager>(context);
+    final accentColor = colorTheme.nativeSecondaryColor;
+    final transparency = tile.metadata['transparency'] as double? ?? 0.0;
+    
+    final libraries = (tile.metadata['libraries'] as List<dynamic>?)
+        ?.map((l) => DataScienceLibrary(
+              name: l['name'] as String,
+              emoji: l['emoji'] as String,
+              url: l['url'] as String,
+              color: Color(l['color'] as int),
+            ))
+        .toList() ?? [
+      DataScienceLibrary(name: 'Python', emoji: '🐍', url: 'https://python.org', color: const Color(0xFF3776AB)),
+      DataScienceLibrary(name: 'NumPy', emoji: '🔢', url: 'https://numpy.org', color: const Color(0xFF4DABCF)),
+      DataScienceLibrary(name: 'Pandas', emoji: '🐼', url: 'https://pandas.pydata.org', color: const Color(0xFF150458)),
+      DataScienceLibrary(name: 'Scikit-learn', emoji: '🔬', url: 'https://scikit-learn.org', color: const Color(0xFFF7931E)),
+      DataScienceLibrary(name: 'TensorFlow', emoji: '🧠', url: 'https://tensorflow.org', color: const Color(0xFFFF6F00)),
+      DataScienceLibrary(name: 'PyTorch', emoji: '🔥', url: 'https://pytorch.org', color: const Color(0xFFEE4C2C)),
+      DataScienceLibrary(name: 'Jupyter', emoji: '📓', url: 'https://jupyter.org', color: const Color(0xFFF37626)),
+      DataScienceLibrary(name: 'Matplotlib', emoji: '📊', url: 'https://matplotlib.org', color: const Color(0xFF11557C)),
+    ];
+    
+    return Container(
+      color: const Color(0xFF0D0D12),
+      padding: const EdgeInsets.all(16),
+      child: DataScienceLibrariesWidget(
+        libraries: libraries,
+        accentColor: accentColor,
+        transparency: transparency,
+      ),
+    );
+  }
+}
+
+class _DataScienceToolsTileContent extends StatelessWidget {
+  final MosaicTile tile;
+
+  const _DataScienceToolsTileContent({required this.tile});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorTheme = Provider.of<ColorThemeManager>(context);
+    final accentColor = colorTheme.nativeSecondaryColor;
+    final transparency = tile.metadata['transparency'] as double? ?? 0.0;
+    
+    final categories = (tile.metadata['categories'] as List<dynamic>?)
+        ?.map((c) => DataScienceCategory(
+              name: c['name'] as String,
+              icon: IconData(c['icon'] as int, fontFamily: 'CupertinoIcons'),
+              tools: (c['tools'] as List<dynamic>)
+                  .map((t) => DataScienceTool(
+                        name: t['name'] as String,
+                        url: t['url'] as String,
+                        color: Color(t['color'] as int),
+                      ))
+                  .toList(),
+            ))
+        .toList() ?? [];
+    
+    return Container(
+      color: const Color(0xFF0D0D12),
+      padding: const EdgeInsets.all(16),
+      child: DataScienceToolsWidget(
+        categories: categories,
+        accentColor: accentColor,
+        transparency: transparency,
+      ),
+    );
+  }
+}
+
+// === WIDGETS GÉNÉRIQUES ===
+
+class _QuickLinksTileContent extends StatelessWidget {
+  final MosaicTile tile;
+
+  const _QuickLinksTileContent({required this.tile});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorTheme = Provider.of<ColorThemeManager>(context);
+    final accentColor = colorTheme.nativeSecondaryColor;
+    final transparency = tile.metadata['transparency'] as double? ?? 0.0;
+    
+    final links = (tile.metadata['links'] as List<dynamic>?)
+        ?.map((l) => QuickLink(
+              name: l['name'] as String,
+              url: l['url'] as String,
+              icon: IconData(l['icon'] as int, fontFamily: 'CupertinoIcons'),
+            ))
+        .toList() ?? [
+      QuickLink(name: 'Google', url: 'https://google.com', icon: CupertinoIcons.search),
+      QuickLink(name: 'GitHub', url: 'https://github.com', icon: CupertinoIcons.chevron_left_slash_chevron_right),
+      QuickLink(name: 'Gmail', url: 'https://mail.google.com', icon: CupertinoIcons.mail),
+      QuickLink(name: 'Calendar', url: 'https://calendar.google.com', icon: CupertinoIcons.calendar),
+    ];
+    
+    return Container(
+      color: const Color(0xFF0D0D12),
+      padding: const EdgeInsets.all(16),
+      child: Center(
+        child: QuickLinksWidget(
+          links: links,
+          accentColor: accentColor,
+          transparency: transparency,
+        ),
+      ),
+    );
+  }
+}
+
+class _SearchBarTileContent extends StatelessWidget {
+  final MosaicTile tile;
+
+  const _SearchBarTileContent({required this.tile});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorTheme = Provider.of<ColorThemeManager>(context);
+    final accentColor = colorTheme.nativeSecondaryColor;
+    final transparency = tile.metadata['transparency'] as double? ?? 0.0;
+    
+    return Container(
+      color: const Color(0xFF0D0D12),
+      padding: const EdgeInsets.all(16),
+      child: Center(
+        child: SearchBarWidget(
+          accentColor: accentColor,
+          transparency: transparency,
+          hintText: tile.metadata['hintText'] as String?,
+          maxWidth: tile.metadata['maxWidth'] as double?,
+        ),
+      ),
+    );
+  }
+}
+
+class _DeveloperQuotesTileContent extends StatelessWidget {
+  final MosaicTile tile;
+
+  const _DeveloperQuotesTileContent({required this.tile});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorTheme = Provider.of<ColorThemeManager>(context);
+    final accentColor = colorTheme.nativeSecondaryColor;
+    final transparency = tile.metadata['transparency'] as double? ?? 0.0;
+    
+    final quotes = (tile.metadata['quotes'] as List<dynamic>?)
+        ?.map((q) => q as String)
+        .toList() ?? [
+      "Design is not just what it looks like. Design is how it works. — Steve Jobs",
+      "The details are not the details. They make the design. — Charles Eames",
+      "Good design is obvious. Great design is transparent. — Joe Sparano",
+      "Simplicity is the ultimate sophistication. — Leonardo da Vinci",
+    ];
+    
+    return Container(
+      color: const Color(0xFF0D0D12),
+      padding: const EdgeInsets.all(16),
+      child: Center(
+        child: DeveloperQuotesWidget(
+          quotes: quotes,
+          accentColor: accentColor,
+          transparency: transparency,
+        ),
+      ),
+    );
+  }
+}
+
+class _TimeDisplayTileContent extends StatelessWidget {
+  final MosaicTile tile;
+
+  const _TimeDisplayTileContent({required this.tile});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorTheme = Provider.of<ColorThemeManager>(context);
+    final textColor = tile.metadata['textColor'] != null
+        ? Color(tile.metadata['textColor'] as int)
+        : null;
+    final showSeconds = tile.metadata['showSeconds'] as bool? ?? true;
+    final showDate = tile.metadata['showDate'] as bool? ?? false;
+    final timezone = tile.metadata['timezone'] as String?;
+    
+    return Container(
+      color: const Color(0xFF0D0D12),
+      padding: const EdgeInsets.all(16),
+      child: Center(
+        child: TimeDisplayWidget(
+          textColor: textColor,
+          showSeconds: showSeconds,
+          showDate: showDate,
+          timezone: timezone,
         ),
       ),
     );
