@@ -1079,31 +1079,155 @@ class _BackendLabMiniPanelState extends State<BackendLabMiniPanel>
                   controller.dispose();
                 }
                 
+                // Formater le body si c'est du JSON
+                String formattedBody = response.body;
+                bool isJson = false;
+                try {
+                  final decoded = jsonDecode(response.body);
+                  formattedBody = const JsonEncoder.withIndent('  ').convert(decoded);
+                  isJson = true;
+                } catch (e) {
+                  // Ce n'est pas du JSON, garder le texte brut
+                }
+                
+                final isSuccess = response.statusCode >= 200 && response.statusCode < 300;
+                final statusColor = isSuccess ? const Color(0xFF4CAF50) : Colors.red;
+                final statusText = isSuccess ? 'SUCCESS' : 'ERROR';
+                
                 GxFuturisticDialog.show(
                   context: context,
-                  title: 'Response',
-                  titleIcon: CupertinoIcons.check_mark_circled,
-                  accentColor: response.statusCode >= 200 && response.statusCode < 300
-                      ? const Color(0xFF4CAF50)
-                      : Colors.red,
-                  width: 700,
+                  title: 'Response - $statusText',
+                  titleIcon: isSuccess 
+                      ? CupertinoIcons.check_mark_circled 
+                      : CupertinoIcons.exclamationmark_triangle,
+                  accentColor: statusColor,
+                  width: 800,
                   child: SingleChildScrollView(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Status: ${response.statusCode}',
-                          style: NotilusFonts.rajdhani(
-                            fontSize: 12,
-                            color: response.statusCode >= 200 && response.statusCode < 300
-                                ? const Color(0xFF4CAF50)
-                                : Colors.red,
-                            fontWeight: FontWeight.w600,
+                        // Section Status
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: statusColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: statusColor.withOpacity(0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  color: statusColor,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Status Code',
+                                      style: NotilusFonts.rajdhani(
+                                        fontSize: 10,
+                                        color: Colors.white.withOpacity(0.5),
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${response.statusCode} - $statusText',
+                                      style: NotilusFonts.rajdhani(
+                                        fontSize: 14,
+                                        color: statusColor,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Text(
+                                '${response.body.length} bytes',
+                                style: NotilusFonts.rajdhani(
+                                  fontSize: 10,
+                                  color: Colors.white.withOpacity(0.5),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        
+                        const SizedBox(height: 16),
+                        
+                        // Section Headers
+                        if (response.headers.isNotEmpty) ...[
+                          Text(
+                            'Response Headers',
+                            style: NotilusFonts.rajdhani(
+                              fontSize: 11,
+                              color: accentColor,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.02),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: accentColor.withOpacity(0.2),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: response.headers.entries.take(10).map((entry) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 6),
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      SizedBox(
+                                        width: 120,
+                                        child: Text(
+                                          entry.key,
+                                          style: TextStyle(
+                                            fontFamily: 'JetBrains Mono',
+                                            fontSize: 9,
+                                            color: accentColor,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: SelectableText(
+                                          entry.value,
+                                          style: TextStyle(
+                                            fontFamily: 'JetBrains Mono',
+                                            fontSize: 9,
+                                            color: Colors.white.withOpacity(0.7),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                        
+                        // Section Body
                         Text(
-                          'Response Body:',
+                          'Response Body${isJson ? ' (JSON)' : ''}',
                           style: NotilusFonts.rajdhani(
                             fontSize: 11,
                             color: accentColor,
@@ -1111,14 +1235,35 @@ class _BackendLabMiniPanelState extends State<BackendLabMiniPanel>
                           ),
                         ),
                         const SizedBox(height: 8),
-                        SelectableText(
-                          response.body.length > 1000
-                              ? '${response.body.substring(0, 1000)}...'
-                              : response.body,
-                          style: TextStyle(
-                            fontFamily: 'JetBrains Mono',
-                            fontSize: 10,
-                            color: Colors.white.withOpacity(0.7),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.3),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: accentColor.withOpacity(0.2),
+                            ),
+                          ),
+                          constraints: const BoxConstraints(
+                            maxHeight: 400,
+                          ),
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: SingleChildScrollView(
+                              child: SelectableText(
+                                formattedBody.length > 5000
+                                    ? '${formattedBody.substring(0, 5000)}...\n\n[Contenu tronqué - ${formattedBody.length} caractères au total]'
+                                    : formattedBody,
+                                style: TextStyle(
+                                  fontFamily: 'JetBrains Mono',
+                                  fontSize: 10,
+                                  color: isJson 
+                                      ? Colors.white.withOpacity(0.9)
+                                      : Colors.white.withOpacity(0.7),
+                                  height: 1.4,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -1128,7 +1273,7 @@ class _BackendLabMiniPanelState extends State<BackendLabMiniPanel>
                     GxFuturisticButton(
                       label: 'Fermer',
                       variant: GxFuturisticButtonVariant.secondary,
-                      accentColor: accentColor,
+                      accentColor: statusColor,
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                   ],
@@ -1145,14 +1290,91 @@ class _BackendLabMiniPanelState extends State<BackendLabMiniPanel>
                   controller.dispose();
                 }
                 
-                // Analyser l'erreur avec l'IA (qui va afficher et fermer la popup de transition automatiquement)
-                await _analyzeErrorWithAI(e, route, finalUri, accentColor);
+                // Afficher d'abord une popup d'erreur simple
+                await _showErrorDialog(e, route, finalUri, accentColor);
               }
             }
           },
         ),
       ],
     );
+  }
+
+  /// Affiche une popup d'erreur, puis lance l'analyse IA après fermeture
+  Future<void> _showErrorDialog(
+    dynamic error,
+    DiscoveredRoute route,
+    Uri requestUri,
+    Color accentColor,
+  ) async {
+    // Afficher la popup d'erreur
+    await GxFuturisticDialog.show(
+      context: context,
+      title: 'Erreur d\'exécution',
+      titleIcon: CupertinoIcons.exclamationmark_triangle,
+      accentColor: Colors.red,
+      width: 500,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Une erreur s\'est produite lors de l\'exécution de la route:',
+            style: NotilusFonts.rajdhani(
+              fontSize: 12,
+              color: Colors.white.withOpacity(0.7),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.red.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: Colors.red.withOpacity(0.3),
+              ),
+            ),
+            child: SelectableText(
+              error.toString(),
+              style: TextStyle(
+                fontFamily: 'JetBrains Mono',
+                fontSize: 10,
+                color: Colors.white.withOpacity(0.9),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Icon(CupertinoIcons.sparkles, size: 14, color: accentColor),
+              const SizedBox(width: 6),
+              Text(
+                'L\'analyse IA va démarrer après la fermeture de cette popup',
+                style: NotilusFonts.rajdhani(
+                  fontSize: 10,
+                  color: accentColor.withOpacity(0.8),
+                ).copyWith(fontStyle: FontStyle.italic),
+              ),
+            ],
+          ),
+        ],
+      ),
+      actions: [
+        GxFuturisticButton(
+          label: 'Fermer',
+          variant: GxFuturisticButtonVariant.secondary,
+          accentColor: Colors.red,
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ],
+    );
+    
+    // Après la fermeture de la popup d'erreur, lancer l'analyse IA
+    if (mounted) {
+      await _analyzeErrorWithAI(error, route, requestUri, accentColor);
+    }
   }
 
   /// Analyse une erreur avec l'IA et affiche le résultat
