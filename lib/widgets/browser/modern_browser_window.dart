@@ -20,11 +20,11 @@ import 'modern_downloads_panel.dart';
 import 'gx_futuristic_history_panel.dart';
 import 'gx_futuristic_bookmarks_panel.dart';
 import 'gx_futuristic_downloads_panel.dart';
+import 'downloads_popup_menu.dart';
 import 'gx_futuristic_widgets_panel.dart';
 import 'gx_futuristic_ai_panel.dart';
 import 'gx_futuristic_updates_panel.dart';
 import 'modern_settings_panel.dart';
-import 'extensions_panel.dart';
 import 'webview_service_panel.dart';
 import '../../core/services/wallpaper_manager.dart';
 import '../../core/services/color_theme_manager.dart';
@@ -42,6 +42,7 @@ import '../../services/lighthouse/lighthouse_service.dart';
 import '../../services/studio/studio_service.dart';
 import '../../widgets/common/gx_test_panel.dart';
 import '../../services/gx_notification_service.dart';
+import '../../widgets/common/gx_futuristic_dialog.dart';
 import 'gx_3d_coverflow_tabs_view.dart';
 
 // Intent pour les raccourcis clavier
@@ -293,9 +294,17 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                             }
                             setState(() {
                               _currentSection = section;
-                              // Ouvrir le panel en taille maximale
+                              // Taille du panel selon la section
                               final screenWidth = MediaQuery.of(context).size.width;
-                              _sideMenuWidth = (screenWidth * 0.6).clamp(400.0, 1000.0);
+                              final settings = Provider.of<SettingsService>(context, listen: false);
+                              
+                              if (section == SidebarSection.settings) {
+                                // Paramètres toujours en MAX
+                                _sideMenuWidth = (screenWidth * 0.8).clamp(600.0, 1200.0);
+                              } else {
+                                // Autres panels avec taille configurable
+                                _sideMenuWidth = settings.panelDefaultWidth;
+                              }
                             });
                           },
                         )
@@ -385,13 +394,18 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                         });
                       },
                       onDownloadsPressed: () {
-                        setState(() {
-                          _currentSection = SidebarSection.downloads;
-                          _isSidebarVisible = true;
-                          // Ouvrir le panel en taille maximale
-                          final screenWidth = MediaQuery.of(context).size.width;
-                          _sideMenuWidth = (screenWidth * 0.6).clamp(400.0, 1000.0);
-                        });
+                        // Ouvrir un menu popup au lieu du panel
+                        final colorTheme = Provider.of<ColorThemeManager>(context, listen: false);
+                        final accentColor = colorTheme.nativeSecondaryColor;
+                        
+                        GxFuturisticDialog.show(
+                          context: context,
+                          title: 'Téléchargements',
+                          titleIcon: CupertinoIcons.tray_arrow_down,
+                          accentColor: accentColor,
+                          width: 400,
+                          child: const DownloadsPopupMenu(),
+                        );
                       },
                       onMiniDevToolsToggle: () {
                         setState(() {
@@ -768,12 +782,6 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
           icon: CupertinoIcons.arrow_up_circle,
           child: const GxFuturisticUpdatesPanel(),
         );
-      case SidebarSection.extensions:
-        return _SidebarPanelConfig(
-          title: 'Extensions',
-          icon: CupertinoIcons.square_grid_2x2,
-          child: ExtensionsPanel(isVisible: true),
-        );
       case SidebarSection.terminal:
         return _SidebarPanelConfig(
           title: 'Terminal',
@@ -880,6 +888,9 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
           icon: CupertinoIcons.square_grid_2x2,
           child: const GxTestPanel(),
         );
+      case SidebarSection.extensions:
+        // Extensions retiré de la sidebar, mais gardé pour compatibilité
+        return null;
     }
   }
 }

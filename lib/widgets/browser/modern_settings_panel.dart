@@ -70,6 +70,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
     _SectionItem('wallpaper', 'Fonds d\'écran', CupertinoIcons.photo),
     _SectionItem('tabs', 'Onglets', CupertinoIcons.square_on_square),
     _SectionItem('downloads', 'Téléchargements', CupertinoIcons.arrow_down_circle),
+    _SectionItem('panels', 'Panels latéraux', CupertinoIcons.sidebar_left),
     _SectionItem('terminal', 'Terminal', CupertinoIcons.square_list),
     _SectionItem('homepage', 'Page d\'accueil', CupertinoIcons.house),
     _SectionItem('webservices', 'Services Web', CupertinoIcons.globe),
@@ -128,6 +129,9 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
       _SettingIndex('downloads', 'Dossier de téléchargement', 'Configurez le dossier de téléchargement', 'Dossier', 'downloads'),
       _SettingIndex('downloads', 'Demander l\'emplacement', 'Demander où enregistrer chaque fichier', 'Emplacement', 'downloads'),
       _SettingIndex('downloads', 'Ouvrir automatiquement', 'Ouvrir les fichiers après téléchargement', 'Auto ouvrir', 'downloads'),
+      
+      // Section Panels latéraux
+      _SettingIndex('panels', 'Taille par défaut', 'Taille des panels latéraux (sauf paramètres)', 'Taille', 'panels'),
       
       // Section Terminal
       _SettingIndex('terminal', 'Terminal préféré', 'PowerShell, CMD, WSL', 'Terminal', 'terminal'),
@@ -676,6 +680,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                 'wallpaper' => _buildWallpaperSection(context, theme, gxRed, isCompact, isMedium, spacing),
                 'tabs' => _buildTabsSection(context, theme, gxRed, isCompact, isMedium, spacing),
                 'downloads' => _buildDownloadsSection(context, theme, gxRed, isCompact, isMedium, spacing),
+                'panels' => _buildPanelsSection(context, theme, gxRed, isCompact, isMedium, spacing),
                 'terminal' => _buildTerminalSection(context, theme, gxRed, isCompact, isMedium, spacing),
                 'homepage' => _buildHomepageSection(context, theme, gxRed, isCompact, isMedium, spacing),
                 'webservices' => _buildWebServicesSection(context, theme, gxRed, isCompact, isMedium, spacing),
@@ -702,6 +707,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
       'wallpaper': ('Fonds d\'écran', 'Gérez les fonds d\'écran dynamiques'),
       'tabs': ('Onglets', 'Comportement des onglets au démarrage'),
       'downloads': ('Téléchargements', 'Configurez le dossier et le comportement'),
+      'panels': ('Panels latéraux', 'Configurez la taille des panels latéraux'),
       'terminal': ('Terminal', 'Choisissez votre terminal préféré'),
       'homepage': ('Page d\'accueil', 'Personnalisez la page d\'accueil'),
       'webservices': ('Services Web', 'Gérez les services de la sidebar'),
@@ -1423,6 +1429,89 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
               value: _settings.autoOpenDownloads,
               onChanged: (v) => _settings.setAutoOpenDownloads(v),
               gxRed: gxRed,
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // ============================================
+  // SECTION PANELS LATÉRAUX
+  // ============================================
+  
+  Widget _buildPanelsSection(BuildContext context, ThemeData theme, Color gxRed, bool isCompact, bool isMedium, double spacing) {
+    return ListenableBuilder(
+      listenable: _settings,
+      builder: (context, _) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSubsectionTitle('Taille des panels', gxRed),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.white.withOpacity(0.1)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(CupertinoIcons.sidebar_left, color: gxRed, size: 20),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Taille par défaut des panels', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500)),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${_settings.panelDefaultWidth.toInt()} px (le panel Paramètres reste toujours en taille maximale)',
+                              style: TextStyle(color: Colors.white60, fontSize: 10),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Slider(
+                          value: _settings.panelDefaultWidth,
+                          min: 400.0,
+                          max: 1000.0,
+                          divisions: 60,
+                          activeColor: gxRed,
+                          inactiveColor: Colors.white.withOpacity(0.1),
+                          onChanged: (value) {
+                            _settings.setPanelDefaultWidth(value);
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Container(
+                        width: 60,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          '${_settings.panelDefaultWidth.toInt()}',
+                          style: const TextStyle(color: Colors.white, fontSize: 12),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ],
         );

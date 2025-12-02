@@ -27,6 +27,17 @@ class _AIAdvisorPanelState extends State<AIAdvisorPanel>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    
+    // Initialiser le chat avec le rapport lors de l'ouverture du tab Chat
+    _tabController.addListener(() {
+      if (_tabController.index == 2) {
+        // Tab Chat est ouvert
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final lighthouse = Provider.of<LighthouseService>(context, listen: false);
+          lighthouse.aiAdvisorService.initializeChat();
+        });
+      }
+    });
   }
 
   @override

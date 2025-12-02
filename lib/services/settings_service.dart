@@ -142,6 +142,9 @@ class SettingsService extends ChangeNotifier {
   static const String _keyNotificationDuration = 'notilus_notification_duration'; // en secondes
   static const String _keyNotificationMaxVisible = 'notilus_notification_max_visible';
   
+  // Panels latéraux
+  static const String _keyPanelDefaultWidth = 'notilus_panel_default_width'; // Taille par défaut des panels (sauf paramètres) en pixels
+  
   // ============================================
   // INITIALISATION
   // ============================================
@@ -908,6 +911,17 @@ class SettingsService extends ChangeNotifier {
   int get notificationMaxVisible => _prefs?.getInt(_keyNotificationMaxVisible) ?? 5;
   Future<void> setNotificationMaxVisible(int count) async {
     await _prefs?.setInt(_keyNotificationMaxVisible, count);
+    notifyListeners();
+  }
+
+  // ============================================
+  // PANELS LATÉRAUX
+  // ============================================
+  
+  /// Taille par défaut des panels latéraux (sauf paramètres qui reste en MAX)
+  double get panelDefaultWidth => _prefs?.getDouble(_keyPanelDefaultWidth) ?? 600.0;
+  Future<void> setPanelDefaultWidth(double width) async {
+    await _prefs?.setDouble(_keyPanelDefaultWidth, width.clamp(400.0, 1000.0));
     notifyListeners();
   }
 
