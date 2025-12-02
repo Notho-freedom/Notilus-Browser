@@ -67,10 +67,14 @@ class _GroupedTabBarState extends State<GroupedTabBar> {
             onPressed: widget.onMenuTap,
           ),
           const SizedBox(width: 10),
-          // Zone des onglets avec scroll
+          // Zone des onglets avec scroll - Zone draggable pour déplacer la fenêtre
           Expanded(
-            child: ClipRect(
-              child: _buildTabBar(context, tabManager, groupService, accentColor),
+            child: GestureDetector(
+              onPanStart: (_) => windowManager.startDragging(),
+              behavior: HitTestBehavior.translucent,
+              child: ClipRect(
+                child: _buildTabBar(context, tabManager, groupService, accentColor),
+              ),
             ),
           ),
           const SizedBox(width: 4),
