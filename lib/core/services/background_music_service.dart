@@ -50,28 +50,58 @@ class BackgroundMusicService extends ChangeNotifier with WidgetsBindingObserver 
     }
   }
   
-  /// Fait un fondu vers un volume spécifique
-  Future<void> _fadeToVolume(double targetVolume) async {
-    if (_audioPlayer == null || _currentMusicUrl == null || !_isEnabled) return;
+/// Fait un fondu vers un volume spécifique sur 30 secondes avec Tween
+Future<void> _fadeToVolume(double targetVolume) async {
+  if (_audioPlayer == null || _currentMusicUrl == null || !_isEnabled) return;
+  
+  // Annuler tout fondu en cours
+  _fadeTimer?.cancel();
+  
+  final double startVolume = _audioPlayer!.volume;
+  const Duration fadeDuration = Duration(seconds: 30);
+  final int steps = (fadeDuration.inMilliseconds / 50).ceil(); // Mise à jour toutes les 50ms
+  final Duration stepDuration = Duration(milliseconds: fadeDuration.inMilliseconds ~/ steps);
+  
+  debugPrint('🎵 Fondu de volume: ${startVolume.toStringAsFixed(3)} → ${targetVolume.toStringAsFixed(3)} sur 30 secondes');
+  
+  // Créer un Tween pour l'interpolation
+  final tween = Tween<double>(begin: startVolume, end: targetVolume);
+  
+  for (int i = 0; i <= steps; i++) {
+    if (_audioPlayer == null || _currentMusicUrl == null || !_isEnabled) break;
     
-    _fadeTimer?.cancel();
-    final currentVol = _audioPlayer!.volume;
-    const steps = 30;
-    const duration = Duration(milliseconds: 1000);
-    final stepDuration = Duration(milliseconds: duration.inMilliseconds ~/ steps);
-    final volumeStep = (targetVolume - currentVol) / steps;
+    final double progress = i / steps;
+    final double currentVolume = tween.transform(progress);
     
-    for (int i = 0; i <= steps; i++) {
-      await Future.delayed(stepDuration);
-      if (_audioPlayer != null) {
-        final newVolume = (currentVol + (volumeStep * i)).clamp(0.0, 1.0);
-        await _audioPlayer!.setVolume(newVolume);
+    try {
+      await _audioPlayer!.setVolume(currentVolume);
+      _volume = currentVolume;
+      
+      // Afficher le progrès tous les 10% (optionnel)
+      if (i % (steps ~/ 10) == 0) {
+        final progressPercent = (progress * 100).round();
+        debugPrint('🎵 Fondu: $progressPercent% - Volume: ${currentVolume.toStringAsFixed(3)}');
       }
+      
+      if (i < steps) {
+        await Future.delayed(stepDuration);
+      }
+    } catch (e) {
+      debugPrint('❌ Erreur lors du fondu de volume: $e');
+      break;
     }
-    
+  }
+  
+  // S'assurer du volume final exact
+  if (_audioPlayer != null && _currentMusicUrl != null && _isEnabled) {
+    await _audioPlayer!.setVolume(targetVolume);
     _volume = targetVolume;
     notifyListeners();
+    debugPrint('✅ Fondu terminé. Volume final: ${targetVolume.toStringAsFixed(3)}');
   }
+  
+  _fadeTimer = null;
+}
 
   void _onSettingsChanged() {
     // Ne recharger que si la musique sélectionnée a vraiment changé

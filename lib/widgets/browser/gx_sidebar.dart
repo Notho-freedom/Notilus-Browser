@@ -10,6 +10,7 @@ import '../../services/settings_service.dart';
 import '../../services/mosaic_service.dart';
 import '../common/notilus_logo_image.dart';
 import '../common/notilus_tooltip.dart';
+import 'package:window_manager/window_manager.dart';
 
 // La couleur rouge est maintenant gérée par ColorThemeManager
 
@@ -217,10 +218,24 @@ class _GXSidebarState extends State<GXSidebar> {
             return Column(
               children: [
                 const SizedBox(height: 10),
-                const NotilusMonogramImage(
-                  size: 24,
-                  showGlow: false,
-                  showFrame: true,
+                // Logo draggable pour déplacer la fenêtre
+                GestureDetector(
+                  onPanStart: (_) async {
+                    await windowManager.startDragging();
+                  },
+                  onDoubleTap: () async {
+                    if (await windowManager.isMaximized()) {
+                      await windowManager.restore();
+                    } else {
+                      await windowManager.maximize();
+                    }
+                  },
+                  behavior: HitTestBehavior.translucent,
+                  child: const NotilusMonogramImage(
+                    size: 24,
+                    showGlow: false,
+                    showFrame: true,
+                  ),
                 ),
                 const SizedBox(height: 18),
                 // Zone scrollable pour les icônes
@@ -305,7 +320,21 @@ class _GXSidebarState extends State<GXSidebar> {
                           const SizedBox(height: 4),
                         ],
                         const SizedBox(height: 20),
-                        const _SidebarSignature(),
+                        // Signature draggable pour déplacer la fenêtre
+                        GestureDetector(
+                          onPanStart: (_) async {
+                            await windowManager.startDragging();
+                          },
+                          onDoubleTap: () async {
+                            if (await windowManager.isMaximized()) {
+                              await windowManager.restore();
+                            } else {
+                              await windowManager.maximize();
+                            }
+                          },
+                          behavior: HitTestBehavior.translucent,
+                          child: const _SidebarSignature(),
+                        ),
                       ],
                     ),
                   ),

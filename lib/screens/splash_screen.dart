@@ -80,9 +80,9 @@ class _NotilusSplashScreenState extends State<NotilusSplashScreen>
     void updateBackendMessage() {
       if (!mounted) return;
       if (backendService.isStarting) {
-        setState(() => _currentLoadingMessage = 'Démarrage du serveur backend...');
+        setState(() => _currentLoadingMessage = 'Démarrage du serveur...');
       } else if (backendService.isRunning) {
-        setState(() => _currentLoadingMessage = 'Serveur backend prêt');
+        setState(() => _currentLoadingMessage = 'Serveur prêt');
       } else if (backendService.error != null) {
         setState(() => _currentLoadingMessage = 'Backend indisponible, continuation...');
       }
@@ -92,7 +92,7 @@ class _NotilusSplashScreenState extends State<NotilusSplashScreen>
     backendService.addListener(updateBackendMessage);
     
     if (mounted) {
-      setState(() => _currentLoadingMessage = 'Initialisation du serveur backend...');
+      setState(() => _currentLoadingMessage = 'Initialisation du serveur...');
     }
     
     // Démarrer le backend de manière asynchrone pour permettre les mises à jour
@@ -106,7 +106,7 @@ class _NotilusSplashScreenState extends State<NotilusSplashScreen>
       setState(() => _currentLoadingMessage = 'Backend indisponible, continuation...');
       await Future.delayed(const Duration(milliseconds: 500));
     } else if (mounted) {
-      setState(() => _currentLoadingMessage = '✅ Serveur backend prêt');
+      setState(() => _currentLoadingMessage = 'Serveur prêt');
       await Future.delayed(const Duration(milliseconds: 500));
     }
 
