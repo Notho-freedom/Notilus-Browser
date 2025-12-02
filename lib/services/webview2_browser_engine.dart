@@ -53,6 +53,7 @@ class WebView2BrowserEngine extends BrowserEngine {
   
   // État de visibilité pour adapter la fréquence du polling
   bool _isTabActive = true;
+  bool _isPanelActive = true; // État actif du panel (pour sessions persistantes)
   bool _isPageLoaded = false;
   bool _isLoading = false;
   
@@ -497,6 +498,32 @@ class WebView2BrowserEngine extends BrowserEngine {
   
   /// Obtient l'état de chargement réel du WebView
   bool get isLoading => _isLoading;
+  
+  /// Définit si le panel est actif (pour la gestion audio/vidéo en sessions persistantes)
+  /// Quand actif = false, le panel est en pause mais la session continue (vidéo YouTube continue)
+  /// Quand actif = true, le panel est visible et actif
+  void setActive(bool active) {
+    _isPanelActive = active;
+    
+    if (_webView != null && _webView!.value.isInitialized) {
+      try {
+        if (active) {
+          // Réactiver l'audio/vidéo si nécessaire
+          // Note: YouTube et autres services continuent automatiquement en arrière-plan
+          debugPrint('🎵 Panel réactivé - média continue');
+        } else {
+          // NE PAS mettre en pause, laisser tourner en arrière-plan
+          // Pour YouTube, la vidéo continue de jouer même quand le panel est fermé
+          debugPrint('⏸️  Panel mis en pause - session conservée en arrière-plan');
+        }
+      } catch (e) {
+        debugPrint('Erreur setActive: $e');
+      }
+    }
+  }
+  
+  /// Vérifie si le panel est actif
+  bool get isPanelActive => _isPanelActive;
   
   /// Stream broadcast pour loadingState
   Stream<LoadingState> get loadingStateStream => 

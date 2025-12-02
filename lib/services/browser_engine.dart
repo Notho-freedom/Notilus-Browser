@@ -49,6 +49,11 @@ abstract class BrowserEngine {
     // Par défaut, non supporté - à implémenter dans les sous-classes
   }
   
+  /// Nettoie et libère les ressources du moteur
+  void dispose() {
+    // Par défaut, rien à nettoyer - à implémenter dans les sous-classes
+  }
+  
   // Callbacks pour les événements
   Function(String)? onUrlChanged;
   Function(String)? onTitleChanged;
@@ -131,6 +136,11 @@ class PlaceholderBrowserEngine extends BrowserEngine {
 
   @override
   Future<dynamic> getController() async => null;
+  
+  @override
+  void dispose() {
+    // Placeholder - rien à nettoyer
+  }
 }
 
 /// Factory pour créer l'instance du moteur de rendu

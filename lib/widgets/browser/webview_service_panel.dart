@@ -6,6 +6,7 @@ import 'dart:io' show Platform;
 import 'package:webview_windows/webview_windows.dart';
 import '../../services/side_webview_manager.dart';
 import '../../core/services/wallpaper_manager.dart';
+import '../../services/webview2_browser_engine.dart';
 
 class WebViewServicePanel extends StatefulWidget {
   final String url;
@@ -25,73 +26,111 @@ class WebViewServicePanel extends StatefulWidget {
   State<WebViewServicePanel> createState() => _WebViewServicePanelState();
 }
 
-class _WebViewServicePanelState extends State<WebViewServicePanel> {
+class _WebViewServicePanelState extends State<WebViewServicePanel> with AutomaticKeepAliveClientMixin {
+  // IMPORTANT: Keep alive pour garder le state même quand le widget n'est pas visible
+  @override
+  bool get wantKeepAlive => true;
+
   WebviewController? _webView;
   bool _isLoading = true;
-  String? _currentUrl;
-  String? _currentTitle;
+  bool _isDisposed = false;
   String? _panelId;
 
   @override
   void initState() {
     super.initState();
-    _panelId = 'side_panel_${widget.url.hashCode}';
-    _initializeWebView();
+    // ID unique basé sur l'URL pour garantir la persistance
+    _panelId = 'side_panel_${widget.url}';
+    
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_isDisposed && mounted) {
+        _initializeWebView();
+      }
+    });
   }
 
   Future<void> _initializeWebView() async {
-    if (!Platform.isWindows) {
-      setState(() {
-        _isLoading = false;
-      });
+    if (!Platform.isWindows || _isDisposed) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
       return;
     }
 
     try {
       final sideWebViewManager = Provider.of<SideWebViewManager>(context, listen: false);
       
-      // Utiliser le nouveau système de cache par URL
-      final engine = sideWebViewManager.getEngineForPanel(_panelId!, widget.url);
+      // Récupérer ou créer l'engine pour ce panel
+      // Le manager garde l'engine en mémoire même quand le panel est fermé
+      final engine = sideWebViewManager.getOrCreatePersistentEngine(_panelId!, widget.url) as WebView2BrowserEngine;
       
-      // Initialiser le moteur (la méthode initialize() vérifie déjà si déjà initialisé)
-      await engine.initialize();
+      // Attendre l'initialisation
+      await engine.waitForInitialization();
       
-      // Récupérer le WebView2 controller
+      if (_isDisposed || !mounted) return;
+      
+      // Récupérer le controller
       final controller = await engine.getController();
+      
+      if (_isDisposed || !mounted) return;
+      
       if (controller != null && controller is WebviewController) {
         setState(() {
-          _webView = controller as WebviewController;
+          _webView = controller;
           _isLoading = false;
         });
         
-        // Naviguer seulement si l'URL n'est pas déjà chargée
+        // Vérifier si on doit naviguer
         final currentUrl = await engine.getCurrentUrl();
-        if (currentUrl != widget.url) {
+        if (currentUrl == null || currentUrl.isEmpty || currentUrl == 'about:blank') {
+          debugPrint('🚀 Navigation initiale vers: ${widget.url}');
           await engine.navigate(widget.url);
         } else {
-          debugPrint('✅ URL déjà chargée, pas de rechargement nécessaire: ${widget.url}');
+          debugPrint('✅ Session restaurée: $currentUrl');
         }
+        
+        // Réactiver le panel (audio, etc.)
+        engine.setActive(true);
       }
     } catch (e) {
-      debugPrint('Error initializing side webview: $e');
-      setState(() {
-        _isLoading = false;
-      });
+      debugPrint('❌ Erreur initialisation panel: $e');
+      if (mounted && !_isDisposed) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
   @override
   void dispose() {
+    _isDisposed = true;
+    
+    // NE PAS détruire l'engine, juste le mettre en pause
     if (_panelId != null) {
-      final sideWebViewManager = Provider.of<SideWebViewManager>(context, listen: false);
-      // Conserver l'engine en cache pour réutilisation future
-      sideWebViewManager.removeEngineForPanel(_panelId!, keepEngine: true);
+      try {
+        final sideWebViewManager = Provider.of<SideWebViewManager>(context, listen: false);
+        final engine = sideWebViewManager.getEngine(_panelId!) as WebView2BrowserEngine?;
+        
+        if (engine != null) {
+          // Mettre le panel en pause mais garder la session
+          engine.setActive(false);
+          debugPrint('⏸️  Panel mis en pause: $_panelId');
+        }
+      } catch (e) {
+        debugPrint('Erreur lors de la mise en pause: $e');
+      }
     }
+    
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // IMPORTANT pour AutomaticKeepAliveClientMixin
+    
     final theme = Theme.of(context);
     final wallpaperManager = context.watch<WallpaperManager>();
     final wallpaperUrl = wallpaperManager.currentImageUrl;
@@ -127,4 +166,3 @@ class _WebViewServicePanelState extends State<WebViewServicePanel> {
     );
   }
 }
-
