@@ -114,13 +114,7 @@ class StudioService extends ChangeNotifier {
     _messageSubscription = null;
     _engine = null;
     
-    // Retirer les listeners
-    responsiveTester.removeListener(_onServiceChanged);
-    screenshot.removeListener(_onServiceChanged);
-    liveEditor.removeListener(_onServiceChanged);
-    interactionRecorder.removeListener(_onServiceChanged);
-    mockupComparator.removeListener(_onServiceChanged);
-    
+    // Détacher les moteurs des services enfants (ne pas retirer les listeners)
     responsiveTester.detachEngine();
     screenshot.detachEngine();
     liveEditor.detachEngine();
