@@ -21,6 +21,7 @@ class SettingsService extends ChangeNotifier {
   static const String _keyColorTheme = 'notilus_color_theme';
   static const String _keyNativeBgColor = 'notilus_native_background_color';
   static const String _keyNativeSecondaryColor = 'notilus_native_secondary_color';
+  static const String _keyPanelFontSize = 'notilus_panel_font_size'; // 10.0 - 18.0
   
   // Fonds d'écran
   static const String _keyWallpaperEnabled = 'notilus_wallpaper_enabled';
@@ -188,6 +189,15 @@ class SettingsService extends ChangeNotifier {
     } else {
       await _prefs?.remove(_keyNativeSecondaryColor);
     }
+    notifyListeners();
+  }
+  
+  double get panelFontSize => _prefs?.getDouble(_keyPanelFontSize) ?? 14.0;
+  
+  Future<void> setPanelFontSize(double size) async {
+    // Clamp entre 10.0 et 18.0
+    final clampedSize = size.clamp(10.0, 18.0);
+    await _prefs?.setDouble(_keyPanelFontSize, clampedSize);
     notifyListeners();
   }
 
