@@ -873,8 +873,9 @@ class _EmptyTileContent extends StatelessWidget {
                   type: type,
                   accentColor: accentColor,
                   onTap: () {
-                    if (tile != null) {
-                      mosaicService.setTileContent(tile!.id, type);
+                    final currentTile = tile;
+                    if (currentTile != null) {
+                      mosaicService.setTileContent(currentTile.id, type);
                     }
                   },
                 )).toList(),
@@ -913,8 +914,9 @@ class _EmptyTileContent extends StatelessWidget {
                     type: type,
                     accentColor: accentColor,
                     onTap: () {
-                      if (tile != null) {
-                        mosaicService.setTileContent(tile!.id, type);
+                      final currentTile = tile;
+                      if (currentTile != null) {
+                        mosaicService.setTileContent(currentTile.id, type);
                       }
                     },
                   )).toList(),
@@ -1117,17 +1119,25 @@ class _FrontendResourcesTileContent extends StatelessWidget {
     final resources = resourcesList?.isEmpty == true 
         ? null 
         : (resourcesList
-            ?.map((r) => FrontendResource(
-                  name: r['name'] as String,
-                  url: r['url'] as String,
-                  emoji: r['emoji'] as String,
-                  color: Color(r['color'] as int),
-                ))
+            ?.map((r) {
+              try {
+                return FrontendResource(
+                  name: r['name'] as String? ?? '',
+                  url: r['url'] as String? ?? '',
+                  emoji: r['emoji'] as String? ?? '🔗',
+                  color: r['color'] != null ? Color(r['color'] as int) : accentColor,
+                );
+              } catch (e) {
+                return null;
+              }
+            })
+            .whereType<FrontendResource>()
             .toList());
     
     return Container(
       color: const Color(0xFF0D0D12),
       padding: const EdgeInsets.all(16),
+      constraints: const BoxConstraints.expand(),
       child: FrontendResourcesWidget(
         resources: resources,
         accentColor: accentColor,
@@ -1149,17 +1159,31 @@ class _FrontendToolsTileContent extends StatelessWidget {
     final transparency = tile.metadata['transparency'] as double? ?? 0.0;
     
     final categories = (tile.metadata['categories'] as List<dynamic>?)
-        ?.map((c) => ToolCategory(
-              name: c['name'] as String,
-              icon: IconData(c['icon'] as int, fontFamily: 'CupertinoIcons'),
-              tools: (c['tools'] as List<dynamic>)
-                  .map((t) => DevTool(
-                        name: t['name'] as String,
-                        url: t['url'] as String,
-                        color: Color(t['color'] as int),
-                      ))
-                  .toList(),
-            ))
+        ?.map((c) {
+          try {
+            return ToolCategory(
+              name: c['name'] as String? ?? '',
+              icon: c['icon'] != null ? IconData(c['icon'] as int, fontFamily: 'CupertinoIcons') : CupertinoIcons.square_grid_2x2,
+              tools: (c['tools'] as List<dynamic>?)
+                  ?.map((t) {
+                    try {
+                      return DevTool(
+                        name: t['name'] as String? ?? '',
+                        url: t['url'] as String? ?? '',
+                        color: t['color'] != null ? Color(t['color'] as int) : accentColor,
+                      );
+                    } catch (e) {
+                      return null;
+                    }
+                  })
+                  .whereType<DevTool>()
+                  .toList() ?? [],
+            );
+          } catch (e) {
+            return null;
+          }
+        })
+        .whereType<ToolCategory>()
         .toList() ?? [];
     
     return Container(
@@ -1191,17 +1215,25 @@ class _BackendLanguagesTileContent extends StatelessWidget {
     final languages = languagesList?.isEmpty == true
         ? null
         : (languagesList
-            ?.map((l) => BackendLanguage(
-                  name: l['name'] as String,
-                  url: l['url'] as String,
-                  emoji: l['emoji'] as String,
-                  color: Color(l['color'] as int),
-                ))
+            ?.map((l) {
+              try {
+                return BackendLanguage(
+                  name: l['name'] as String? ?? '',
+                  url: l['url'] as String? ?? '',
+                  emoji: l['emoji'] as String? ?? '💻',
+                  color: l['color'] != null ? Color(l['color'] as int) : accentColor,
+                );
+              } catch (e) {
+                return null;
+              }
+            })
+            .whereType<BackendLanguage>()
             .toList());
     
     return Container(
       color: const Color(0xFF0D0D12),
       padding: const EdgeInsets.all(16),
+      constraints: const BoxConstraints.expand(),
       child: BackendLanguagesWidget(
         languages: languages,
         accentColor: accentColor,
@@ -1223,22 +1255,37 @@ class _BackendToolsTileContent extends StatelessWidget {
     final transparency = tile.metadata['transparency'] as double? ?? 0.0;
     
     final sections = (tile.metadata['sections'] as List<dynamic>?)
-        ?.map((s) => ToolSection(
-              name: s['name'] as String,
-              icon: IconData(s['icon'] as int, fontFamily: 'CupertinoIcons'),
-              tools: (s['tools'] as List<dynamic>)
-                  .map((t) => BackendTool(
-                        name: t['name'] as String,
-                        url: t['url'] as String,
-                        color: Color(t['color'] as int),
-                      ))
-                  .toList(),
-            ))
+        ?.map((s) {
+          try {
+            return ToolSection(
+              name: s['name'] as String? ?? '',
+              icon: s['icon'] != null ? IconData(s['icon'] as int, fontFamily: 'CupertinoIcons') : CupertinoIcons.square_grid_2x2,
+              tools: (s['tools'] as List<dynamic>?)
+                  ?.map((t) {
+                    try {
+                      return BackendTool(
+                        name: t['name'] as String? ?? '',
+                        url: t['url'] as String? ?? '',
+                        color: t['color'] != null ? Color(t['color'] as int) : accentColor,
+                      );
+                    } catch (e) {
+                      return null;
+                    }
+                  })
+                  .whereType<BackendTool>()
+                  .toList() ?? [],
+            );
+          } catch (e) {
+            return null;
+          }
+        })
+        .whereType<ToolSection>()
         .toList() ?? [];
     
     return Container(
       color: const Color(0xFF0D0D12),
       padding: const EdgeInsets.all(16),
+      constraints: const BoxConstraints.expand(),
       child: BackendToolsWidget(
         sections: sections,
         accentColor: accentColor,
@@ -1259,9 +1306,13 @@ class _SystemMetricsTileContent extends StatelessWidget {
     final accentColor = colorTheme.nativeSecondaryColor;
     final transparency = tile.metadata['transparency'] as double? ?? 0.0;
     
-    return SystemMetricsWidget(
-      accentColor: accentColor,
-      transparency: transparency,
+    return Container(
+      color: const Color(0xFF0D0D12),
+      constraints: const BoxConstraints.expand(),
+      child: SystemMetricsWidget(
+        accentColor: accentColor,
+        transparency: transparency,
+      ),
     );
   }
 }
@@ -1280,6 +1331,7 @@ class _CommandPromptTileContent extends StatelessWidget {
     return Container(
       color: const Color(0xFF0D0D12),
       padding: const EdgeInsets.all(16),
+      constraints: const BoxConstraints.expand(),
       child: CommandPromptWidget(
         accentColor: accentColor,
         transparency: transparency,
@@ -1304,19 +1356,30 @@ class _ServiceStatusTileContent extends StatelessWidget {
     final transparency = tile.metadata['transparency'] as double? ?? 0.0;
     
     final services = (tile.metadata['services'] as List<dynamic>?)
-        ?.map((s) => ServiceStatus(
-              name: s['name'] as String,
-              status: s['status'] as String,
-              isHealthy: s['isHealthy'] as bool,
-              uptime: s['uptime'] as String,
-              latency: s['latency'] as int,
-            ))
+        ?.map((s) {
+          try {
+            return ServiceStatus(
+              name: s['name'] as String? ?? 'Unknown',
+              status: s['status'] as String? ?? 'unknown',
+              isHealthy: s['isHealthy'] as bool? ?? false,
+              uptime: s['uptime'] as String? ?? 'N/A',
+              latency: s['latency'] as int? ?? 0,
+            );
+          } catch (e) {
+            return null;
+          }
+        })
+        .whereType<ServiceStatus>()
         .toList() ?? [];
     
-    return ServiceStatusWidget(
-      services: services,
-      accentColor: accentColor,
-      transparency: transparency,
+    return Container(
+      color: const Color(0xFF0D0D12),
+      constraints: const BoxConstraints.expand(),
+      child: ServiceStatusWidget(
+        services: services,
+        accentColor: accentColor,
+        transparency: transparency,
+      ),
     );
   }
 }
@@ -1335,6 +1398,7 @@ class _InfrastructureMetricsTileContent extends StatelessWidget {
     return Container(
       color: const Color(0xFF0D0D12),
       padding: const EdgeInsets.all(16),
+      constraints: const BoxConstraints.expand(),
       child: InfrastructureMetricsWidget(
         accentColor: accentColor,
         transparency: transparency,
@@ -1355,22 +1419,37 @@ class _DevOpsToolsTileContent extends StatelessWidget {
     final transparency = tile.metadata['transparency'] as double? ?? 0.0;
     
     final categories = (tile.metadata['categories'] as List<dynamic>?)
-        ?.map((c) => DevOpsCategory(
-              name: c['name'] as String,
-              emoji: c['emoji'] as String,
-              tools: (c['tools'] as List<dynamic>)
-                  .map((t) => DevOpsTool(
-                        name: t['name'] as String,
-                        url: t['url'] as String,
-                        color: Color(t['color'] as int),
-                      ))
-                  .toList(),
-            ))
+        ?.map((c) {
+          try {
+            return DevOpsCategory(
+              name: c['name'] as String? ?? '',
+              emoji: c['emoji'] as String? ?? '🔧',
+              tools: (c['tools'] as List<dynamic>?)
+                  ?.map((t) {
+                    try {
+                      return DevOpsTool(
+                        name: t['name'] as String? ?? '',
+                        url: t['url'] as String? ?? '',
+                        color: t['color'] != null ? Color(t['color'] as int) : accentColor,
+                      );
+                    } catch (e) {
+                      return null;
+                    }
+                  })
+                  .whereType<DevOpsTool>()
+                  .toList() ?? [],
+            );
+          } catch (e) {
+            return null;
+          }
+        })
+        .whereType<DevOpsCategory>()
         .toList() ?? [];
     
     return Container(
       color: const Color(0xFF0D0D12),
       padding: const EdgeInsets.all(16),
+      constraints: const BoxConstraints.expand(),
       child: DevOpsToolsWidget(
         categories: categories,
         accentColor: accentColor,
@@ -1394,6 +1473,7 @@ class _CommandCenterTileContent extends StatelessWidget {
     return Container(
       color: const Color(0xFF0D0D12),
       padding: const EdgeInsets.all(16),
+      constraints: const BoxConstraints.expand(),
       child: CommandCenterWidget(
         accentColor: accentColor,
         transparency: transparency,
@@ -1418,12 +1498,19 @@ class _DataScienceLibrariesTileContent extends StatelessWidget {
     final transparency = tile.metadata['transparency'] as double? ?? 0.0;
     
     final libraries = (tile.metadata['libraries'] as List<dynamic>?)
-        ?.map((l) => DataScienceLibrary(
-              name: l['name'] as String,
-              emoji: l['emoji'] as String,
-              url: l['url'] as String,
-              color: Color(l['color'] as int),
-            ))
+        ?.map((l) {
+          try {
+            return DataScienceLibrary(
+              name: l['name'] as String? ?? '',
+              emoji: l['emoji'] as String? ?? '📊',
+              url: l['url'] as String? ?? '',
+              color: l['color'] != null ? Color(l['color'] as int) : accentColor,
+            );
+          } catch (e) {
+            return null;
+          }
+        })
+        .whereType<DataScienceLibrary>()
         .toList() ?? [
       DataScienceLibrary(name: 'Python', emoji: '🐍', url: 'https://python.org', color: const Color(0xFF3776AB)),
       DataScienceLibrary(name: 'NumPy', emoji: '🔢', url: 'https://numpy.org', color: const Color(0xFF4DABCF)),
@@ -1438,6 +1525,7 @@ class _DataScienceLibrariesTileContent extends StatelessWidget {
     return Container(
       color: const Color(0xFF0D0D12),
       padding: const EdgeInsets.all(16),
+      constraints: const BoxConstraints.expand(),
       child: DataScienceLibrariesWidget(
         libraries: libraries,
         accentColor: accentColor,
@@ -1459,22 +1547,37 @@ class _DataScienceToolsTileContent extends StatelessWidget {
     final transparency = tile.metadata['transparency'] as double? ?? 0.0;
     
     final categories = (tile.metadata['categories'] as List<dynamic>?)
-        ?.map((c) => DataScienceCategory(
-              name: c['name'] as String,
-              icon: IconData(c['icon'] as int, fontFamily: 'CupertinoIcons'),
-              tools: (c['tools'] as List<dynamic>)
-                  .map((t) => DataScienceTool(
-                        name: t['name'] as String,
-                        url: t['url'] as String,
-                        color: Color(t['color'] as int),
-                      ))
-                  .toList(),
-            ))
+        ?.map((c) {
+          try {
+            return DataScienceCategory(
+              name: c['name'] as String? ?? '',
+              icon: c['icon'] != null ? IconData(c['icon'] as int, fontFamily: 'CupertinoIcons') : CupertinoIcons.square_grid_2x2,
+              tools: (c['tools'] as List<dynamic>?)
+                  ?.map((t) {
+                    try {
+                      return DataScienceTool(
+                        name: t['name'] as String? ?? '',
+                        url: t['url'] as String? ?? '',
+                        color: t['color'] != null ? Color(t['color'] as int) : accentColor,
+                      );
+                    } catch (e) {
+                      return null;
+                    }
+                  })
+                  .whereType<DataScienceTool>()
+                  .toList() ?? [],
+            );
+          } catch (e) {
+            return null;
+          }
+        })
+        .whereType<DataScienceCategory>()
         .toList() ?? [];
     
     return Container(
       color: const Color(0xFF0D0D12),
       padding: const EdgeInsets.all(16),
+      constraints: const BoxConstraints.expand(),
       child: DataScienceToolsWidget(
         categories: categories,
         accentColor: accentColor,
@@ -1498,11 +1601,18 @@ class _QuickLinksTileContent extends StatelessWidget {
     final transparency = tile.metadata['transparency'] as double? ?? 0.0;
     
     final links = (tile.metadata['links'] as List<dynamic>?)
-        ?.map((l) => QuickLink(
-              name: l['name'] as String,
-              url: l['url'] as String,
-              icon: IconData(l['icon'] as int, fontFamily: 'CupertinoIcons'),
-            ))
+        ?.map((l) {
+          try {
+            return QuickLink(
+              name: l['name'] as String? ?? '',
+              url: l['url'] as String? ?? '',
+              icon: l['icon'] != null ? IconData(l['icon'] as int, fontFamily: 'CupertinoIcons') : CupertinoIcons.link,
+            );
+          } catch (e) {
+            return null;
+          }
+        })
+        .whereType<QuickLink>()
         .toList() ?? [
       QuickLink(name: 'Google', url: 'https://google.com', icon: CupertinoIcons.search),
       QuickLink(name: 'GitHub', url: 'https://github.com', icon: CupertinoIcons.chevron_left_slash_chevron_right),
@@ -1513,6 +1623,7 @@ class _QuickLinksTileContent extends StatelessWidget {
     return Container(
       color: const Color(0xFF0D0D12),
       padding: const EdgeInsets.all(16),
+      constraints: const BoxConstraints.expand(),
       child: Center(
         child: QuickLinksWidget(
           links: links,
@@ -1538,6 +1649,7 @@ class _SearchBarTileContent extends StatelessWidget {
     return Container(
       color: const Color(0xFF0D0D12),
       padding: const EdgeInsets.all(16),
+      constraints: const BoxConstraints.expand(),
       child: Center(
         child: SearchBarWidget(
           accentColor: accentColor,
@@ -1580,6 +1692,7 @@ class _DeveloperQuotesTileContent extends StatelessWidget {
     return Container(
       color: const Color(0xFF0D0D12),
       padding: const EdgeInsets.all(16),
+      constraints: const BoxConstraints.expand(),
       child: Center(
         child: DeveloperQuotesWidget(
           quotes: quotes ?? defaultQuotes,
@@ -1609,6 +1722,7 @@ class _TimeDisplayTileContent extends StatelessWidget {
     return Container(
       color: const Color(0xFF0D0D12),
       padding: const EdgeInsets.all(16),
+      constraints: const BoxConstraints.expand(),
       child: Center(
         child: TimeDisplayWidget(
           textColor: textColor,
