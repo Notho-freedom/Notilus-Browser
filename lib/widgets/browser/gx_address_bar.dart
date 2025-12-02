@@ -567,11 +567,10 @@ class _GXAddressBarState extends State<GXAddressBar> {
                       await authService?.signOut();
                       if (dialogContext.mounted) {
                         Navigator.pop(dialogContext);
-                        ScaffoldMessenger.of(dialogContext).showSnackBar(
-                          SnackBar(
-                            content: const Text('Déconnexion réussie'),
-                            backgroundColor: accentColor,
-                          ),
+                        GxNotificationService().showSuccess(
+                          title: 'Déconnexion',
+                          message: 'Déconnexion réussie',
+                          context: dialogContext,
                         );
                       }
                     },
@@ -803,11 +802,11 @@ class _GXAddressBarState extends State<GXAddressBar> {
                                       createdAt: DateTime.now(),
                                     );
                                     await _bookmarkService.addBookmark(bookmark);
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Ajouté aux favoris'),
-                                        duration: Duration(seconds: 2),
-                                      ),
+                                    GxNotificationService().showSuccess(
+                                      title: 'Favoris',
+                                      message: 'Ajouté aux favoris',
+                                      context: context,
+                                      duration: const Duration(seconds: 2),
                                     );
                                   }
                                 : null,

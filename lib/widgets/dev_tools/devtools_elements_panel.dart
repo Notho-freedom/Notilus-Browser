@@ -11,6 +11,9 @@ import 'package:provider/provider.dart';
 import '../../models/devtools_models.dart';
 import '../../services/devtools_service.dart';
 import '../../core/services/color_theme_manager.dart';
+import '../../services/gx_notification_service.dart';
+import '../common/gx_futuristic_dialog.dart';
+import '../common/gx_futuristic_components.dart';
 
 class DevToolsElementsPanel extends StatefulWidget {
   const DevToolsElementsPanel({super.key});
@@ -153,8 +156,11 @@ class _DevToolsElementsPanelState extends State<DevToolsElementsPanel>
     
     await _loadDOMTree();
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('✏️ Attribut "$attrName" modifié'), backgroundColor: accentColor, duration: const Duration(seconds: 1)),
+      GxNotificationService().showSuccess(
+        title: 'Modifié',
+        message: 'Attribut "$attrName" modifié',
+        context: context,
+        duration: const Duration(seconds: 1),
       );
     }
   }
@@ -176,8 +182,11 @@ class _DevToolsElementsPanelState extends State<DevToolsElementsPanel>
     
     await _loadDOMTree();
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: const Text('✏️ Contenu modifié'), backgroundColor: accentColor, duration: const Duration(seconds: 1)),
+      GxNotificationService().showSuccess(
+        title: 'Modifié',
+        message: 'Contenu modifié',
+        context: context,
+        duration: const Duration(seconds: 1),
       );
     }
   }
@@ -199,8 +208,11 @@ class _DevToolsElementsPanelState extends State<DevToolsElementsPanel>
     
     await _loadDOMTree();
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: const Text('✏️ HTML modifié'), backgroundColor: accentColor, duration: const Duration(seconds: 1)),
+      GxNotificationService().showSuccess(
+        title: 'Modifié',
+        message: 'HTML modifié',
+        context: context,
+        duration: const Duration(seconds: 1),
       );
     }
   }
@@ -226,8 +238,11 @@ class _DevToolsElementsPanelState extends State<DevToolsElementsPanel>
     
     await _loadDOMTree();
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('🗑️ Attribut "$attrName" supprimé'), backgroundColor: accentColor, duration: const Duration(seconds: 1)),
+      GxNotificationService().showSuccess(
+        title: 'Supprimé',
+        message: 'Attribut "$attrName" supprimé',
+        context: context,
+        duration: const Duration(seconds: 1),
       );
     }
   }
@@ -247,8 +262,11 @@ class _DevToolsElementsPanelState extends State<DevToolsElementsPanel>
     ''');
     
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: const Text('✅ Styles appliqués'), backgroundColor: accentColor, duration: const Duration(seconds: 1)),
+      GxNotificationService().showSuccess(
+        title: 'Appliqué',
+        message: 'Styles appliqués',
+        context: context,
+        duration: const Duration(seconds: 1),
       );
     }
   }
@@ -271,8 +289,11 @@ class _DevToolsElementsPanelState extends State<DevToolsElementsPanel>
     
     await _loadDOMTree();
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: const Text('🗑️ Élément supprimé'), backgroundColor: accentColor, duration: const Duration(seconds: 1)),
+      GxNotificationService().showSuccess(
+        title: 'Supprimé',
+        message: 'Élément supprimé',
+        context: context,
+        duration: const Duration(seconds: 1),
       );
     }
   }
@@ -293,8 +314,11 @@ class _DevToolsElementsPanelState extends State<DevToolsElementsPanel>
     
     await _loadDOMTree();
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: const Text('📋 Élément dupliqué'), backgroundColor: accentColor, duration: const Duration(seconds: 1)),
+      GxNotificationService().showSuccess(
+        title: 'Dupliqué',
+        message: 'Élément dupliqué',
+        context: context,
+        duration: const Duration(seconds: 1),
       );
     }
   }
@@ -610,52 +634,48 @@ class _DevToolsElementsPanelState extends State<DevToolsElementsPanel>
     final nameController = TextEditingController();
     final valueController = TextEditingController();
     
-    showDialog(
+    GxFuturisticDialog.show(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF252526),
-        title: Text('Ajouter un attribut', style: TextStyle(color: accentColor, fontSize: 14)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              style: const TextStyle(color: Colors.white, fontSize: 12),
-              decoration: InputDecoration(
-                labelText: 'Nom',
-                labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-                enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: accentColor.withOpacity(0.3))),
-                focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: accentColor)),
-                fillColor: Colors.transparent,
-                filled: true,
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: valueController,
-              style: const TextStyle(color: Colors.white, fontSize: 12),
-              decoration: InputDecoration(
-                labelText: 'Valeur',
-                labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-                fillColor: Colors.transparent,
-                filled: true,
-                enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: accentColor.withOpacity(0.3))),
-                focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: accentColor)),
-              ),
-            ),
-          ],
+      title: 'Ajouter un attribut',
+      titleIcon: Icons.add_rounded,
+      accentColor: accentColor,
+      width: 400,
+      actions: [
+        GxFuturisticButton(
+          label: 'Annuler',
+          variant: GxFuturisticButtonVariant.secondary,
+          accentColor: accentColor,
+          onPressed: () => Navigator.pop(context),
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Annuler', style: TextStyle(color: Colors.white.withOpacity(0.5)))),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: accentColor),
-            onPressed: () {
-              if (nameController.text.isNotEmpty && _selectedNode != null) {
-                _addAttribute(_selectedNode!, nameController.text, valueController.text, accentColor);
-              }
-              Navigator.pop(ctx);
-            },
-            child: const Text('Ajouter'),
+        GxFuturisticButton(
+          label: 'Ajouter',
+          variant: GxFuturisticButtonVariant.primary,
+          accentColor: accentColor,
+          onPressed: () {
+            if (nameController.text.isNotEmpty && _selectedNode != null) {
+              _addAttribute(_selectedNode!, nameController.text, valueController.text, accentColor);
+            }
+            Navigator.pop(context);
+          },
+        ),
+      ],
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          GxFuturisticInput(
+            controller: nameController,
+            hint: 'Nom de l\'attribut',
+            label: 'Nom',
+            prefixIcon: Icons.label_rounded,
+            accentColor: accentColor,
+          ),
+          const SizedBox(height: 16),
+          GxFuturisticInput(
+            controller: valueController,
+            hint: 'Valeur de l\'attribut',
+            label: 'Valeur',
+            prefixIcon: Icons.text_fields_rounded,
+            accentColor: accentColor,
           ),
         ],
       ),

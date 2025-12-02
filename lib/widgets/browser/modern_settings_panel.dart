@@ -1393,11 +1393,10 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                       if (selectedDirectory != null) {
                         await _settings.setDownloadFolder(selectedDirectory);
                         if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Dossier défini: $selectedDirectory'),
-                              backgroundColor: gxRed,
-                            ),
+                          GxNotificationService().showSuccess(
+                            title: 'Succès',
+                            message: 'Dossier défini: $selectedDirectory',
+                            context: context,
                           );
                         }
                       }
@@ -2244,11 +2243,10 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                   if (confirm == true) {
                     await HistoryService().clearHistory();
                     if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: const Text('Historique effacé'),
-                          backgroundColor: gxRed,
-                        ),
+                      GxNotificationService().showSuccess(
+                        title: 'Succès',
+                        message: 'Historique effacé',
+                        context: context,
                       );
                     }
                   }
@@ -2268,11 +2266,10 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                       debugPrint('Erreur clear cookies: $e');
                     }
                     if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: const Text('Cookies effacés'),
-                          backgroundColor: gxRed,
-                        ),
+                      GxNotificationService().showSuccess(
+                        title: 'Succès',
+                        message: 'Cookies effacés',
+                        context: context,
                       );
                     }
                   }
@@ -2293,11 +2290,10 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                       debugPrint('Erreur clear cache: $e');
                     }
                     if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: const Text('Cache effacé'),
-                          backgroundColor: gxRed,
-                        ),
+                      GxNotificationService().showSuccess(
+                        title: 'Succès',
+                        message: 'Cache effacé',
+                        context: context,
                       );
                     }
                   }
@@ -2328,11 +2324,10 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                     await prefs.remove('notilus_bookmarks');
                     
                     if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: const Text('Toutes les données effacées'),
-                          backgroundColor: Colors.red,
-                        ),
+                      GxNotificationService().showSuccess(
+                        title: 'Succès',
+                        message: 'Toutes les données effacées',
+                        context: context,
                       );
                     }
                   }
@@ -2627,8 +2622,10 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                     onPressed: () {
                       // Reset DevTools settings
                       _settings.resetDevToolsSettings();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: const Text('Paramètres DevTools réinitialisés'), backgroundColor: gxRed),
+                      GxNotificationService().showSuccess(
+                        title: 'Succès',
+                        message: 'Paramètres DevTools réinitialisés',
+                        context: context,
                       );
                     },
                     icon: const Icon(Icons.restart_alt, size: 16),
@@ -2645,8 +2642,10 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                   child: OutlinedButton.icon(
                     onPressed: () {
                       // Export DevTools config
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: const Text('Configuration exportée dans le presse-papiers'), backgroundColor: gxRed),
+                      GxNotificationService().showSuccess(
+                        title: 'Succès',
+                        message: 'Configuration exportée dans le presse-papiers',
+                        context: context,
                       );
                     },
                     icon: const Icon(Icons.upload_outlined, size: 16),

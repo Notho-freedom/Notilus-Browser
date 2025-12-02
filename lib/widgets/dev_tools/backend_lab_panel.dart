@@ -12,6 +12,7 @@ import '../../core/constants/notilus_colors.dart';
 import '../../core/constants/notilus_fonts.dart';
 import '../common/gx_futuristic_dialog.dart';
 import '../common/gx_futuristic_components.dart';
+import '../../services/gx_notification_service.dart';
 
 /// Onglets du Backend Lab
 enum BackendLabTab {
@@ -1078,28 +1079,20 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
       await _labService.discoverRoutes(serverId);
       await _labService.getRoutes(serverId); // Actualiser
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Routes découvertes avec succès !',
-              style: NotilusFonts.rajdhani(),
-            ),
-            backgroundColor: const Color(0xFF22C55E),
-            duration: const Duration(seconds: 2),
-          ),
+        GxNotificationService().showSuccess(
+          title: 'Succès',
+          message: 'Routes découvertes avec succès !',
+          context: context,
+          duration: const Duration(seconds: 2),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Erreur: $e',
-              style: NotilusFonts.rajdhani(),
-            ),
-            backgroundColor: const Color(0xFFEF4444),
-            duration: const Duration(seconds: 3),
-          ),
+        GxNotificationService().showError(
+          title: 'Erreur',
+          message: 'Erreur: $e',
+          context: context,
+          duration: const Duration(seconds: 3),
         );
       }
     } finally {
@@ -1164,28 +1157,20 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
       }
       
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Configuration backend et frontend terminée !',
-              style: NotilusFonts.rajdhani(),
-            ),
-            backgroundColor: const Color(0xFF22C55E),
-            duration: const Duration(seconds: 2),
-          ),
+        GxNotificationService().showSuccess(
+          title: 'Succès',
+          message: 'Configuration backend et frontend terminée !',
+          context: context,
+          duration: const Duration(seconds: 2),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Erreur lors de la configuration: $e',
-              style: NotilusFonts.rajdhani(),
-            ),
-            backgroundColor: const Color(0xFFEF4444),
-            duration: const Duration(seconds: 3),
-          ),
+        GxNotificationService().showError(
+          title: 'Erreur',
+          message: 'Erreur lors de la configuration: $e',
+          context: context,
+          duration: const Duration(seconds: 3),
         );
       }
     } finally {
@@ -1937,30 +1922,29 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
       
       if (mounted) {
         final vulnCount = result?.vulnerabilities.length ?? 0;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              vulnCount > 0
-                  ? '$vulnCount vulnérabilité(s) trouvée(s) !'
-                  : 'Aucune vulnérabilité trouvée.',
-              style: NotilusFonts.rajdhani(),
-            ),
-            backgroundColor: vulnCount > 0 ? const Color(0xFFFF9800) : const Color(0xFF22C55E),
+        if (vulnCount > 0) {
+          GxNotificationService().showWarning(
+            title: 'Vulnérabilités détectées',
+            message: '$vulnCount vulnérabilité(s) trouvée(s) !',
+            context: context,
             duration: const Duration(seconds: 3),
-          ),
-        );
+          );
+        } else {
+          GxNotificationService().showSuccess(
+            title: 'Scan terminé',
+            message: 'Aucune vulnérabilité trouvée.',
+            context: context,
+            duration: const Duration(seconds: 3),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Erreur lors du scan: $e',
-              style: NotilusFonts.rajdhani(),
-            ),
-            backgroundColor: const Color(0xFFEF4444),
-            duration: const Duration(seconds: 3),
-          ),
+        GxNotificationService().showError(
+          title: 'Erreur',
+          message: 'Erreur lors du scan: $e',
+          context: context,
+          duration: const Duration(seconds: 3),
         );
       }
     } finally {
@@ -2601,42 +2585,37 @@ class _BackendLabPanelState extends State<BackendLabPanel> with SingleTickerProv
                 
                 if (mounted) {
                   if (result != null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'Test de charge terminé ! ${result.totalRequests} requêtes exécutées',
-                          style: NotilusFonts.rajdhani(),
-                        ),
-                        backgroundColor: result.status == LoadTestStatus.completed
-                            ? const Color(0xFF22C55E)
-                            : const Color(0xFFFF9800),
+                    if (result.status == LoadTestStatus.completed) {
+                      GxNotificationService().showSuccess(
+                        title: 'Test terminé',
+                        message: 'Test de charge terminé ! ${result.totalRequests} requêtes exécutées',
+                        context: context,
                         duration: const Duration(seconds: 3),
-                      ),
-                    );
+                      );
+                    } else {
+                      GxNotificationService().showWarning(
+                        title: 'Test en cours',
+                        message: 'Test de charge terminé ! ${result.totalRequests} requêtes exécutées',
+                        context: context,
+                        duration: const Duration(seconds: 3),
+                      );
+                    }
                   } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'Test de charge lancé (résultats en attente)',
-                          style: NotilusFonts.rajdhani(),
-                        ),
-                        backgroundColor: const Color(0xFF22C55E),
-                        duration: const Duration(seconds: 2),
-                      ),
+                    GxNotificationService().showInfo(
+                      title: 'Test lancé',
+                      message: 'Test de charge lancé (résultats en attente)',
+                      context: context,
+                      duration: const Duration(seconds: 2),
                     );
                   }
                 }
               } catch (e) {
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Erreur lors du test: $e',
-                        style: NotilusFonts.rajdhani(),
-                      ),
-                      backgroundColor: const Color(0xFFEF4444),
-                      duration: const Duration(seconds: 3),
-                    ),
+                  GxNotificationService().showError(
+                    title: 'Erreur',
+                    message: 'Erreur lors du test: $e',
+                    context: context,
+                    duration: const Duration(seconds: 3),
                   );
                 }
               } finally {

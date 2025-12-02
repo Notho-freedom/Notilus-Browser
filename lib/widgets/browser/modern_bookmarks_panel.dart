@@ -8,6 +8,7 @@ import '../../core/services/wallpaper_manager.dart';
 import '../../core/services/color_theme_manager.dart';
 import '../common/gx_futuristic_dialog.dart';
 import '../common/gx_futuristic_components.dart';
+import '../../services/gx_notification_service.dart';
 
 class ModernBookmarksPanel extends StatefulWidget {
   const ModernBookmarksPanel({super.key});
@@ -218,20 +219,18 @@ class _ModernBookmarksPanelState extends State<ModernBookmarksPanel> {
                         await _bookmarkService.addBookmark(bookmark);
                         await _refresh();
                         if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: const Text('Favori ajouté'),
-                              backgroundColor: accentColor,
-                            ),
+                          GxNotificationService().showSuccess(
+                            title: 'Favoris',
+                            message: 'Favori ajouté',
+                            context: context,
                           );
                         }
                       }
                     } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: const Text('Aucune page à ajouter aux favoris'),
-                          backgroundColor: Colors.orange,
-                        ),
+                      GxNotificationService().showWarning(
+                        title: 'Avertissement',
+                        message: 'Aucune page à ajouter aux favoris',
+                        context: context,
                       );
                     }
                   },

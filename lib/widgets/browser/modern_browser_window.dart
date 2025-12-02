@@ -41,6 +41,7 @@ import '../../widgets/github/github_repos_panel.dart';
 import '../../services/lighthouse/lighthouse_service.dart';
 import '../../services/studio/studio_service.dart';
 import '../../widgets/common/gx_test_panel.dart';
+import '../../services/gx_notification_service.dart';
 import 'gx_3d_coverflow_tabs_view.dart';
 
 // Intent pour les raccourcis clavier
@@ -1292,11 +1293,10 @@ class _NotilusAiPanelState extends State<_NotilusAiPanel> {
                                 InkWell(
                                   onTap: () {
                                     if (_promptController.text.isNotEmpty) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text('Fonctionnalité AI en développement'),
-                                          backgroundColor: gxRed,
-                                        ),
+                                      GxNotificationService().showInfo(
+                                        title: 'Information',
+                                        message: 'Fonctionnalité AI en développement',
+                                        context: context,
                                       );
                                     }
                                   },
@@ -1373,11 +1373,10 @@ class _QuickActionChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('$label: fonctionnalité AI en développement'),
-            backgroundColor: color,
-          ),
+        GxNotificationService().showInfo(
+          title: 'Information',
+          message: '$label: fonctionnalité AI en développement',
+          context: context,
         );
       },
       borderRadius: BorderRadius.circular(20),

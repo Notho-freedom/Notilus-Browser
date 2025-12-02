@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import '../../models/devtools_models.dart';
 import '../../services/devtools_service.dart';
 import '../../core/services/color_theme_manager.dart';
+import '../../services/gx_notification_service.dart';
 
 class DevToolsConsolePanel extends StatefulWidget {
   const DevToolsConsolePanel({super.key});
@@ -214,12 +215,11 @@ class _DevToolsConsolePanelState extends State<DevToolsConsolePanel> {
           accentColor: accentColor,
           onCopy: () {
             Clipboard.setData(ClipboardData(text: log.message));
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: const Text('Copié dans le presse-papiers'),
-                backgroundColor: accentColor.withOpacity(0.9),
-                duration: const Duration(seconds: 1),
-              ),
+            GxNotificationService().showSuccess(
+              title: 'Copié',
+              message: 'Copié dans le presse-papiers',
+              context: context,
+              duration: const Duration(seconds: 1),
             );
           },
         );

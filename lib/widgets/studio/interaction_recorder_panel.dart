@@ -13,6 +13,7 @@ import '../../core/services/color_theme_manager.dart';
 import '../common/gx_futuristic_dialog.dart';
 import '../common/gx_futuristic_components.dart';
 import '../../core/constants/notilus_fonts.dart';
+import '../../services/gx_notification_service.dart';
 
 /// Panneau Interaction Recorder
 class InteractionRecorderPanel extends StatefulWidget {
@@ -647,11 +648,10 @@ class _InteractionRecorderPanelState extends State<InteractionRecorderPanel> {
     }
 
     Clipboard.setData(ClipboardData(text: code));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Code ${_selectedExport.toUpperCase()} copié'),
-        backgroundColor: accentColor,
-      ),
+    GxNotificationService().showSuccess(
+      title: 'Copié',
+      message: 'Code ${_selectedExport.toUpperCase()} copié',
+      context: context,
     );
   }
 

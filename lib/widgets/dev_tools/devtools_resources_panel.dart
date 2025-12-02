@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../services/devtools_service.dart';
 import '../../core/services/color_theme_manager.dart';
+import '../../services/gx_notification_service.dart';
 
 /// Types de ressources
 enum ResourceType { 
@@ -549,8 +550,11 @@ class _DevToolsResourcesPanelState extends State<DevToolsResourcesPanel> {
                 onTap: () => _previewResource(resource),
                 onCopyUrl: () {
                   Clipboard.setData(ClipboardData(text: resource.url));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: const Text('URL copiée'), backgroundColor: accentColor, duration: const Duration(seconds: 1)),
+                  GxNotificationService().showSuccess(
+                    title: 'Copié',
+                    message: 'URL copiée',
+                    context: context,
+                    duration: const Duration(seconds: 1),
                   );
                 },
               );

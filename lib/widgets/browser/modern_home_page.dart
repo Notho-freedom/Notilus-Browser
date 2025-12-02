@@ -22,6 +22,7 @@ import '../common/context_menu.dart';
 import '../common/gx_futuristic_dialog.dart';
 import '../common/gx_futuristic_components.dart';
 import '../common/wallpaper_background.dart';
+import '../../services/gx_notification_service.dart';
 import 'gx_futuristic_history_panel.dart';
 
 class ModernHomePage extends StatefulWidget {
@@ -186,8 +187,10 @@ class _ModernHomePageState extends State<ModernHomePage> {
         await _quickAccessService.addQuickAccessItem(item);
         await _loadQuickAccessItems();
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Site rapide ajouté')),
+          GxNotificationService().showSuccess(
+            title: 'Succès',
+            message: 'Site rapide ajouté',
+            context: context,
           );
         }
       }
