@@ -163,11 +163,10 @@ class _GXTabBarState extends State<GXTabBar> {
                               // Feedback visuel quand on quitte la zone
                             },
                             builder: (context, candidateData, rejectedData) {
-                              return LongPressDraggable<TabModel>(
+                              return Draggable<TabModel>(
                                 key: ValueKey(tab.id),
                                 data: tab,
                                 dragAnchorStrategy: pointerDragAnchorStrategy,
-                                delay: const Duration(milliseconds: 300), // Délai raisonnable pour permettre les clics
                                 feedback: Material(
                                   color: Colors.transparent,
                                   child: Transform.scale(

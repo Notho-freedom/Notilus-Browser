@@ -324,25 +324,30 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
     final settings = SettingsService();
     final panelOpacity = 1.0 - settings.panelTransparency;
 
-    return Container(
-      decoration: BoxDecoration(
-        image: DecorationImage(
-          image: NetworkImage(wallpaperManager.current),
-          fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(
-            Colors.black.withOpacity(0.88),
-            BlendMode.srcOver,
+    return DefaultTextStyle(
+      style: TextStyle(
+        fontSize: _settings.panelFontSize,
+        color: Colors.white,
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: NetworkImage(wallpaperManager.current),
+            fit: BoxFit.cover,
+            colorFilter: ColorFilter.mode(
+              Colors.black.withOpacity(0.88),
+              BlendMode.srcOver,
+            ),
           ),
         ),
-      ),
-      child: ListenableBuilder(
-        listenable: _settings,
-        builder: (context, _) => Container(
-          color: Colors.black.withOpacity(panelOpacity),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final isCompact = constraints.maxWidth < 600;
-              final sidebarWidth = isCompact ? 160.0 : 180.0;
+        child: ListenableBuilder(
+          listenable: _settings,
+          builder: (context, _) => Container(
+            color: Colors.black.withOpacity(panelOpacity),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isCompact = constraints.maxWidth < 600;
+                final sidebarWidth = isCompact ? 160.0 : 180.0;
               final horizontalPadding = isCompact ? 12.0 : 16.0;
               
               return Row(
@@ -836,6 +841,15 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
                 );
               },
             ),
+            const SizedBox(height: 28),
+            _buildSubsectionTitle('Taille de police des panneaux', gxRed),
+            const SizedBox(height: 4),
+            Text(
+              'Ajuste la taille du texte dans tous les panneaux (10px - 18px)',
+              style: TextStyle(fontSize: 10, color: Colors.white60),
+            ),
+            const SizedBox(height: 12),
+            _buildFontSizeSlider(gxRed),
           ],
         );
       },
@@ -939,6 +953,54 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildFontSizeSlider(Color gxRed) {
+    return ListenableBuilder(
+      listenable: _settings,
+      builder: (context, _) {
+        final fontSize = _settings.panelFontSize;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Taille actuelle: ${fontSize.toStringAsFixed(0)}px',
+                  style: TextStyle(color: Colors.white70, fontSize: 11),
+                ),
+                TextButton(
+                  onPressed: () => _settings.setPanelFontSize(14.0),
+                  child: Text(
+                    'Réinitialiser',
+                    style: TextStyle(color: gxRed, fontSize: 10),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Text('10', style: TextStyle(color: Colors.white60, fontSize: 10)),
+                Expanded(
+                  child: Slider(
+                    value: fontSize,
+                    min: 10.0,
+                    max: 18.0,
+                    divisions: 16,
+                    activeColor: gxRed,
+                    inactiveColor: Colors.white24,
+                    onChanged: (value) => _settings.setPanelFontSize(value),
+                  ),
+                ),
+                Text('18', style: TextStyle(color: Colors.white60, fontSize: 10)),
+              ],
+            ),
+          ],
+        );
+      },
     );
   }
 
