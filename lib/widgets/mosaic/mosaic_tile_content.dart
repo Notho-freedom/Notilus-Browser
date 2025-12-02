@@ -1113,23 +1113,17 @@ class _FrontendResourcesTileContent extends StatelessWidget {
     final accentColor = colorTheme.nativeSecondaryColor;
     final transparency = tile.metadata['transparency'] as double? ?? 0.0;
     
-    final resources = (tile.metadata['resources'] as List<dynamic>?)
-        ?.map((r) => FrontendResource(
-              name: r['name'] as String,
-              url: r['url'] as String,
-              emoji: r['emoji'] as String,
-              color: Color(r['color'] as int),
-            ))
-        .toList() ?? [
-      FrontendResource(name: 'React', url: 'https://react.dev', emoji: '⚛️', color: const Color(0xFF61DAFB)),
-      FrontendResource(name: 'Vue.js', url: 'https://vuejs.org', emoji: '💚', color: const Color(0xFF42B883)),
-      FrontendResource(name: 'Angular', url: 'https://angular.io', emoji: '🔺', color: const Color(0xFFDD0031)),
-      FrontendResource(name: 'Svelte', url: 'https://svelte.dev', emoji: '🔥', color: const Color(0xFFFF3E00)),
-      FrontendResource(name: 'Next.js', url: 'https://nextjs.org', emoji: '▲', color: const Color(0xFF000000)),
-      FrontendResource(name: 'Tailwind', url: 'https://tailwindcss.com', emoji: '💨', color: const Color(0xFF06B6D4)),
-      FrontendResource(name: 'TypeScript', url: 'https://typescriptlang.org', emoji: '📘', color: const Color(0xFF3178C6)),
-      FrontendResource(name: 'Vite', url: 'https://vitejs.dev', emoji: '⚡', color: const Color(0xFFBD34FE)),
-    ];
+    final resourcesList = tile.metadata['resources'] as List<dynamic>?;
+    final resources = resourcesList?.isEmpty == true 
+        ? null 
+        : (resourcesList
+            ?.map((r) => FrontendResource(
+                  name: r['name'] as String,
+                  url: r['url'] as String,
+                  emoji: r['emoji'] as String,
+                  color: Color(r['color'] as int),
+                ))
+            .toList());
     
     return Container(
       color: const Color(0xFF0D0D12),
@@ -1193,23 +1187,17 @@ class _BackendLanguagesTileContent extends StatelessWidget {
     final accentColor = colorTheme.nativeSecondaryColor;
     final transparency = tile.metadata['transparency'] as double? ?? 0.0;
     
-    final languages = (tile.metadata['languages'] as List<dynamic>?)
-        ?.map((l) => BackendLanguage(
-              name: l['name'] as String,
-              url: l['url'] as String,
-              emoji: l['emoji'] as String,
-              color: Color(l['color'] as int),
-            ))
-        .toList() ?? [
-      BackendLanguage(name: 'Node.js', url: 'https://nodejs.org', emoji: '🟢', color: const Color(0xFF339933)),
-      BackendLanguage(name: 'Python', url: 'https://python.org', emoji: '🐍', color: const Color(0xFF3776AB)),
-      BackendLanguage(name: 'Go', url: 'https://go.dev', emoji: '🔵', color: const Color(0xFF00ADD8)),
-      BackendLanguage(name: 'Rust', url: 'https://rust-lang.org', emoji: '🦀', color: const Color(0xFFDEA584)),
-      BackendLanguage(name: 'Java', url: 'https://java.com', emoji: '☕', color: const Color(0xFFED8B00)),
-      BackendLanguage(name: 'C#', url: 'https://docs.microsoft.com/dotnet/csharp/', emoji: '💜', color: const Color(0xFF512BD4)),
-      BackendLanguage(name: 'Ruby', url: 'https://ruby-lang.org', emoji: '💎', color: const Color(0xFFCC342D)),
-      BackendLanguage(name: 'PHP', url: 'https://php.net', emoji: '🐘', color: const Color(0xFF777BB4)),
-    ];
+    final languagesList = tile.metadata['languages'] as List<dynamic>?;
+    final languages = languagesList?.isEmpty == true
+        ? null
+        : (languagesList
+            ?.map((l) => BackendLanguage(
+                  name: l['name'] as String,
+                  url: l['url'] as String,
+                  emoji: l['emoji'] as String,
+                  color: Color(l['color'] as int),
+                ))
+            .toList());
     
     return Container(
       color: const Color(0xFF0D0D12),
@@ -1296,7 +1284,7 @@ class _CommandPromptTileContent extends StatelessWidget {
         accentColor: accentColor,
         transparency: transparency,
         greeting: tile.metadata['greeting'] as String?,
-        subtitle: tile.metadata['subtitle'] as String?,
+        subtitle: tile.metadata['subtitle'] as String? ?? tile.metadata['description'] as String?,
       ),
     );
   }
@@ -1410,7 +1398,7 @@ class _CommandCenterTileContent extends StatelessWidget {
         accentColor: accentColor,
         transparency: transparency,
         greeting: tile.metadata['greeting'] as String?,
-        subtitle: tile.metadata['subtitle'] as String?,
+        subtitle: tile.metadata['subtitle'] as String? ?? tile.metadata['description'] as String?,
       ),
     );
   }
@@ -1575,11 +1563,18 @@ class _DeveloperQuotesTileContent extends StatelessWidget {
     
     final quotes = (tile.metadata['quotes'] as List<dynamic>?)
         ?.map((q) => q as String)
-        .toList() ?? [
+        .toList();
+    
+    // Si pas de quotes personnalisées, utiliser les quotes par défaut
+    final defaultQuotes = [
       "Design is not just what it looks like. Design is how it works. — Steve Jobs",
       "The details are not the details. They make the design. — Charles Eames",
       "Good design is obvious. Great design is transparent. — Joe Sparano",
       "Simplicity is the ultimate sophistication. — Leonardo da Vinci",
+      "Any fool can write code that a computer can understand. Good programmers write code that humans can understand. — Martin Fowler",
+      "First, solve the problem. Then, write the code. — John Johnson",
+      "Talk is cheap. Show me the code. — Linus Torvalds",
+      "The best error message is the one that never shows up. — Thomas Fuchs",
     ];
     
     return Container(
@@ -1587,7 +1582,7 @@ class _DeveloperQuotesTileContent extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       child: Center(
         child: DeveloperQuotesWidget(
-          quotes: quotes,
+          quotes: quotes ?? defaultQuotes,
           accentColor: accentColor,
           transparency: transparency,
         ),

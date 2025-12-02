@@ -62,15 +62,48 @@ class _BackendLabMiniPanelState extends State<BackendLabMiniPanel>
     _labService = Provider.of<BackendLabService>(context, listen: false);
     _historyService = HistoryService();
     
+    // Écouter les changements du service pour mettre à jour automatiquement
+    _labService.addListener(_onServiceChanged);
+    
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _labService.checkConnection();
-      _labService.connectConsole();
-      _loadHistoryServers();
+      _initializeBackendLab();
     });
+  }
+
+  void _onServiceChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  Future<void> _initializeBackendLab() async {
+    if (!mounted) return;
+    
+    // Vérifier la connexion
+    final isConnected = await _labService.checkConnection();
+    
+    if (isConnected && mounted) {
+      // Charger les serveurs existants
+      await _labService.getServers();
+      
+      // Connecter la console
+      _labService.connectConsole();
+      
+      // Forcer la mise à jour du widget
+      if (mounted) {
+        setState(() {});
+      }
+    }
+    
+    // Charger les serveurs de l'historique
+    if (mounted) {
+      _loadHistoryServers();
+    }
   }
 
   @override
   void dispose() {
+    _labService.removeListener(_onServiceChanged);
     _tabController.dispose();
     super.dispose();
   }

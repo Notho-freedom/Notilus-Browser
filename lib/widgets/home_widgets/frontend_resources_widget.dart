@@ -23,14 +23,14 @@ class FrontendResource {
 
 /// Widget autonome pour afficher les ressources frontend
 class FrontendResourcesWidget extends StatelessWidget {
-  final List<FrontendResource> resources;
+  final List<FrontendResource>? resources;
   final Color? accentColor;
   final double transparency;
   final String? title;
 
   const FrontendResourcesWidget({
     super.key,
-    required this.resources,
+    this.resources,
     this.accentColor,
     this.transparency = 0.0,
     this.title,
@@ -41,7 +41,19 @@ class FrontendResourcesWidget extends StatelessWidget {
     final colorTheme = Provider.of<ColorThemeManager>(context, listen: false);
     final gxRed = accentColor ?? colorTheme.nativeSecondaryColor;
     
-    if (resources.isEmpty) {
+    // Utiliser les ressources fournies ou les valeurs par défaut
+    final currentResources = resources ?? [
+      FrontendResource(name: 'React', url: 'https://react.dev', emoji: '⚛️', color: const Color(0xFF61DAFB)),
+      FrontendResource(name: 'Vue.js', url: 'https://vuejs.org', emoji: '💚', color: const Color(0xFF42B883)),
+      FrontendResource(name: 'Angular', url: 'https://angular.io', emoji: '🔺', color: const Color(0xFFDD0031)),
+      FrontendResource(name: 'Svelte', url: 'https://svelte.dev', emoji: '🔥', color: const Color(0xFFFF3E00)),
+      FrontendResource(name: 'Next.js', url: 'https://nextjs.org', emoji: '▲', color: const Color(0xFF000000)),
+      FrontendResource(name: 'Tailwind', url: 'https://tailwindcss.com', emoji: '💨', color: const Color(0xFF06B6D4)),
+      FrontendResource(name: 'TypeScript', url: 'https://typescriptlang.org', emoji: '📘', color: const Color(0xFF3178C6)),
+      FrontendResource(name: 'Vite', url: 'https://vitejs.dev', emoji: '⚡', color: const Color(0xFFBD34FE)),
+    ];
+    
+    if (currentResources.isEmpty) {
       return const SizedBox.shrink();
     }
     
@@ -87,7 +99,7 @@ class FrontendResourcesWidget extends StatelessWidget {
           spacing: 16,
           runSpacing: 16,
           alignment: WrapAlignment.center,
-          children: resources.asMap().entries.map((entry) {
+          children: currentResources.asMap().entries.map((entry) {
             return _buildFrameworkCard(context, entry.value, entry.key);
           }).toList(),
         ),

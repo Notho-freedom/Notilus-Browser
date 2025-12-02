@@ -259,6 +259,13 @@ class _GXSidebarState extends State<GXSidebar> {
                                   final mosaicService = Provider.of<NotilusMosaicService>(context, listen: false);
                                   final tabManager = Provider.of<TabManager>(context, listen: false);
                                   final activeTabId = tabManager.activeTab?.id;
+                                  
+                                  // Si la mosaic est cachée, la réafficher
+                                  if (!mosaicService.isVisible) {
+                                    mosaicService.setVisible(true);
+                                  }
+                                  
+                                  // Toggle l'état actif
                                   mosaicService.toggle(activeTabId: activeTabId);
                                   HapticFeedback.mediumImpact();
                                   return;

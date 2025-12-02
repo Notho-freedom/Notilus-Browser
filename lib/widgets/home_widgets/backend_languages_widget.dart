@@ -23,14 +23,14 @@ class BackendLanguage {
 
 /// Widget autonome pour afficher les langages backend
 class BackendLanguagesWidget extends StatelessWidget {
-  final List<BackendLanguage> languages;
+  final List<BackendLanguage>? languages;
   final Color? accentColor;
   final double transparency;
   final String? title;
 
   const BackendLanguagesWidget({
     super.key,
-    required this.languages,
+    this.languages,
     this.accentColor,
     this.transparency = 0.0,
     this.title,
@@ -41,7 +41,19 @@ class BackendLanguagesWidget extends StatelessWidget {
     final colorTheme = Provider.of<ColorThemeManager>(context, listen: false);
     final gxRed = accentColor ?? colorTheme.nativeSecondaryColor;
     
-    if (languages.isEmpty) {
+    // Utiliser les langages fournis ou les valeurs par défaut
+    final currentLanguages = languages ?? [
+      BackendLanguage(name: 'Node.js', url: 'https://nodejs.org', emoji: '🟢', color: const Color(0xFF339933)),
+      BackendLanguage(name: 'Python', url: 'https://python.org', emoji: '🐍', color: const Color(0xFF3776AB)),
+      BackendLanguage(name: 'Go', url: 'https://go.dev', emoji: '🔵', color: const Color(0xFF00ADD8)),
+      BackendLanguage(name: 'Rust', url: 'https://rust-lang.org', emoji: '🦀', color: const Color(0xFFDEA584)),
+      BackendLanguage(name: 'Java', url: 'https://java.com', emoji: '☕', color: const Color(0xFFED8B00)),
+      BackendLanguage(name: 'C#', url: 'https://docs.microsoft.com/dotnet/csharp/', emoji: '💜', color: const Color(0xFF512BD4)),
+      BackendLanguage(name: 'Ruby', url: 'https://ruby-lang.org', emoji: '💎', color: const Color(0xFFCC342D)),
+      BackendLanguage(name: 'PHP', url: 'https://php.net', emoji: '🐘', color: const Color(0xFF777BB4)),
+    ];
+    
+    if (currentLanguages.isEmpty) {
       return const SizedBox.shrink();
     }
     
@@ -60,7 +72,7 @@ class BackendLanguagesWidget extends StatelessWidget {
         Wrap(
           spacing: 12,
           runSpacing: 12,
-          children: languages.asMap().entries.map((entry) {
+          children: currentLanguages.asMap().entries.map((entry) {
             return _buildLanguageCard(context, entry.value, entry.key);
           }).toList(),
         ),

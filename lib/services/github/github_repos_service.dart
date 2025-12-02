@@ -185,11 +185,99 @@ class GitHubReposService extends ChangeNotifier {
     _refreshTimer = null;
   }
 
+  /// Récupère le contenu d'un dépôt (fichiers et dossiers à la racine)
+  Future<List<GitHubContentItem>> getRepositoryContents(String owner, String repo, {String? path}) async {
+    if (!_authService.isGitHubSignedIn) {
+      throw Exception('Non connecté via GitHub');
+    }
+
+    final githubUser = _authService.githubUser;
+    if (githubUser == null || githubUser.accessToken.isEmpty) {
+      throw Exception('Token GitHub manquant');
+    }
+
+    try {
+      final pathParam = path != null && path.isNotEmpty ? '/$path' : '';
+      final response = await http.get(
+        Uri.parse('https://api.github.com/repos/$owner/$repo/contents$pathParam'),
+        headers: {
+          'Authorization': 'Bearer ${githubUser.accessToken}',
+          'Accept': 'application/vnd.github.v3+json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data is List) {
+          return data.map((item) => GitHubContentItem.fromJson(item as Map<String, dynamic>)).toList();
+        } else {
+          // Si c'est un fichier unique, retourner une liste avec un seul élément
+          return [GitHubContentItem.fromJson(data as Map<String, dynamic>)];
+        }
+      } else if (response.statusCode == 404) {
+        return [];
+      } else {
+        throw Exception('Erreur API GitHub: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('❌ Erreur lors de la récupération du contenu: $e');
+      rethrow;
+    }
+  }
+
   @override
   void dispose() {
     _refreshTimer?.cancel();
     _authService.removeListener(_onAuthChanged);
     super.dispose();
+  }
+}
+
+/// Modèle pour un élément de contenu GitHub (fichier ou dossier)
+class GitHubContentItem {
+  final String name;
+  final String path;
+  final String type; // 'file' ou 'dir'
+  final int? size;
+  final String? downloadUrl;
+  final String? sha;
+  final String? url;
+
+  GitHubContentItem({
+    required this.name,
+    required this.path,
+    required this.type,
+    this.size,
+    this.downloadUrl,
+    this.sha,
+    this.url,
+  });
+
+  bool get isFile => type == 'file';
+  bool get isDirectory => type == 'dir';
+
+  factory GitHubContentItem.fromJson(Map<String, dynamic> json) {
+    return GitHubContentItem(
+      name: json['name'] as String,
+      path: json['path'] as String,
+      type: json['type'] as String,
+      size: json['size'] as int?,
+      downloadUrl: json['download_url'] as String?,
+      sha: json['sha'] as String?,
+      url: json['url'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'path': path,
+      'type': type,
+      'size': size,
+      'download_url': downloadUrl,
+      'sha': sha,
+      'url': url,
+    };
   }
 }
 
