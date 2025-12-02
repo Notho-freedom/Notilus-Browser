@@ -399,14 +399,14 @@ class _NativeTerminalPanelState extends State<NativeTerminalPanel> {
                 image: NetworkImage(wallpaperUrl),
                 fit: BoxFit.cover,
                 colorFilter: ColorFilter.mode(
-                  Colors.black.withValues(alpha: 0.85),
+                  Colors.black.withOpacity(0.85),
                   BlendMode.srcOver,
                 ),
               )
             : null,
       ),
       child: Container(
-        color: Colors.black.withValues(alpha: 0.3),
+        color: Colors.black.withOpacity(0.3),
         child: Column(
           children: [
             // Zone de sortie - totalement intégrée, pas de conteneur visible

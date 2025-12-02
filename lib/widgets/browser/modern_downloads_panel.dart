@@ -22,13 +22,13 @@ class ModernDownloadsPanel extends StatelessWidget {
           image: NetworkImage(context.watch<WallpaperManager>().current),
           fit: BoxFit.cover,
           colorFilter: ColorFilter.mode(
-            Colors.black.withValues(alpha: 0.85),
+            Colors.black.withOpacity(0.85),
             BlendMode.srcOver,
           ),
         ),
       ),
       child: Container(
-        color: Colors.black.withValues(alpha: 0.5),
+        color: Colors.black.withOpacity(0.5),
         child: Consumer<DownloadService>(
           builder: (context, downloadService, _) {
             final downloads = downloadService.downloads;
@@ -77,20 +77,20 @@ class ModernDownloadsPanel extends StatelessWidget {
                               Icon(
                                 Icons.download_outlined,
                                 size: 64,
-                                color: Colors.white.withValues(alpha: 0.3),
+                                color: Colors.white.withOpacity(0.3),
                               ),
                               const SizedBox(height: 16),
                               Text(
                                 'Aucun téléchargement',
                                 style: theme.textTheme.bodyLarge?.copyWith(
-                                  color: Colors.white.withValues(alpha: 0.7),
+                                  color: Colors.white.withOpacity(0.7),
                                 ),
                               ),
                               const SizedBox(height: 8),
                               Text(
                                 'Les fichiers téléchargés apparaîtront ici',
                                 style: theme.textTheme.bodySmall?.copyWith(
-                                  color: Colors.white.withValues(alpha: 0.5),
+                                  color: Colors.white.withOpacity(0.5),
                                 ),
                               ),
                             ],
@@ -181,10 +181,10 @@ class _DownloadItem extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: Colors.white.withOpacity(0.05),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.1),
+          color: Colors.white.withOpacity(0.1),
           width: 1,
         ),
       ),
@@ -197,7 +197,7 @@ class _DownloadItem extends StatelessWidget {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.15),
+                  color: statusColor.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Icon(
@@ -227,7 +227,7 @@ class _DownloadItem extends StatelessWidget {
                           Expanded(
                             child: LinearProgressIndicator(
                               value: download.progress,
-                              backgroundColor: Colors.white.withValues(alpha: 0.1),
+                              backgroundColor: Colors.white.withOpacity(0.1),
                               valueColor: AlwaysStoppedAnimation<Color>(gxRed),
                               minHeight: 2,
                             ),
@@ -237,7 +237,7 @@ class _DownloadItem extends StatelessWidget {
                             download.progressText,
                             style: theme.textTheme.bodySmall?.copyWith(
                               fontSize: 10,
-                              color: Colors.white.withValues(alpha: 0.6),
+                              color: Colors.white.withOpacity(0.6),
                             ),
                           ),
                       ],
@@ -251,7 +251,7 @@ class _DownloadItem extends StatelessWidget {
                   icon: const Icon(Icons.cancel, size: 18),
                   onPressed: onCancel,
                   tooltip: 'Annuler',
-                  color: Colors.white.withValues(alpha: 0.7),
+                  color: Colors.white.withOpacity(0.7),
                 )
               else if (download.status == DownloadStatus.completed)
                 IconButton(
@@ -275,7 +275,7 @@ class _DownloadItem extends StatelessWidget {
                 icon: const Icon(Icons.delete_outline, size: 18),
                 onPressed: onRemove,
                 tooltip: 'Supprimer',
-                color: Colors.white.withValues(alpha: 0.5),
+                color: Colors.white.withOpacity(0.5),
               ),
             ],
           ),
@@ -285,7 +285,7 @@ class _DownloadItem extends StatelessWidget {
               'Erreur: ${download.error}',
               style: theme.textTheme.bodySmall?.copyWith(
                 fontSize: 10,
-                color: Colors.red.withValues(alpha: 0.8),
+                color: Colors.red.withOpacity(0.8),
               ),
             ),
           ],

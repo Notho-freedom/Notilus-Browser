@@ -380,7 +380,7 @@ class _LighthouseGlowState extends State<LighthouseGlow>
           decoration: BoxDecoration(
             boxShadow: [
               BoxShadow(
-                color: widget.glowColor.withValues(alpha: _animation.value),
+                color: widget.glowColor.withOpacity(_animation.value),
                 blurRadius: widget.blurRadius,
                 spreadRadius: 2.0,
               ),

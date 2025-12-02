@@ -97,7 +97,7 @@ class _ColorPickerDialogState extends State<ColorPickerDialog> {
                 color: _selectedColor,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.2),
+                  color: Colors.white.withOpacity(0.2),
                   width: 1,
                 ),
               ),
@@ -224,9 +224,9 @@ class _ColorPickerDialogState extends State<ColorPickerDialog> {
         SliderTheme(
           data: SliderTheme.of(context).copyWith(
             activeTrackColor: color,
-            inactiveTrackColor: color.withValues(alpha: 0.3),
+            inactiveTrackColor: color.withOpacity(0.3),
             thumbColor: color,
-            overlayColor: color.withValues(alpha: 0.2),
+            overlayColor: color.withOpacity(0.2),
             trackHeight: 4,
           ),
           child: Slider(
@@ -261,7 +261,7 @@ class _ColorPickerDialogState extends State<ColorPickerDialog> {
           border: Border.all(
             color: isSelected
                 ? NotilusColors.neonRed
-                : Colors.white.withValues(alpha: 0.2),
+                : Colors.white.withOpacity(0.2),
             width: isSelected ? 3 : 1,
           ),
         ),

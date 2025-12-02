@@ -32,12 +32,12 @@ class NotilusTooltip extends StatelessWidget {
         color: NotilusColors.tooltipBackground,
         borderRadius: BorderRadius.circular(9),
         border: Border.all(
-          color: gxRed.withValues(alpha: 0.6),
+          color: gxRed.withOpacity(0.6),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: gxRed.withValues(alpha: 0.2),
+            color: gxRed.withOpacity(0.2),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
