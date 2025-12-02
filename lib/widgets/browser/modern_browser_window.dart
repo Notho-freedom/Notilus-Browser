@@ -71,6 +71,7 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
   bool _isResizing = false;
   bool _isDevToolsOpen = false; // État du panneau DevTools en bas
   bool _isMiniDevToolsVisible = false; // État du mini DevTools flottant
+  bool _isDraggingWindow = false; // État du drag de la fenêtre
 
   @override
   void initState() {
@@ -250,53 +251,50 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
         },
         child: Focus(
           autofocus: true,
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  gxRed,
-                  Colors.transparent,
-                ],
-              ),
-            ),
+          child: Listener(
+            behavior: HitTestBehavior.translucent,
+            onPointerDown: (event) {
+              // Si le clic est dans la zone supérieure (100 premiers pixels), permettre le drag
+              if (event.localPosition.dy <= 100) {
+                _isDraggingWindow = true;
+              }
+            },
+            onPointerMove: (event) {
+              // Si on est en train de faire un drag dans la zone supérieure
+              if (_isDraggingWindow && event.buttons == 1 && event.localPosition.dy <= 100) {
+                windowManager.startDragging();
+              }
+            },
+            onPointerUp: (event) {
+              _isDraggingWindow = false;
+            },
+            onPointerCancel: (event) {
+              _isDraggingWindow = false;
+            },
             child: Container(
-        margin: const EdgeInsets.all(1.8),
-        decoration: BoxDecoration(
-          color: const Color(0xFF0B0B0E),
-          border: Border.all(
-            color: Colors.white.withOpacity(0.02),
-            width: 0.6,
-          ),
-        ),
-        child: Stack(
-          children: [
-            // Zone draggable pour la fenêtre (en haut)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              height: 40,
-              child: GestureDetector(
-                behavior: HitTestBehavior.translucent,
-                onPanStart: (details) {
-                  windowManager.startDragging();
-                },
-                onPanUpdate: (details) {
-                  // Continuer le drag pendant le mouvement
-                  windowManager.startDragging();
-                },
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.move,
-                  child: Container(
-                    color: Colors.transparent,
-                  ),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    gxRed,
+                    Colors.transparent,
+                  ],
                 ),
               ),
-            ),
-            // Contenu principal
-            Row(
+              child: Container(
+                margin: const EdgeInsets.all(1.8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0B0B0E),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.02),
+                    width: 0.6,
+                  ),
+                ),
+                child: Stack(
+                  children: [
+                    // Contenu principal
+                    Row(
               children: [
                 // Sidebar moderne
                 AnimatedBuilder(
@@ -345,8 +343,8 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                   child: Stack(
                     clipBehavior: Clip.none,
                     children: [
-                Column(
-                  children: [
+                      Column(
+                        children: [
                     // Sélectionner le composant d'onglets selon le mode
                     Consumer<SettingsService>(
                       builder: (context, settings, _) {
@@ -557,9 +555,9 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                           },
                         ),
                       ),
-                  ],
-                ),
-                // Mini DevTools flottant (dans un Stack pour qu'il soit au-dessus)
+                        ],
+                      ),
+                      // Mini DevTools flottant (dans un Stack pour qu'il soit au-dessus)
                 if (_isMiniDevToolsVisible)
                   Positioned.fill(
                     child: Builder(
@@ -657,13 +655,39 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                     ),
                   ),
                 ),
-                    ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              // Zone draggable pour la fenêtre (placée en dernier pour être au-dessus)
+            // Couvre la zone de la barre d'onglets et de la barre d'adresse
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 100, // Hauteur pour couvrir barre d'onglets + barre d'adresse
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onPanStart: (details) {
+                  // Démarrer le drag de la fenêtre
+                  windowManager.startDragging();
+                },
+                onPanUpdate: (details) {
+                  // Continuer le drag pendant le mouvement
+                  windowManager.startDragging();
+                },
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.move,
+                  child: Container(
+                    color: Colors.transparent,
                   ),
                 ),
-              ],
+              ),
             ),
-          ],
-        ),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
