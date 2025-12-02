@@ -51,8 +51,12 @@ class _LiveEditorPanelState extends State<LiveEditorPanel>
       builder: (context, studioService, _) {
         final editor = studioService.liveEditor;
         
-        // Vérifier que le moteur est attaché
-        if (studioService.engine == null) {
+        // Écouter les changements du service liveEditor en temps réel
+        return ListenableBuilder(
+          listenable: editor,
+          builder: (context, _) {
+            // Vérifier que le moteur est attaché
+            if (studioService.engine == null) {
           return Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -154,6 +158,8 @@ class _LiveEditorPanelState extends State<LiveEditorPanel>
             }
           },
         );
+            },
+          );
       },
     );
   }

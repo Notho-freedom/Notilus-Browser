@@ -38,6 +38,18 @@ class StudioService extends ChangeNotifier {
     liveEditor = LiveEditorService(this);
     interactionRecorder = InteractionRecorderService(this);
     mockupComparator = MockupComparatorService(this);
+    
+    // Écouter les changements de tous les services enfants pour propager les mises à jour
+    responsiveTester.addListener(_onServiceChanged);
+    screenshot.addListener(_onServiceChanged);
+    liveEditor.addListener(_onServiceChanged);
+    interactionRecorder.addListener(_onServiceChanged);
+    mockupComparator.addListener(_onServiceChanged);
+  }
+  
+  /// Callback appelé quand un service enfant change
+  void _onServiceChanged() {
+    notifyListeners();
   }
 
   // Getters
@@ -73,8 +85,6 @@ class StudioService extends ChangeNotifier {
     
     debugPrint('✅ StudioService: Engine attached successfully. URL: $_currentUrl');
     notifyListeners();
-    // Écouter les changements du ResponsiveTesterService pour propager les mises à jour
-    responsiveTester.addListener(_onResponsiveTesterChanged);
   }
   
   /// Gère les messages provenant du WebView
@@ -98,16 +108,19 @@ class StudioService extends ChangeNotifier {
     }
   }
 
-  void _onResponsiveTesterChanged() {
-    notifyListeners();
-  }
-
   /// Détache le moteur
   void detachEngine() {
     _messageSubscription?.cancel();
     _messageSubscription = null;
     _engine = null;
-    responsiveTester.removeListener(_onResponsiveTesterChanged);
+    
+    // Retirer les listeners
+    responsiveTester.removeListener(_onServiceChanged);
+    screenshot.removeListener(_onServiceChanged);
+    liveEditor.removeListener(_onServiceChanged);
+    interactionRecorder.removeListener(_onServiceChanged);
+    mockupComparator.removeListener(_onServiceChanged);
+    
     responsiveTester.detachEngine();
     screenshot.detachEngine();
     liveEditor.detachEngine();
@@ -209,6 +222,14 @@ class StudioService extends ChangeNotifier {
   @override
   void dispose() {
     _messageSubscription?.cancel();
+    
+    // Retirer les listeners avant de disposer
+    responsiveTester.removeListener(_onServiceChanged);
+    screenshot.removeListener(_onServiceChanged);
+    liveEditor.removeListener(_onServiceChanged);
+    interactionRecorder.removeListener(_onServiceChanged);
+    mockupComparator.removeListener(_onServiceChanged);
+    
     responsiveTester.dispose();
     screenshot.dispose();
     liveEditor.dispose();

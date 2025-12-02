@@ -37,7 +37,11 @@ class _ScreenshotPanelState extends State<ScreenshotPanel> {
       builder: (context, studioService, _) {
         final screenshot = studioService.screenshot;
 
-        return LayoutBuilder(
+        // Écouter les changements du service screenshot en temps réel
+        return ListenableBuilder(
+          listenable: screenshot,
+          builder: (context, _) {
+            return LayoutBuilder(
           builder: (context, constraints) {
             final isCompact = constraints.maxWidth < 800;
             
@@ -165,6 +169,8 @@ class _ScreenshotPanelState extends State<ScreenshotPanel> {
                 ),
               ],
             );
+          },
+        );
           },
         );
       },

@@ -35,7 +35,11 @@ class _InteractionRecorderPanelState extends State<InteractionRecorderPanel> {
       builder: (context, studioService, _) {
         final recorder = studioService.interactionRecorder;
 
-        return LayoutBuilder(
+        // Écouter les changements du service interactionRecorder en temps réel
+        return ListenableBuilder(
+          listenable: recorder,
+          builder: (context, _) {
+            return LayoutBuilder(
           builder: (context, constraints) {
             final isCompact = constraints.maxWidth < 1000;
             final isVeryCompact = constraints.maxWidth < 600;
@@ -136,6 +140,8 @@ class _InteractionRecorderPanelState extends State<InteractionRecorderPanel> {
             );
           },
         );
+            },
+          );
       },
     );
   }
