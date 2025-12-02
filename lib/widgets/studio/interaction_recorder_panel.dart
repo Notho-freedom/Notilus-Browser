@@ -147,49 +147,63 @@ class _InteractionRecorderPanelState extends State<InteractionRecorderPanel> {
   }
 
   Widget _buildControlsPanel(InteractionRecorderService recorder, Color accentColor) {
-    return Column(
-      children: [
-        // Recording status
-        _buildRecordingStatus(recorder, accentColor),
-        const SizedBox(height: 16),
-        // Controls
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Column(
-            children: [
-              _buildMainButton(recorder, accentColor),
-              const SizedBox(height: 12),
-              Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final hasBoundedHeight = constraints.maxHeight != double.infinity;
+        
+        return Column(
+          mainAxisSize: hasBoundedHeight ? MainAxisSize.max : MainAxisSize.min,
+          children: [
+            // Recording status
+            _buildRecordingStatus(recorder, accentColor),
+            const SizedBox(height: 16),
+            // Controls
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Expanded(
-                    child: _SecondaryButton(
-                      icon: CupertinoIcons.pause,
-                      label: 'Pause',
-                      onPressed: recorder.isRecording ? recorder.pauseRecording : null,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _SecondaryButton(
-                      icon: CupertinoIcons.trash,
-                      label: 'Effacer',
-                      onPressed: recorder.currentSession != null ? recorder.clearRecording : null,
-                    ),
+                  _buildMainButton(recorder, accentColor),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _SecondaryButton(
+                          icon: CupertinoIcons.pause,
+                          label: 'Pause',
+                          onPressed: recorder.isRecording ? recorder.pauseRecording : null,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _SecondaryButton(
+                          icon: CupertinoIcons.trash,
+                          label: 'Effacer',
+                          onPressed: recorder.currentSession != null ? recorder.clearRecording : null,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 24),
-        // Options
-        Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: _buildOptions(recorder, accentColor),
-          ),
-        ),
-      ],
+            ),
+            const SizedBox(height: 24),
+            // Options
+            if (hasBoundedHeight)
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: _buildOptions(recorder, accentColor),
+                ),
+              )
+            else
+              SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: _buildOptions(recorder, accentColor),
+              ),
+          ],
+        );
+      },
     );
   }
 
