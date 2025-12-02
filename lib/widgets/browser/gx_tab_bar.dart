@@ -60,7 +60,7 @@ class _GXTabBarState extends State<GXTabBar> {
         color: colorThemeManager.nativeBackgroundColor,
         border: Border(
           bottom: BorderSide(
-            color: gxRed.withValues(alpha: 0.2),
+            color: gxRed.withOpacity(0.2),
             width: 1,
           ),
         ),
@@ -630,7 +630,7 @@ class _GXTabItemState extends State<_GXTabItem>
                                           child: CircularProgressIndicator(
                                             strokeWidth: 1.5,
                                             valueColor: AlwaysStoppedAnimation<Color>(
-                                              _gxRed.withValues(alpha: 0.6),
+                                              _gxRed.withOpacity(0.6),
                                             ),
                                           ),
                                         ),
@@ -670,7 +670,7 @@ class _GXTabItemState extends State<_GXTabItem>
                               height: 22,
                               decoration: BoxDecoration(
                                 color: _closeHovered
-                                    ? Colors.white.withValues(alpha:0.12)
+                                    ? Colors.white.withOpacity(0.12)
                                     : Colors.transparent,
                                 borderRadius: BorderRadius.circular(4),
                               ),
@@ -679,7 +679,7 @@ class _GXTabItemState extends State<_GXTabItem>
                                 size: 12,
                                 color: widget.isActive || _isHovered
                                     ? Colors.white
-                                    : Colors.white.withValues(alpha:0.6),
+                                    : Colors.white.withOpacity(0.6),
                               ),
                             ),
                           ),
@@ -893,7 +893,7 @@ class _GXExpandedTabItemState extends State<_GXExpandedTabItem>
                             height: 22,
                             decoration: BoxDecoration(
                               color: _closeHovered
-                                  ? Colors.white.withValues(alpha:0.12)
+                                  ? Colors.white.withOpacity(0.12)
                                   : Colors.transparent,
                               borderRadius: BorderRadius.circular(4),
                             ),
@@ -902,7 +902,7 @@ class _GXExpandedTabItemState extends State<_GXExpandedTabItem>
                               size: 12,
                               color: widget.isActive || _isHovered
                                   ? Colors.white
-                                  : Colors.white.withValues(alpha:0.6),
+                                  : Colors.white.withOpacity(0.6),
                             ),
                           ),
                         ),
@@ -1127,7 +1127,7 @@ class _GXTabBarIconButtonState extends State<_GXTabBarIconButton> {
         height: 28,
         decoration: BoxDecoration(
           color: _isHovered && widget.onPressed != null
-              ? gxRed.withValues(alpha:0.12)
+              ? gxRed.withOpacity(0.12)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(4),
         ),
@@ -1135,8 +1135,8 @@ class _GXTabBarIconButtonState extends State<_GXTabBarIconButton> {
           widget.icon,
           size: widget.compact ? 16 : 18,
           color: widget.onPressed != null
-              ? (_isHovered ? gxRed : gxRed.withValues(alpha:0.8))
-              : gxRed.withValues(alpha:0.35),
+              ? (_isHovered ? gxRed : gxRed.withOpacity(0.8))
+              : gxRed.withOpacity(0.35),
         ),
       ),
     );
@@ -1248,7 +1248,7 @@ class _GXWindowControlsState extends State<GXWindowControls>
                   icon: CupertinoIcons.xmark,
                   iconSize: 13,
                   tooltip: 'Fermer',
-                  hoverColor: iconColor.withValues(alpha:0.2),
+                  hoverColor: iconColor.withOpacity(0.2),
                   iconColor: iconColor,
                   onTap: () => windowManager.close(),
                 ),
@@ -1295,7 +1295,7 @@ class _WindowButtonState extends State<_WindowButton> {
         width: 44,
         height: 32,
         color: _hovered
-            ? (widget.hoverColor ?? Colors.white.withValues(alpha:0.08))
+            ? (widget.hoverColor ?? Colors.white.withOpacity(0.08))
             : Colors.transparent,
         child: Center(
           child: Icon(
@@ -1303,7 +1303,7 @@ class _WindowButtonState extends State<_WindowButton> {
             size: widget.iconSize,
             color: _hovered
                 ? (widget.iconColor ?? Colors.white)
-                : (widget.iconColor ?? Colors.white.withValues(alpha:0.8)),
+                : (widget.iconColor ?? Colors.white.withOpacity(0.8)),
           ),
         ),
       ),

@@ -328,7 +328,7 @@ class _PulseWidgetState extends State<PulseWidget>
           decoration: BoxDecoration(
             boxShadow: [
               BoxShadow(
-                color: widget.glowColor.withValues(alpha: _animation.value * 0.5),
+                color: widget.glowColor.withOpacity(_animation.value * 0.5),
                 blurRadius: 12,
                 spreadRadius: 2,
               ),

@@ -276,7 +276,7 @@ class _GXSidebarState extends State<GXSidebar> {
                         Container(
                           width: 40,
                           height: 1,
-                          color: gxRed.withValues(alpha: 0.3),
+                          color: gxRed.withOpacity(0.3),
                         ),
                         const SizedBox(height: 12),
                         // Services web
@@ -440,7 +440,7 @@ class _GXSidebarIconState extends State<_GXSidebarIcon>
                       boxShadow: widget.isSelected
                           ? [
                               BoxShadow(
-                                color: gxRed.withValues(alpha: 0.8),
+                                color: gxRed.withOpacity(0.8),
                                 blurRadius: 6,
                                 spreadRadius: 1,
                               ),
@@ -459,15 +459,15 @@ class _GXSidebarIconState extends State<_GXSidebarIcon>
                     height: 36,
                     decoration: BoxDecoration(
                       color: widget.isSelected
-                          ? gxRed.withValues(alpha: 0.18)
+                          ? gxRed.withOpacity(0.18)
                           : (widget.isHovered
-                              ? gxRed.withValues(alpha: 0.12)
+                              ? gxRed.withOpacity(0.12)
                               : Colors.transparent),
                       borderRadius: BorderRadius.circular(10),
                       boxShadow: widget.isHovered || widget.isSelected
                           ? [
                               BoxShadow(
-                                color: gxRed.withValues(alpha: widget.isSelected ? 0.3 : 0.15),
+                                color: gxRed.withOpacity(widget.isSelected ? 0.3 : 0.15),
                                 blurRadius: 8,
                                 spreadRadius: 0,
                               ),
@@ -486,7 +486,7 @@ class _GXSidebarIconState extends State<_GXSidebarIcon>
                         return Icon(
                           widget.icon,
                           size: 20,
-                          color: iconColor.withValues(alpha: opacity),
+                          color: iconColor.withOpacity(opacity),
                         );
                       },
                     ),
@@ -513,7 +513,7 @@ class _SidebarSignature extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 10),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: gxRed.withValues(alpha: 0.5), width: 1),
+        border: Border.all(color: gxRed.withOpacity(0.5), width: 1),
       ),
       child: Column(
         children: [
@@ -525,7 +525,7 @@ class _SidebarSignature extends StatelessWidget {
               borderRadius: BorderRadius.circular(3),
               boxShadow: [
                 BoxShadow(
-                  color: gxRed.withValues(alpha: 0.6),
+                  color: gxRed.withOpacity(0.6),
                   blurRadius: 8,
                 ),
               ],
@@ -535,7 +535,7 @@ class _SidebarSignature extends StatelessWidget {
           Text(
             'NX',
             style: TextStyle(
-              color: gxRed.withValues(alpha: 0.9),
+              color: gxRed.withOpacity(0.9),
               fontSize: 10,
               fontWeight: FontWeight.bold,
             ),
@@ -732,7 +732,7 @@ class _SidebarVerticalLabel extends StatelessWidget {
       child: Text(
         'NOTILUS BETA',
         style: TextStyle(
-          color: gxRed.withValues(alpha: 0.7),
+          color: gxRed.withOpacity(0.7),
           fontSize: 10,
           letterSpacing: 3,
           fontWeight: FontWeight.w600,

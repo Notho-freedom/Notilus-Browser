@@ -256,9 +256,9 @@ class _GXAddressBarState extends State<GXAddressBar> {
         child: Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: bgColor.withValues(alpha: panelOpacity.clamp(0.0, 1.0)),
+            color: bgColor.withOpacity(panelOpacity.clamp(0.0, 1.0)),
             border: Border.all(
-              color: gxRed.withValues(alpha: 0.4),
+              color: gxRed.withOpacity(0.4),
               width: 1.5,
             ),
           ),
@@ -472,7 +472,7 @@ class _GXAddressBarState extends State<GXAddressBar> {
                             height: 48,
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
-                                colors: [accentColor, accentColor.withValues(alpha: 0.7)],
+                                colors: [accentColor, accentColor.withOpacity(0.7)],
                               ),
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -485,7 +485,7 @@ class _GXAddressBarState extends State<GXAddressBar> {
                         height: 48,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [accentColor, accentColor.withValues(alpha: 0.7)],
+                            colors: [accentColor, accentColor.withOpacity(0.7)],
                           ),
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -703,8 +703,8 @@ class _GXAddressBarState extends State<GXAddressBar> {
                       begin: Alignment.centerLeft,
                       end: Alignment.centerRight,
                       colors: [
-                        gxRed.withValues(alpha: 0.9),
-                        gxRed.withValues(alpha: 0.0),
+                        gxRed.withOpacity(0.9),
+                        gxRed.withOpacity(0.0),
                       ],
                     ),
                   ),
@@ -712,7 +712,7 @@ class _GXAddressBarState extends State<GXAddressBar> {
                     margin: const EdgeInsets.all(1.2),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(17),
-                      color: colorThemeManager.nativeBackgroundColor.withValues(alpha: 0.88),
+                      color: colorThemeManager.nativeBackgroundColor.withOpacity(0.88),
                     ),
                     child: CompositedTransformTarget(
                       key: _inputAreaKey, // Cette clé est utilisée pour mesurer la largeur
@@ -737,7 +737,7 @@ class _GXAddressBarState extends State<GXAddressBar> {
                           Expanded(
                             child: TextSelectionTheme(
                               data: TextSelectionThemeData(
-                                selectionColor: gxRed.withValues(alpha: 0.3),
+                                selectionColor: gxRed.withOpacity(0.3),
                                 selectionHandleColor: gxRed,
                                 cursorColor: gxRed,
                               ),
@@ -754,7 +754,7 @@ class _GXAddressBarState extends State<GXAddressBar> {
                                 decoration: InputDecoration(
                                   hintText: 'Enter search or web address',
                                   hintStyle: TextStyle(
-                                    color: Colors.white.withValues(alpha:0.35),
+                                    color: Colors.white.withOpacity(0.35),
                                     fontSize: 12,
                                   ),
                                   border: InputBorder.none,
@@ -835,7 +835,7 @@ class _GXAddressBarState extends State<GXAddressBar> {
                                             ? CupertinoIcons.shield_fill
                                             : CupertinoIcons.shield,
                                         size: 16,
-                                        color: adBlocker.isEnabled ? gxRed : gxRed.withValues(alpha: 0.5),
+                                        color: adBlocker.isEnabled ? gxRed : gxRed.withOpacity(0.5),
                                       ),
                                       onPressed: () => adBlocker.setEnabled(!adBlocker.isEnabled),
                                     ),
@@ -930,7 +930,7 @@ class _GXNavButtonState extends State<_GXNavButton> {
         height: 26,
         decoration: BoxDecoration(
           color: _isHovered && isEnabled
-              ? gxRed.withValues(alpha: 0.14)
+              ? gxRed.withOpacity(0.14)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(6),
         ),
@@ -938,8 +938,8 @@ class _GXNavButtonState extends State<_GXNavButton> {
           widget.icon,
           size: widget.size,
           color: isEnabled
-              ? (_isHovered ? gxRed : gxRed.withValues(alpha: 0.8))
-              : gxRed.withValues(alpha: 0.3),
+              ? (_isHovered ? gxRed : gxRed.withOpacity(0.8))
+              : gxRed.withOpacity(0.3),
         ),
       ),
     );
@@ -1068,11 +1068,11 @@ class _GXActionButtonState extends State<_GXActionButton> {
         height: 26,
         decoration: BoxDecoration(
           color: (_isHovered && isEnabled) || widget.isActive
-              ? gxRed.withValues(alpha: widget.isActive ? 0.2 : 0.14)
+              ? gxRed.withOpacity(widget.isActive ? 0.2 : 0.14)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(6),
           border: widget.isActive
-              ? Border.all(color: gxRed.withValues(alpha: 0.5), width: 1)
+              ? Border.all(color: gxRed.withOpacity(0.5), width: 1)
               : null,
         ),
         child: Builder(
@@ -1083,8 +1083,8 @@ class _GXActionButtonState extends State<_GXActionButton> {
               widget.icon,
               size: 18,
               color: isEnabled
-                  ? (widget.isActive || _isHovered ? iconColor : iconColor.withValues(alpha: 0.8))
-                  : iconColor.withValues(alpha: 0.3),
+                  ? (widget.isActive || _isHovered ? iconColor : iconColor.withOpacity(0.8))
+                  : iconColor.withOpacity(0.3),
             );
           },
         ),

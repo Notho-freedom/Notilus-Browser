@@ -68,7 +68,7 @@ class TerminalListWidget extends StatelessWidget {
           style: theme.textTheme.bodySmall?.copyWith(
             fontSize: 11,
             fontWeight: FontWeight.w600,
-            color: Colors.white.withValues(alpha: 0.5),
+            color: Colors.white.withOpacity(0.5),
           ),
         ),
         const SizedBox(height: 8),
@@ -110,11 +110,11 @@ class _TerminalItem extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            color: Colors.white.withValues(alpha: 0.05),
+            color: Colors.white.withOpacity(0.05),
             border: Border.all(
               color: isLocked
-                  ? Colors.white.withValues(alpha: 0.1)
-                  : const Color(0xFFFF2D55).withValues(alpha: 0.2),
+                  ? Colors.white.withOpacity(0.1)
+                  : const Color(0xFFFF2D55).withOpacity(0.2),
               width: 1,
             ),
           ),
@@ -125,15 +125,15 @@ class _TerminalItem extends StatelessWidget {
                 height: 36,
                 decoration: BoxDecoration(
                   color: isLocked
-                      ? Colors.white.withValues(alpha: 0.05)
-                      : const Color(0xFFFF2D55).withValues(alpha: 0.15),
+                      ? Colors.white.withOpacity(0.05)
+                      : const Color(0xFFFF2D55).withOpacity(0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
                   isLocked ? CupertinoIcons.lock : terminal.icon,
                   size: 18,
                   color: isLocked
-                      ? Colors.white.withValues(alpha: 0.3)
+                      ? Colors.white.withOpacity(0.3)
                       : const Color(0xFFFF2D55),
                 ),
               ),
@@ -147,7 +147,7 @@ class _TerminalItem extends StatelessWidget {
                       style: theme.textTheme.bodySmall?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: isLocked
-                            ? Colors.white.withValues(alpha: 0.4)
+                            ? Colors.white.withOpacity(0.4)
                             : null,
                       ),
                     ),
@@ -155,7 +155,7 @@ class _TerminalItem extends StatelessWidget {
                       terminal.description,
                       style: theme.textTheme.bodySmall?.copyWith(
                         fontSize: 10,
-                        color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
+                        color: theme.textTheme.bodySmall?.color?.withOpacity(0.6),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -167,7 +167,7 @@ class _TerminalItem extends StatelessWidget {
                 Icon(
                   CupertinoIcons.lock_fill,
                   size: 14,
-                  color: Colors.white.withValues(alpha: 0.3),
+                  color: Colors.white.withOpacity(0.3),
                 ),
             ],
           ),

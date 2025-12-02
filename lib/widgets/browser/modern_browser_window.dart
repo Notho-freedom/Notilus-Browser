@@ -265,7 +265,7 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
         decoration: BoxDecoration(
           color: const Color(0xFF0B0B0E),
           border: Border.all(
-            color: Colors.white.withValues(alpha: 0.02),
+            color: Colors.white.withOpacity(0.02),
             width: 0.6,
           ),
         ),
@@ -611,12 +611,12 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                                   child: Container(
                                     width: 4,
                                     color: _isResizing
-                                        ? gxRed.withValues(alpha: 0.8)
+                                        ? gxRed.withOpacity(0.8)
                                         : Colors.transparent,
                                     child: Container(
                                       margin: const EdgeInsets.symmetric(vertical: 8),
                                       decoration: BoxDecoration(
-                                        color: gxRed.withValues(alpha: 0.3),
+                                        color: gxRed.withOpacity(0.3),
                                         borderRadius: BorderRadius.circular(2),
                                       ),
                                     ),
@@ -666,7 +666,7 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
             ),
             border: Border(
               right: BorderSide(
-                color: gxRed.withValues(alpha: 0.3),
+                color: gxRed.withOpacity(0.3),
                 width: 1,
               ),
             ),
@@ -680,7 +680,7 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                 decoration: BoxDecoration(
                   border: Border(
                     bottom: BorderSide(
-                      color: gxRed.withValues(alpha: 0.2),
+                      color: gxRed.withOpacity(0.2),
                       width: 1,
                     ),
                   ),
@@ -710,7 +710,7 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                         padding: const EdgeInsets.all(4),
                         child: Icon(
                           CupertinoIcons.xmark,
-                          color: Colors.white.withValues(alpha: 0.7),
+                          color: Colors.white.withOpacity(0.7),
                           size: 16,
                         ),
                       ),
@@ -927,14 +927,14 @@ class _NotilusWidgetsPanel extends StatelessWidget {
                     image: NetworkImage(wallpaperUrl),
                     fit: BoxFit.cover,
                     colorFilter: ColorFilter.mode(
-                      Colors.black.withValues(alpha: 0.85),
+                      Colors.black.withOpacity(0.85),
                       BlendMode.srcOver,
                     ),
                   )
                 : null,
           ),
           child: Container(
-            color: Colors.black.withValues(alpha: (1.0 - panelTransparency).clamp(0.0, 1.0)),
+            color: Colors.black.withOpacity((1.0 - panelTransparency).clamp(0.0, 1.0)),
             child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -958,7 +958,7 @@ class _NotilusWidgetsPanel extends StatelessWidget {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.green.withValues(alpha: 0.5),
+                          color: Colors.green.withOpacity(0.5),
                           blurRadius: 4,
                         ),
                       ],
@@ -1055,8 +1055,8 @@ class _SystemWidgetTile extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        color: Colors.white.withValues(alpha: 0.05),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        color: Colors.white.withOpacity(0.05),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Row(
         children: [
@@ -1064,7 +1064,7 @@ class _SystemWidgetTile extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: widget.valueColor.withValues(alpha: 0.15),
+              color: widget.valueColor.withOpacity(0.15),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(widget.icon, color: widget.valueColor, size: 18),
@@ -1086,7 +1086,7 @@ class _SystemWidgetTile extends StatelessWidget {
                 Text(
                   widget.subtitle,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.5),
+                    color: Colors.white.withOpacity(0.5),
                     fontSize: 10,
                   ),
                 ),
@@ -1096,7 +1096,7 @@ class _SystemWidgetTile extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: widget.valueColor.withValues(alpha: 0.15),
+              color: widget.valueColor.withOpacity(0.15),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
@@ -1157,14 +1157,14 @@ class _NotilusAiPanelState extends State<_NotilusAiPanel> {
                 image: NetworkImage(wallpaperUrl),
                 fit: BoxFit.cover,
                 colorFilter: ColorFilter.mode(
-                  Colors.black.withValues(alpha: 0.85),
+                  Colors.black.withOpacity(0.85),
                   BlendMode.srcOver,
                 ),
               )
             : null,
           ),
           child: Container(
-        color: Colors.black.withValues(alpha: 0.5),
+        color: Colors.black.withOpacity(0.5),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1185,7 +1185,7 @@ class _NotilusAiPanelState extends State<_NotilusAiPanel> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: gxRed.withValues(alpha: 0.2),
+                      color: gxRed.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
@@ -1240,12 +1240,12 @@ class _NotilusAiPanelState extends State<_NotilusAiPanel> {
                           borderRadius: BorderRadius.circular(12),
                           gradient: LinearGradient(
                             colors: [
-                              gxRed.withValues(alpha: 0.15),
-                              gxRedDark.withValues(alpha: 0.15),
+                              gxRed.withOpacity(0.15),
+                              gxRedDark.withOpacity(0.15),
                             ],
                           ),
                           border: Border.all(
-                            color: gxRed.withValues(alpha: 0.3),
+                            color: gxRed.withOpacity(0.3),
                             width: 1,
                           ),
                         ),
@@ -1277,7 +1277,7 @@ class _NotilusAiPanelState extends State<_NotilusAiPanel> {
                               decoration: InputDecoration(
                                 hintText: 'Décrivez ce que vous voulez faire...',
                                 hintStyle: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.3),
+                                  color: Colors.white.withOpacity(0.3),
                                   fontSize: 12,
                                 ),
                                 filled: true,
@@ -1296,7 +1296,7 @@ class _NotilusAiPanelState extends State<_NotilusAiPanel> {
                                   child: Text(
                                     'Ex: "Résume cette page", "Trouve des alternatives"',
                                     style: TextStyle(
-                                      color: Colors.white.withValues(alpha: 0.4),
+                                      color: Colors.white.withOpacity(0.4),
                                       fontSize: 9,
                                     ),
                                   ),
@@ -1345,7 +1345,7 @@ class _NotilusAiPanelState extends State<_NotilusAiPanel> {
                       Text(
                         'Actions rapides',
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.5),
+                          color: Colors.white.withOpacity(0.5),
                           fontSize: 10,
                           fontWeight: FontWeight.w600,
                         ),
@@ -1394,9 +1394,9 @@ class _QuickActionChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
+          color: color.withOpacity(0.1),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
+          border: Border.all(color: color.withOpacity(0.3)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -1442,12 +1442,12 @@ class _AiToggleTile extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         color: value 
-            ? gxRed.withValues(alpha: 0.08)
-            : Colors.white.withValues(alpha: 0.05),
+            ? gxRed.withOpacity(0.08)
+            : Colors.white.withOpacity(0.05),
         border: Border.all(
           color: value 
-              ? gxRed.withValues(alpha: 0.3)
-              : Colors.white.withValues(alpha: 0.1),
+              ? gxRed.withOpacity(0.3)
+              : Colors.white.withOpacity(0.1),
         ),
       ),
       child: Row(
@@ -1457,14 +1457,14 @@ class _AiToggleTile extends StatelessWidget {
             height: 32,
             decoration: BoxDecoration(
               color: value 
-                  ? gxRed.withValues(alpha: 0.2)
-                  : Colors.white.withValues(alpha: 0.1),
+                  ? gxRed.withOpacity(0.2)
+                  : Colors.white.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
               icon,
               size: 16,
-              color: value ? gxRed : Colors.white.withValues(alpha: 0.5),
+              color: value ? gxRed : Colors.white.withOpacity(0.5),
             ),
           ),
           const SizedBox(width: 12),
@@ -1475,7 +1475,7 @@ class _AiToggleTile extends StatelessWidget {
                 Text(
                   title,
                   style: TextStyle(
-                    color: value ? Colors.white : Colors.white.withValues(alpha: 0.8),
+                    color: value ? Colors.white : Colors.white.withOpacity(0.8),
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
@@ -1484,7 +1484,7 @@ class _AiToggleTile extends StatelessWidget {
                 Text(
                   subtitle,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.5),
+                    color: Colors.white.withOpacity(0.5),
                     fontSize: 10,
                   ),
                 ),
@@ -1494,7 +1494,7 @@ class _AiToggleTile extends StatelessWidget {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeTrackColor: gxRed.withValues(alpha: 0.5),
+            activeTrackColor: gxRed.withOpacity(0.5),
             activeColor: gxRed,
           ),
         ],
@@ -1539,14 +1539,14 @@ class _NotilusUpdatesPanelState extends State<_NotilusUpdatesPanel> {
                 image: NetworkImage(wallpaperUrl),
                 fit: BoxFit.cover,
                 colorFilter: ColorFilter.mode(
-                  Colors.black.withValues(alpha: 0.85),
+                  Colors.black.withOpacity(0.85),
                   BlendMode.srcOver,
                 ),
               )
             : null,
           ),
           child: Container(
-        color: Colors.black.withValues(alpha: 0.5),
+        color: Colors.black.withOpacity(0.5),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1567,7 +1567,7 @@ class _NotilusUpdatesPanelState extends State<_NotilusUpdatesPanel> {
                   Text(
                     'v${_updateService.version}',
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.5),
+                      color: Colors.white.withOpacity(0.5),
                       fontSize: 10,
                     ),
                   ),
@@ -1588,12 +1588,12 @@ class _NotilusUpdatesPanelState extends State<_NotilusUpdatesPanel> {
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            gxRed.withValues(alpha: 0.2),
-                            gxRed.withValues(alpha: 0.1),
+                            gxRed.withOpacity(0.2),
+                            gxRed.withOpacity(0.1),
                           ],
                         ),
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: gxRed.withValues(alpha: 0.3)),
+                        border: Border.all(color: gxRed.withOpacity(0.3)),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -1633,7 +1633,7 @@ class _NotilusUpdatesPanelState extends State<_NotilusUpdatesPanel> {
                 child: Text(
                   'Dernière vérification: ${_updateService.formatRelativeDate(_updateService.lastCheck!)}',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.4),
+                    color: Colors.white.withOpacity(0.4),
                     fontSize: 9,
                   ),
                 ),
@@ -1644,7 +1644,7 @@ class _NotilusUpdatesPanelState extends State<_NotilusUpdatesPanel> {
               child: Text(
                 'Changements récents',
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.6),
+                  color: Colors.white.withOpacity(0.6),
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
                 ),
@@ -1680,7 +1680,7 @@ class _NotilusUpdatesPanelState extends State<_NotilusUpdatesPanel> {
                           Text(
                             'Notilus v${_updateService.version}',
                             style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.5),
+                              color: Colors.white.withOpacity(0.5),
                               fontSize: 11,
                             ),
                           ),
@@ -1741,11 +1741,11 @@ class _UpdateCard extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        color: Colors.white.withValues(alpha: 0.05),
+        color: Colors.white.withOpacity(0.05),
         border: Border.all(
           color: isNew
-              ? gxRed.withValues(alpha: 0.4)
-              : Colors.white.withValues(alpha: 0.1),
+              ? gxRed.withOpacity(0.4)
+              : Colors.white.withOpacity(0.1),
           width: 1,
         ),
       ),
@@ -1763,7 +1763,7 @@ class _UpdateCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: gxRed.withValues(alpha: 0.2),
+                    color: gxRed.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
@@ -1793,7 +1793,7 @@ class _UpdateCard extends StatelessWidget {
           Text(
             description,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.6),
+              color: Colors.white.withOpacity(0.6),
               fontSize: 10,
             ),
           ),
@@ -1803,13 +1803,13 @@ class _UpdateCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.1),
+                  color: Colors.white.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
                   category.label,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.5),
+                    color: Colors.white.withOpacity(0.5),
                     fontSize: 8,
                     fontWeight: FontWeight.w500,
                   ),
@@ -1819,7 +1819,7 @@ class _UpdateCard extends StatelessWidget {
               Text(
                 date,
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.4),
+                  color: Colors.white.withOpacity(0.4),
                   fontSize: 9,
                 ),
               ),
