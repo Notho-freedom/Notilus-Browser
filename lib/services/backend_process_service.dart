@@ -1,4 +1,4 @@
-/// Service pour gérer le processus backend Python
+/// Service pour gérer le processus backend
 library backend_process_service;
 
 import 'dart:async';
@@ -23,8 +23,6 @@ class BackendProcessService extends ChangeNotifier {
   
   // Configuration
   static const String _exeName = 'notilus_backend.exe';
-  static const String _pythonEmbeddedDir = 'python_embedded';
-  static const String _pythonExeName = 'python.exe';
   static const String _defaultPort = '8000';
   static const String _healthCheckUrl = 'http://localhost:8000/api/health';
   
@@ -34,82 +32,30 @@ class BackendProcessService extends ChangeNotifier {
   String? get error => _error;
   List<String> get logs => List.unmodifiable(_logs);
   
-  String? _pythonExe;
-  String? _mainScriptPath;
+  String? _backendExe;
   
-  /// Initialiser le chemin du Python embarqué et du script
+  /// Initialiser le chemin de l'exécutable backend
   void _initializePaths() {
     if (kDebugMode) {
+      // En debug, chercher d'abord dans backend/dist/
       final backendDir = path.join(Directory.current.path, 'backend');
-      
-      // Essayer d'abord l'exe compilé
       final exePath = path.join(backendDir, 'dist', _exeName);
       if (File(exePath).existsSync()) {
-        _pythonExe = exePath;
-        _mainScriptPath = null;
+        _backendExe = exePath;
         return;
       }
-      
-      // Utiliser Python embarqué
-      // En debug: utiliser python.exe pour voir les erreurs
-      // En production: utiliser pythonw.exe pour mode furtif
-      final embeddedPythonw = path.join(backendDir, _pythonEmbeddedDir, 'pythonw.exe');
-      final embeddedPython = path.join(backendDir, _pythonEmbeddedDir, _pythonExeName);
-      
-      // En debug, préférer python.exe pour voir les erreurs
-      if (File(embeddedPython).existsSync()) {
-        _pythonExe = embeddedPython;
-        _mainScriptPath = path.join(backendDir, 'main.py');
-        return;
-      } else if (File(embeddedPythonw).existsSync()) {
-        _pythonExe = embeddedPythonw;
-        _mainScriptPath = path.join(backendDir, 'main.py');
-        return;
-      }
-      
-      // Fallback: utiliser pythonw système
-      _pythonExe = 'pythonw';
-      _mainScriptPath = path.join(backendDir, 'main.py');
-    } else {
-      // En production, chercher à côté de l'exe Flutter
-      final appDir = path.dirname(Platform.resolvedExecutable);
-      
-      // Essayer d'abord l'exe compilé
-      final exePath = path.join(appDir, _exeName);
-      if (File(exePath).existsSync()) {
-        _pythonExe = exePath;
-        _mainScriptPath = null;
-        return;
-      }
-      
-      // Utiliser Python embarqué
-      // En production: préférer pythonw.exe pour mode furtif
-      final embeddedPythonw = path.join(appDir, _pythonEmbeddedDir, 'pythonw.exe');
-      final embeddedPython = path.join(appDir, _pythonEmbeddedDir, _pythonExeName);
-      
-      // Préférer pythonw.exe pour mode furtif en production
-      if (File(embeddedPythonw).existsSync()) {
-        _pythonExe = embeddedPythonw;
-        _mainScriptPath = path.join(appDir, 'main.py');
-        return;
-      } else if (File(embeddedPython).existsSync()) {
-        _pythonExe = embeddedPython;
-        _mainScriptPath = path.join(appDir, 'main.py');
-        return;
-      }
-      
-      // Fallback: utiliser pythonw système
-      _pythonExe = 'pythonw';
-      _mainScriptPath = path.join(appDir, 'main.py');
     }
-  }
-  
-  /// Arguments pour lancer le backend
-  List<String> get _exeArgs {
-    if (_mainScriptPath != null) {
-      return [_mainScriptPath!];
+    
+    // Chercher à côté de l'exe Flutter (production ou fallback debug)
+    final appDir = path.dirname(Platform.resolvedExecutable);
+    final exePath = path.join(appDir, _exeName);
+    if (File(exePath).existsSync()) {
+      _backendExe = exePath;
+      return;
     }
-    return [];
+    
+    // Exécutable non trouvé
+    _backendExe = null;
   }
   
   
@@ -123,27 +69,17 @@ class BackendProcessService extends ChangeNotifier {
     // Initialiser les chemins
     _initializePaths();
     
-    if (_pythonExe == null) {
-      _error = 'Python embarqué ou exécutable backend introuvable';
-      LoggerService().error('Python backend introuvable', context: 'BackendProcess', error: _error);
+    if (_backendExe == null) {
+      _error = 'Exécutable backend introuvable: $_exeName';
+      LoggerService().error('Exécutable backend introuvable', context: 'BackendProcess', error: _error);
       notifyListeners();
       return false;
     }
     
-    // Vérifier que Python existe (sauf pour pythonw qui est dans le PATH)
-    if (_pythonExe != 'pythonw') {
-      if (!File(_pythonExe!).existsSync()) {
-        _error = 'Python embarqué introuvable: $_pythonExe';
-        LoggerService().error('Python embarqué introuvable', context: 'BackendProcess', error: _error);
-        notifyListeners();
-        return false;
-      }
-    }
-    
-    // Vérifier que main.py existe si on utilise Python
-    if (_mainScriptPath != null && !File(_mainScriptPath!).existsSync()) {
-      _error = 'Script backend introuvable: $_mainScriptPath';
-      LoggerService().error('Script backend introuvable', context: 'BackendProcess', error: _error);
+    // Vérifier que l'exécutable existe
+    if (!File(_backendExe!).existsSync()) {
+      _error = 'Exécutable backend introuvable: $_backendExe';
+      LoggerService().error('Exécutable backend introuvable', context: 'BackendProcess', error: _error);
       notifyListeners();
       return false;
     }
@@ -153,18 +89,15 @@ class BackendProcessService extends ChangeNotifier {
     notifyListeners();
     
     try {
-      LoggerService().info('Démarrage du backend: $_pythonExe ${_exeArgs.join(" ")}', context: 'BackendProcess');
+      LoggerService().info('Démarrage du backend: $_backendExe', context: 'BackendProcess');
       
       // ProcessStartMode.detached lance le processus sans console (furtif)
-      // Note: pythonw.exe ne connecte pas stdio, donc on ne peut pas écouter les logs
-      // Définir le répertoire de travail pour que les imports Python fonctionnent
-      final workingDirectory = _mainScriptPath != null 
-          ? path.dirname(_mainScriptPath!)
-          : path.dirname(_pythonExe!);
+      // Définir le répertoire de travail à côté de l'exe
+      final workingDirectory = path.dirname(_backendExe!);
       
       _process = await Process.start(
-        _pythonExe!,
-        _exeArgs,
+        _backendExe!,
+        [],
         mode: ProcessStartMode.detached,
         runInShell: false,
         workingDirectory: workingDirectory,
@@ -172,7 +105,7 @@ class BackendProcessService extends ChangeNotifier {
       
       LoggerService().info('Processus backend lancé (PID: ${_process!.pid})', context: 'BackendProcess');
       
-      // Essayer d'écouter les logs (peut échouer avec pythonw.exe en mode furtif)
+      // Essayer d'écouter les logs
       try {
         _process!.stdout.transform(utf8.decoder).listen(
           (data) {
@@ -187,7 +120,7 @@ class BackendProcessService extends ChangeNotifier {
         );
       } catch (e) {
         // Mode furtif: stdio n'est pas disponible, c'est normal
-        LoggerService().info('Mode furtif: stdio non disponible (normal avec pythonw.exe)', context: 'BackendProcess');
+        LoggerService().info('Mode furtif: stdio non disponible', context: 'BackendProcess');
       }
       
       try {
@@ -206,8 +139,8 @@ class BackendProcessService extends ChangeNotifier {
         // Mode furtif: stdio n'est pas disponible, c'est normal
       }
       
-      // Attendre un peu pour que le processus démarre (Python peut prendre du temps)
-      LoggerService().info('Attente du démarrage du processus (Python peut prendre quelques secondes)...', context: 'BackendProcess');
+      // Attendre un peu pour que le processus démarre
+      LoggerService().info('Attente du démarrage du processus backend...', context: 'BackendProcess');
       await Future.delayed(const Duration(seconds: 2));
       
       // Vérifier que le processus est toujours en cours
@@ -222,7 +155,7 @@ class BackendProcessService extends ChangeNotifier {
       }
       
       if (exitCode != null) {
-        _error = 'Le processus backend s\'est terminé immédiatement (code: $exitCode). Vérifiez les dépendances Python.';
+        _error = 'Le processus backend s\'est terminé immédiatement (code: $exitCode). Vérifiez que l\'exécutable fonctionne correctement.';
         LoggerService().error('Backend terminé immédiatement', context: 'BackendProcess', error: _error);
         _isStarting = false;
         _isRunning = false;
@@ -265,9 +198,8 @@ class BackendProcessService extends ChangeNotifier {
             }
           }
           
-          _error = 'Le processus backend s\'est terminé (code: $processExitCode). Vérifiez le fichier backend/logs/backend.log pour les détails.';
+          _error = 'Le processus backend s\'est terminé (code: $processExitCode). Vérifiez que l\'exécutable fonctionne correctement.';
           LoggerService().error('Backend terminé', context: 'BackendProcess', error: _error);
-          LoggerService().info('Conseil: Testez manuellement avec: python_embedded\\python.exe main.py', context: 'BackendProcess');
         } catch (e) {
           // Timeout = processus toujours en cours
           processStillRunning = true;
@@ -284,7 +216,7 @@ class BackendProcessService extends ChangeNotifier {
             }
           }
           
-          _error = 'Le backend ne répond pas aux vérifications de santé après 30 tentatives (30 secondes). Le processus est toujours actif (PID: ${_process!.pid}). Vérifiez le fichier backend/logs/backend.log et que le port 8000 n\'est pas utilisé.';
+          _error = 'Le backend ne répond pas aux vérifications de santé après 30 tentatives (30 secondes). Le processus est toujours actif (PID: ${_process!.pid}). Vérifiez que le port 8000 n\'est pas utilisé.';
           LoggerService().error('Backend ne répond pas (processus actif)', context: 'BackendProcess', error: _error);
           LoggerService().info('Conseil: Vérifiez avec: netstat -ano | findstr :8000', context: 'BackendProcess');
         }
@@ -340,7 +272,7 @@ class BackendProcessService extends ChangeNotifier {
         }
       }
     } catch (e) {
-      // Ignorer les erreurs "Process is detached" car c'est normal pour pythonw.exe
+      // Ignorer les erreurs "Process is detached" car c'est normal pour un processus détaché
       if (!e.toString().contains('Process is detached')) {
         LoggerService().error('Erreur lors de l\'arrêt du backend', context: 'BackendProcess', error: e);
       }
@@ -432,4 +364,5 @@ class BackendProcessService extends ChangeNotifier {
     super.dispose();
   }
 }
+
 
