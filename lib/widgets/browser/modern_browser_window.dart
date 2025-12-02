@@ -62,7 +62,7 @@ class ModernBrowserWindow extends StatefulWidget {
 }
 
 class _ModernBrowserWindowState extends State<ModernBrowserWindow>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WindowListener {
   bool _isSidebarVisible = true;
   SidebarSection _currentSection = SidebarSection.home;
   late AnimationController _sidebarAnimationController;
@@ -71,7 +71,7 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
   bool _isResizing = false;
   bool _isDevToolsOpen = false; // État du panneau DevTools en bas
   bool _isMiniDevToolsVisible = false; // État du mini DevTools flottant
-  bool _isDraggingWindow = false; // État du drag de la fenêtre
+  bool _isWindowMaximized = false;
 
   @override
   void initState() {
@@ -85,6 +85,12 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
       curve: Curves.easeInOutCubic,
     );
     _sidebarAnimationController.forward();
+    
+    // Initialiser windowManager et ajouter le listener
+    windowManager.addListener(this);
+    
+    // Vérifier l'état initial de la fenêtre
+    _checkWindowState();
     
     // Connecter TabManager à TabWebViewManager pour la synchronisation
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -105,7 +111,33 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
   @override
   void dispose() {
     _sidebarAnimationController.dispose();
+    windowManager.removeListener(this);
     super.dispose();
+  }
+
+  Future<void> _checkWindowState() async {
+    _isWindowMaximized = await windowManager.isMaximized();
+    setState(() {});
+  }
+
+  // WindowListener callbacks
+  @override
+  void onWindowMaximize() {
+    setState(() {
+      _isWindowMaximized = true;
+    });
+  }
+
+  @override
+  void onWindowUnmaximize() {
+    setState(() {
+      _isWindowMaximized = false;
+    });
+  }
+
+  @override
+  void onWindowResize() {
+    _checkWindowState();
   }
 
   void _toggleSidebar() {
@@ -127,6 +159,77 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
         _currentSection = SidebarSection.home;
       });
     }
+  }
+
+  void _handleGroupsPressed() {
+    final tabManager = Provider.of<TabManager>(context, listen: false);
+    final existing3DTabs = tabManager.tabs.where(
+      (tab) => tab.url == 'about:3dtabs',
+    );
+    
+    if (existing3DTabs.isEmpty) {
+      final newTab = tabManager.createNewTab();
+      tabManager.updateTab(
+        newTab.id,
+        url: 'about:3dtabs',
+        title: 'Onglets en 3D',
+      );
+      tabManager.selectTab(newTab.id);
+    } else {
+      tabManager.selectTab(existing3DTabs.first.id);
+    }
+  }
+
+  Widget _buildWindowControls() {
+    return Row(
+      children: [
+        _WindowControlButton(
+          icon: CupertinoIcons.minus,
+          onPressed: () => windowManager.minimize(),
+          hoverColor: Colors.white.withOpacity(0.1),
+        ),
+        _WindowControlButton(
+          icon: _isWindowMaximized ? CupertinoIcons.rectangle : CupertinoIcons.rectangle_expand_vertical,
+          onPressed: () async {
+            if (await windowManager.isMaximized()) {
+              await windowManager.restore();
+            } else {
+              await windowManager.maximize();
+            }
+          },
+          hoverColor: Colors.white.withOpacity(0.1),
+        ),
+        _WindowControlButton(
+          icon: CupertinoIcons.xmark,
+          onPressed: () => windowManager.close(),
+          isClose: true,
+          hoverColor: const Color(0xFFC42B1C).withOpacity(0.8),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTabBar(BuildContext context) {
+    return Consumer<SettingsService>(
+      builder: (context, settings, _) {
+        final tabMode = settings.tabMode;
+        final groupingEnabled = settings.tabGroupingEnabled;
+        
+        if (tabMode == 'native') {
+          return GXTabBar(
+            onMenuTap: _toggleSidebar,
+            onGroupsPressed: groupingEnabled ? _handleGroupsPressed : null,
+            isSidebarVisible: _isSidebarVisible,
+          );
+        }
+        
+        return GroupedTabBar(
+          onMenuTap: _toggleSidebar,
+          onGroupsPressed: groupingEnabled ? _handleGroupsPressed : null,
+          isSidebarVisible: _isSidebarVisible,
+        );
+      },
+    );
   }
 
   void _handleOpenDevTools() {
@@ -251,442 +354,343 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
         },
         child: Focus(
           autofocus: true,
-          child: Listener(
-            behavior: HitTestBehavior.translucent,
-            onPointerDown: (event) {
-              // Si le clic est dans la zone supérieure (100 premiers pixels), permettre le drag
-              if (event.localPosition.dy <= 100) {
-                _isDraggingWindow = true;
-              }
-            },
-            onPointerMove: (event) {
-              // Si on est en train de faire un drag dans la zone supérieure
-              if (_isDraggingWindow && event.buttons == 1 && event.localPosition.dy <= 100) {
-                windowManager.startDragging();
-              }
-            },
-            onPointerUp: (event) {
-              _isDraggingWindow = false;
-            },
-            onPointerCancel: (event) {
-              _isDraggingWindow = false;
-            },
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  gxRed,
+                  Colors.transparent,
+                ],
+              ),
+            ),
             child: Container(
+              margin: const EdgeInsets.all(1.8),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    gxRed,
-                    Colors.transparent,
-                  ],
+                color: const Color(0xFF0B0B0E),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.02),
+                  width: 0.6,
                 ),
               ),
-              child: Container(
-                margin: const EdgeInsets.all(1.8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0B0B0E),
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.02),
-                    width: 0.6,
-                  ),
-                ),
-                child: Stack(
-                  children: [
-                    // Contenu principal
-                    Row(
-              children: [
-                // Sidebar moderne
-                AnimatedBuilder(
-                  animation: _sidebarAnimation,
-                  builder: (context, child) {
-                    return Container(
-                      width: _sidebarAnimation.value * 48,
-                      child: _sidebarAnimation.value > 0
-                          ? GXSidebar(
-                              onClose: _toggleSidebar,
-                              currentSection: _currentSection,
-                              onSectionSelected: (section) {
-                                // DevTools natif - ouvre les DevTools du WebView
-                                if (section == SidebarSection.nativeDevtools) {
-                                  _openNativeDevTools();
-                                  return;
-                                }
-                                // Si on clique sur la section déjà active, fermer le panel
-                                if (section == _currentSection && section != SidebarSection.home) {
-                                  _closePanel();
-                                  return;
-                                }
-                                setState(() {
-                                  _currentSection = section;
-                                  // Taille du panel selon la section
-                                  final screenWidth = MediaQuery.of(context).size.width;
-                                  final settings = Provider.of<SettingsService>(context, listen: false);
-                                  
-                                  if (section == SidebarSection.settings) {
-                                    // Paramètres toujours en MAX
-                                    _sideMenuWidth = (screenWidth * 0.8).clamp(600.0, 1200.0);
-                                  } else {
-                                    // Autres panels avec taille configurable
-                                    _sideMenuWidth = settings.panelDefaultWidth;
-                                  }
-                                });
-                              },
-                            )
-                          : null,
-                    );
-                  },
-                ),
-
-                // Zone principale avec sidemenu en position absolue
-                Expanded(
-                  child: Stack(
-                    clipBehavior: Clip.none,
+              child: Stack(
+                children: [
+                  // Contenu principal
+                  Row(
                     children: [
-                      Column(
-                        children: [
-                    // Sélectionner le composant d'onglets selon le mode
-                    Consumer<SettingsService>(
-                      builder: (context, settings, _) {
-                        final tabMode = settings.tabMode;
-                        final groupingEnabled = settings.tabGroupingEnabled;
-                        
-                        // Mode natif GX
-                        if (tabMode == 'native') {
-                          return GXTabBar(
-                            onMenuTap: _toggleSidebar,
-                            onGroupsPressed: groupingEnabled ? () {
-                              // Créer ou activer l'onglet 3D Cover Flow
-                              final tabManager = Provider.of<TabManager>(context, listen: false);
-                              final existing3DTabs = tabManager.tabs.where(
-                                (tab) => tab.url == 'about:3dtabs',
-                              );
-                              
-                              if (existing3DTabs.isEmpty) {
-                                // Créer un nouvel onglet dédié
-                                final newTab = tabManager.createNewTab();
-                                tabManager.updateTab(
-                                  newTab.id,
-                                  url: 'about:3dtabs',
-                                  title: 'Onglets en 3D',
-                                );
-                                tabManager.selectTab(newTab.id);
-                              } else {
-                                // Activer l'onglet existant
-                                tabManager.selectTab(existing3DTabs.first.id);
-                              }
-                            } : null,
-                            isSidebarVisible: _isSidebarVisible,
+                      // Sidebar moderne
+                      AnimatedBuilder(
+                        animation: _sidebarAnimation,
+                        builder: (context, child) {
+                          return Container(
+                            width: _sidebarAnimation.value * 48,
+                            child: _sidebarAnimation.value > 0
+                                ? GXSidebar(
+                                    onClose: _toggleSidebar,
+                                    currentSection: _currentSection,
+                                    onSectionSelected: (section) {
+                                      // DevTools natif - ouvre les DevTools du WebView
+                                      if (section == SidebarSection.nativeDevtools) {
+                                        _openNativeDevTools();
+                                        return;
+                                      }
+                                      // Si on clique sur la section déjà active, fermer le panel
+                                      if (section == _currentSection && section != SidebarSection.home) {
+                                        _closePanel();
+                                        return;
+                                      }
+                                      setState(() {
+                                        _currentSection = section;
+                                        // Taille du panel selon la section
+                                        final screenWidth = MediaQuery.of(context).size.width;
+                                        final settings = Provider.of<SettingsService>(context, listen: false);
+                                        
+                                        if (section == SidebarSection.settings) {
+                                          // Paramètres toujours en MAX
+                                          _sideMenuWidth = (screenWidth * 0.8).clamp(600.0, 1200.0);
+                                        } else {
+                                          // Autres panels avec taille configurable
+                                          _sideMenuWidth = settings.panelDefaultWidth;
+                                        }
+                                      });
+                                    },
+                                  )
+                                : null,
                           );
-                        }
-                        
-                        // Mode classique (avec ou sans groupement)
-                        return GroupedTabBar(
-                          onMenuTap: _toggleSidebar,
-                            onGroupsPressed: groupingEnabled ? () {
-                              // Créer ou activer l'onglet 3D Cover Flow
-                              final tabManager = Provider.of<TabManager>(context, listen: false);
-                              final existing3DTabs = tabManager.tabs.where(
-                                (tab) => tab.url == 'about:3dtabs',
-                              );
-                              
-                              if (existing3DTabs.isEmpty) {
-                                // Créer un nouvel onglet dédié
-                                final newTab = tabManager.createNewTab();
-                                tabManager.updateTab(
-                                  newTab.id,
-                                  url: 'about:3dtabs',
-                                  title: 'Onglets en 3D',
-                                );
-                                tabManager.selectTab(newTab.id);
-                              } else {
-                                // Activer l'onglet existant
-                                tabManager.selectTab(existing3DTabs.first.id);
-                              }
-                            } : null,
-                          isSidebarVisible: _isSidebarVisible,
-                        );
-                      },
-                    ),
-                    GXAddressBar(
-                      onWidgetsPressed: () {
-                        setState(() {
-                          _currentSection = SidebarSection.widgets;
-                          _isSidebarVisible = true;
-                          // Ouvrir le panel en taille maximale
-                          final screenWidth = MediaQuery.of(context).size.width;
-                          _sideMenuWidth = (screenWidth * 0.6).clamp(400.0, 1000.0);
-                        });
-                      },
-                      onDownloadsPressed: () {
-                        // Ouvrir un menu popup au lieu du panel
-                        final colorTheme = Provider.of<ColorThemeManager>(context, listen: false);
-                        final accentColor = colorTheme.nativeSecondaryColor;
-                        
-                        GxFuturisticDialog.show(
-                          context: context,
-                          title: 'Téléchargements',
-                          titleIcon: CupertinoIcons.tray_arrow_down,
-                          accentColor: accentColor,
-                          width: 400,
-                          child: const DownloadsPopupMenu(),
-                        );
-                      },
-                      onMiniDevToolsToggle: () {
-                        setState(() {
-                          _isMiniDevToolsVisible = !_isMiniDevToolsVisible;
-                        });
-                      },
-                      isMiniDevToolsVisible: _isMiniDevToolsVisible,
-                    ),
-                    Expanded(
-                      child: RepaintBoundary(
-                        child: Selector2<NotilusMosaicService, TabManager, ({bool isMosaicActive, String? activeTabId, String? activeTabUrl})>(
-                          selector: (_, mosaic, tabs) => (
-                            isMosaicActive: mosaic.isMosaicActive,
-                            activeTabId: tabs.activeTab?.id,
-                            activeTabUrl: tabs.activeTab?.url,
-                          ),
-                          builder: (context, data, _) {
-                            // Attacher automatiquement les services Studio et Lighthouse à l'onglet actif
-                            // Utiliser un callback unique pour éviter les appels multiples
-                            if (data.activeTabId != null && data.activeTabUrl != null &&
-                                data.activeTabUrl!.isNotEmpty &&
-                                data.activeTabUrl != 'about:blank' &&
-                                data.activeTabUrl != 'about:newtab') {
-                              // Utiliser un Future.microtask pour éviter les appels multiples pendant le build
-                              Future.microtask(() {
-                                final tabWebViewManager = context.read<TabWebViewManager>();
-                                final studioService = context.read<StudioService>();
-                                final lighthouseService = context.read<LighthouseService>();
-                                
-                                final engine = tabWebViewManager.getEngineForTab(data.activeTabId!);
-                                if (engine != null) {
-                                  // Attacher Studio seulement si nécessaire
-                                  if (studioService.engine != engine) {
-                                    studioService.attachEngine(engine);
-                                    studioService.updateUrl(data.activeTabUrl!);
-                                    debugPrint('✅ StudioService attached to engine for tab: ${data.activeTabId}');
-                                  }
-                                  // Attacher Lighthouse seulement si nécessaire
-                                  if (lighthouseService.engine != engine) {
-                                    lighthouseService.attachEngine(engine);
-                                    lighthouseService.updateUrl(data.activeTabUrl!);
-                                  }
-                                } else {
-                                  debugPrint('⚠️ No engine found for tab: ${data.activeTabId}');
-                                }
-                              });
-                            } else {
-                              // Détacher si pas d'onglet actif valide
-                              Future.microtask(() {
-                                final studioService = context.read<StudioService>();
-                                final lighthouseService = context.read<LighthouseService>();
-                                if (studioService.engine != null) {
-                                  studioService.detachEngine();
-                                }
-                                if (lighthouseService.engine != null) {
-                                  lighthouseService.detachEngine();
-                                }
-                              });
-                            }
-                            
-                            // Priorité 1: Mosaïque si active
-                            if (data.isMosaicActive) {
-                              return const MosaicContainer();
-                            }
-                            
-                            // Priorité 2: Contenu normal
-                            final tabManager = context.read<TabManager>();
-                            final activeTab = tabManager.activeTab;
-                            if (activeTab == null) {
-                              return _buildHomePageWidget();
-                            }
-                            
-                            // Onglets web uniquement (terminal géré via sidebar)
-                            if (activeTab.url == null ||
-                                activeTab.url!.isEmpty ||
-                                activeTab.url == 'about:blank' ||
-                                activeTab.url == 'about:newtab') {
-                              return _buildHomePageWidget();
-                            }
-                            
-                            // Onglet 3D Cover Flow dédié
-                            if (activeTab.url == 'about:3dtabs') {
-                              return Gx3DCoverFlowTabsView(
-                                onClose: () {
-                                  // Fermer l'onglet 3D
-                                  final tabManager = context.read<TabManager>();
-                                  tabManager.closeTab(activeTab.id);
-                                },
-                                onTabSelected: () {
-                                  // L'onglet sélectionné sera automatiquement activé
-                                },
-                              );
-                            }
-                            
-                            return WebContentView(tab: activeTab);
-                          },
-                        ),
+                        },
                       ),
-                    ),
-                    // DevTools Panel en bas - optimisé avec RepaintBoundary
-                    if (_isDevToolsOpen)
-                      RepaintBoundary(
-                        child: Builder(
-                          builder: (context) {
-                            final tabWebViewManager = context.read<TabWebViewManager>();
-                            final tabManager = context.read<TabManager>();
-                            final activeTab = tabManager.activeTab;
-                            final engine = activeTab != null 
-                                ? tabWebViewManager.getEngineForTab(activeTab.id)
-                                : null;
-                            return NotilusDevTools(
-                              engine: engine,
-                              onClose: _closeDevTools,
-                              initialHeight: 300,
-                              onDetach: () {
-                                setState(() {
-                                  _isDevToolsOpen = false;
-                                  _isMiniDevToolsVisible = true;
-                                });
-                              },
-                            );
-                          },
-                        ),
-                      ),
-                        ],
-                      ),
-                      // Mini DevTools flottant (dans un Stack pour qu'il soit au-dessus)
-                if (_isMiniDevToolsVisible)
-                  Positioned.fill(
-                    child: Builder(
-                      builder: (context) {
-                        final tabWebViewManager = context.read<TabWebViewManager>();
-                        final tabManager = context.read<TabManager>();
-                        final activeTab = tabManager.activeTab;
-                        final engine = activeTab != null 
-                            ? tabWebViewManager.getEngineForTab(activeTab.id)
-                            : null;
-                        return NotilusMiniDevToolsPanel(
-                          isVisible: _isMiniDevToolsVisible,
-                          engine: engine,
-                          onClose: () {
-                            setState(() {
-                              _isMiniDevToolsVisible = false;
-                            });
-                          },
-                          onSwitchToNative: () {
-                            setState(() {
-                              _isMiniDevToolsVisible = false;
-                              _isDevToolsOpen = true;
-                            });
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                // Menu latéral en position absolue à droite de la sidebar
-                Positioned(
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  child: AnimatedSlide(
-                    duration: const Duration(milliseconds: 350),
-                    curve: Curves.easeOutCubic,
-                    offset: _isPanelVisible ? Offset.zero : const Offset(-1, 0),
-                    child: AnimatedOpacity(
-                      duration: const Duration(milliseconds: 250),
-                      opacity: _isPanelVisible ? 1.0 : 0.0,
-                      child: IgnorePointer(
-                        ignoring: !_isPanelVisible,
+
+                      // Zone principale avec sidemenu en position absolue
+                      Expanded(
                         child: Stack(
+                          clipBehavior: Clip.none,
                           children: [
-                            AnimatedContainer(
-                              duration: const Duration(milliseconds: 300),
-                              curve: Curves.easeOutCubic,
-                              width: _sideMenuWidth,
-                              child: _buildSideMenu(context),
+                            Column(
+                              children: [
+                                // Barre d'onglets
+                                _buildTabBar(context),
+                                GXAddressBar(
+                                  onWidgetsPressed: () {
+                                    setState(() {
+                                      _currentSection = SidebarSection.widgets;
+                                      _isSidebarVisible = true;
+                                      // Ouvrir le panel en taille maximale
+                                      final screenWidth = MediaQuery.of(context).size.width;
+                                      _sideMenuWidth = (screenWidth * 0.6).clamp(400.0, 1000.0);
+                                    });
+                                  },
+                                  onDownloadsPressed: () {
+                                    // Ouvrir un menu popup au lieu du panel
+                                    final colorTheme = Provider.of<ColorThemeManager>(context, listen: false);
+                                    final accentColor = colorTheme.nativeSecondaryColor;
+                                    
+                                    GxFuturisticDialog.show(
+                                      context: context,
+                                      title: 'Téléchargements',
+                                      titleIcon: CupertinoIcons.tray_arrow_down,
+                                      accentColor: accentColor,
+                                      width: 400,
+                                      child: const DownloadsPopupMenu(),
+                                    );
+                                  },
+                                  onMiniDevToolsToggle: () {
+                                    setState(() {
+                                      _isMiniDevToolsVisible = !_isMiniDevToolsVisible;
+                                    });
+                                  },
+                                  isMiniDevToolsVisible: _isMiniDevToolsVisible,
+                                ),
+                                Expanded(
+                                  child: RepaintBoundary(
+                                    child: Selector2<NotilusMosaicService, TabManager, ({
+                                      bool isMosaicActive, 
+                                      String? activeTabId, 
+                                      String? activeTabUrl
+                                    })>(
+                                      selector: (_, mosaic, tabs) {
+                                        return (
+                                          isMosaicActive: mosaic.isMosaicActive,
+                                          activeTabId: tabs.activeTab?.id,
+                                          activeTabUrl: tabs.activeTab?.url,
+                                        );
+                                      },
+                                      builder: (context, data, _) {
+                                        // Attacher automatiquement les services Studio et Lighthouse à l'onglet actif
+                                        // Utiliser un callback unique pour éviter les appels multiples
+                                        if (data.activeTabId != null && data.activeTabUrl != null &&
+                                            data.activeTabUrl!.isNotEmpty &&
+                                            data.activeTabUrl != 'about:blank' &&
+                                            data.activeTabUrl != 'about:newtab') {
+                                          // Utiliser un Future.microtask pour éviter les appels multiples pendant le build
+                                          Future.microtask(() {
+                                            final tabWebViewManager = context.read<TabWebViewManager>();
+                                            final studioService = context.read<StudioService>();
+                                            final lighthouseService = context.read<LighthouseService>();
+                                            
+                                            final engine = tabWebViewManager.getEngineForTab(data.activeTabId!);
+                                            if (engine != null) {
+                                              // Attacher Studio seulement si nécessaire
+                                              if (studioService.engine != engine) {
+                                                studioService.attachEngine(engine);
+                                                studioService.updateUrl(data.activeTabUrl!);
+                                                debugPrint('✅ StudioService attached to engine for tab: ${data.activeTabId}');
+                                              }
+                                              // Attacher Lighthouse seulement si nécessaire
+                                              if (lighthouseService.engine != engine) {
+                                                lighthouseService.attachEngine(engine);
+                                                lighthouseService.updateUrl(data.activeTabUrl!);
+                                              }
+                                            } else {
+                                              debugPrint('⚠️ No engine found for tab: ${data.activeTabId}');
+                                            }
+                                          });
+                                        } else {
+                                          // Détacher si pas d'onglet actif valide
+                                          Future.microtask(() {
+                                            final studioService = context.read<StudioService>();
+                                            final lighthouseService = context.read<LighthouseService>();
+                                            if (studioService.engine != null) {
+                                              studioService.detachEngine();
+                                            }
+                                            if (lighthouseService.engine != null) {
+                                              lighthouseService.detachEngine();
+                                            }
+                                          });
+                                        }
+                                        
+                                        // Priorité 1: Mosaïque si active
+                                        if (data.isMosaicActive) {
+                                          return const MosaicContainer();
+                                        }
+                                        
+                                        // Priorité 2: Contenu normal
+                                        final tabManager = context.read<TabManager>();
+                                        final activeTab = tabManager.activeTab;
+                                        if (activeTab == null) {
+                                          return _buildHomePageWidget();
+                                        }
+                                        
+                                        // Onglets web uniquement (terminal géré via sidebar)
+                                        if (activeTab.url == null ||
+                                            activeTab.url!.isEmpty ||
+                                            activeTab.url == 'about:blank' ||
+                                            activeTab.url == 'about:newtab') {
+                                          return _buildHomePageWidget();
+                                        }
+                                        
+                                        // Onglet 3D Cover Flow dédié
+                                        if (activeTab.url == 'about:3dtabs') {
+                                          return Gx3DCoverFlowTabsView(
+                                            onClose: () {
+                                              // Fermer l'onglet 3D
+                                              final tabManager = context.read<TabManager>();
+                                              tabManager.closeTab(activeTab.id);
+                                            },
+                                            onTabSelected: () {
+                                              // L'onglet sélectionné sera automatiquement activé
+                                            },
+                                          );
+                                        }
+                                        
+                                        return WebContentView(tab: activeTab);
+                                      },
+                                    ),
+                                  ),
+                                ),
+                                // DevTools Panel en bas - optimisé avec RepaintBoundary
+                                if (_isDevToolsOpen)
+                                  RepaintBoundary(
+                                    child: Builder(
+                                      builder: (context) {
+                                        final tabWebViewManager = context.read<TabWebViewManager>();
+                                        final tabManager = context.read<TabManager>();
+                                        final activeTab = tabManager.activeTab;
+                                        final engine = activeTab != null 
+                                            ? tabWebViewManager.getEngineForTab(activeTab.id)
+                                            : null;
+                                        return NotilusDevTools(
+                                          engine: engine,
+                                          onClose: _closeDevTools,
+                                          initialHeight: 300,
+                                          onDetach: () {
+                                            setState(() {
+                                              _isDevToolsOpen = false;
+                                              _isMiniDevToolsVisible = true;
+                                            });
+                                          },
+                                        );
+                                      },
+                                    ),
+                                  ),
+                              ],
                             ),
-                            // Drag handle pour redimensionner
-                            Positioned(
-                              right: 0,
-                              top: 0,
-                              bottom: 0,
-                              child: GestureDetector(
-                                onPanStart: (_) {
-                                  setState(() {
-                                    _isResizing = true;
-                                  });
-                                },
-                                onPanUpdate: (details) {
-                                  setState(() {
-                                    final screenWidth = MediaQuery.of(context).size.width;
-                                    final maxWidth = (screenWidth * 0.7).clamp(400.0, 1200.0);
-                                    _sideMenuWidth = (_sideMenuWidth + details.delta.dx).clamp(200.0, maxWidth);
-                                  });
-                                },
-                                onPanEnd: (_) {
-                                  setState(() {
-                                    _isResizing = false;
-                                  });
-                                },
-                                child: MouseRegion(
-                                  cursor: SystemMouseCursors.resizeColumn,
-                                  child: Container(
-                                    width: 4,
-                                    color: _isResizing
-                                        ? gxRed.withOpacity(0.8)
-                                        : Colors.transparent,
-                                    child: Container(
-                                      margin: const EdgeInsets.symmetric(vertical: 8),
-                                      decoration: BoxDecoration(
-                                        color: gxRed.withOpacity(0.3),
-                                        borderRadius: BorderRadius.circular(2),
+                            // Mini DevTools flottant (dans un Stack pour qu'il soit au-dessus)
+                            if (_isMiniDevToolsVisible)
+                              Positioned.fill(
+                                child: Builder(
+                                  builder: (context) {
+                                    final tabWebViewManager = context.read<TabWebViewManager>();
+                                    final tabManager = context.read<TabManager>();
+                                    final activeTab = tabManager.activeTab;
+                                    final engine = activeTab != null 
+                                        ? tabWebViewManager.getEngineForTab(activeTab.id)
+                                        : null;
+                                    return NotilusMiniDevToolsPanel(
+                                      isVisible: _isMiniDevToolsVisible,
+                                      engine: engine,
+                                      onClose: () {
+                                        setState(() {
+                                          _isMiniDevToolsVisible = false;
+                                        });
+                                      },
+                                      onSwitchToNative: () {
+                                        setState(() {
+                                          _isMiniDevToolsVisible = false;
+                                          _isDevToolsOpen = true;
+                                        });
+                                      },
+                                    );
+                                  },
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  
+                  // Menu latéral en position absolue à droite de la sidebar
+                  if (_isPanelVisible)
+                    Positioned(
+                      left: 48, // Position après la sidebar
+                      top: 0,
+                      bottom: 0,
+                      child: AnimatedSlide(
+                        duration: const Duration(milliseconds: 350),
+                        curve: Curves.easeOutCubic,
+                        offset: _isPanelVisible ? Offset.zero : const Offset(-1, 0),
+                        child: AnimatedOpacity(
+                          duration: const Duration(milliseconds: 250),
+                          opacity: _isPanelVisible ? 1.0 : 0.0,
+                          child: IgnorePointer(
+                            ignoring: !_isPanelVisible,
+                            child: Stack(
+                              children: [
+                                AnimatedContainer(
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.easeOutCubic,
+                                  width: _sideMenuWidth,
+                                  child: _buildSideMenu(context),
+                                ),
+                                // Drag handle pour redimensionner
+                                Positioned(
+                                  right: 0,
+                                  top: 0,
+                                  bottom: 0,
+                                  child: GestureDetector(
+                                    onPanStart: (_) {
+                                      setState(() {
+                                        _isResizing = true;
+                                      });
+                                    },
+                                    onPanUpdate: (details) {
+                                      setState(() {
+                                        final screenWidth = MediaQuery.of(context).size.width;
+                                        final maxWidth = (screenWidth * 0.7).clamp(400.0, 1200.0);
+                                        _sideMenuWidth = (_sideMenuWidth + details.delta.dx).clamp(200.0, maxWidth);
+                                      });
+                                    },
+                                    onPanEnd: (_) {
+                                      setState(() {
+                                        _isResizing = false;
+                                      });
+                                    },
+                                    child: MouseRegion(
+                                      cursor: SystemMouseCursors.resizeColumn,
+                                      child: Container(
+                                        width: 4,
+                                        color: _isResizing
+                                            ? gxRed.withOpacity(0.8)
+                                            : Colors.transparent,
+                                        child: Container(
+                                          margin: const EdgeInsets.symmetric(vertical: 8),
+                                          decoration: BoxDecoration(
+                                            color: gxRed.withOpacity(0.3),
+                                            borderRadius: BorderRadius.circular(2),
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
-                              ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ),
-                      ],
-                    ),
-                  ),
                 ],
-              ),
-              // Zone draggable pour la fenêtre (placée en dernier pour être au-dessus)
-            // Couvre la zone de la barre d'onglets et de la barre d'adresse
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              height: 100, // Hauteur pour couvrir barre d'onglets + barre d'adresse
-              child: GestureDetector(
-                behavior: HitTestBehavior.translucent,
-                onPanStart: (details) {
-                  // Démarrer le drag de la fenêtre
-                  windowManager.startDragging();
-                },
-                onPanUpdate: (details) {
-                  // Continuer le drag pendant le mouvement
-                  windowManager.startDragging();
-                },
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.move,
-                  child: Container(
-                    color: Colors.transparent,
-                  ),
-                ),
-              ),
-            ),
-                  ],
-                ),
               ),
             ),
           ),
@@ -773,9 +777,7 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
               ),
               // Contenu du menu
               Expanded(
-                child: Container(
-                  child: config.child,
-                ),
+                child: config.child,
               ),
             ],
           ),
@@ -944,6 +946,8 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
       case SidebarSection.extensions:
         // Extensions retiré de la sidebar, mais gardé pour compatibilité
         return null;
+      default:
+        return null;
     }
   }
 }
@@ -989,95 +993,106 @@ class _NotilusWidgetsPanel extends StatelessWidget {
           child: Container(
             color: Colors.black.withOpacity((1.0 - panelTransparency).clamp(0.0, 1.0)),
             child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: Row(
-                  children: [
-                    Text(
-                      'Widgets système',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  const Spacer(),
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: Colors.green,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.green.withOpacity(0.5),
-                          blurRadius: 4,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  child: Row(
+                    children: [
+                      Text(
+                        'Widgets système',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
                         ),
-                      ],
-                    ),
+                      ),
+                      const Spacer(),
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: Colors.green,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.green.withOpacity(0.5),
+                              blurRadius: 4,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Live',
+                        style: TextStyle(
+                          color: Colors.green,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Live',
-                    style: TextStyle(
-                      color: Colors.green,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: Selector2<SystemMetricsService, TabManager, ({double cpuUsage, double ramUsage, double gpuTemp, String networkStatus, int tabCount, String activeTime, int pagesVisited, double dataUsed})>(
-                selector: (_, metrics, tabManager) => (
-                  cpuUsage: metrics.cpuUsage,
-                  ramUsage: metrics.ramUsage,
-                  gpuTemp: metrics.gpuTemp,
-                  networkStatus: metrics.networkStatus,
-                  tabCount: tabManager.tabs.length,
-                  activeTime: metrics.formatActiveTime(),
-                  pagesVisited: metrics.pagesVisited,
-                  dataUsed: metrics.dataUsed,
                 ),
-                builder: (context, data, _) {
-                  // Mettre à jour le nombre d'onglets sans déclencher de rebuild
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    final metrics = context.read<SystemMetricsService>();
-                    if (metrics.tabCount != data.tabCount) {
-                      metrics.updateTabCount(data.tabCount);
-                    }
-                  });
-                  
-                  final widgets = [
-                    _WidgetData('CPU', '${data.cpuUsage.toStringAsFixed(0)}%', 'Utilisation processeur', CupertinoIcons.gauge, _getUsageColor(data.cpuUsage)),
-                    _WidgetData('RAM', '${data.ramUsage.toStringAsFixed(0)}%', 'Mémoire utilisée', Icons.memory, _getUsageColor(data.ramUsage)),
-                    _WidgetData('GPU', '${data.gpuTemp.toStringAsFixed(0)}°C', 'Température graphique', CupertinoIcons.speedometer, _getTempColor(data.gpuTemp)),
-                    _WidgetData('Réseau', data.networkStatus, 'État connexion', CupertinoIcons.waveform_path, Colors.green),
-                    _WidgetData('Onglets', '${data.tabCount}', 'Onglets actifs', CupertinoIcons.square_grid_2x2, gxRed),
-                    _WidgetData('Session', data.activeTime, 'Temps actif', CupertinoIcons.time, gxRed),
-                    _WidgetData('Pages', '${data.pagesVisited}', 'Pages visitées', CupertinoIcons.doc_text, gxRed),
-                    _WidgetData('Données', '${data.dataUsed.toStringAsFixed(2)} GB', 'Données transférées', CupertinoIcons.arrow_up_arrow_down, gxRed),
-                  ];
-                  
-                  return ListView.builder(
-                    shrinkWrap: true,
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                    itemCount: widgets.length,
-                    itemBuilder: (context, index) {
-                      final widget = widgets[index];
-                      return _SystemWidgetTile(widget: widget, accentColor: gxRed);
+                Expanded(
+                  child: Selector2<SystemMetricsService, TabManager, ({
+                    double cpuUsage, 
+                    double ramUsage, 
+                    double gpuTemp, 
+                    String networkStatus, 
+                    int tabCount, 
+                    String activeTime, 
+                    int pagesVisited, 
+                    double dataUsed
+                  })>(
+                    selector: (_, metrics, tabManager) {
+                      return (
+                        cpuUsage: metrics.cpuUsage,
+                        ramUsage: metrics.ramUsage,
+                        gpuTemp: metrics.gpuTemp,
+                        networkStatus: metrics.networkStatus,
+                        tabCount: tabManager.tabs.length,
+                        activeTime: metrics.formatActiveTime(),
+                        pagesVisited: metrics.pagesVisited,
+                        dataUsed: metrics.dataUsed,
+                      );
                     },
-                  );
-                },
-              ),
+                    builder: (context, data, _) {
+                      // Mettre à jour le nombre d'onglets sans déclencher de rebuild
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        final metrics = context.read<SystemMetricsService>();
+                        if (metrics.tabCount != data.tabCount) {
+                          metrics.updateTabCount(data.tabCount);
+                        }
+                      });
+                      
+                      final widgets = [
+                        _WidgetData('CPU', '${data.cpuUsage.toStringAsFixed(0)}%', 'Utilisation processeur', CupertinoIcons.gauge, _getUsageColor(data.cpuUsage)),
+                        _WidgetData('RAM', '${data.ramUsage.toStringAsFixed(0)}%', 'Mémoire utilisée', Icons.memory, _getUsageColor(data.ramUsage)),
+                        _WidgetData('GPU', '${data.gpuTemp.toStringAsFixed(0)}°C', 'Température graphique', CupertinoIcons.speedometer, _getTempColor(data.gpuTemp)),
+                        _WidgetData('Réseau', data.networkStatus, 'État connexion', CupertinoIcons.waveform_path, Colors.green),
+                        _WidgetData('Onglets', '${data.tabCount}', 'Onglets actifs', CupertinoIcons.square_grid_2x2, gxRed),
+                        _WidgetData('Session', data.activeTime, 'Temps actif', CupertinoIcons.time, gxRed),
+                        _WidgetData('Pages', '${data.pagesVisited}', 'Pages visitées', CupertinoIcons.doc_text, gxRed),
+                        _WidgetData('Données', '${data.dataUsed.toStringAsFixed(2)} GB', 'Données transférées', CupertinoIcons.arrow_up_arrow_down, gxRed),
+                      ];
+                      
+                      return ListView.builder(
+                        shrinkWrap: true,
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                        itemCount: widgets.length,
+                        itemBuilder: (context, index) {
+                          final widget = widgets[index];
+                          return _SystemWidgetTile(widget: widget, accentColor: gxRed);
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
-      );
+          ),
+        );
       },
     );
   }
@@ -1215,8 +1230,8 @@ class _NotilusAiPanelState extends State<_NotilusAiPanel> {
                 ),
               )
             : null,
-          ),
-          child: Container(
+      ),
+      child: Container(
         color: Colors.black.withOpacity(0.5),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1603,8 +1618,8 @@ class _NotilusUpdatesPanelState extends State<_NotilusUpdatesPanel> {
                 ),
               )
             : null,
-          ),
-          child: Container(
+      ),
+      child: Container(
         color: Colors.black.withOpacity(0.5),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1890,3 +1905,58 @@ class _UpdateCard extends StatelessWidget {
   }
 }
 
+class _WindowControlButton extends StatefulWidget {
+  final IconData icon;
+  final VoidCallback onPressed;
+  final bool isClose;
+  final Color? hoverColor;
+  
+  const _WindowControlButton({
+    required this.icon,
+    required this.onPressed,
+    this.isClose = false,
+    this.hoverColor,
+  });
+  
+  @override
+  State<_WindowControlButton> createState() => _WindowControlButtonState();
+}
+
+class _WindowControlButtonState extends State<_WindowControlButton> {
+  bool _isHovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    Color backgroundColor = Colors.transparent;
+    Color iconColor = Colors.white70;
+    
+    if (_isHovering) {
+      backgroundColor = widget.hoverColor ?? Colors.white.withOpacity(0.1);
+      if (widget.isClose) {
+        iconColor = Colors.white;
+      }
+    } else if (widget.isClose) {
+      iconColor = Colors.white70;
+    }
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovering = true),
+      onExit: (_) => setState(() => _isHovering = false),
+      child: GestureDetector(
+        onTap: widget.onPressed,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          width: 46,
+          height: 32,
+          color: backgroundColor,
+          child: Icon(
+            widget.icon,
+            size: 12,
+            color: iconColor,
+          ),
+        ),
+      ),
+    );
+  }
+}

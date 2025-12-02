@@ -22,7 +22,7 @@ class BackendProcessService extends ChangeNotifier {
   static const int _maxLogs = 100;
   
   // Configuration
-  static const String _exeName = 'notilus_backend.exe';
+  static const String _exeName = 'notilus-backend.exe';
   static const String _defaultPort = '8000';
   static const String _healthCheckUrl = 'http://localhost:8000/api/health';
   
@@ -34,27 +34,90 @@ class BackendProcessService extends ChangeNotifier {
   
   String? _backendExe;
   
+  /// Tuer les anciennes instances du backend
+  Future<void> _killExistingInstances() async {
+    try {
+      // Sur Windows, utiliser taskkill pour tuer les processus notilus-backend
+      if (Platform.isWindows) {
+        final result = await Process.run(
+          'taskkill',
+          ['/F', '/IM', _exeName, '/T'],
+          runInShell: true,
+        );
+        
+        if (result.exitCode == 0) {
+          LoggerService().info('Anciennes instances du backend arrêtées', context: 'BackendProcess');
+        } else if (result.exitCode == 128) {
+          // Code 128 = aucun processus trouvé, c'est normal
+          LoggerService().debug('Aucune ancienne instance trouvée', context: 'BackendProcess');
+        } else {
+          LoggerService().debug('Tentative d\'arrêt des anciennes instances (code: ${result.exitCode})', context: 'BackendProcess');
+        }
+        
+        // Attendre un peu pour que les processus se terminent
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
+    } catch (e) {
+      // Ignorer les erreurs, ce n'est pas critique
+      LoggerService().debug('Erreur lors du nettoyage des anciennes instances: $e', context: 'BackendProcess');
+    }
+  }
+  
   /// Initialiser le chemin de l'exécutable backend
   void _initializePaths() {
-    if (kDebugMode) {
-      // En debug, chercher d'abord dans backend/dist/
-      final backendDir = path.join(Directory.current.path, 'backend');
-      final exePath = path.join(backendDir, 'dist', _exeName);
-      if (File(exePath).existsSync()) {
-        _backendExe = exePath;
+    final searchPaths = <String>[];
+    final currentDir = Directory.current.path;
+    final executableDir = path.dirname(Platform.resolvedExecutable);
+    
+    // Toujours chercher dans plusieurs emplacements (debug et production)
+    // 1. backend/dist/notilus_backend.exe (depuis le répertoire courant)
+    searchPaths.add(path.join(currentDir, 'backend', 'dist', _exeName));
+    
+    // 2. backend/notilus_backend.exe (depuis le répertoire courant)
+    searchPaths.add(path.join(currentDir, 'backend', _exeName));
+    
+    // 3. À côté de l'exe Flutter (production)
+    searchPaths.add(path.join(executableDir, _exeName));
+    
+    // 4. Dans le répertoire courant
+    searchPaths.add(path.join(currentDir, _exeName));
+    
+    // 5. Chercher aussi dans le répertoire parent (au cas où on serait dans un sous-dossier)
+    final parentDir = path.dirname(currentDir);
+    searchPaths.add(path.join(parentDir, 'backend', 'dist', _exeName));
+    searchPaths.add(path.join(parentDir, 'backend', _exeName));
+    
+    // 6. Chercher dans build/windows/x64/runner/Release/backend/dist/ (pour les builds)
+    if (executableDir.contains('build')) {
+      final buildRoot = path.dirname(path.dirname(path.dirname(executableDir)));
+      searchPaths.add(path.join(buildRoot, 'backend', 'dist', _exeName));
+    }
+    
+    LoggerService().info('Recherche du backend (mode: ${kDebugMode ? "DEBUG" : "PRODUCTION"})...', context: 'BackendProcess');
+    LoggerService().info('Répertoire courant: $currentDir', context: 'BackendProcess');
+    LoggerService().info('Répertoire exécutable: $executableDir', context: 'BackendProcess');
+    
+    // Essayer chaque chemin
+    for (final exePath in searchPaths) {
+      final normalizedPath = path.normalize(exePath);
+      LoggerService().info('Vérification: $normalizedPath', context: 'BackendProcess');
+      if (File(normalizedPath).existsSync()) {
+        _backendExe = normalizedPath;
+        LoggerService().info('✅ Backend trouvé: $_backendExe', context: 'BackendProcess');
         return;
+      } else {
+        LoggerService().debug('❌ Non trouvé: $normalizedPath', context: 'BackendProcess');
       }
     }
     
-    // Chercher à côté de l'exe Flutter (production ou fallback debug)
-    final appDir = path.dirname(Platform.resolvedExecutable);
-    final exePath = path.join(appDir, _exeName);
-    if (File(exePath).existsSync()) {
-      _backendExe = exePath;
-      return;
+    // Exécutable non trouvé - logger tous les chemins essayés
+    LoggerService().error('Exécutable backend introuvable dans les emplacements suivants:', context: 'BackendProcess');
+    for (final exePath in searchPaths) {
+      LoggerService().error('  - ${path.normalize(exePath)}', context: 'BackendProcess');
     }
+    LoggerService().error('Répertoire courant: $currentDir', context: 'BackendProcess');
+    LoggerService().error('Exécutable Flutter: $executableDir', context: 'BackendProcess');
     
-    // Exécutable non trouvé
     _backendExe = null;
   }
   
@@ -70,19 +133,30 @@ class BackendProcessService extends ChangeNotifier {
     _initializePaths();
     
     if (_backendExe == null) {
-      _error = 'Exécutable backend introuvable: $_exeName';
+      final currentDir = Directory.current.path;
+      final executableDir = path.dirname(Platform.resolvedExecutable);
+      _error = 'Exécutable backend introuvable: $_exeName\n'
+          'Recherché dans:\n'
+          '  - $currentDir/backend/dist/$_exeName\n'
+          '  - $currentDir/backend/$_exeName\n'
+          '  - $executableDir/$_exeName\n'
+          '  - $currentDir/$_exeName\n'
+          '\nVérifiez que l\'exécutable existe à l\'un de ces emplacements.';
       LoggerService().error('Exécutable backend introuvable', context: 'BackendProcess', error: _error);
       notifyListeners();
       return false;
     }
     
-    // Vérifier que l'exécutable existe
+    // Vérifier que l'exécutable existe (double vérification)
     if (!File(_backendExe!).existsSync()) {
-      _error = 'Exécutable backend introuvable: $_backendExe';
+      _error = 'Exécutable backend introuvable: $_backendExe\n'
+          'Le fichier a été trouvé mais n\'existe plus.';
       LoggerService().error('Exécutable backend introuvable', context: 'BackendProcess', error: _error);
       notifyListeners();
       return false;
     }
+    
+    LoggerService().info('✅ Exécutable backend trouvé: $_backendExe', context: 'BackendProcess');
     
     _isStarting = true;
     _error = null;
@@ -92,8 +166,13 @@ class BackendProcessService extends ChangeNotifier {
       LoggerService().info('Démarrage du backend: $_backendExe', context: 'BackendProcess');
       
       // ProcessStartMode.detached lance le processus sans console (furtif)
-      // Définir le répertoire de travail à côté de l'exe
-      final workingDirectory = path.dirname(_backendExe!);
+      // Définir le répertoire de travail sur le répertoire backend/ (pas dist/)
+      // car le backend pourrait avoir besoin d'accéder à des fichiers dans backend/
+      final exeDir = path.dirname(_backendExe!); // backend/dist/
+      final backendDir = path.dirname(exeDir); // backend/
+      final workingDirectory = backendDir;
+      
+      LoggerService().info('Répertoire de travail: $workingDirectory', context: 'BackendProcess');
       
       _process = await Process.start(
         _backendExe!,
@@ -139,34 +218,18 @@ class BackendProcessService extends ChangeNotifier {
         // Mode furtif: stdio n'est pas disponible, c'est normal
       }
       
-      // Attendre un peu pour que le processus démarre
-      LoggerService().info('Attente du démarrage du processus backend...', context: 'BackendProcess');
-      await Future.delayed(const Duration(seconds: 2));
+      // Attendre un peu pour que le processus démarre (augmenté à 5 secondes)
+      LoggerService().info('Attente du démarrage du processus backend (5 secondes)...', context: 'BackendProcess');
+      await Future.delayed(const Duration(seconds: 5));
       
       // Vérifier que le processus est toujours en cours
-      int? exitCode;
-      try {
-        exitCode = await _process!.exitCode.timeout(
-          const Duration(milliseconds: 100),
-        );
-      } catch (e) {
-        // Timeout = le processus est toujours en cours (c'est bon)
-        exitCode = null;
-      }
+      // Note: Pour un processus détaché, on ne peut pas vérifier exitCode facilement
+      // On va directement vérifier la santé du backend
+      LoggerService().info('Processus lancé (PID: ${_process!.pid}), vérification de la santé du backend...', context: 'BackendProcess');
       
-      if (exitCode != null) {
-        _error = 'Le processus backend s\'est terminé immédiatement (code: $exitCode). Vérifiez que l\'exécutable fonctionne correctement.';
-        LoggerService().error('Backend terminé immédiatement', context: 'BackendProcess', error: _error);
-        _isStarting = false;
-        _isRunning = false;
-        notifyListeners();
-        return false;
-      }
-      
-      LoggerService().info('Processus actif (PID: ${_process!.pid}), vérification de la santé du backend...', context: 'BackendProcess');
-      
-      // Vérifier la santé du backend avec retry progressif (plus de tentatives et délai plus long)
-      final isHealthy = await _checkHealth(maxRetries: 30, delay: const Duration(milliseconds: 1000));
+      // Vérifier la santé du backend avec plus de tentatives et délai plus long
+      // Le backend peut prendre du temps à démarrer, surtout s'il charge des dépendances
+      final isHealthy = await _checkHealth(maxRetries: 60, delay: const Duration(milliseconds: 1500));
       
       if (isHealthy) {
         _isRunning = true;
@@ -292,36 +355,42 @@ class BackendProcessService extends ChangeNotifier {
   Future<bool> _checkHealth({required int maxRetries, required Duration delay}) async {
     for (int i = 0; i < maxRetries; i++) {
       try {
-        // Logger seulement toutes les 5 tentatives pour ne pas spammer
+        // Logger seulement toutes les 10 tentatives pour ne pas spammer
         if (i == 0) {
           LoggerService().info('Vérification de santé du backend (tentative ${i + 1}/$maxRetries)...', context: 'BackendProcess');
-        } else if (i % 5 == 0) {
+        } else if (i % 10 == 0) {
           LoggerService().info('Vérification de santé du backend (tentative ${i + 1}/$maxRetries)...', context: 'BackendProcess');
         }
         
         final client = HttpClient();
+        client.connectionTimeout = const Duration(seconds: 5);
         final request = await client.getUrl(Uri.parse(_healthCheckUrl));
         request.headers.set('Connection', 'close');
         
         final response = await request.close().timeout(
-          const Duration(seconds: 3), // Timeout plus long
+          const Duration(seconds: 5), // Timeout augmenté à 5 secondes
           onTimeout: () {
+            client.close(force: true);
             throw TimeoutException('Timeout lors de la vérification de santé');
           },
         );
         
+        final statusCode = response.statusCode;
         client.close();
         
-        if (response.statusCode == 200) {
+        if (statusCode == 200) {
           LoggerService().info('✅ Backend répond correctement (HTTP 200)', context: 'BackendProcess');
           return true;
         } else {
-          LoggerService().warning('Backend répond avec un code non-200: ${response.statusCode}', context: 'BackendProcess');
+          LoggerService().warning('Backend répond avec un code non-200: $statusCode', context: 'BackendProcess');
         }
       } catch (e) {
-        // Logger seulement les erreurs importantes (pas les timeouts normaux)
+        // Logger seulement les erreurs importantes (pas les timeouts normaux pendant le démarrage)
         if (i == maxRetries - 1) {
           LoggerService().warning('Dernière tentative échouée: $e', context: 'BackendProcess');
+        } else if (i > 0 && i % 10 == 0) {
+          // Logger toutes les 10 tentatives pour suivre la progression
+          LoggerService().debug('Tentative ${i + 1}/$maxRetries échouée: ${e.toString().split('\n').first}', context: 'BackendProcess');
         }
         
         if (i < maxRetries - 1) {

@@ -632,30 +632,6 @@
 
 ---
 
-## 🏗️ Architecture Technique
-
-### Structure du Projet
-lib/
-├── core/ # Core (constants, theme, utils)
-│ ├── animations/ # Animations personnalisées
-│ ├── constants/ # Constantes (couleurs, polices)
-│ ├── services/ # Services core (theme, wallpaper, etc.)
-│ ├── theme/ # Thèmes et styles
-│ └── utils/ # Utilitaires
-├── models/ # Modèles de données
-├── screens/ # Écrans principaux
-├── services/ # Services métier
-│ ├── auth/ # Authentification
-│ ├── lighthouse/ # Notilus Lighthouse
-│ ├── studio/ # Notilus Studio
-│ └── ...
-└── widgets/ # Composants UI
-├── browser/ # Composants navigateur
-├── common/ # Composants communs
-├── dev_tools/ # DevTools
-├── lighthouse/ # Lighthouse UI
-├── studio/ # Studio UI
-└── ...
 
 
 ### Services Principaux
@@ -738,18 +714,6 @@ lib/
 
 ---
 
-## 🚀 Prochaines Étapes
-
-### Post-Bêta
-1. Créer un installer Windows (InnoSetup/NSIS)
-2. Tests d'intégration complets
-3. Documentation utilisateur
-4. Support mobile (Android/iOS)
-5. API d'extensions complète
-6. Intégration CEF (si nécessaire)
-
----
-
 **Notilus Browser** - Navigateur futuriste pour développeurs  
-Version Bêta | Décembre 2024
+Version Bêta | Décembre 2025
 
