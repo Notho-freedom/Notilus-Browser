@@ -1,0 +1,25 @@
+# CEF binaries (trop volumineux pour Git)
+windows/cef/
+*.dll
+*.exe
+*.lib
+*.exp
+*.pdb
+
+# Build artifacts
+build/
+*.obj
+*.o
+*.a
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+

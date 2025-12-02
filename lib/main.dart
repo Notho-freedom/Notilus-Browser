@@ -38,6 +38,7 @@ import 'services/text_selection_service.dart';
 import 'services/cookie_manager_service.dart';
 import 'widgets/common/text_selection_wrapper.dart';
 import 'core/services/logger_service.dart';
+import 'screens/cef_test_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -314,6 +315,9 @@ class NotilusApp extends StatelessWidget {
               );
             },
             home: const _SplashWrapper(),
+            routes: {
+              '/cef-test': (context) => const CefTestScreen(),
+            },
           );
         },
       ),

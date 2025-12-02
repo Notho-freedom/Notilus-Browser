@@ -31,6 +31,10 @@ dependencies:
   # WebView Engine - WebView2 pour Windows (Option #1 - Production-ready)
   webview_windows: ^0.2.0
   
+  # CEF Offscreen Rendering - Moteur Chromium avec texture native
+  notilus_cef:
+    path: ./notilus_cef
+  
   # Utilities
   uuid: ^4.2.1
   url_launcher: ^6.2.2

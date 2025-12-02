@@ -1,0 +1,19 @@
+name: notilus_cef
+description: Plugin Flutter pour le rendu CEF offscreen avec support texture native
+version: 1.0.0
+homepage: https://github.com/Notho-freedom/Notilus-Browser
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: ">=3.0.0"
+
+flutter:
+  plugin:
+    platforms:
+      windows:
+        pluginClass: NotilusCefPlugin
+  
+  # Exporter les widgets
+  # widgets/quantum_browser.dart sera accessible via:
+  # import 'package:notilus_cef/widgets/quantum_browser.dart';
+
