@@ -239,10 +239,8 @@ class _GxFuturisticInputState extends State<GxFuturisticInput> {
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(color: Colors.white.withOpacity(0.24)),
             ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: accent, width: 1),
-            ),
+            focusedBorder: InputBorder.none,
+            focusedErrorBorder: InputBorder.none,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 14,
@@ -2465,10 +2463,8 @@ class GxFuturisticTextArea extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide(color: Colors.white.withOpacity(0.24)),
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: accent, width: 1),
-        ),
+        focusedBorder: InputBorder.none,
+        focusedErrorBorder: InputBorder.none,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 14,

@@ -2864,10 +2864,8 @@ class _GxTextField extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide.none,
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: accent, width: 1),
-        ),
+        focusedBorder: InputBorder.none,
+        focusedErrorBorder: InputBorder.none,
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       ),
     );
@@ -4208,10 +4206,8 @@ class _RouteParamsEditor extends StatelessWidget {
                         borderRadius: BorderRadius.circular(6),
                         borderSide: BorderSide.none,
                       ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(6),
-                        borderSide: BorderSide(color: accent, width: 1),
-                      ),
+                      focusedBorder: InputBorder.none,
+                      focusedErrorBorder: InputBorder.none,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                       isDense: true,
                     ),

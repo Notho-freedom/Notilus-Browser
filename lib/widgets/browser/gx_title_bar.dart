@@ -18,13 +18,22 @@ class GXTitleBar extends StatelessWidget {
       child: Stack(
         children: [
           // Zone draggable pour déplacer la fenêtre
-          GestureDetector(
-            behavior: HitTestBehavior.translucent,
-            onPanStart: (details) {
-              windowManager.startDragging();
-            },
-            child: Container(
-              color: Colors.transparent,
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onPanStart: (details) {
+                windowManager.startDragging();
+              },
+              onPanUpdate: (details) {
+                // Continuer le drag pendant le mouvement
+                windowManager.startDragging();
+              },
+              child: MouseRegion(
+                cursor: SystemMouseCursors.move,
+                child: Container(
+                  color: Colors.transparent,
+                ),
+              ),
             ),
           ),
           

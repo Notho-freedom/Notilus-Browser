@@ -74,26 +74,36 @@ class _NativeTerminalPanelState extends State<NativeTerminalPanel> {
     // Écouter la sortie
     _session!.output.listen(
       (data) {
-        if (mounted) {
-          setState(() {
-            // Parser la sortie avec coloration
-            final parsedLines = _parseOutput(data);
-            _outputLines.addAll(parsedLines);
-            // Limiter à 10000 lignes pour la performance
-            if (_outputLines.length > 10000) {
-              _outputLines.removeRange(0, _outputLines.length - 10000);
+        if (mounted && data.isNotEmpty) {
+          // Utiliser Future.microtask pour éviter setState pendant build
+          Future.microtask(() {
+            if (mounted) {
+              setState(() {
+                // Parser la sortie avec coloration
+                final parsedLines = _parseOutput(data);
+                _outputLines.addAll(parsedLines);
+                // Limiter à 10000 lignes pour la performance
+                if (_outputLines.length > 10000) {
+                  _outputLines.removeRange(0, _outputLines.length - 10000);
+                }
+              });
+              _scrollToBottom();
             }
           });
-          _scrollToBottom();
         }
       },
       onError: (error) {
         if (mounted) {
-          setState(() {
-            _outputLines.add(_TerminalLine(
-              text: '❌ Erreur: $error',
-              type: _LineType.error,
-            ));
+          Future.microtask(() {
+            if (mounted) {
+              setState(() {
+                _outputLines.add(_TerminalLine(
+                  text: '❌ Erreur: $error',
+                  type: _LineType.error,
+                ));
+              });
+              _scrollToBottom();
+            }
           });
         }
       },
@@ -358,32 +368,40 @@ class _NativeTerminalPanelState extends State<NativeTerminalPanel> {
   void _sendCommand(String command) {
     if (command.trim().isEmpty) return;
 
-    // Afficher la commande dans l'output
-    setState(() {
-      _outputLines.add(_TerminalLine(
-        text: '$_currentPrompt$command',
-        type: _LineType.command,
-        segments: [
-          _ColoredSegment(
-            text: _currentPrompt,
-            color: NotilusColors.neonRed,
-            fontWeight: FontWeight.bold,
-          ),
-          _ColoredSegment(
-            text: command,
-            color: Colors.white,
-            fontWeight: FontWeight.w500,
-          ),
-        ],
-      ));
-    });
+    // Afficher la commande dans l'output immédiatement
+    if (mounted) {
+      setState(() {
+        _outputLines.add(_TerminalLine(
+          text: '$_currentPrompt$command',
+          type: _LineType.command,
+          segments: [
+            _ColoredSegment(
+              text: _currentPrompt,
+              color: NotilusColors.neonRed,
+              fontWeight: FontWeight.bold,
+            ),
+            _ColoredSegment(
+              text: command,
+              color: Colors.white,
+              fontWeight: FontWeight.w500,
+            ),
+          ],
+        ));
+      });
+    }
 
     // Envoyer au terminal
     _session?.writeLine(command);
 
     // Effacer l'input
     _inputController.clear();
-    _scrollToBottom();
+    
+    // Scroll après un court délai pour laisser le temps à la sortie d'arriver
+    Future.delayed(const Duration(milliseconds: 50), () {
+      if (mounted) {
+        _scrollToBottom();
+      }
+    });
   }
 
   @override

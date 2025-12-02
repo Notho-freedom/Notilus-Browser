@@ -659,10 +659,8 @@ class _ChatTab extends StatelessWidget {
                         color: Colors.white.withOpacity(0.1),
                       ),
                     ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(24),
-                      borderSide: BorderSide(color: accentColor),
-                    ),
+                    focusedBorder: InputBorder.none,
+                    focusedErrorBorder: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 12,

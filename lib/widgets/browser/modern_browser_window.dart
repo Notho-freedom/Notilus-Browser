@@ -44,6 +44,7 @@ import '../../widgets/common/gx_test_panel.dart';
 import '../../services/gx_notification_service.dart';
 import '../../widgets/common/gx_futuristic_dialog.dart';
 import 'gx_3d_coverflow_tabs_view.dart';
+import 'package:window_manager/window_manager.dart';
 
 // Intent pour les raccourcis clavier
 class _ToggleMosaicIntent extends Intent {}
@@ -269,55 +270,81 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
             width: 0.6,
           ),
         ),
-        child: Row(
+        child: Stack(
           children: [
-            // Sidebar moderne
-            AnimatedBuilder(
-              animation: _sidebarAnimation,
-              builder: (context, child) {
-                return Container(
-                  width: _sidebarAnimation.value * 48,
-                  child: _sidebarAnimation.value > 0
-                      ? GXSidebar(
-                          onClose: _toggleSidebar,
-                          currentSection: _currentSection,
-                          onSectionSelected: (section) {
-                            // DevTools natif - ouvre les DevTools du WebView
-                            if (section == SidebarSection.nativeDevtools) {
-                              _openNativeDevTools();
-                              return;
-                            }
-                            // Si on clique sur la section déjà active, fermer le panel
-                            if (section == _currentSection && section != SidebarSection.home) {
-                              _closePanel();
-                              return;
-                            }
-                            setState(() {
-                              _currentSection = section;
-                              // Taille du panel selon la section
-                              final screenWidth = MediaQuery.of(context).size.width;
-                              final settings = Provider.of<SettingsService>(context, listen: false);
-                              
-                              if (section == SidebarSection.settings) {
-                                // Paramètres toujours en MAX
-                                _sideMenuWidth = (screenWidth * 0.8).clamp(600.0, 1200.0);
-                              } else {
-                                // Autres panels avec taille configurable
-                                _sideMenuWidth = settings.panelDefaultWidth;
-                              }
-                            });
-                          },
-                        )
-                      : null,
-                );
-              },
+            // Zone draggable pour la fenêtre (en haut)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 40,
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onPanStart: (details) {
+                  windowManager.startDragging();
+                },
+                onPanUpdate: (details) {
+                  // Continuer le drag pendant le mouvement
+                  windowManager.startDragging();
+                },
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.move,
+                  child: Container(
+                    color: Colors.transparent,
+                  ),
+                ),
+              ),
             ),
-
-          // Zone principale avec sidemenu en position absolue
-          Expanded(
-            child: Stack(
-              clipBehavior: Clip.none,
+            // Contenu principal
+            Row(
               children: [
+                // Sidebar moderne
+                AnimatedBuilder(
+                  animation: _sidebarAnimation,
+                  builder: (context, child) {
+                    return Container(
+                      width: _sidebarAnimation.value * 48,
+                      child: _sidebarAnimation.value > 0
+                          ? GXSidebar(
+                              onClose: _toggleSidebar,
+                              currentSection: _currentSection,
+                              onSectionSelected: (section) {
+                                // DevTools natif - ouvre les DevTools du WebView
+                                if (section == SidebarSection.nativeDevtools) {
+                                  _openNativeDevTools();
+                                  return;
+                                }
+                                // Si on clique sur la section déjà active, fermer le panel
+                                if (section == _currentSection && section != SidebarSection.home) {
+                                  _closePanel();
+                                  return;
+                                }
+                                setState(() {
+                                  _currentSection = section;
+                                  // Taille du panel selon la section
+                                  final screenWidth = MediaQuery.of(context).size.width;
+                                  final settings = Provider.of<SettingsService>(context, listen: false);
+                                  
+                                  if (section == SidebarSection.settings) {
+                                    // Paramètres toujours en MAX
+                                    _sideMenuWidth = (screenWidth * 0.8).clamp(600.0, 1200.0);
+                                  } else {
+                                    // Autres panels avec taille configurable
+                                    _sideMenuWidth = settings.panelDefaultWidth;
+                                  }
+                                });
+                              },
+                            )
+                          : null,
+                    );
+                  },
+                ),
+
+                // Zone principale avec sidemenu en position absolue
+                Expanded(
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
                 Column(
                   children: [
                     // Sélectionner le composant d'onglets selon le mode
@@ -630,9 +657,11 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
                     ),
                   ),
                 ),
+                    ],
+                  ),
+                ),
               ],
             ),
-          ),
           ],
         ),
             ),
@@ -1286,6 +1315,12 @@ class _NotilusAiPanelState extends State<_NotilusAiPanel> {
                                   borderRadius: BorderRadius.circular(8),
                                   borderSide: BorderSide.none,
                                 ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide.none,
+                                ),
+                                focusedBorder: InputBorder.none,
+                                focusedErrorBorder: InputBorder.none,
                                 contentPadding: const EdgeInsets.all(12),
                               ),
                             ),

@@ -60,9 +60,11 @@ class _GXTerminalViewState extends State<GXTerminalView> {
       if (mounted) {
         _terminal.write('\r\n❌ Erreur: Impossible d\'initialiser le terminal\r\n');
       }
-      setState(() {
-        _isInitialized = true;
-      });
+      if (mounted) {
+        setState(() {
+          _isInitialized = true;
+        });
+      }
       return;
     }
 
@@ -70,7 +72,9 @@ class _GXTerminalViewState extends State<GXTerminalView> {
     _session!.output.listen(
       (data) {
         if (mounted) {
+          // Écrire directement dans le terminal xterm
           _terminal.write(data);
+          debugPrint('📥 Terminal output: ${data.length} bytes');
         }
       },
       onError: (error) {
@@ -83,19 +87,34 @@ class _GXTerminalViewState extends State<GXTerminalView> {
     // Configurer le callback d'écriture du terminal (input utilisateur)
     _terminal.onOutput = (data) async {
       if (_session != null && _session!.isInitialized) {
+        // Afficher immédiatement ce que l'utilisateur tape dans le terminal
+        debugPrint('📤 Terminal input: ${data.length} bytes');
         await _session!.write(data);
       } else {
         debugPrint('⚠️ Session not ready, cannot write: $data');
       }
     };
 
-    // Écrire un message de bienvenue
-    _terminal.write('\r\n\x1b[32m✅ Terminal Notilus initialisé\x1b[0m\r\n');
-    _terminal.write('\x1b[36mTapez vos commandes ici...\x1b[0m\r\n\r\n');
+    // Attendre un peu pour que le shell soit prêt
+    await Future.delayed(const Duration(milliseconds: 500));
 
-    setState(() {
-      _isInitialized = true;
-    });
+    // Écrire un message de bienvenue
+    if (mounted) {
+      _terminal.write('\r\n\x1b[32m✅ Terminal Notilus initialisé\x1b[0m\r\n');
+      _terminal.write('\x1b[36mTapez vos commandes ici...\x1b[0m\r\n\r\n');
+      
+      // Envoyer une commande vide pour initialiser le prompt PowerShell
+      await Future.delayed(const Duration(milliseconds: 200));
+      if (_session != null && _session!.isInitialized) {
+        await _session!.write('\r\n');
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _isInitialized = true;
+      });
+    }
   }
 
   void _disposeSession() {
@@ -154,8 +173,13 @@ class _GXTerminalViewState extends State<GXTerminalView> {
         color: Colors.black.withOpacity(0.5),
         padding: const EdgeInsets.all(16),
         child: Focus(
-          autofocus: false,
-          child: TerminalView(_terminal),
+          autofocus: true,
+          canRequestFocus: true,
+          child: TerminalView(
+            _terminal,
+            autofocus: true,
+            backgroundOpacity: 0.0,
+          ),
         ),
       ),
     );

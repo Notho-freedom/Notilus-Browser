@@ -53,12 +53,22 @@ class TerminalSession {
       }
 
       // Lancer le processus shell
-      _process = await Process.start(
-        _shellCommand!,
-        _shellArgs ?? [],
-        mode: ProcessStartMode.normal,
-        runInShell: Platform.isWindows, // runInShell nécessaire pour Windows
-      );
+      // Pour PowerShell, utiliser -NoExit et -Command - pour prendre stdin
+      if (Platform.isWindows && _shellCommand == 'powershell.exe') {
+        _process = await Process.start(
+          _shellCommand!,
+          ['-NoExit', '-Command', '-'],
+          mode: ProcessStartMode.normal,
+          runInShell: true, // runInShell nécessaire pour Windows PowerShell
+        );
+      } else {
+        _process = await Process.start(
+          _shellCommand!,
+          _shellArgs ?? [],
+          mode: ProcessStartMode.normal,
+          runInShell: Platform.isWindows, // runInShell nécessaire pour Windows
+        );
+      }
 
       // Écouter la sortie stdout
       _stdoutSubscription = _process!.stdout.listen(
@@ -114,18 +124,24 @@ class TerminalSession {
 
     try {
       // Écrire les données dans stdin du processus
-      _process!.stdin.add(data.codeUnits);
+      // Pour Windows PowerShell, utiliser UTF-8
+      if (Platform.isWindows) {
+        _process!.stdin.add(data.codeUnits);
+      } else {
+        _process!.stdin.add(data.codeUnits);
+      }
       await _process!.stdin.flush();
       _inputController.add(data);
-      debugPrint('✅ Terminal write: ${data.length} bytes');
+      debugPrint('✅ Terminal write: ${data.length} bytes - "${data.replaceAll('\r', '\\r').replaceAll('\n', '\\n')}"');
     } catch (e) {
       debugPrint('❌ Terminal write error: $e');
     }
   }
 
-  /// Envoie une ligne de commande (avec \n)
+  /// Envoie une ligne de commande (avec \r\n pour Windows, \n pour Unix)
   Future<void> writeLine(String line) async {
-    await write('$line\n');
+    final lineEnding = Platform.isWindows ? '\r\n' : '\n';
+    await write('$line$lineEnding');
   }
 
   /// Redimensionne le terminal (pour l'instant non supporté par Process)

@@ -1134,15 +1134,20 @@ class _FrontendResourcesTileContent extends StatelessWidget {
             .whereType<FrontendResource>()
             .toList());
     
-    return Container(
-      color: const Color(0xFF0D0D12),
-      padding: const EdgeInsets.all(16),
-      constraints: const BoxConstraints.expand(),
-      child: FrontendResourcesWidget(
-        resources: resources,
-        accentColor: accentColor,
-        transparency: transparency,
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Container(
+          color: const Color(0xFF0D0D12),
+          padding: const EdgeInsets.all(16),
+          width: constraints.maxWidth > 0 ? constraints.maxWidth : double.infinity,
+          height: constraints.maxHeight > 0 ? constraints.maxHeight : double.infinity,
+          child: FrontendResourcesWidget(
+            resources: resources,
+            accentColor: accentColor,
+            transparency: transparency,
+          ),
+        );
+      },
     );
   }
 }
@@ -1230,15 +1235,20 @@ class _BackendLanguagesTileContent extends StatelessWidget {
             .whereType<BackendLanguage>()
             .toList());
     
-    return Container(
-      color: const Color(0xFF0D0D12),
-      padding: const EdgeInsets.all(16),
-      constraints: const BoxConstraints.expand(),
-      child: BackendLanguagesWidget(
-        languages: languages,
-        accentColor: accentColor,
-        transparency: transparency,
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Container(
+          color: const Color(0xFF0D0D12),
+          padding: const EdgeInsets.all(16),
+          width: constraints.maxWidth > 0 ? constraints.maxWidth : double.infinity,
+          height: constraints.maxHeight > 0 ? constraints.maxHeight : double.infinity,
+          child: BackendLanguagesWidget(
+            languages: languages,
+            accentColor: accentColor,
+            transparency: transparency,
+          ),
+        );
+      },
     );
   }
 }
@@ -1282,15 +1292,20 @@ class _BackendToolsTileContent extends StatelessWidget {
         .whereType<ToolSection>()
         .toList() ?? [];
     
-    return Container(
-      color: const Color(0xFF0D0D12),
-      padding: const EdgeInsets.all(16),
-      constraints: const BoxConstraints.expand(),
-      child: BackendToolsWidget(
-        sections: sections,
-        accentColor: accentColor,
-        transparency: transparency,
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Container(
+          color: const Color(0xFF0D0D12),
+          padding: const EdgeInsets.all(16),
+          width: constraints.maxWidth > 0 ? constraints.maxWidth : double.infinity,
+          height: constraints.maxHeight > 0 ? constraints.maxHeight : double.infinity,
+          child: BackendToolsWidget(
+            sections: sections,
+            accentColor: accentColor,
+            transparency: transparency,
+          ),
+        );
+      },
     );
   }
 }
@@ -1306,13 +1321,18 @@ class _SystemMetricsTileContent extends StatelessWidget {
     final accentColor = colorTheme.nativeSecondaryColor;
     final transparency = tile.metadata['transparency'] as double? ?? 0.0;
     
-    return Container(
-      color: const Color(0xFF0D0D12),
-      constraints: const BoxConstraints.expand(),
-      child: SystemMetricsWidget(
-        accentColor: accentColor,
-        transparency: transparency,
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Container(
+          color: const Color(0xFF0D0D12),
+          width: constraints.maxWidth > 0 ? constraints.maxWidth : double.infinity,
+          height: constraints.maxHeight > 0 ? constraints.maxHeight : double.infinity,
+          child: SystemMetricsWidget(
+            accentColor: accentColor,
+            transparency: transparency,
+          ),
+        );
+      },
     );
   }
 }
@@ -1328,16 +1348,21 @@ class _CommandPromptTileContent extends StatelessWidget {
     final accentColor = colorTheme.nativeSecondaryColor;
     final transparency = tile.metadata['transparency'] as double? ?? 0.0;
     
-    return Container(
-      color: const Color(0xFF0D0D12),
-      padding: const EdgeInsets.all(16),
-      constraints: const BoxConstraints.expand(),
-      child: CommandPromptWidget(
-        accentColor: accentColor,
-        transparency: transparency,
-        greeting: tile.metadata['greeting'] as String?,
-        subtitle: tile.metadata['subtitle'] as String? ?? tile.metadata['description'] as String?,
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Container(
+          color: const Color(0xFF0D0D12),
+          padding: const EdgeInsets.all(16),
+          width: constraints.maxWidth > 0 ? constraints.maxWidth : double.infinity,
+          height: constraints.maxHeight > 0 ? constraints.maxHeight : double.infinity,
+          child: CommandPromptWidget(
+            accentColor: accentColor,
+            transparency: transparency,
+            greeting: tile.metadata['greeting'] as String?,
+            subtitle: tile.metadata['subtitle'] as String? ?? tile.metadata['description'] as String?,
+          ),
+        );
+      },
     );
   }
 }
@@ -1372,14 +1397,19 @@ class _ServiceStatusTileContent extends StatelessWidget {
         .whereType<ServiceStatus>()
         .toList() ?? [];
     
-    return Container(
-      color: const Color(0xFF0D0D12),
-      constraints: const BoxConstraints.expand(),
-      child: ServiceStatusWidget(
-        services: services,
-        accentColor: accentColor,
-        transparency: transparency,
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Container(
+          color: const Color(0xFF0D0D12),
+          width: constraints.maxWidth > 0 ? constraints.maxWidth : double.infinity,
+          height: constraints.maxHeight > 0 ? constraints.maxHeight : double.infinity,
+          child: ServiceStatusWidget(
+            services: services,
+            accentColor: accentColor,
+            transparency: transparency,
+          ),
+        );
+      },
     );
   }
 }
@@ -1395,14 +1425,19 @@ class _InfrastructureMetricsTileContent extends StatelessWidget {
     final accentColor = colorTheme.nativeSecondaryColor;
     final transparency = tile.metadata['transparency'] as double? ?? 0.0;
     
-    return Container(
-      color: const Color(0xFF0D0D12),
-      padding: const EdgeInsets.all(16),
-      constraints: const BoxConstraints.expand(),
-      child: InfrastructureMetricsWidget(
-        accentColor: accentColor,
-        transparency: transparency,
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Container(
+          color: const Color(0xFF0D0D12),
+          padding: const EdgeInsets.all(16),
+          width: constraints.maxWidth > 0 ? constraints.maxWidth : double.infinity,
+          height: constraints.maxHeight > 0 ? constraints.maxHeight : double.infinity,
+          child: InfrastructureMetricsWidget(
+            accentColor: accentColor,
+            transparency: transparency,
+          ),
+        );
+      },
     );
   }
 }
@@ -1446,15 +1481,20 @@ class _DevOpsToolsTileContent extends StatelessWidget {
         .whereType<DevOpsCategory>()
         .toList() ?? [];
     
-    return Container(
-      color: const Color(0xFF0D0D12),
-      padding: const EdgeInsets.all(16),
-      constraints: const BoxConstraints.expand(),
-      child: DevOpsToolsWidget(
-        categories: categories,
-        accentColor: accentColor,
-        transparency: transparency,
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Container(
+          color: const Color(0xFF0D0D12),
+          padding: const EdgeInsets.all(16),
+          width: constraints.maxWidth > 0 ? constraints.maxWidth : double.infinity,
+          height: constraints.maxHeight > 0 ? constraints.maxHeight : double.infinity,
+          child: DevOpsToolsWidget(
+            categories: categories,
+            accentColor: accentColor,
+            transparency: transparency,
+          ),
+        );
+      },
     );
   }
 }
@@ -1470,16 +1510,21 @@ class _CommandCenterTileContent extends StatelessWidget {
     final accentColor = colorTheme.nativeSecondaryColor;
     final transparency = tile.metadata['transparency'] as double? ?? 0.0;
     
-    return Container(
-      color: const Color(0xFF0D0D12),
-      padding: const EdgeInsets.all(16),
-      constraints: const BoxConstraints.expand(),
-      child: CommandCenterWidget(
-        accentColor: accentColor,
-        transparency: transparency,
-        greeting: tile.metadata['greeting'] as String?,
-        subtitle: tile.metadata['subtitle'] as String? ?? tile.metadata['description'] as String?,
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Container(
+          color: const Color(0xFF0D0D12),
+          padding: const EdgeInsets.all(16),
+          width: constraints.maxWidth > 0 ? constraints.maxWidth : double.infinity,
+          height: constraints.maxHeight > 0 ? constraints.maxHeight : double.infinity,
+          child: CommandCenterWidget(
+            accentColor: accentColor,
+            transparency: transparency,
+            greeting: tile.metadata['greeting'] as String?,
+            subtitle: tile.metadata['subtitle'] as String? ?? tile.metadata['description'] as String?,
+          ),
+        );
+      },
     );
   }
 }
@@ -1525,7 +1570,6 @@ class _DataScienceLibrariesTileContent extends StatelessWidget {
     return Container(
       color: const Color(0xFF0D0D12),
       padding: const EdgeInsets.all(16),
-      constraints: const BoxConstraints.expand(),
       child: DataScienceLibrariesWidget(
         libraries: libraries,
         accentColor: accentColor,
@@ -1577,7 +1621,6 @@ class _DataScienceToolsTileContent extends StatelessWidget {
     return Container(
       color: const Color(0xFF0D0D12),
       padding: const EdgeInsets.all(16),
-      constraints: const BoxConstraints.expand(),
       child: DataScienceToolsWidget(
         categories: categories,
         accentColor: accentColor,
@@ -1623,7 +1666,6 @@ class _QuickLinksTileContent extends StatelessWidget {
     return Container(
       color: const Color(0xFF0D0D12),
       padding: const EdgeInsets.all(16),
-      constraints: const BoxConstraints.expand(),
       child: Center(
         child: QuickLinksWidget(
           links: links,
@@ -1649,7 +1691,6 @@ class _SearchBarTileContent extends StatelessWidget {
     return Container(
       color: const Color(0xFF0D0D12),
       padding: const EdgeInsets.all(16),
-      constraints: const BoxConstraints.expand(),
       child: Center(
         child: SearchBarWidget(
           accentColor: accentColor,
@@ -1692,7 +1733,6 @@ class _DeveloperQuotesTileContent extends StatelessWidget {
     return Container(
       color: const Color(0xFF0D0D12),
       padding: const EdgeInsets.all(16),
-      constraints: const BoxConstraints.expand(),
       child: Center(
         child: DeveloperQuotesWidget(
           quotes: quotes ?? defaultQuotes,
@@ -1722,7 +1762,6 @@ class _TimeDisplayTileContent extends StatelessWidget {
     return Container(
       color: const Color(0xFF0D0D12),
       padding: const EdgeInsets.all(16),
-      constraints: const BoxConstraints.expand(),
       child: Center(
         child: TimeDisplayWidget(
           textColor: textColor,

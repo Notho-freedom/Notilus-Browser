@@ -28,7 +28,7 @@ class TabDraggable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LongPressDraggable<TabModel>(
+    return Draggable<TabModel>(
       data: tab,
       feedback: Material(
         color: Colors.transparent,

@@ -183,10 +183,8 @@ class AuthDialog extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide(color: Colors.white24),
                     ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: accentColor),
-                    ),
+                    focusedBorder: InputBorder.none,
+                    focusedErrorBorder: InputBorder.none,
                   ),
                   style: const TextStyle(color: Colors.white),
                   validator: (value) {
@@ -216,10 +214,8 @@ class AuthDialog extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide(color: Colors.white24),
                     ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: accentColor),
-                    ),
+                    focusedBorder: InputBorder.none,
+                    focusedErrorBorder: InputBorder.none,
                   ),
                   style: const TextStyle(color: Colors.white),
                   validator: (value) {

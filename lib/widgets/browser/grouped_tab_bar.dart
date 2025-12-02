@@ -134,10 +134,8 @@ class _GroupedTabBarState extends State<GroupedTabBar> {
             borderRadius: BorderRadius.circular(8),
             borderSide: BorderSide(color: gxRed.withOpacity(0.3)),
           ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: gxRed, width: 2),
-          ),
+          focusedBorder: InputBorder.none,
+          focusedErrorBorder: InputBorder.none,
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
             borderSide: BorderSide(color: gxRed.withOpacity(0.3)),

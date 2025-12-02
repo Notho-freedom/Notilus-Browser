@@ -137,7 +137,9 @@ class _TabGroupDialogState extends State<TabGroupDialog> {
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
               ),
-              focusedBorder: OutlineInputBorder(
+              focusedBorder: InputBorder.none,
+              focusedErrorBorder: InputBorder.none,
+              // focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(color: accentColor, width: 1.5),
               ),
