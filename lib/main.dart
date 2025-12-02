@@ -29,6 +29,7 @@ import 'firebase_options.dart';
 import 'services/auth/firebase_auth_service.dart';
 import 'services/auth/config_sync_service.dart';
 import 'services/github/github_repos_service.dart';
+import 'services/backend_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -49,11 +50,17 @@ void main() async {
   // Initialisation des services centralisés en parallèle
   final settingsService = SettingsService();
   final mosaicService = NotilusMosaicService();
+  final backendService = BackendService();
   
   // Paralléliser les initialisations pour accélérer le démarrage
   await Future.wait([
     settingsService.initialize(),
     mosaicService.initialize(),
+    // Initialiser le backend en arrière-plan (ne bloque pas le démarrage)
+    backendService.initialize().catchError((e) {
+      debugPrint('⚠️ Backend non disponible: $e');
+      // L'application peut continuer sans le backend
+    }),
   ]);
 
   // Initialiser Firebase Auth et Config Sync (si Firebase est configuré)
@@ -101,6 +108,7 @@ void main() async {
   runApp(NotilusApp(
     settingsService: settingsService,
     mosaicService: mosaicService,
+    backendService: backendService,
     authService: authService,
     syncService: syncService,
     githubReposService: githubReposService,
@@ -169,6 +177,7 @@ class _InvisibleScrollBehavior extends ScrollBehavior {
 class NotilusApp extends StatelessWidget {
   final SettingsService settingsService;
   final NotilusMosaicService mosaicService;
+  final BackendService backendService;
   final FirebaseAuthService? authService;
   final ConfigSyncService? syncService;
   final GitHubReposService? githubReposService;
@@ -177,6 +186,7 @@ class NotilusApp extends StatelessWidget {
     super.key,
     required this.settingsService,
     required this.mosaicService,
+    required this.backendService,
     this.authService,
     this.syncService,
     this.githubReposService,
@@ -229,6 +239,8 @@ class NotilusApp extends StatelessWidget {
           ChangeNotifierProvider.value(value: syncService),
         if (githubReposService != null)
           ChangeNotifierProvider<GitHubReposService>.value(value: githubReposService!),
+        // Backend Service
+        ChangeNotifierProvider.value(value: backendService),
       ],
       child: Consumer<ThemeModeNotifier>(
         builder: (context, themeModeNotifier, _) {

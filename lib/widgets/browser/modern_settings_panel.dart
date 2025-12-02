@@ -429,6 +429,7 @@ class _ModernSettingsPanelState extends State<ModernSettingsPanel> {
           ),
         ),
       ),
+      ),
     );
   }
 

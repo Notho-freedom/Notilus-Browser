@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 import uvicorn
 from dotenv import load_dotenv
 import os
+import sys
 
 # Services existants
 from services.monitoring import router as monitoring_router
@@ -202,11 +203,16 @@ if __name__ == "__main__":
     logging.config.dictConfig(log_config)
     
     port = int(os.getenv("PORT", 8000))
+    
+    # Désactiver le reload si stdin n'est pas disponible (exécutable sans console)
+    # Le reload nécessite un stdin valide pour fonctionner
+    enable_reload = sys.stdin is not None and hasattr(sys.stdin, 'fileno')
+    
     uvicorn.run(
         "main:app",
         host="127.0.0.1",
         port=port,
-        reload=True,
+        reload=enable_reload,
         log_config=log_config
     )
 

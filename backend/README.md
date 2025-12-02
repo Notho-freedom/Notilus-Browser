@@ -20,6 +20,43 @@ python main.py
 
 L'API sera accessible sur `http://localhost:8000`
 
+## Build de l'exécutable
+
+Pour créer un exécutable Windows avec Python 3.11 (version recommandée pour la compatibilité) :
+
+### Windows
+
+```bash
+cd backend
+build_backend.bat
+```
+
+Le script utilise automatiquement Python 3.11 (`py -3.11`) pour garantir la meilleure compatibilité. L'exécutable sera généré dans `dist/notilus-backend.exe`.
+
+### Linux/macOS
+
+```bash
+cd backend
+chmod +x build_backend.sh
+./build_backend.sh
+```
+
+Le script utilise automatiquement Python 3.11 pour garantir la meilleure compatibilité. L'exécutable sera généré dans `dist/notilus-backend`.
+
+### Utilisation du fichier .spec (optionnel)
+
+Pour un contrôle plus avancé, vous pouvez utiliser directement le fichier `.spec` :
+
+```bash
+# Windows
+py -3.11 -m PyInstaller notilus-backend.spec
+
+# Linux/macOS
+python3.11 -m PyInstaller notilus-backend.spec
+```
+
+**Note importante** : Le build est configuré pour utiliser Python 3.11 par défaut, qui offre une meilleure compatibilité que Python 3.13 pour les dépendances actuelles.
+
 ## Documentation
 
 Une fois le serveur démarré, la documentation interactive est disponible sur :

@@ -106,3 +106,15 @@ install(DIRECTORY "${PROJECT_BUILD_DIR}/${FLUTTER_ASSET_DIR_NAME}"
 install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
   CONFIGURATIONS Profile;Release
   COMPONENT Runtime)
+
+# Copy backend executable if it exists
+set(BACKEND_EXE_PATH "${CMAKE_SOURCE_DIR}/../backend/dist/notilus-backend.exe")
+if(EXISTS "${BACKEND_EXE_PATH}")
+  install(FILES "${BACKEND_EXE_PATH}"
+    DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+    COMPONENT Runtime)
+  message(STATUS "Backend executable will be copied: ${BACKEND_EXE_PATH}")
+else()
+  message(STATUS "Backend executable not found: ${BACKEND_EXE_PATH}")
+  message(STATUS "The backend will be searched at runtime from backend/dist/")
+endif()
