@@ -133,6 +133,17 @@ class _GXTabBarState extends State<GXTabBar> {
             ],
           ),
           const SizedBox(width: 6),
+          // Zone de drag pour déplacer la fenêtre
+          GestureDetector(
+            onPanStart: (_) => windowManager.startDragging(),
+            behavior: HitTestBehavior.translucent,
+            child: Container(
+              width: 100,
+              height: 36,
+              color: Colors.transparent,
+            ),
+          ),
+          const SizedBox(width: 6),
           const GXWindowControls(),
           const SizedBox(width: 6),
         ],

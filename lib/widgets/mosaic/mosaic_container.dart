@@ -11,7 +11,6 @@ import '../../models/mosaic_models.dart';
 import '../../services/mosaic_service.dart';
 import '../../core/services/color_theme_manager.dart';
 import 'mosaic_tile_widget.dart';
-import 'mosaic_toolbar.dart';
 
 /// Widget principal de la mosaïque
 class MosaicContainer extends StatefulWidget {
@@ -58,8 +57,8 @@ class _MosaicContainerState extends State<MosaicContainer>
           color: const Color(0xFF0B0B0E),
           child: Column(
             children: [
-              // Toolbar
-              const MosaicToolbar(),
+              // Toolbar inline (remplace MosaicToolbar)
+              _buildMosaicToolbar(context, mosaicService),
               
               // Contenu mosaïque
               Expanded(
@@ -176,6 +175,44 @@ class _MosaicContainerState extends State<MosaicContainer>
     }
 
     return Column(children: widgets);
+  }
+
+  /// Toolbar inline pour la mosaïque
+  Widget _buildMosaicToolbar(BuildContext context, NotilusMosaicService service) {
+    return Container(
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1A2E).withOpacity(0.8),
+        border: Border(
+          bottom: BorderSide(
+            color: Colors.white.withOpacity(0.1),
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          // Titre
+          const Text(
+            'Mosaic',
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const Spacer(),
+          // Actions
+          IconButton(
+            icon: const Icon(CupertinoIcons.xmark, size: 16),
+            onPressed: () => service.deactivate(),
+            tooltip: 'Fermer la mosaïque',
+            iconSize: 16,
+            color: Colors.white70,
+          ),
+        ],
+      ),
+    );
   }
 }
 

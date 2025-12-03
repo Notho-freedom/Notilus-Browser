@@ -14,9 +14,6 @@ import 'grouped_tab_bar.dart';
 import 'gx_sidebar.dart';
 import 'web_content_view.dart';
 import 'home_pages/home_page_factory.dart';
-import 'modern_history_panel.dart';
-import 'modern_bookmarks_panel.dart';
-import 'modern_downloads_panel.dart';
 import 'gx_futuristic_history_panel.dart';
 import 'gx_futuristic_bookmarks_panel.dart';
 import 'gx_futuristic_downloads_panel.dart';
@@ -40,7 +37,6 @@ import '../../widgets/lighthouse/lighthouse_panel.dart';
 import '../../widgets/github/github_repos_panel.dart';
 import '../../services/lighthouse/lighthouse_service.dart';
 import '../../services/studio/studio_service.dart';
-import '../../widgets/common/gx_test_panel.dart';
 import '../../services/gx_notification_service.dart';
 import '../../widgets/common/gx_futuristic_dialog.dart';
 import 'gx_3d_coverflow_tabs_view.dart';
@@ -938,11 +934,8 @@ class _ModernBrowserWindowState extends State<ModernBrowserWindow>
           child: const DocumentationPanel(),
         );
       case SidebarSection.testPanel:
-        return _SidebarPanelConfig(
-          title: 'Test Panel GX',
-          icon: CupertinoIcons.square_grid_2x2,
-          child: const GxTestPanel(),
-        );
+        // Test panel supprimé - archivé dans .bin/unused
+        return null;
       case SidebarSection.extensions:
         // Extensions retiré de la sidebar, mais gardé pour compatibilité
         return null;

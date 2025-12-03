@@ -13,9 +13,9 @@ import '../../services/tab_manager.dart';
 import '../../services/tab_webview_manager.dart';
 import '../../core/services/color_theme_manager.dart';
 import '../browser/web_content_view.dart';
-import '../browser/modern_bookmarks_panel.dart';
-import '../browser/modern_history_panel.dart';
-import '../browser/modern_downloads_panel.dart';
+import '../browser/gx_futuristic_bookmarks_panel.dart';
+import '../browser/gx_futuristic_history_panel.dart';
+import '../browser/gx_futuristic_downloads_panel.dart';
 import '../browser/modern_settings_panel.dart';
 import '../browser/webview_service_panel.dart';
 import '../terminal/native_terminal_panel.dart';
@@ -25,7 +25,6 @@ import '../dev_tools/backend_lab_panel.dart';
 import '../studio/studio_panel.dart';
 import '../lighthouse/lighthouse_panel.dart';
 import '../github/github_repos_panel.dart';
-import '../browser/extensions_panel.dart';
 import '../browser/cloudinary_media_manager.dart';
 import '../../services/cloudinary_service.dart';
 // Widgets autonomes
@@ -64,11 +63,11 @@ class MosaicTileContent extends StatelessWidget {
       case MosaicTileType.widgets:
         return const _WidgetsTileContent();
       case MosaicTileType.bookmarks:
-        return ModernBookmarksPanel();
+        return const GxFuturisticBookmarksPanel();
       case MosaicTileType.history:
-        return ModernHistoryPanel();
+        return const GxFuturisticHistoryPanel();
       case MosaicTileType.downloads:
-        return ModernDownloadsPanel();
+        return const GxFuturisticDownloadsPanel();
       case MosaicTileType.ai:
         return const _AITileContent();
       case MosaicTileType.settings:
@@ -86,7 +85,8 @@ class MosaicTileContent extends StatelessWidget {
       case MosaicTileType.github:
         return const GitHubReposPanel();
       case MosaicTileType.extensions:
-        return const ExtensionsPanel();
+        // ExtensionsPanel désactivé - fonctionnalité en cours de développement
+        return const Center(child: Text('Extensions - Bientôt disponible', style: TextStyle(color: Colors.white54)));
       case MosaicTileType.cloudinary:
         return CloudinaryMediaManager(
           resourceType: CloudinaryResourceType.auto,

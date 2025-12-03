@@ -48,18 +48,46 @@ class HdRenderingScripts {
   if (window._notilusHdOptimized) return;
   window._notilusHdOptimized = true;
   
-  // Optimiser la netteté du texte
+  // Obtenir le DPI réel de l'écran
+  var dpr = window.devicePixelRatio || 1;
+  
+  // Optimiser la netteté du texte et des images
   var style = document.createElement('style');
   style.id = 'notilus-hd-text';
   style.textContent = \`
+    /* Anti-aliasing optimal pour le texte */
     * {
       -webkit-font-smoothing: antialiased !important;
       -moz-osx-font-smoothing: grayscale !important;
       text-rendering: optimizeLegibility !important;
+      font-feature-settings: "kern" 1, "liga" 1 !important;
     }
+    
+    /* Rendu net pour les images */
     img, svg, canvas, video {
       image-rendering: -webkit-optimize-contrast !important;
       image-rendering: crisp-edges !important;
+    }
+    
+    /* Améliorer le rendu des polices */
+    body, html {
+      -webkit-text-size-adjust: 100% !important;
+      text-size-adjust: 100% !important;
+    }
+    
+    /* Désactiver le flou sur les transformations */
+    * {
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+      -webkit-transform-style: preserve-3d;
+      transform-style: preserve-3d;
+    }
+    
+    /* Forcer les sous-pixels pour les polices */
+    @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+      * {
+        -webkit-font-smoothing: subpixel-antialiased !important;
+      }
     }
   \`;
   
@@ -67,7 +95,42 @@ class HdRenderingScripts {
     document.head.appendChild(style);
   }
   
-  console.log('Notilus: Rendu HD activé');
+  // Forcer le zoom à 100% pour éviter le flou
+  if (document.body) {
+    document.body.style.zoom = '100%';
+  }
+  
+  console.log('Notilus: Rendu HD activé (DPR: ' + dpr + ')');
+})();
+''';
+
+  /// Script pour corriger le scaling DPI Windows
+  static const String dpiCorrectionScript = '''
+(function() {
+  'use strict';
+  if (window._notilusDpiCorrected) return;
+  window._notilusDpiCorrected = true;
+  
+  // Correction du scaling pour Windows
+  var meta = document.querySelector('meta[name="viewport"]');
+  if (!meta) {
+    meta = document.createElement('meta');
+    meta.name = 'viewport';
+    document.head.appendChild(meta);
+  }
+  meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+  
+  // Désactiver le zoom tactile qui cause du flou
+  document.addEventListener('touchstart', function(e) {
+    if (e.touches.length > 1) {
+      e.preventDefault();
+    }
+  }, { passive: false });
+  
+  // Forcer le recalcul du layout pour netteté
+  if (document.body) {
+    document.body.style.transform = 'translateZ(0)';
+  }
 })();
 ''';
 }

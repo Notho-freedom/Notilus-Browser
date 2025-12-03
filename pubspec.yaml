@@ -11,11 +11,17 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.8
   
-  # State Management
-  provider: ^6.1.1
+  # State Management - Riverpod for reactive state
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.3.5
+  provider: ^6.1.1  # Keep for gradual migration
   
   # Dependency Injection
   get_it: ^7.6.7
+  
+  # Immutable Models
+  freezed_annotation: ^2.4.1
+  json_annotation: ^4.8.1
   
   # Storage
   shared_preferences: ^2.2.2
@@ -75,6 +81,12 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
+  
+  # Code Generation
+  build_runner: ^2.4.8
+  freezed: ^2.5.2
+  json_serializable: ^6.7.1
+  riverpod_generator: ^2.4.0
 
 flutter:
   uses-material-design: true

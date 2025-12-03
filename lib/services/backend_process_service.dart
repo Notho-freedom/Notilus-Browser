@@ -25,9 +25,17 @@ class BackendProcessService extends ChangeNotifier {
   static const String _exeName = 'notilus-backend.exe';
   static const String _defaultPort = '8000';
   static const String _healthCheckUrl = 'http://localhost:8000/api/health';
+  static const int _maxRestartAttempts = 3;
+  static const Duration _healthCheckInterval = Duration(seconds: 30);
+  
+  // État interne
+  Timer? _healthCheckTimer;
+  int _restartAttempts = 0;
+  DateTime? _lastSuccessfulHealthCheck;
   
   // Getters
   bool get isRunning => _isRunning;
+  DateTime? get lastSuccessfulHealthCheck => _lastSuccessfulHealthCheck;
   bool get isStarting => _isStarting;
   String? get error => _error;
   List<String> get logs => List.unmodifiable(_logs);
@@ -350,6 +358,61 @@ class BackendProcessService extends ChangeNotifier {
   /// Vérifier la santé du backend
   Future<bool> checkHealth() async {
     return await _checkHealth(maxRetries: 1, delay: const Duration(milliseconds: 100));
+  }
+
+  /// Démarre le health check périodique
+  void startPeriodicHealthCheck() {
+    _healthCheckTimer?.cancel();
+    _healthCheckTimer = Timer.periodic(_healthCheckInterval, (_) async {
+      if (!_isRunning) return;
+      
+      final isHealthy = await checkHealth();
+      if (isHealthy) {
+        _lastSuccessfulHealthCheck = DateTime.now();
+        _restartAttempts = 0; // Réinitialiser les tentatives après un succès
+      } else {
+        LoggerService().warning('Backend health check failed', context: 'BackendProcess');
+        await _handleUnhealthyBackend();
+      }
+    });
+    LoggerService().info('Health check périodique démarré (intervalle: ${_healthCheckInterval.inSeconds}s)', context: 'BackendProcess');
+  }
+
+  /// Arrête le health check périodique
+  void stopPeriodicHealthCheck() {
+    _healthCheckTimer?.cancel();
+    _healthCheckTimer = null;
+  }
+
+  /// Gère un backend non-sain
+  Future<void> _handleUnhealthyBackend() async {
+    if (_restartAttempts >= _maxRestartAttempts) {
+      _error = 'Le backend a échoué à redémarrer après $_maxRestartAttempts tentatives';
+      LoggerService().error(_error!, context: 'BackendProcess');
+      notifyListeners();
+      return;
+    }
+
+    _restartAttempts++;
+    final backoffDelay = Duration(seconds: _restartAttempts * 2); // Backoff exponentiel simplifié
+    
+    LoggerService().info('Tentative de redémarrage du backend (attempt $_restartAttempts/$_maxRestartAttempts) après ${backoffDelay.inSeconds}s', context: 'BackendProcess');
+    
+    await Future.delayed(backoffDelay);
+    await restart();
+  }
+
+  /// Redémarre le backend
+  Future<bool> restart() async {
+    LoggerService().info('Redémarrage du backend...', context: 'BackendProcess');
+    stopPeriodicHealthCheck();
+    await stop();
+    await Future.delayed(const Duration(seconds: 1));
+    final success = await start();
+    if (success) {
+      startPeriodicHealthCheck();
+    }
+    return success;
   }
   
   Future<bool> _checkHealth({required int maxRetries, required Duration delay}) async {

@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'dart:io' show Platform;
 import 'browser_engine.dart';
 import 'webview2_browser_engine.dart';
-import 'windows_browser_engine.dart';
 import '../models/tab_model.dart';
 import 'download_service.dart';
 import 'studio/studio_service.dart';
