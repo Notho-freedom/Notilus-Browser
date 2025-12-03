@@ -343,18 +343,23 @@ class FirebaseAuthService extends foundation.ChangeNotifier {
           }
           
           // Continuer le polling si le résultat est null (en attente)
-        } catch (e) {
-          debugPrint('❌ Erreur lors du polling GitHub: $e');
-          // Continuer le polling même en cas d'erreur (sauf si c'est une erreur fatale)
-          // Ne pas arrêter le polling si c'est juste une erreur temporaire
-        }
-        
-        // Limiter le polling à 5 minutes maximum (150 tentatives)
-        // Pour éviter un polling infini
-        if (timer.tick > 150) {
+        } on InvalidOAuthStateException {
+          // State invalide, arrêter immédiatement le polling
           timer.cancel();
           _pollingTimers.remove(state);
-          debugPrint('⏱️ Polling GitHub arrêté après timeout (5 minutes) pour state: $state');
+          debugPrint('🛑 Polling arrêté: state OAuth invalide pour $state');
+          return;
+        } catch (e) {
+          debugPrint('❌ Erreur lors du polling GitHub: $e');
+          // Continuer le polling pour les autres erreurs (erreurs réseau, etc.)
+        }
+        
+        // Limiter le polling à 3 minutes maximum (90 tentatives)
+        // Pour éviter un polling trop long
+        if (timer.tick > 90) {
+          timer.cancel();
+          _pollingTimers.remove(state);
+          debugPrint('⏱️ Polling GitHub arrêté après timeout (3 minutes) pour state: $state');
         }
       },
     );
@@ -365,6 +370,15 @@ class FirebaseAuthService extends foundation.ChangeNotifier {
     _pollingTimers[state]?.cancel();
     _pollingTimers.remove(state);
     debugPrint('🛑 Polling GitHub arrêté pour state: $state');
+  }
+  
+  /// Arrête tous les pollings actifs
+  void stopAllPollings() {
+    for (final timer in _pollingTimers.values) {
+      timer.cancel();
+    }
+    _pollingTimers.clear();
+    debugPrint('🛑 Tous les pollings GitHub arrêtés');
   }
   
   /// Récupère le token GitHub après autorisation dans WebView

@@ -71,6 +71,7 @@ class LocalOAuthService {
   }
   
   /// Récupère le token GitHub après autorisation
+  /// Retourne null si en attente, lance [InvalidOAuthStateException] si le state est invalide
   Future<OAuthToken?> getGitHubToken(String state) async {
     try {
       debugPrint('🔍 Tentative de récupération du token GitHub pour state: $state');
@@ -88,15 +89,29 @@ class LocalOAuthService {
         // En attente
         debugPrint('⏳ Token GitHub en attente...');
         return null;
+      } else if (response.statusCode == 404 && response.body.contains('State invalide')) {
+        // State invalide - arrêter le polling
+        debugPrint('❌ State OAuth invalide, arrêt du polling');
+        throw InvalidOAuthStateException(state);
       } else {
         debugPrint('❌ Erreur récupération token GitHub: ${response.statusCode} - ${response.body}');
         return null;
       }
     } catch (e) {
+      if (e is InvalidOAuthStateException) rethrow;
       debugPrint('❌ Erreur lors de la récupération du token GitHub: $e');
       return null;
     }
   }
+}
+
+/// Exception lancée quand le state OAuth est invalide (n'existe plus sur le backend)
+class InvalidOAuthStateException implements Exception {
+  final String state;
+  InvalidOAuthStateException(this.state);
+  
+  @override
+  String toString() => 'InvalidOAuthStateException: State "$state" invalide ou expiré';
 }
 
 /// Modèle pour le Device Flow Google
