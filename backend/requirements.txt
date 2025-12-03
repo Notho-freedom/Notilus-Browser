@@ -7,6 +7,9 @@ requests==2.31.0
 python-multipart==0.0.6
 websockets==12.0
 
+# Rate Limiting
+slowapi==0.1.9
+
 # Backend Lab Dependencies
 httpx==0.25.2
 psutil==5.9.6

@@ -9,14 +9,16 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter/foundation.dart' as foundation;
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import 'local_oauth_service.dart';
+import '../../core/services/secure_storage_service.dart';
+import '../../core/utils/result.dart';
 
 /// Service d'authentification Firebase
 class FirebaseAuthService extends foundation.ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   GoogleSignIn? _googleSignIn;
   final LocalOAuthService _localOAuth = LocalOAuthService();
+  final SecureStorageService _secureStorage = SecureStorageService();
   User? _currentUser;
   bool _isLoading = false;
   bool _useLocalBackend = false;
@@ -24,7 +26,6 @@ class FirebaseAuthService extends foundation.ChangeNotifier {
   
   // Stockage local pour GitHub (sans Firebase)
   GitHubUser? _githubUser;
-  SharedPreferences? _prefs;
   
   FirebaseAuthService() {
     // google_sign_in n'est pas supporté sur Windows
@@ -44,47 +45,46 @@ class FirebaseAuthService extends foundation.ChangeNotifier {
     // Vérifier si le backend local est disponible
     _checkLocalBackend();
     
-    // Charger l'utilisateur GitHub depuis le stockage local
+    // Charger l'utilisateur GitHub depuis le stockage sécurisé
     _loadGitHubUser();
   }
   
-  /// Charge l'utilisateur GitHub depuis le stockage local
+  /// Charge l'utilisateur GitHub depuis le stockage sécurisé
   Future<void> _loadGitHubUser() async {
     try {
-      _prefs = await SharedPreferences.getInstance();
-      final githubUserJson = _prefs?.getString('github_user');
-      if (githubUserJson != null) {
-        final Map<String, dynamic> userMap = jsonDecode(githubUserJson);
+      final userMap = await _secureStorage.getGitHubUser();
+      if (userMap != null) {
         _githubUser = GitHubUser.fromJson(userMap);
         notifyListeners();
-        debugPrint('✅ Utilisateur GitHub chargé depuis le stockage local');
+        debugPrint('✅ Utilisateur GitHub chargé depuis le stockage sécurisé');
       }
     } catch (e) {
       debugPrint('❌ Erreur lors du chargement de l\'utilisateur GitHub: $e');
     }
   }
   
-  /// Sauvegarde l'utilisateur GitHub dans le stockage local
+  /// Sauvegarde l'utilisateur GitHub dans le stockage sécurisé
   Future<void> _saveGitHubUser(GitHubUser user) async {
     try {
-      _prefs ??= await SharedPreferences.getInstance();
-      await _prefs!.setString('github_user', jsonEncode(user.toJson()));
+      await _secureStorage.saveGitHubUser(user.toJson());
+      // Stocker également le token séparément pour un accès plus facile
+      await _secureStorage.saveGitHubToken(user.accessToken);
       _githubUser = user;
       notifyListeners();
-      debugPrint('✅ Utilisateur GitHub sauvegardé localement');
+      debugPrint('✅ Utilisateur GitHub sauvegardé de manière sécurisée');
     } catch (e) {
       debugPrint('❌ Erreur lors de la sauvegarde de l\'utilisateur GitHub: $e');
     }
   }
   
-  /// Supprime l'utilisateur GitHub du stockage local
+  /// Supprime l'utilisateur GitHub du stockage sécurisé
   Future<void> _clearGitHubUser() async {
     try {
-      _prefs ??= await SharedPreferences.getInstance();
-      await _prefs!.remove('github_user');
+      await _secureStorage.deleteGitHubUser();
+      await _secureStorage.deleteGitHubToken();
       _githubUser = null;
       notifyListeners();
-      debugPrint('✅ Utilisateur GitHub supprimé du stockage local');
+      debugPrint('✅ Utilisateur GitHub supprimé du stockage sécurisé');
     } catch (e) {
       debugPrint('❌ Erreur lors de la suppression de l\'utilisateur GitHub: $e');
     }
@@ -276,43 +276,49 @@ class FirebaseAuthService extends foundation.ChangeNotifier {
   }
 
   /// Connexion avec GitHub (OAuth via backend local)
-  Future<UserCredential?> signInWithGitHub() async {
-    try {
-      _isLoading = true;
-      notifyListeners();
+  /// Retourne un AuthResult avec GitHubOAuthData au lieu de lancer une exception
+  Future<AuthResult<GitHubOAuthData>> signInWithGitHubV2() async {
+    _isLoading = true;
+    notifyListeners();
 
-      // Vérifier si le backend local est disponible
-      if (!_useLocalBackend) {
-        await _checkLocalBackend();
-      }
-      
-      if (!_useLocalBackend) {
-        throw UnsupportedError(
-          'Backend OAuth local non disponible.\n'
-          'Démarrez le backend avec: cd backend && python main.py\n'
-          'Ou utilisez l\'authentification par email.'
-        );
-      }
-      
-      // Générer un state pour la sécurité (utiliser un token sécurisé)
-      final state = _generateSecureState();
-      
-      // Démarrer le polling automatiquement pour ce state
-      _startGitHubPolling(state);
-      
-      // Retourner l'URL d'autorisation pour que l'UI puisse ouvrir une WebView
-      final authUrl = _localOAuth.getGitHubAuthUrl(state);
-      throw GitHubOAuthUrlException(authUrl, state);
-      
-    } catch (e) {
-      if (e is GitHubOAuthUrlException) {
-        rethrow; // Relancer pour que l'UI puisse gérer
-      }
-      debugPrint('Erreur lors de la connexion GitHub: $e');
+    // Vérifier si le backend local est disponible
+    if (!_useLocalBackend) {
+      await _checkLocalBackend();
+    }
+    
+    if (!_useLocalBackend) {
       _isLoading = false;
       notifyListeners();
-      rethrow;
+      return const Failure(AuthError.backendUnavailable);
     }
+    
+    // Générer un state pour la sécurité
+    final state = _generateSecureState();
+    
+    // Démarrer le polling automatiquement pour ce state
+    _startGitHubPolling(state);
+    
+    // Retourner les données OAuth pour que l'UI puisse ouvrir une WebView
+    final authUrl = _localOAuth.getGitHubAuthUrl(state);
+    return Success(GitHubOAuthData(authUrl: authUrl, state: state));
+  }
+
+  /// Connexion avec GitHub (OAuth via backend local)
+  /// @deprecated Utilisez signInWithGitHubV2() qui retourne un Result au lieu de lancer une exception
+  Future<UserCredential?> signInWithGitHub() async {
+    final result = await signInWithGitHubV2();
+    
+    return result.fold(
+      onSuccess: (data) {
+        // Pour la compatibilité, lancer l'exception legacy
+        throw GitHubOAuthUrlException(data.authUrl, data.state);
+      },
+      onFailure: (error) {
+        _isLoading = false;
+        notifyListeners();
+        throw UnsupportedError(error.message);
+      },
+    );
   }
   
   /// Démarre le polling pour récupérer le token GitHub
@@ -478,60 +484,12 @@ class FirebaseAuthService extends foundation.ChangeNotifier {
     }
   }
   
-  /// Crée ou connecte un compte Firebase avec l'email GitHub
-  Future<UserCredential> _signInOrCreateWithEmail(String email, String displayName, String githubToken) async {
-    try {
-      // Essayer de se connecter avec l'email
-      try {
-        // Générer un mot de passe temporaire basé sur le token GitHub
-        // Note: Ce n'est pas idéal, mais Firebase nécessite un mot de passe pour email/password
-        // Une meilleure solution serait d'utiliser un custom token généré par le backend
-        final userCredential = await _auth.signInWithEmailAndPassword(
-          email: email,
-          password: githubToken.substring(0, 20), // Utiliser les 20 premiers caractères comme mot de passe temporaire
-        );
-        
-        _currentUser = userCredential.user;
-        if (_currentUser != null && _currentUser!.displayName != displayName) {
-          await _currentUser!.updateDisplayName(displayName);
-        }
-        
-        debugPrint('✅ Connexion GitHub réussie (compte existant): $email');
-        _isLoading = false;
-        notifyListeners();
-        
-        return userCredential;
-      } on FirebaseAuthException catch (e) {
-        if (e.code == 'user-not-found') {
-          // Créer un nouveau compte
-          final userCredential = await _auth.createUserWithEmailAndPassword(
-            email: email,
-            password: githubToken.substring(0, 20), // Mot de passe temporaire
-          );
-          
-          _currentUser = userCredential.user;
-          if (_currentUser != null) {
-            await _currentUser!.updateDisplayName(displayName);
-          }
-          
-          debugPrint('✅ Compte GitHub créé avec succès: $email');
-          _isLoading = false;
-          notifyListeners();
-          
-          return userCredential;
-        } else if (e.code == 'wrong-password') {
-          // Le compte existe mais avec un autre mot de passe
-          // Dans ce cas, on ne peut pas se connecter automatiquement
-          throw Exception('Un compte existe déjà avec cet email mais avec un autre mot de passe. Veuillez utiliser la connexion par email.');
-        } else {
-          rethrow;
-        }
-      }
-    } catch (e) {
-      debugPrint('❌ Erreur lors de la création/connexion avec email: $e');
-      rethrow;
-    }
-  }
+  // NOTE: Méthode _signInOrCreateWithEmail supprimée car elle utilisait
+  // une dérivation non sécurisée du token GitHub comme mot de passe.
+  // L'authentification GitHub utilise maintenant uniquement le stockage
+  // sécurisé local (SecureStorageService) sans créer de compte Firebase.
+  // Pour une authentification Firebase complète avec GitHub, utilisez
+  // signInWithGitHubToken() qui utilise le provider OAuth natif.
   
   /// Connexion GitHub avec un access token (pour flux manuel ou backend)
   Future<UserCredential?> signInWithGitHubToken(String accessToken) async {

@@ -12,11 +12,15 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 if script_dir not in sys.path:
     sys.path.insert(0, script_dir)
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import uvicorn
 from dotenv import load_dotenv
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 # Services existants
 from services.monitoring import router as monitoring_router
@@ -46,6 +50,60 @@ backend_lab.console.initialize_console_handlers()
 # Charger les variables d'environnement
 load_dotenv()
 
+# ============================================================================
+# Configuration de l'environnement
+# ============================================================================
+ENVIRONMENT = os.getenv("NOTILUS_ENV", "development")
+IS_PRODUCTION = ENVIRONMENT == "production"
+
+# ============================================================================
+# Configuration du Rate Limiting
+# ============================================================================
+# Limites par défaut (peuvent être surchargées via variables d'environnement)
+RATE_LIMIT_DEFAULT = os.getenv("NOTILUS_RATE_LIMIT_DEFAULT", "100/minute")
+RATE_LIMIT_AI = os.getenv("NOTILUS_RATE_LIMIT_AI", "20/minute")  # Plus restrictif pour l'IA
+RATE_LIMIT_AUTH = os.getenv("NOTILUS_RATE_LIMIT_AUTH", "10/minute")  # Très restrictif pour l'auth
+
+# Créer le limiter
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=[RATE_LIMIT_DEFAULT],
+    storage_uri="memory://",  # En mémoire pour simplicité (Redis recommandé en prod)
+    enabled=IS_PRODUCTION or os.getenv("NOTILUS_RATE_LIMIT_ENABLED", "false").lower() == "true",
+)
+
+# Origines CORS autorisées
+# En développement: localhost sur différents ports
+# En production: définir via NOTILUS_CORS_ORIGINS (séparées par des virgules)
+DEFAULT_DEV_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:8080",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:8080",
+    "http://localhost:5173",  # Vite
+    "http://127.0.0.1:5173",
+    "app://notilus",  # Schéma d'app Flutter Desktop
+]
+
+def get_cors_origins() -> list[str]:
+    """Récupère les origines CORS autorisées selon l'environnement."""
+    if IS_PRODUCTION:
+        # En production, lire depuis la variable d'environnement
+        origins_str = os.getenv("NOTILUS_CORS_ORIGINS", "")
+        if origins_str:
+            return [origin.strip() for origin in origins_str.split(",") if origin.strip()]
+        # Par défaut en production, n'autoriser que l'origine de l'app
+        return ["app://notilus"]
+    else:
+        # En développement, autoriser localhost + origines personnalisées
+        custom_origins = os.getenv("NOTILUS_CORS_ORIGINS", "")
+        origins = DEFAULT_DEV_ORIGINS.copy()
+        if custom_origins:
+            origins.extend([origin.strip() for origin in custom_origins.split(",") if origin.strip()])
+        return origins
+
+CORS_ORIGINS = get_cors_origins()
+
 app = FastAPI(
     title="Notilus Browser API",
     description="""
@@ -69,17 +127,24 @@ app = FastAPI(
     - Support multi-langues et multi-voix
     """,
     version="2.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url="/docs" if not IS_PRODUCTION else None,  # Désactiver docs en production
+    redoc_url="/redoc" if not IS_PRODUCTION else None,
 )
 
-# Configuration CORS
+# Configuration du Rate Limiter
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
+
+# Configuration CORS sécurisée
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # À restreindre en production
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"],
+    expose_headers=["Content-Length", "X-Request-Id", "X-RateLimit-Limit", "X-RateLimit-Remaining"],
+    max_age=600,  # Cache preflight pour 10 minutes
 )
 
 # Middleware pour capturer les logs de requêtes
@@ -152,21 +217,38 @@ app.include_router(
 
 
 @app.get("/")
-async def root():
+@limiter.limit("60/minute")
+async def root(request: Request):
     """Endpoint racine"""
     return {
         "name": "Notilus Browser API",
-        "version": "1.0.0",
-        "status": "running"
+        "version": "2.0.0",
+        "status": "running",
+        "environment": ENVIRONMENT,
+        "rate_limiting": limiter.enabled,
     }
 
 
 @app.get("/api/health")
-async def health_check():
+@limiter.limit("120/minute")  # Plus permissif pour les health checks
+async def health_check(request: Request):
     """Vérification de l'état de l'API"""
     return {
         "status": "healthy",
-        "service": "notilus-api"
+        "service": "notilus-api",
+        "environment": ENVIRONMENT,
+    }
+
+
+@app.get("/api/rate-limit-status")
+@limiter.limit("10/minute")
+async def rate_limit_status(request: Request):
+    """Vérifie le statut du rate limiting pour le client actuel"""
+    return {
+        "enabled": limiter.enabled,
+        "default_limit": RATE_LIMIT_DEFAULT,
+        "ai_limit": RATE_LIMIT_AI,
+        "auth_limit": RATE_LIMIT_AUTH,
     }
 
 

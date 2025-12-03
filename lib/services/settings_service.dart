@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import '../core/services/secure_storage_service.dart';
 
 /// Service centralisé pour toutes les préférences de l'application Notilus
 /// Permet de gérer les paramètres de façon cohérente et persistante
@@ -10,7 +11,12 @@ class SettingsService extends ChangeNotifier {
   SettingsService._internal();
 
   SharedPreferences? _prefs;
+  final SecureStorageService _secureStorage = SecureStorageService();
   bool _isInitialized = false;
+  
+  // Cache pour les clés API (chargées de manière asynchrone)
+  String? _cachedGroqApiKey;
+  String? _cachedGcpTtsApiKey;
 
   // ============================================
   // CLÉS DE PRÉFÉRENCES
@@ -152,6 +158,11 @@ class SettingsService extends ChangeNotifier {
   Future<void> initialize() async {
     if (_isInitialized) return;
     _prefs = await SharedPreferences.getInstance();
+    
+    // Charger les clés API depuis le stockage sécurisé
+    _cachedGroqApiKey = await _secureStorage.getGroqApiKey();
+    _cachedGcpTtsApiKey = await _secureStorage.getGcpTtsApiKey();
+    
     _isInitialized = true;
     notifyListeners();
   }
@@ -642,11 +653,23 @@ class SettingsService extends ChangeNotifier {
     notifyListeners();
   }
   
-  String get groqApiKey => _prefs?.getString(_keyGroqApiKey) ?? '';
+  /// Clé API Groq (stockée de manière sécurisée)
+  String get groqApiKey => _cachedGroqApiKey ?? '';
   
   Future<void> setGroqApiKey(String apiKey) async {
-    await _prefs?.setString(_keyGroqApiKey, apiKey);
+    if (apiKey.isNotEmpty) {
+      await _secureStorage.saveGroqApiKey(apiKey);
+    } else {
+      await _secureStorage.deleteGroqApiKey();
+    }
+    _cachedGroqApiKey = apiKey.isNotEmpty ? apiKey : null;
     notifyListeners();
+  }
+  
+  /// Récupère la clé API Groq de manière asynchrone (pour s'assurer qu'elle est à jour)
+  Future<String?> getGroqApiKeyAsync() async {
+    _cachedGroqApiKey = await _secureStorage.getGroqApiKey();
+    return _cachedGroqApiKey;
   }
   
   bool get aiAutoSwitch => _prefs?.getBool(_keyAiAutoSwitch) ?? true;
@@ -749,10 +772,22 @@ class SettingsService extends ChangeNotifier {
     notifyListeners();
   }
   
-  String get gcpTtsApiKey => _prefs?.getString(_keyGcpTtsApiKey) ?? '';
+  /// Clé API GCP TTS (stockée de manière sécurisée)
+  String get gcpTtsApiKey => _cachedGcpTtsApiKey ?? '';
   Future<void> setGcpTtsApiKey(String apiKey) async {
-    await _prefs?.setString(_keyGcpTtsApiKey, apiKey);
+    if (apiKey.isNotEmpty) {
+      await _secureStorage.saveGcpTtsApiKey(apiKey);
+    } else {
+      await _secureStorage.deleteGcpTtsApiKey();
+    }
+    _cachedGcpTtsApiKey = apiKey.isNotEmpty ? apiKey : null;
     notifyListeners();
+  }
+  
+  /// Récupère la clé API GCP TTS de manière asynchrone (pour s'assurer qu'elle est à jour)
+  Future<String?> getGcpTtsApiKeyAsync() async {
+    _cachedGcpTtsApiKey = await _secureStorage.getGcpTtsApiKey();
+    return _cachedGcpTtsApiKey;
   }
   
   String get gcpTtsProjectId => _prefs?.getString(_keyGcpTtsProjectId) ?? '';

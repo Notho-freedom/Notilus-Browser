@@ -73,44 +73,11 @@ class _NotilusSplashScreenState extends State<NotilusSplashScreen>
     await Future.delayed(const Duration(milliseconds: 300));
     if (mounted) setState(() => _showLoadingText = true);
 
-    // Démarrer le backend
-    final backendService = Provider.of<BackendProcessService>(context, listen: false);
-    
-    // Écouter les changements d'état du backend pour mettre à jour les messages
-    void updateBackendMessage() {
-      if (!mounted) return;
-      if (backendService.isStarting) {
-        setState(() => _currentLoadingMessage = 'Démarrage du serveur...');
-      } else if (backendService.isRunning) {
-        setState(() => _currentLoadingMessage = 'Serveur prêt');
-      } else if (backendService.error != null) {
-        setState(() => _currentLoadingMessage = 'Backend indisponible, continuation...');
-      }
-    }
-    
-    // Ajouter un listener temporaire
-    backendService.addListener(updateBackendMessage);
-    
-    if (mounted) {
-      setState(() => _currentLoadingMessage = 'Initialisation du serveur...');
-    }
-    
-    // Démarrer le backend de manière asynchrone pour permettre les mises à jour
-    final backendStarted = await backendService.start();
-    
-    // Retirer le listener
-    backendService.removeListener(updateBackendMessage);
-    
-    if (!backendStarted && mounted) {
-      // Si le backend ne peut pas démarrer, continuer quand même
-      setState(() => _currentLoadingMessage = 'Backend indisponible, continuation...');
-      await Future.delayed(const Duration(milliseconds: 500));
-    } else if (mounted) {
-      setState(() => _currentLoadingMessage = 'Serveur prêt');
-      await Future.delayed(const Duration(milliseconds: 500));
-    }
+    // Démarrer le backend EN ARRIÈRE-PLAN (non-bloquant)
+    // L'application continue de se charger même si le backend n'est pas prêt
+    _startBackendNonBlocking();
 
-    // Démarrer la progression
+    // Démarrer la progression IMMÉDIATEMENT (ne pas attendre le backend)
     _progressController.forward();
 
     // Mettre à jour les messages de chargement
@@ -123,6 +90,61 @@ class _NotilusSplashScreenState extends State<NotilusSplashScreen>
     if (mounted) {
       widget.onComplete();
     }
+  }
+  
+  /// Démarre le backend de manière non-bloquante
+  /// L'application continue pendant que le backend se lance en arrière-plan
+  void _startBackendNonBlocking() {
+    final backendService = Provider.of<BackendProcessService>(context, listen: false);
+    
+    // Écouter les changements d'état du backend pour mettre à jour les messages
+    void updateBackendMessage() {
+      if (!mounted) return;
+      if (backendService.isStarting) {
+        setState(() => _currentLoadingMessage = 'Démarrage du serveur...');
+      } else if (backendService.isRunning) {
+        setState(() => _currentLoadingMessage = 'Serveur prêt');
+        // Retirer le listener une fois que c'est prêt
+        backendService.removeListener(updateBackendMessage);
+      } else if (backendService.error != null) {
+        // Le backend n'est pas disponible, mais on continue
+        setState(() => _currentLoadingMessage = 'Mode hors-ligne');
+        backendService.removeListener(updateBackendMessage);
+      }
+    }
+    
+    // Ajouter un listener temporaire
+    backendService.addListener(updateBackendMessage);
+    
+    if (mounted) {
+      setState(() => _currentLoadingMessage = 'Initialisation...');
+    }
+    
+    // Lancer le backend EN ARRIÈRE-PLAN avec un timeout
+    // Ne PAS attendre le résultat - l'app continue immédiatement
+    Future.any([
+      backendService.start(),
+      // Timeout de 3 secondes pour le démarrage du backend
+      Future.delayed(const Duration(seconds: 3), () => false),
+    ]).then((backendStarted) {
+      if (!mounted) return;
+      
+      // Retirer le listener s'il est encore actif
+      try {
+        backendService.removeListener(updateBackendMessage);
+      } catch (_) {}
+      
+      if (!backendStarted) {
+        // Le backend n'a pas démarré à temps ou a échoué
+        // L'app fonctionne en mode dégradé (sans fonctionnalités backend)
+        setState(() => _currentLoadingMessage = 'Mode hors-ligne');
+      }
+    }).catchError((e) {
+      // Ignorer les erreurs silencieusement
+      if (mounted) {
+        setState(() => _currentLoadingMessage = 'Mode hors-ligne');
+      }
+    });
   }
 
   void _updateLoadingMessages() {
