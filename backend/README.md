@@ -2,6 +2,14 @@
 
 API backend pour le navigateur Notilus, fournissant des services pour le monitoring, la détection, l'injection, l'automatisation et l'IA.
 
+## Exécution Sidecar (Windows)
+
+En production Windows, le backend est lancé comme sidecar `notilus-backend.exe` à côté de `notilus.exe`.
+
+- Host/Port attendus: `127.0.0.1:8000`
+- Healthcheck: `GET /api/health`
+- Override de chemin côté frontend: `NOTILUS_BACKEND_EXE`
+
 ## Installation
 
 ```bash
@@ -19,6 +27,28 @@ python main.py
 ```
 
 L'API sera accessible sur `http://localhost:8000`
+
+## Build exécutable sidecar (Windows)
+
+```bash
+py -3.11 -m pip install -r requirements.txt
+py -3.11 -m pip install pyinstaller
+py -3.11 -m PyInstaller --name=notilus-backend --onefile --noconsole --icon "..\\assets\\notilus-logo.ico" --add-data "services;services" --add-data "backend_lab;backend_lab" --collect-all=uvicorn --collect-all=fastapi main.py
+```
+
+Binaire attendu: `backend/dist/notilus-backend.exe`
+
+## Smoke Test
+
+```bash
+curl http://127.0.0.1:8000/api/health
+```
+
+## Diagnostic port
+
+```bash
+netstat -ano | findstr :8000
+```
 
 ## Documentation
 

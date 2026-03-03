@@ -1,0 +1,128 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [main, join-all, copilot/*]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          
+      - name: Install dependencies
+        run: flutter pub get
+        
+      - name: Analyze code
+        run: flutter analyze
+        continue-on-error: true
+        
+      - name: Build Windows
+        run: flutter build windows --release
+        
+      - name: Archive Windows build
+        uses: actions/upload-artifact@v4
+        with:
+          name: Notilus-Windows-x64
+          path: build/windows/x64/runner/Release/
+          retention-days: 30
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev
+          
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          
+      - name: Install dependencies
+        run: flutter pub get
+        
+      - name: Analyze code
+        run: flutter analyze
+        continue-on-error: true
+          
+      - name: Build Linux
+        run: flutter build linux --release
+        
+      - name: Archive Linux build
+        uses: actions/upload-artifact@v4
+        with:
+          name: Notilus-Linux-x64
+          path: build/linux/x64/release/bundle/
+          retention-days: 30
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          
+      - name: Install dependencies
+        run: flutter pub get
+        
+      - name: Analyze code
+        run: flutter analyze
+        continue-on-error: true
+          
+      - name: Build macOS
+        run: flutter build macos --release
+        
+      - name: Archive macOS build
+        uses: actions/upload-artifact@v4
+        with:
+          name: Notilus-macOS
+          path: build/macos/Build/Products/Release/
+          retention-days: 30
+
+  release:
+    needs: [build-windows, build-linux, build-macos]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        
+      - name: Create ZIP archives
+        run: |
+          cd Notilus-Windows-x64 && zip -r ../Notilus-Windows-x64.zip . && cd ..
+          cd Notilus-Linux-x64 && tar -czf ../Notilus-Linux-x64.tar.gz . && cd ..
+          cd Notilus-macOS && zip -r ../Notilus-macOS.zip . && cd ..
+        
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            Notilus-Windows-x64.zip
+            Notilus-Linux-x64.tar.gz
+            Notilus-macOS.zip
+          generate_release_notes: true
+          draft: false
+          prerelease: false

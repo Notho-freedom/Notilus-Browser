@@ -7,6 +7,7 @@ import '../core/constants/notilus_colors.dart';
 import '../core/constants/notilus_fonts.dart';
 import '../widgets/common/notilus_logo_image.dart';
 import '../services/backend_process_service.dart';
+import '../services/backend_lab/backend_lab_service.dart';
 
 /// Splash Screen Notilus - Page de lancement immersive
 /// Design inspiré de l'univers sous-marin/nautilus avec effets néon
@@ -26,13 +27,19 @@ class NotilusSplashScreen extends StatefulWidget {
 
 class _NotilusSplashScreenState extends State<NotilusSplashScreen>
     with TickerProviderStateMixin {
+  static const Duration _backendStartupTimeout = Duration(seconds: 12);
+
   late AnimationController _backgroundController;
   late AnimationController _waveController;
   late AnimationController _progressController;
   late Animation<double> _progressAnimation;
-  
+  BackendProcessService? _backendService;
+  VoidCallback? _backendStateListener;
+  Timer? _loadingMessageTimer;
+
   bool _showVersion = false;
   bool _showLoadingText = false;
+  bool _backendMessageLocked = false;
   String _currentLoadingMessage = 'Initializing Nautilus Core...';
 
   @override
@@ -73,11 +80,9 @@ class _NotilusSplashScreenState extends State<NotilusSplashScreen>
     await Future.delayed(const Duration(milliseconds: 300));
     if (mounted) setState(() => _showLoadingText = true);
 
-    // Démarrer le backend EN ARRIÈRE-PLAN (non-bloquant)
-    // L'application continue de se charger même si le backend n'est pas prêt
-    _startBackendNonBlocking();
+    final minSplashFuture = Future.delayed(widget.duration);
 
-    // Démarrer la progression IMMÉDIATEMENT (ne pas attendre le backend)
+    // Démarrer la progression visuelle.
     _progressController.forward();
 
     // Mettre à jour les messages de chargement
@@ -85,66 +90,83 @@ class _NotilusSplashScreenState extends State<NotilusSplashScreen>
       _updateLoadingMessages();
     }
 
-    // Attendre la fin et appeler onComplete
-    await Future.delayed(widget.duration);
+    // Attendre le backend jusqu'au délai max, puis continuer en mode dégradé.
+    await _startBackendWithStartupWait();
+    await minSplashFuture;
+
     if (mounted) {
       widget.onComplete();
     }
   }
-  
-  /// Démarre le backend de manière non-bloquante
-  /// L'application continue pendant que le backend se lance en arrière-plan
-  void _startBackendNonBlocking() {
-    final backendService = Provider.of<BackendProcessService>(context, listen: false);
-    
-    // Écouter les changements d'état du backend pour mettre à jour les messages
-    void updateBackendMessage() {
+
+  /// Attend le backend au lancement jusqu'à un délai précis.
+  Future<void> _startBackendWithStartupWait() async {
+    final backendService =
+        Provider.of<BackendProcessService>(context, listen: false);
+    final backendLabService = Provider.of<BackendLabService>(
+      context,
+      listen: false,
+    );
+    _backendService = backendService;
+
+    // Nettoyer l'ancien listener si nécessaire.
+    if (_backendStateListener != null) {
+      backendService.removeListener(_backendStateListener!);
+    }
+
+    _backendStateListener = () {
       if (!mounted) return;
       if (backendService.isStarting) {
+        _backendMessageLocked = true;
         setState(() => _currentLoadingMessage = 'Démarrage du serveur...');
       } else if (backendService.isRunning) {
+        _backendMessageLocked = true;
         setState(() => _currentLoadingMessage = 'Serveur prêt');
-        // Retirer le listener une fois que c'est prêt
-        backendService.removeListener(updateBackendMessage);
       } else if (backendService.error != null) {
-        // Le backend n'est pas disponible, mais on continue
-        setState(() => _currentLoadingMessage = 'Mode hors-ligne');
-        backendService.removeListener(updateBackendMessage);
+        _backendMessageLocked = true;
+        setState(
+            () => _currentLoadingMessage = 'Mode hors-ligne (reconnexion...)');
       }
-    }
-    
+    };
+
     // Ajouter un listener temporaire
-    backendService.addListener(updateBackendMessage);
-    
+    backendService.addListener(_backendStateListener!);
+
     if (mounted) {
-      setState(() => _currentLoadingMessage = 'Initialisation...');
+      _backendMessageLocked = true;
+      setState(() => _currentLoadingMessage = 'Initialisation du serveur...');
     }
-    
-    // Lancer le backend EN ARRIÈRE-PLAN avec un timeout
-    // Ne PAS attendre le résultat - l'app continue immédiatement
-    Future.any([
-      backendService.start(),
-      // Timeout de 3 secondes pour le démarrage du backend
-      Future.delayed(const Duration(seconds: 3), () => false),
-    ]).then((backendStarted) {
-      if (!mounted) return;
-      
-      // Retirer le listener s'il est encore actif
-      try {
-        backendService.removeListener(updateBackendMessage);
-      } catch (_) {}
-      
-      if (!backendStarted) {
-        // Le backend n'a pas démarré à temps ou a échoué
-        // L'app fonctionne en mode dégradé (sans fonctionnalités backend)
-        setState(() => _currentLoadingMessage = 'Mode hors-ligne');
+
+    try {
+      final startupRetries = _backendStartupTimeout.inMilliseconds ~/
+          const Duration(seconds: 1).inMilliseconds;
+      final backendStarted = await backendService.start(
+        startupRetries: startupRetries <= 0 ? 1 : startupRetries,
+        startupDelay: const Duration(seconds: 1),
+      );
+
+      if (!mounted) {
+        return;
       }
-    }).catchError((e) {
-      // Ignorer les erreurs silencieusement
-      if (mounted) {
-        setState(() => _currentLoadingMessage = 'Mode hors-ligne');
+
+      if (backendStarted) {
+        setState(() => _currentLoadingMessage = 'Serveur prêt');
+        unawaited(backendLabService.runStartupScanIfNeeded());
+      } else {
+        setState(
+          () => _currentLoadingMessage =
+              'Backend non lancé (${_backendStartupTimeout.inSeconds}s) - mode hors-ligne',
+        );
       }
-    });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(
+        () => _currentLoadingMessage =
+            'Backend non lancé (${_backendStartupTimeout.inSeconds}s) - mode hors-ligne',
+      );
+    }
   }
 
   void _updateLoadingMessages() {
@@ -155,24 +177,34 @@ class _NotilusSplashScreenState extends State<NotilusSplashScreen>
       'Preparing workspace...',
       'Almost ready...',
     ];
-    
+
     int messageIndex = 0;
-    Timer.periodic(const Duration(milliseconds: 800), (timer) {
+    _loadingMessageTimer?.cancel();
+    _loadingMessageTimer =
+        Timer.periodic(const Duration(milliseconds: 800), (timer) {
       if (!mounted || messageIndex >= messages.length) {
         timer.cancel();
         return;
       }
-      
+
+      if (_backendMessageLocked) {
+        return;
+      }
+
       setState(() {
         _currentLoadingMessage = messages[messageIndex];
       });
-      
+
       messageIndex++;
     });
   }
 
   @override
   void dispose() {
+    _loadingMessageTimer?.cancel();
+    if (_backendService != null && _backendStateListener != null) {
+      _backendService!.removeListener(_backendStateListener!);
+    }
     _backgroundController.dispose();
     _waveController.dispose();
     _progressController.dispose();
@@ -423,9 +455,10 @@ class _OceanBackgroundPainter extends CustomPainter {
     canvas.drawCircle(
       glowCenter,
       size.width * 0.4,
-      Paint()..shader = glowGradient.createShader(
-        Rect.fromCircle(center: glowCenter, radius: size.width * 0.4),
-      ),
+      Paint()
+        ..shader = glowGradient.createShader(
+          Rect.fromCircle(center: glowCenter, radius: size.width * 0.4),
+        ),
     );
   }
 
@@ -484,7 +517,7 @@ class _WavesPainter extends CustomPainter {
 
       path.moveTo(0, yOffset);
       for (double x = 0; x <= size.width; x += 10) {
-        final y = yOffset + 
+        final y = yOffset +
             math.sin(x / 80 + phase) * waveHeight +
             math.sin(x / 40 + phase * 1.5) * waveHeight * 0.3;
         path.lineTo(x, y);
@@ -530,7 +563,7 @@ class _TechGridPainter extends CustomPainter {
         // Effet de fade vers les bords
         final distFromCenter = math.sqrt(
           math.pow((x - size.width / 2) / size.width, 2) +
-          math.pow((y - size.height / 2) / size.height, 2),
+              math.pow((y - size.height / 2) / size.height, 2),
         );
         final opacity = (0.05 * (1 - distFromCenter)).clamp(0.01, 0.05);
         paint.color = NotilusColors.neonRed.withOpacity(opacity);

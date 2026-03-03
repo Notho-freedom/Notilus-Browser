@@ -1,0 +1,46 @@
+import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../../core/constants/notilus_colors.dart';
+
+class CachedNetworkImageWithTransition extends StatelessWidget {
+  final String imageUrl;
+  final BoxFit fit;
+  final ColorFilter? colorFilter;
+  final Widget? placeholder;
+  final Widget? errorWidget;
+
+  const CachedNetworkImageWithTransition({
+    super.key,
+    required this.imageUrl,
+    this.fit = BoxFit.cover,
+    this.colorFilter,
+    this.placeholder,
+    this.errorWidget,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ColorFiltered(
+      colorFilter: colorFilter ?? const ColorFilter.mode(Colors.transparent, BlendMode.dst),
+      child: CachedNetworkImage(
+        imageUrl: imageUrl,
+        fit: fit,
+        placeholder: (context, url) => placeholder ?? Container(
+          color: Colors.black.withOpacity(0.3),
+          child: const Center(
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: const AlwaysStoppedAnimation<Color>(NotilusColors.neonRed),
+            ),
+          ),
+        ),
+        errorWidget: (context, url, error) => errorWidget ?? Container(
+          color: Colors.black.withOpacity(0.3),
+        ),
+        fadeInDuration: const Duration(milliseconds: 600),
+        fadeOutDuration: const Duration(milliseconds: 200),
+      ),
+    );
+  }
+}
+

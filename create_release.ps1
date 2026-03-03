@@ -11,9 +11,21 @@ Write-Host ""
 $rootDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $backendDir = Join-Path $rootDir "backend"
 $flutterBuildDir = Join-Path $rootDir "build\windows\x64\runner\Release"
+$backendExe = Join-Path $backendDir "dist\notilus-backend.exe"
 
-# Étape 1: Vérifier les prérequis
-Write-Host "[1/4] Vérification des prérequis..." -ForegroundColor Yellow
+# Étape 1: Vérifier immédiatement le backend compilé (bloquant)
+Write-Host "[1/4] Vérification backend sidecar..." -ForegroundColor Yellow
+if (-not (Test-Path $backendExe)) {
+    Write-Host "  [ERREUR] Backend manquant: $backendExe" -ForegroundColor Red
+    Write-Host "  Compilez d'abord le backend (PyInstaller) puis relancez ce script." -ForegroundColor Yellow
+    exit 1
+}
+$backendSize = (Get-Item $backendExe).Length / 1MB
+Write-Host "  ✅ Backend trouvé: $([math]::Round($backendSize, 2)) MB" -ForegroundColor Green
+Write-Host ""
+
+# Étape 2: Vérifier les prérequis
+Write-Host "[2/4] Vérification des prérequis..." -ForegroundColor Yellow
 
 # Vérifier Python
 try {
@@ -35,28 +47,8 @@ try {
 
 Write-Host ""
 
-# Étape 2: Vérifier le backend compilé
-Write-Host "[2/3] Vérification du backend compilé..." -ForegroundColor Yellow
-Set-Location $backendDir
-
-# Chercher notilus-backend.exe (avec tiret, nom actuel)
-$backendExe = Join-Path $backendDir "dist\notilus-backend.exe"
-# Fallback sur l'ancien nom si nécessaire
-if (-not (Test-Path $backendExe)) {
-    $backendExe = Join-Path $backendDir "dist\notilus_backend.exe"
-}
-if (-not (Test-Path $backendExe)) {
-    Write-Host "  [ERREUR] Le backend compilé (notilus-backend.exe) n'existe pas dans backend/dist/" -ForegroundColor Red
-    Write-Host "  Veuillez compiler le backend avec PyInstaller ou votre outil de build" -ForegroundColor Yellow
-    exit 1
-}
-
-$sizeMB = (Get-Item $backendExe).Length / 1MB
-Write-Host "  ✅ Backend compilé trouvé: $([math]::Round($sizeMB, 2)) MB" -ForegroundColor Green
-Write-Host ""
-
 # Étape 3: Build Flutter Release
-Write-Host "[3/3] Build Flutter Release..." -ForegroundColor Yellow
+Write-Host "[3/4] Build Flutter Release..." -ForegroundColor Yellow
 Set-Location $rootDir
 
 Write-Host "  Nettoyage du build précédent..." -ForegroundColor Gray

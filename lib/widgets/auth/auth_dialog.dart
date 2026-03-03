@@ -11,6 +11,7 @@ import '../../services/auth/local_oauth_service.dart';
 import '../../core/services/color_theme_manager.dart';
 import '../../services/tab_manager.dart';
 import '../../core/constants/notilus_fonts.dart';
+import '../../core/utils/result.dart';
 import '../common/gx_futuristic_dialog.dart';
 import '../common/gx_futuristic_components.dart';
 import '../../services/gx_notification_service.dart';
@@ -74,7 +75,8 @@ class AuthDialog extends StatelessWidget {
                   }
                 } catch (e) {
                   if (e is GoogleDeviceFlowException && context.mounted) {
-                    _showGoogleDeviceFlowDialog(context, authService, e.deviceFlow);
+                    _showGoogleDeviceFlowDialog(
+                        context, authService, e.deviceFlow);
                   } else if (context.mounted) {
                     GxNotificationService().showError(
                       title: 'Erreur',
@@ -98,45 +100,46 @@ class AuthDialog extends StatelessWidget {
             label: 'Continuer avec GitHub',
             color: Colors.white,
             onPressed: () async {
-              try {
-                final result = await authService.signInWithGitHub();
-                if (result != null && context.mounted) {
-                  Navigator.of(context).pop(true);
-                } else if (context.mounted) {
-                  GxNotificationService().showInfo(
-                    title: 'Authentification',
-                    message: 'Authentification GitHub en cours... Vérifiez votre navigateur',
-                    context: context,
-                    duration: const Duration(seconds: 3),
+              final result = await authService.signInWithGitHubV2();
+              if (!context.mounted) {
+                return;
+              }
+
+              result.fold(
+                onSuccess: (oauthData) {
+                  _showGitHubOAuthDialog(
+                    context,
+                    authService,
+                    oauthData.authUrl,
+                    oauthData.state,
                   );
-                }
-              } catch (e) {
-                if (context.mounted) {
+                },
+                onFailure: (error) {
                   GxNotificationService().showError(
                     title: 'Erreur',
-                    message: e.toString().contains('configuration')
-                        ? 'GitHub OAuth nécessite une configuration dans Firebase Console'
-                        : 'Erreur lors de la connexion GitHub: ${e.toString()}',
+                    message: error.message,
                     context: context,
                     duration: const Duration(seconds: 5),
                   );
-                }
-              }
+                },
+              );
             },
           ),
         ],
       ),
     );
   }
-  
-  void _showEmailAuthDialog(BuildContext context, FirebaseAuthService authService) {
+
+  void _showEmailAuthDialog(
+      BuildContext context, FirebaseAuthService authService) {
     final emailController = TextEditingController();
     final passwordController = TextEditingController();
     final formKey = GlobalKey<FormState>();
     bool isSignUp = false;
     bool isLoading = false;
-    final accentColor = Provider.of<ColorThemeManager>(context, listen: false).nativeSecondaryColor;
-    
+    final accentColor = Provider.of<ColorThemeManager>(context, listen: false)
+        .nativeSecondaryColor;
+
     showDialog(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
@@ -230,40 +233,47 @@ class AuthDialog extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
                 GxFuturisticButton(
-                  label: isLoading ? '...' : (isSignUp ? 'Créer un compte' : 'Se connecter'),
+                  label: isLoading
+                      ? '...'
+                      : (isSignUp ? 'Créer un compte' : 'Se connecter'),
                   icon: isLoading ? null : Icons.login_rounded,
                   variant: GxFuturisticButtonVariant.primary,
                   accentColor: accentColor,
-                  onPressed: isLoading ? null : () async {
-                    if (formKey.currentState!.validate()) {
-                      setState(() => isLoading = true);
-                      
-                      final result = isSignUp
-                          ? await authService.createUserWithEmailAndPassword(
-                              emailController.text.trim(),
-                              passwordController.text,
-                            )
-                          : await authService.signInWithEmailAndPassword(
-                              emailController.text.trim(),
-                              passwordController.text,
-                            );
-                      
-                      setState(() => isLoading = false);
-                      
-                      if (result != null && context.mounted) {
-                        Navigator.of(context).pop(); // Fermer le dialog email
-                        Navigator.of(context).pop(true); // Fermer le dialog principal
-                      } else if (context.mounted) {
-                        GxNotificationService().showError(
-                          title: 'Erreur',
-                          message: isSignUp
-                              ? 'Erreur lors de la création du compte'
-                              : 'Email ou mot de passe incorrect',
-                          context: context,
-                        );
-                      }
-                    }
-                  },
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          if (formKey.currentState!.validate()) {
+                            setState(() => isLoading = true);
+
+                            final result = isSignUp
+                                ? await authService
+                                    .createUserWithEmailAndPassword(
+                                    emailController.text.trim(),
+                                    passwordController.text,
+                                  )
+                                : await authService.signInWithEmailAndPassword(
+                                    emailController.text.trim(),
+                                    passwordController.text,
+                                  );
+
+                            setState(() => isLoading = false);
+
+                            if (result != null && context.mounted) {
+                              Navigator.of(context)
+                                  .pop(); // Fermer le dialog email
+                              Navigator.of(context)
+                                  .pop(true); // Fermer le dialog principal
+                            } else if (context.mounted) {
+                              GxNotificationService().showError(
+                                title: 'Erreur',
+                                message: isSignUp
+                                    ? 'Erreur lors de la création du compte'
+                                    : 'Email ou mot de passe incorrect',
+                                context: context,
+                              );
+                            }
+                          }
+                        },
                 ),
                 const SizedBox(height: 12),
                 TextButton(
@@ -285,7 +295,7 @@ class AuthDialog extends StatelessWidget {
       ),
     );
   }
-  
+
   void _showGoogleDeviceFlowDialog(
     BuildContext context,
     FirebaseAuthService authService,
@@ -300,7 +310,7 @@ class AuthDialog extends StatelessWidget {
       ),
     );
   }
-  
+
   void _showGitHubOAuthDialog(
     BuildContext context,
     FirebaseAuthService authService,
@@ -332,49 +342,50 @@ class AuthDialog extends StatelessWidget {
 class _GoogleDeviceFlowDialog extends StatefulWidget {
   final FirebaseAuthService authService;
   final GoogleDeviceFlow deviceFlow;
-  
+
   const _GoogleDeviceFlowDialog({
     required this.authService,
     required this.deviceFlow,
   });
-  
+
   @override
-  State<_GoogleDeviceFlowDialog> createState() => _GoogleDeviceFlowDialogState();
+  State<_GoogleDeviceFlowDialog> createState() =>
+      _GoogleDeviceFlowDialogState();
 }
 
 class _GoogleDeviceFlowDialogState extends State<_GoogleDeviceFlowDialog> {
   Timer? _pollTimer;
   bool _isPolling = false;
-  
+
   @override
   void initState() {
     super.initState();
     _startPolling();
     _openVerificationUrl();
   }
-  
+
   @override
   void dispose() {
     _pollTimer?.cancel();
     super.dispose();
   }
-  
-      void _openVerificationUrl() {
-        // Ouvrir l'URL dans un nouvel onglet Notilus au lieu d'un navigateur externe
-        final tabManager = Provider.of<TabManager>(context, listen: false);
-        tabManager.addTab(url: widget.deviceFlow.verificationUriComplete);
-      }
-  
+
+  void _openVerificationUrl() {
+    // Ouvrir l'URL dans un nouvel onglet Notilus au lieu d'un navigateur externe
+    final tabManager = Provider.of<TabManager>(context, listen: false);
+    tabManager.addTab(url: widget.deviceFlow.verificationUriComplete);
+  }
+
   void _startPolling() {
     setState(() => _isPolling = true);
-    
+
     _pollTimer = Timer.periodic(
       Duration(seconds: widget.deviceFlow.interval),
       (timer) async {
         final result = await widget.authService.pollGoogleTokenDeviceFlow(
           widget.deviceFlow.deviceCode,
         );
-        
+
         if (result != null && mounted) {
           timer.cancel();
           Navigator.of(context).pop(); // Fermer ce dialog
@@ -383,11 +394,11 @@ class _GoogleDeviceFlowDialogState extends State<_GoogleDeviceFlowDialog> {
       },
     );
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final gxRed = Provider.of<ColorThemeManager>(context).nativeSecondaryColor;
-    
+
     return Dialog(
       backgroundColor: const Color(0xFF15151A),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -443,15 +454,15 @@ class _GoogleDeviceFlowDialogState extends State<_GoogleDeviceFlowDialog> {
               style: TextStyle(color: Colors.white60, fontSize: 12),
             ),
             const SizedBox(height: 16),
-            if (_isPolling)
-              const CircularProgressIndicator(),
+            if (_isPolling) const CircularProgressIndicator(),
             const SizedBox(height: 16),
             TextButton(
               onPressed: () {
                 _pollTimer?.cancel();
                 Navigator.of(context).pop();
               },
-              child: const Text('Annuler', style: TextStyle(color: Colors.white60)),
+              child: const Text('Annuler',
+                  style: TextStyle(color: Colors.white60)),
             ),
           ],
         ),
@@ -466,7 +477,7 @@ class _GitHubOAuthDialog extends StatefulWidget {
   final String state;
   final VoidCallback? onTabOpened;
   final VoidCallback? onAuthSuccess;
-  
+
   const _GitHubOAuthDialog({
     required this.authService,
     required this.authUrl,
@@ -474,14 +485,15 @@ class _GitHubOAuthDialog extends StatefulWidget {
     this.onTabOpened,
     this.onAuthSuccess,
   });
-  
+
   @override
   State<_GitHubOAuthDialog> createState() => _GitHubOAuthDialogState();
 }
 
 class _GitHubOAuthDialogState extends State<_GitHubOAuthDialog> {
   bool _tabOpened = false;
-  
+  VoidCallback? _authListener;
+
   @override
   void initState() {
     super.initState();
@@ -493,31 +505,36 @@ class _GitHubOAuthDialogState extends State<_GitHubOAuthDialog> {
       _listenToAuthChanges();
     });
   }
-  
+
   void _listenToAuthChanges() {
-    // Écouter les changements d'authentification
-    widget.authService.addListener(() {
-      if (widget.authService.isSignedIn && mounted) {
-        // Authentification réussie, fermer le dialog
+    _authListener = () {
+      if (!mounted) return;
+      if (widget.authService.isAnySignedIn) {
         widget.onAuthSuccess?.call();
       }
-    });
+    };
+    widget.authService.addListener(_authListener!);
   }
-  
+
   @override
   void dispose() {
+    if (_authListener != null) {
+      widget.authService.removeListener(_authListener!);
+      _authListener = null;
+    }
+    widget.authService.stopGitHubPolling(widget.state);
     // Le polling est géré par le service, pas besoin d'annuler ici
     super.dispose();
   }
-  
+
   void _openAuthUrl() {
     if (_tabOpened) return;
     _tabOpened = true;
-    
+
     // Ouvrir dans un nouvel onglet Notilus au lieu du navigateur externe
     final tabManager = Provider.of<TabManager>(context, listen: false);
     tabManager.addTab(url: widget.authUrl);
-    
+
     // Fermer les dialogs et le panel de paramètres après un court délai
     Future.delayed(const Duration(milliseconds: 300), () {
       if (mounted) {
@@ -525,10 +542,10 @@ class _GitHubOAuthDialogState extends State<_GitHubOAuthDialog> {
       }
     });
   }
-  
+
   // Le polling est maintenant géré par FirebaseAuthService
   // Cette méthode n'est plus nécessaire
-  
+
   @override
   Widget build(BuildContext context) {
     return Dialog(
@@ -570,7 +587,8 @@ class _GitHubOAuthDialogState extends State<_GitHubOAuthDialog> {
                     widget.authService.stopGitHubPolling(widget.state);
                     Navigator.of(context).pop();
                   },
-                  child: const Text('Annuler', style: TextStyle(color: Colors.white60)),
+                  child: const Text('Annuler',
+                      style: TextStyle(color: Colors.white60)),
                 ),
               ],
             ),
@@ -615,4 +633,3 @@ class _AuthButton extends StatelessWidget {
     );
   }
 }
-

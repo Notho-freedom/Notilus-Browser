@@ -112,17 +112,29 @@ install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
 # Python embedded and Python files are NO LONGER copied - we use a compiled executable
 set(BACKEND_SOURCE_DIR "${CMAKE_SOURCE_DIR}/../backend")
 set(BACKEND_INSTALL_DIR "${INSTALL_BUNDLE_LIB_DIR}")
+set(BACKEND_EXE_PATH "${BACKEND_SOURCE_DIR}/dist/notilus-backend.exe")
 
-# Check if backend directory exists and copy the compiled executable
-if(EXISTS "${BACKEND_SOURCE_DIR}")
-  # Copy the compiled backend executable (notilus-backend.exe)
-  # This is a standalone executable that doesn't require Python
-  install(FILES "${BACKEND_SOURCE_DIR}/dist/notilus-backend.exe"
-    DESTINATION "${BACKEND_INSTALL_DIR}"
-    COMPONENT Runtime
-    OPTIONAL)
-  
-  message(STATUS "Backend executable will be copied to: ${BACKEND_INSTALL_DIR}")
-else()
-  message(WARNING "Backend directory not found at ${BACKEND_SOURCE_DIR}. Backend executable will not be included in the build.")
-endif()
+install(CODE "
+  set(_backend_exe \"${BACKEND_EXE_PATH}\")
+  if(EXISTS \"${BACKEND_SOURCE_DIR}\")
+    if(EXISTS \"${BACKEND_EXE_PATH}\")
+      file(INSTALL
+        DESTINATION \"${BACKEND_INSTALL_DIR}\"
+        TYPE FILE
+        FILES \"${BACKEND_EXE_PATH}\")
+      message(STATUS \"Backend executable copied to: ${BACKEND_INSTALL_DIR}\")
+    else()
+      if(CMAKE_INSTALL_CONFIG_NAME STREQUAL \"Debug\")
+        message(WARNING \"Backend executable missing in Debug: ${BACKEND_EXE_PATH}\")
+      else()
+        message(FATAL_ERROR \"Backend executable missing for ${CMAKE_INSTALL_CONFIG_NAME}: ${BACKEND_EXE_PATH}\")
+      endif()
+    endif()
+  else()
+    if(CMAKE_INSTALL_CONFIG_NAME STREQUAL \"Debug\")
+      message(WARNING \"Backend directory missing in Debug: ${BACKEND_SOURCE_DIR}\")
+    else()
+      message(FATAL_ERROR \"Backend directory missing for ${CMAKE_INSTALL_CONFIG_NAME}: ${BACKEND_SOURCE_DIR}\")
+    endif()
+  endif()
+" COMPONENT Runtime)

@@ -28,6 +28,7 @@ class BackendLabService extends ChangeNotifier {
   
   // Scan en cours
   bool _isScanning = false;
+  bool _startupScanDone = false;
   
   // Console logs
   final List<ConsoleLogEntry> _consoleLogs = [];
@@ -48,6 +49,7 @@ class BackendLabService extends ChangeNotifier {
   List<LoadTestResult> get loadTestResults => _loadTestResults;
   OverviewStats? get stats => _stats;
   bool get isScanning => _isScanning;
+  bool get startupScanDone => _startupScanDone;
   
   String get baseUrl => _baseUrl;
   
@@ -76,6 +78,24 @@ class BackendLabService extends ChangeNotifier {
     
     notifyListeners();
     return _isConnected;
+  }
+  
+  /// Lance automatiquement un scan au démarrage quand le backend est prêt.
+  Future<void> runStartupScanIfNeeded() async {
+    if (_startupScanDone || _isScanning) {
+      return;
+    }
+    
+    final connected = await checkConnection();
+    if (!connected) {
+      return;
+    }
+    
+    await scanServers();
+    if (_lastError == null) {
+      _startupScanDone = true;
+      notifyListeners();
+    }
   }
   
   // ============================================================================

@@ -13,12 +13,57 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
       
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.24.0'
           channel: 'stable'
+
+      - name: Build backend sidecar (Windows)
+        shell: pwsh
+        run: |
+          Set-Location backend
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip install pyinstaller
+          python -m PyInstaller `
+            --name=notilus-backend `
+            --onefile `
+            --noconsole `
+            --icon "..\\assets\\notilus-logo.ico" `
+            --add-data "services;services" `
+            --add-data "backend_lab;backend_lab" `
+            --hidden-import=uvicorn.lifespan.on `
+            --hidden-import=uvicorn.lifespan.off `
+            --hidden-import=uvicorn.protocols.http.auto `
+            --hidden-import=uvicorn.protocols.websockets.auto `
+            --hidden-import=uvicorn.loops.auto `
+            --hidden-import=uvicorn.logging `
+            --hidden-import=fastapi `
+            --hidden-import=pydantic `
+            --hidden-import=firebase_admin `
+            --hidden-import=requests `
+            --hidden-import=websockets `
+            --hidden-import=httpx `
+            --hidden-import=psutil `
+            --hidden-import=jsonpath_ng `
+            --hidden-import=jsonschema `
+            --hidden-import=aiofiles `
+            --hidden-import=edge_tts `
+            --hidden-import=langdetect `
+            --hidden-import=google.cloud.texttospeech `
+            --collect-all=uvicorn `
+            --collect-all=fastapi `
+            main.py
+          if (-not (Test-Path dist/notilus-backend.exe)) {
+            throw 'Backend executable missing after PyInstaller build.'
+          }
           
       - name: Install dependencies
         run: flutter pub get
@@ -29,6 +74,15 @@ jobs:
         
       - name: Build Windows
         run: flutter build windows --release
+
+      - name: Verify backend sidecar in final bundle
+        shell: pwsh
+        run: |
+          $backendBundleExe = "build/windows/x64/runner/Release/notilus-backend.exe"
+          if (-not (Test-Path $backendBundleExe)) {
+            throw "Backend sidecar missing from bundle: $backendBundleExe"
+          }
+          Write-Host "Backend sidecar present: $backendBundleExe"
         
       - name: Archive Windows build
         uses: actions/upload-artifact@v4

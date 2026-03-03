@@ -32,6 +32,14 @@ ios/Flutter/flutter_export_environment.sh
 ios/ServiceDefinitions.json
 ios/Runner/GeneratedPluginRegistrant.*
 
+# Desktop (Flutter generated)
+windows/flutter/ephemeral/
+windows/flutter/generated_plugin_registrant.cc
+windows/flutter/generated_plugin_registrant.h
+windows/flutter/generated_plugins.cmake
+linux/
+macos/
+
 # Web
 web/
 
@@ -85,46 +93,5 @@ cef_binary/
 assets/soundeffects/Notilus GX Background Music.wav
 
 installer/Output/Notilus-Browser-Setup-1.0.0.exe
+installer/installer/Output/
 
-# Version Management
-# v1 contient l'ancienne version Flutter (archivée)
-# v2 contient la nouvelle version Tauri (en développement)
-
-# Fichiers v1 restants à la racine (à supprimer après arrêt du backend)
-backend/
-v1/build/
-v1/.dart_tool/
-v1/.flutter-plugins
-v1/.flutter-plugins-dependencies
-v1/.packages
-v1/.pub/
-v1/*.iml
-v1/*.ipr
-v1/*.iws
-v1/.idea/
-v1/android/.gradle/
-v1/android/app/build/
-v1/android/.idea/
-v1/android/local.properties
-v1/ios/.symlinks/
-v1/ios/Pods/
-v1/ios/.generated/
-v1/backend/__pycache__/
-v1/backend/*.pyc
-v1/backend/dist/
-v1/backend/build/
-v1/backend/*.egg-info/
-v1/backend/.venv/
-v1/backend/venv/
-v1/backend/env/
-
-# v2 - Tauri (nouvelle version)
-v2/node_modules/
-v2/dist/
-v2/src-tauri/target/
-v2/src-tauri/Cargo.lock
-v2/.vscode/
-v2/.idea/
-v2/*.log
-v2/.DS_Store
-v2/Thumbs.db
