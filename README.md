@@ -18,7 +18,7 @@ Navigateur desktop futuriste style Opera GX, spécialement conçu pour les déve
 - **Backend**: Python + Firebase
 - **Platformes**: Windows, macOS, Linux
 
-## 📁 Structure
+## 📁 Structure du projet
 
 `
 Notilus-Browser/
@@ -26,7 +26,8 @@ Notilus-Browser/
 ├── backend/           # Services backend Python
 ├── assets/            # Images et ressources
 ├── docs/              # Documentation détaillée
-└── test/              # Tests unitaires
+├── test/              # Tests unitaires
+└── pubspec.yaml       # Dépendances Flutter
 `
 
 ## 🚀 Installation
