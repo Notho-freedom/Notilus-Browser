@@ -1,59 +1,43 @@
-# Notilus Browser
+# Notilus-Browser
 
-Navigateur desktop futuriste style Opera GX, spécialement conçu pour les développeurs.
+Project description and documentation.
 
-## 🚀 Fonctionnalités
+## 🚀 Features
 
-- 🎨 Thèmes modernes et avancés (Dark-Red par défaut)
-- 📑 Regroupement d'onglets avancé
-- 🖥️ Splitscreen multiple
-- 🛠️ Outils développeur intégrés
-- 🤖 Support IA et automatisation
-- 📊 Monitoring et tests intégrés
+- Modern tech stack
+- Responsive design
+- Production ready
 
-## 🛠️ Stack Technique
+## 🛠️ Tech Stack
 
-- **Frontend**: Flutter Desktop
-- **Moteur de rendu**: CEF (Chromium Embedded Framework)
-- **Backend**: Python + Firebase
-- **Platformes**: Windows, macOS, Linux
-
-## 📁 Structure du projet
-
-`
-Notilus-Browser/
-├── lib/               # Code Dart/Flutter principal
-├── backend/           # Services backend Python
-├── assets/            # Images et ressources
-├── docs/              # Documentation détaillée
-├── test/              # Tests unitaires
-└── pubspec.yaml       # Dépendances Flutter
-`
+- TypeScript, Vite, React
+- Tailwind CSS
+- Supabase
 
 ## 🚀 Installation
 
-### Prérequis
-- Flutter SDK 3.x
-- Python 3.9+
-- Firebase CLI
-
-### Backend
 `ash
-cd backend
-pip install -r requirements.txt
-python main.py
+git clone https://github.com/Notho-freedom/Notilus-Browser.git
+cd Notilus-Browser
+npm install
 `
 
-### Frontend
+## 🏃 Running
+
 `ash
-flutter pub get
-flutter run
+npm run dev
+npm run build
+npm run preview
 `
 
-## 📊 Statut
+## 📊 Status
 
-Projet actif en développement. Navigateur desktop fonctionnel avec moteur CEF.
+Active development.
 
-## 👤 Auteur
+## 👤 Author
 
 [Notho-freedom](https://github.com/Notho-freedom)
+
+## 📄 License
+
+MIT
